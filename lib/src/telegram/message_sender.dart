@@ -3,5 +3,6 @@ abstract interface class MessageSender {
     int chatId,
     String text, {
     bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
   });
 }

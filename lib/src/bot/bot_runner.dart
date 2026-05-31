@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
+import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_client.dart';
 import 'package:l/l.dart';
@@ -11,23 +12,41 @@ final class BotRunner {
   BotRunner({
     required AppConfig config,
     required TelegramClient client,
+    required TrainingScheduleRepository scheduleRepository,
     required PrivateHandlers privateHandlers,
     required GroupHandlers groupHandlers,
   })  : _config = config,
         _client = client,
+        _scheduleRepository = scheduleRepository,
         _privateHandlers = privateHandlers,
         _groupHandlers = groupHandlers;
 
   final AppConfig _config;
   final TelegramClient _client;
+  final TrainingScheduleRepository _scheduleRepository;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
 
   bool _stopping = false;
   int _offset = 0;
   String? _botUsername;
+  Timer? _scheduleSyncTimer;
 
   Future<void> start() async {
+    final initialRefreshOk = await _scheduleRepository.refresh(force: true);
+    if (!initialRefreshOk) {
+      l.w('Initial schedule refresh failed. Continuing with available cache.');
+    }
+    _scheduleSyncTimer = Timer.periodic(
+      Duration(seconds: _config.scheduleSyncIntervalSeconds),
+      (_) {
+        if (_stopping) {
+          return;
+        }
+        unawaited(_refreshScheduleInBackground());
+      },
+    );
+
     try {
       _botUsername = await _client.getBotUsername();
       l.i('Bot username: ${_botUsername ?? 'unknown'}');
@@ -81,8 +100,16 @@ final class BotRunner {
     await _groupHandlers.handle(normalized, botUsername: _botUsername);
   }
 
+  Future<void> _refreshScheduleInBackground() async {
+    final refreshOk = await _scheduleRepository.refresh();
+    if (!refreshOk) {
+      l.w('Background schedule refresh failed.');
+    }
+  }
+
   void stop() {
     _stopping = true;
+    _scheduleSyncTimer?.cancel();
     _client.close();
   }
 }

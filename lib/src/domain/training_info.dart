@@ -12,4 +12,6 @@ final class TrainingInfo {
   final String location;
   final String? coach;
   final String? notes;
+
+  String get sessionKey => '${startsAt.toUtc().toIso8601String()}|$title|$location';
 }

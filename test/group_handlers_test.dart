@@ -99,6 +99,7 @@ final class _FakeSender implements MessageSender {
     int chatId,
     String text, {
     bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
   }) async {
     if (_failingChatIds.contains(chatId)) {
       throw const TelegramApiException('Forbidden: bot was blocked by the user', statusCode: 403);

@@ -5,20 +5,31 @@ MVP-бот для спортивного объединения DVOR на Dart.
 ## Что умеет сейчас
 
 - В личке отвечает на:
-  - `/start` — приветствие и подсказка по командам
-  - `/trainings` — ближайшие тренировки (статично в коде)
+  - `/start` — приветствие и кнопочное меню
+  - `/trainings` и кнопка `Расписание` — ближайшие тренировки
+  - `/book` и кнопка `Записаться` — запись на ближайшую тренировку
+  - `/my_bookings` и кнопка `Мои записи` — просмотр статусов записей
+  - `/paid` и кнопка `Я оплатил` — отправка подтверждения оплаты
+  - кнопка `Помощь` — краткая справка по боту
+  - кнопка `Обновить расписание` — принудительный sync расписания (только для админов)
+  - `/payments_queue`, `/approve_payment <id>`, `/reject_payment <id>` — админ-флоу оплаты
 - В группе:
   - при входе нового участника пытается отправить ЛС с инфо о клубе
   - если ЛС недоступно, отправляет fallback-сообщение в группу (опционально)
+- Расписание:
+  - `static` (по умолчанию) — расписание в коде
+  - `google_sheets` — расписание из Google Sheets CSV с периодическим sync
 
 ## Структура проекта
 
 - `bin/dvor_bot.dart` — entrypoint и запуск бота
 - `lib/src/config/app_config.dart` — конфигурация из CLI/env/.env
 - `lib/src/telegram/telegram_client.dart` — Telegram Bot API клиент
-- `lib/src/bot/handlers/private_handlers.dart` — логика `/start` и `/trainings`
+- `lib/src/bot/handlers/private_handlers.dart` — логика private-сценариев и кнопочного меню
 - `lib/src/bot/handlers/group_handlers.dart` — welcome flow для новых участников
 - `lib/src/data/static_schedule_repository.dart` — статичное расписание тренировок
+- `lib/src/data/google_sheets_schedule_repository.dart` — расписание из Google Sheets CSV
+- `lib/src/data/sqlite_booking_repository.dart` — SQLite-хранилище записей и оплат
 - `lib/src/messages/message_templates.dart` — шаблоны сообщений
 - `test/` — unit-тесты
 
@@ -31,14 +42,33 @@ BOT_TOKEN=123456:ABCDEF
 TARGET_CHAT_ID=-1001234567890
 SEND_GROUP_FALLBACK=true
 POLL_TIMEOUT_SECONDS=25
+SCHEDULE_SOURCE=static
+GOOGLE_SHEETS_CSV_URL=
+SCHEDULE_SYNC_INTERVAL_SECONDS=300
+ADMIN_USER_IDS=123456789
+BOOKINGS_DB_PATH=data/bookings.sqlite
+PENDING_PAYMENT_TTL_MINUTES=120
 LOG_LEVEL=info
 ```
 
 Можно задавать и через CLI (имеет более высокий приоритет):
 
 ```bash
-dart run bin/dvor_bot.dart --token=123456:ABCDEF --target-chat-id=-1001234567890
+dart run bin/dvor_bot.dart --token=123456:ABCDEF --target-chat-id=-1001234567890 --schedule-source=google_sheets --google-sheets-csv-url="https://docs.google.com/spreadsheets/d/.../export?format=csv&gid=0"
 ```
+
+### Формат Google Sheets CSV
+
+Обязательные колонки:
+
+- `title`
+- `starts_at` (например `2026-06-05 19:00` или `05.06.2026 19:00`)
+- `location`
+
+Опциональные колонки:
+
+- `coach`
+- `notes`
 
 ## Локальный запуск
 
@@ -51,9 +81,11 @@ dart run bin/dvor_bot.dart --token=123456:ABCDEF --target-chat-id=-1001234567890
 ## Проверка работоспособности (smoke test)
 
 1. Откройте личку с ботом, нажмите `Start`.
-2. Отправьте `/start` и `/trainings` — проверьте ответы.
-3. Добавьте тестового пользователя в группу DVOR.
-4. Убедитесь, что бот:
+2. Нажмите `Расписание` и `Помощь` — проверьте ответы.
+3. Нажмите `Записаться`, затем `Мои записи` и `Я оплатил`.
+4. Если ваш user id указан в `ADMIN_USER_IDS`, нажмите `Обновить расписание` и проверьте `/payments_queue`.
+5. Добавьте тестового пользователя в группу DVOR.
+6. Убедитесь, что бот:
    - попытался отправить ЛС пользователю,
    - при недоступной личке отправил fallback-сообщение в группу.
 
@@ -94,7 +126,7 @@ dart run bin/dvor_bot.dart --token=123456:ABCDEF --target-chat-id=-1001234567890
 
 ## Дальнейшие шаги
 
-- Вынести расписание из кода в JSON/Google Sheets/БД.
-- Добавить админ-команду обновления расписания.
+- Добавить callback-flow с inline-кнопками.
+- Добавить внешний шлюз оплаты вместо ручного подтверждения.
 - Добавить интеграционные тесты с mock Telegram API.
 - Настроить CI (analyze + test) в GitHub Actions.

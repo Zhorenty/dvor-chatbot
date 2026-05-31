@@ -1,5 +1,8 @@
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
+import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
@@ -12,7 +15,9 @@ void main() {
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
         templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
       );
 
       final handled = await handlers.handle(<String, dynamic>{
@@ -24,6 +29,7 @@ void main() {
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, 11);
       expect(sender.messages.single.text, contains('DVOR'));
+      expect(sender.messages.single.replyMarkup, isNotNull);
     });
 
     test('handles /trainings command in private chat', () async {
@@ -39,7 +45,9 @@ void main() {
             ),
           ],
         ),
+        bookingRepository: _FakeBookingRepository(),
         templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
       );
 
       final handled = await handlers.handle(<String, dynamic>{
@@ -53,12 +61,90 @@ void main() {
       expect(sender.messages.single.text, contains('Тестовая тренировка'));
     });
 
+    test('handles menu trainings button in private chat', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Тренировка из кнопки',
+              startsAt: DateTime(2026, 6, 5, 19, 0),
+              location: 'Тестовый зал',
+            ),
+          ],
+        ),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 13, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1301},
+        'text': MessageTemplates.buttonTrainings,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Тренировка из кнопки'));
+    });
+
+    test('refresh button is forbidden for non-admin users', () async {
+      final sender = _FakeSender();
+      final repository = _FakeScheduleRepository(const <TrainingInfo>[]);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: repository,
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 14, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1302},
+        'text': MessageTemplates.buttonRefreshSchedule,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('только администраторам'));
+      expect(repository.refreshCalls, 0);
+    });
+
+    test('refresh button triggers repository sync for admin users', () async {
+      final sender = _FakeSender();
+      final repository = _FakeScheduleRepository(
+        const <TrainingInfo>[],
+        refreshResult: true,
+      );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: repository,
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1303},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 15, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1303},
+        'text': MessageTemplates.buttonRefreshSchedule,
+      });
+
+      expect(handled, isTrue);
+      expect(repository.refreshCalls, 1);
+      expect(sender.messages.single.text, contains('успешно обновлено'));
+    });
+
     test('ignores non-private chat messages', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
         templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
       );
 
       final handled = await handlers.handle(<String, dynamic>{
@@ -69,16 +155,191 @@ void main() {
       expect(handled, isFalse);
       expect(sender.messages, isEmpty);
     });
+
+    test('creates pending booking on /book', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Book me',
+              startsAt: DateTime(2026, 7, 10, 18, 0),
+              location: 'Hall',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 16, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1600},
+        'text': '/book',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.createCalls, 1);
+      expect(sender.messages.single.text, contains('Запись создана'));
+    });
+
+    test('submits payment for latest pending booking', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..submitResult = _booking(status: BookingStatus.paymentSubmitted);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 17, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1700},
+        'text': '/paid transfer sent',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.submitCalls, 1);
+      expect(sender.messages.single.text, contains('отправлена администратору'));
+    });
+
+    test('shows payments queue for admins', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[_booking(status: BookingStatus.paymentSubmitted)];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1800},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 18, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1800},
+        'text': '/payments_queue',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('Заявки на подтверждение оплаты'));
+    });
   });
 }
 
 final class _FakeScheduleRepository implements TrainingScheduleRepository {
-  const _FakeScheduleRepository(this._items);
+  _FakeScheduleRepository(
+    this._items, {
+    this.refreshResult = true,
+  });
 
   final List<TrainingInfo> _items;
+  final bool refreshResult;
+  int refreshCalls = 0;
 
   @override
   List<TrainingInfo> upcoming({DateTime? now, int limit = 5}) => _items.take(limit).toList();
+
+  @override
+  Future<bool> refresh({bool force = false}) async {
+    refreshCalls += 1;
+    return refreshResult;
+  }
+}
+
+final class _FakeBookingRepository implements BookingRepository {
+  int createCalls = 0;
+  int submitCalls = 0;
+  List<TrainingBooking> queue = const <TrainingBooking>[];
+  TrainingBooking? submitResult;
+
+  @override
+  Future<BookingCreateResult> createPendingBooking({
+    required int userId,
+    required TrainingInfo training,
+  }) async {
+    createCalls += 1;
+    return BookingCreateResult(
+      booking: _booking(
+        id: 99,
+        userId: userId,
+        title: training.title,
+        startsAt: training.startsAt,
+        location: training.location,
+      ),
+      created: true,
+    );
+  }
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<List<TrainingBooking>> listByStatus(
+    BookingStatus status, {
+    int limit = 20,
+  }) async {
+    return queue;
+  }
+
+  @override
+  Future<List<TrainingBooking>> listUserBookings(int userId, {int limit = 10}) async {
+    return <TrainingBooking>[
+      _booking(
+        id: 1,
+        userId: userId,
+        title: 'Test booking',
+        startsAt: DateTime(2026, 7, 10, 18),
+        location: 'Gym',
+      ),
+    ];
+  }
+
+  @override
+  Future<TrainingBooking?> submitPaymentForLatestPending(
+    int userId, {
+    String? note,
+  }) async {
+    submitCalls += 1;
+    return submitResult;
+  }
+
+  @override
+  Future<TrainingBooking?> updateStatus(int bookingId, BookingStatus status) async {
+    return _booking(id: bookingId, status: status);
+  }
+}
+
+TrainingBooking _booking({
+  int id = 10,
+  int userId = 1,
+  String title = 'Training',
+  DateTime? startsAt,
+  String location = 'Hall',
+  BookingStatus status = BookingStatus.pendingPayment,
+}) {
+  final now = DateTime(2026, 1, 1, 10);
+  return TrainingBooking(
+    id: id,
+    userId: userId,
+    trainingKey: 'key-$id',
+    trainingTitle: title,
+    startsAt: startsAt ?? DateTime(2026, 8, 1, 18),
+    location: location,
+    status: status,
+    paymentNote: null,
+    createdAt: now,
+    updatedAt: now,
+  );
 }
 
 final class _FakeSender implements MessageSender {
@@ -89,12 +350,14 @@ final class _FakeSender implements MessageSender {
     int chatId,
     String text, {
     bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
   }) async {
     messages.add(
       _SentMessage(
         chatId: chatId,
         text: text,
         disableNotification: disableNotification,
+        replyMarkup: replyMarkup,
       ),
     );
     return messages.length;
@@ -106,9 +369,11 @@ final class _SentMessage {
     required this.chatId,
     required this.text,
     required this.disableNotification,
+    required this.replyMarkup,
   });
 
   final int chatId;
   final String text;
   final bool disableNotification;
+  final Map<String, Object?>? replyMarkup;
 }

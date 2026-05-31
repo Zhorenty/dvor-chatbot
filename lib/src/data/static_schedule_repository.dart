@@ -11,6 +11,9 @@ final class StaticScheduleRepository implements TrainingScheduleRepository {
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     return upcomingItems.take(limit).toList(growable: false);
   }
+
+  @override
+  Future<bool> refresh({bool force = false}) async => true;
 }
 
 final List<TrainingInfo> _items = <TrainingInfo>[
