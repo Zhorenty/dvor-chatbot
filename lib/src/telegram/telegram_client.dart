@@ -20,6 +20,7 @@ final class TelegramClient implements MessageSender {
   Future<Map<String, dynamic>> _post(
     String method, {
     required Map<String, Object?> body,
+    Duration timeout = const Duration(seconds: 15),
   }) async {
     final response = await retry(
       () => _httpClient
@@ -28,7 +29,7 @@ final class TelegramClient implements MessageSender {
             headers: const {'Content-Type': 'application/json'},
             body: jsonEncode(body),
           )
-          .timeout(const Duration(seconds: 15)),
+          .timeout(timeout),
       shouldRetry: (error) => error is! TelegramApiException,
     );
 
@@ -64,6 +65,7 @@ final class TelegramClient implements MessageSender {
     required int timeoutSeconds,
     Set<String> allowedUpdates = const {'message'},
   }) async {
+    final requestTimeout = Duration(seconds: timeoutSeconds + 10);
     final payload = await _post(
       'getUpdates',
       body: <String, Object?>{
@@ -72,6 +74,7 @@ final class TelegramClient implements MessageSender {
         'timeout': timeoutSeconds,
         'allowed_updates': allowedUpdates.toList(growable: false),
       },
+      timeout: requestTimeout,
     );
 
     final rawResult = payload['result'];

@@ -28,8 +28,16 @@ final class BotRunner {
   String? _botUsername;
 
   Future<void> start() async {
-    _botUsername = await _client.getBotUsername();
-    l.i('Bot username: ${_botUsername ?? 'unknown'}');
+    try {
+      _botUsername = await _client.getBotUsername();
+      l.i('Bot username: ${_botUsername ?? 'unknown'}');
+    } on TelegramApiException catch (error, stackTrace) {
+      l.w('Failed to resolve bot username: $error', stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
+      l.w('Timed out resolving bot username: $error', stackTrace);
+    } on Object catch (error, stackTrace) {
+      l.w('Unexpected error resolving bot username: $error', stackTrace);
+    }
 
     while (!_stopping) {
       try {
