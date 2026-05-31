@@ -172,8 +172,12 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     }
 
     final localFormats = <DateFormat>[
+      DateFormat('dd.MM.yyyy HH:mm:ss'),
+      DateFormat('dd.MM.yyyy H:mm:ss'),
       DateFormat('dd.MM.yyyy HH:mm'),
       DateFormat('dd.MM.yyyy H:mm'),
+      DateFormat('yyyy-MM-dd HH:mm:ss'),
+      DateFormat('yyyy-MM-dd H:mm:ss'),
       DateFormat('yyyy-MM-dd HH:mm'),
       DateFormat('yyyy-MM-dd H:mm'),
     ];
