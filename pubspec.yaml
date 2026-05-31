@@ -1,0 +1,17 @@
+name: dvor_chatbot
+description: DVOR Telegram bot for trainings and onboarding
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+
+dependencies:
+  args: ^2.7.0
+  http: ^1.2.2
+  intl: ^0.20.2
+  l: ^5.0.0
+
+dev_dependencies:
+  lints: ^5.1.1
+  test: ^1.25.8
