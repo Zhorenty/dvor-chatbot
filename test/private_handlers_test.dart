@@ -108,7 +108,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.single.text, contains('только администраторам'));
+      expect(sender.messages.single.text, contains('только для админов'));
       expect(repository.refreshCalls, 0);
     });
 
@@ -134,7 +134,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(repository.refreshCalls, 1);
-      expect(sender.messages.single.text, contains('успешно обновлено'));
+      expect(sender.messages.single.text, contains('Расписание обновил'));
     });
 
     test('ignores non-private chat messages', () async {
@@ -183,7 +183,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 1);
-      expect(sender.messages.single.text, contains('Запись создана'));
+      expect(sender.messages.single.text, contains('записал тебя'));
     });
 
     test('submits payment for latest pending booking', () async {
@@ -206,7 +206,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 1);
-      expect(sender.messages.single.text, contains('отправлена администратору'));
+      expect(sender.messages.single.text, contains('отметку об оплате отправил администратору'));
     });
 
     test('shows payments queue for admins', () async {

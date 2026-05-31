@@ -6,116 +6,117 @@ import 'package:intl/intl.dart';
 final class MessageTemplates {
   const MessageTemplates();
 
-  static const String buttonTrainings = 'Расписание';
-  static const String buttonBookTraining = 'Записаться';
-  static const String buttonMyBookings = 'Мои записи';
-  static const String buttonSubmitPayment = 'Я оплатил';
-  static const String buttonHelp = 'Помощь';
-  static const String buttonRefreshSchedule = 'Обновить расписание';
-  static const String buttonPaymentsQueue = 'Заявки на оплату';
+  static const String buttonTrainings = '📅 Расписание';
+  static const String buttonBookTraining = '✍️ Записаться';
+  static const String buttonMyBookings = '🗂 Мои записи';
+  static const String buttonSubmitPayment = '💸 Я оплатил';
+  static const String buttonHelp = '🆘 Помощь';
+  static const String buttonRefreshSchedule = '🔄 Обновить расписание';
+  static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
 
   String privateWelcome() {
-    return 'Привет! Я бот спортивного объединения DVOR.\n\n'
-        'Используйте кнопки внизу, чтобы быстро открыть расписание и справку.';
+    return 'Привет! 👋 Я бот спортивного объединения DVOR.\n\n'
+        'Давай начнем: кнопки внизу помогут быстро открыть расписание, записаться и посмотреть справку 😉';
   }
 
   String privateHelp() {
-    return 'Что умеет бот сейчас:\n'
-        '• Показывает ближайшие тренировки\n'
-        '• Записывает на ближайшую тренировку\n'
-        '• Принимает отметку об оплате и отправляет админам\n'
-        '• Обновляет расписание из внешнего источника\n'
-        '• Помогает новым участникам в группе\n\n'
-        'Если кнопки не отображаются, можно использовать команды:\n'
+    return 'Вот что я умею прямо сейчас 👇\n'
+        '• Показываю ближайшие тренировки 📅\n'
+        '• Записываю на ближайшую тренировку ✍️\n'
+        '• Принимаю отметку об оплате и отправляю админам 💸\n'
+        '• Обновляю расписание из внешнего источника 🔄\n'
+        '• Помогаю новичкам в группе 🙌\n\n'
+        'Если кнопки вдруг пропали, используй команды:\n'
         '/trainings, /book, /my_bookings, /paid.';
   }
 
   String trainings(List<TrainingInfo> items) {
     if (items.isEmpty) {
-      return 'Пока нет запланированных тренировок. Скоро добавим новые даты.';
+      return 'Пока тренировок в расписании нет 😌 Скоро добавим новые даты!';
     }
 
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Ближайшие тренировки DVOR:'];
+    final lines = <String>['Ближайшие тренировки DVOR 💪'];
     for (final item in items) {
       final coach = item.coach == null ? '' : '\nТренер: ${item.coach}';
       final notes = item.notes == null ? '' : '\nПримечание: ${item.notes}';
       lines.add(
         '\n• ${item.title}\n'
-        'Когда: ${formatter.format(item.startsAt)}\n'
-        'Где: ${item.location}$coach$notes',
+        '🕒 Когда: ${formatter.format(item.startsAt)}\n'
+        '📍 Где: ${item.location}$coach$notes',
       );
     }
     return lines.join('\n');
   }
 
   String clubInfoPrivate() {
-    return 'Добро пожаловать в спортивное объединение DVOR!\n\n'
-        'Здесь мы регулярно проводим тренировки, делимся расписанием и новостями клуба.\n'
-        'Чтобы посмотреть ближайшие тренировки, отправьте команду /trainings.';
+    return 'Добро пожаловать в спортивное объединение DVOR! 🎉\n\n'
+        'Мы регулярно проводим тренировки, делимся расписанием и новостями клуба.\n'
+        'Хочешь посмотреть ближайшие занятия? Отправь /trainings 👌';
   }
 
   String groupFallback({required String? botUsername}) {
     final botLink = botUsername == null || botUsername.isEmpty
-        ? 'Напишите боту в личку и нажмите Start.'
-        : 'Откройте личку с ботом: https://t.me/$botUsername и нажмите Start.';
-    return 'Не получилось отправить личное сообщение новому участнику. $botLink';
+        ? 'Напишите боту в личку и нажмите Start 🙌'
+        : 'Откройте личку с ботом: https://t.me/$botUsername и нажмите Start 🙌';
+    return 'Не удалось отправить личное сообщение новому участнику 😕 $botLink';
   }
 
   String scheduleRefreshDone() {
-    return 'Расписание успешно обновлено.';
+    return 'Готово! Расписание обновил ✅';
   }
 
   String scheduleRefreshFailed() {
-    return 'Не удалось обновить расписание. Использую последнее сохраненное.';
+    return 'Не получилось обновить расписание 😔 Использую последнюю сохраненную версию.';
   }
 
   String scheduleRefreshForbidden() {
-    return 'Эта кнопка доступна только администраторам.';
+    return 'Эта кнопка только для админов 🔒';
   }
 
   String noUpcomingForBooking() {
-    return 'Сейчас нет ближайших тренировок для записи.';
+    return 'Пока нет ближайших тренировок для записи 😌';
   }
 
   String bookingCreated(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Запись создана. Статус: ${_statusLabel(booking.status)}.\n'
+    return 'Отлично, записал тебя! ✅\n'
+        'Статус: ${_statusLabel(booking.status)}\n'
         'ID записи: ${booking.id}\n'
         'Тренировка: ${booking.trainingTitle}\n'
-        'Когда: ${formatter.format(booking.startsAt)}\n'
-        'Где: ${booking.location}\n\n'
-        'После перевода нажмите кнопку `Я оплатил` или используйте /paid <комментарий>.';
+        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+        '📍 Где: ${booking.location}\n\n'
+        'После перевода нажми кнопку `$buttonSubmitPayment` или используй /paid <комментарий>.';
   }
 
   String bookingAlreadyExists(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'У вас уже есть запись на эту тренировку.\n'
+    return 'Ты уже записан(а) на эту тренировку 👌\n'
         'ID записи: ${booking.id}\n'
         'Текущий статус: ${_statusLabel(booking.status)}\n'
-        'Когда: ${formatter.format(booking.startsAt)}';
+        '🕒 Когда: ${formatter.format(booking.startsAt)}';
   }
 
   String paymentSubmitted(TrainingBooking booking) {
-    return 'Отметка об оплате отправлена администратору.\n'
+    return 'Супер, отметку об оплате отправил администратору ✅\n'
         'ID записи: ${booking.id}\n'
         'Статус: ${_statusLabel(booking.status)}.';
   }
 
   String noPendingPayment() {
-    return 'Не нашел активной записи со статусом "Ожидает оплату".';
+    return 'Не нашел активной записи со статусом "Ожидает оплату" 🤔';
   }
 
   String myBookings(List<TrainingBooking> bookings) {
     if (bookings.isEmpty) {
-      return 'У вас пока нет записей на тренировки.';
+      return 'У тебя пока нет записей на тренировки 🙃';
     }
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Ваши записи:'];
+    final lines = <String>['Твои записи 🗂'];
     for (final booking in bookings) {
       lines.add(
         '\n• #${booking.id} ${booking.trainingTitle}\n'
-        'Когда: ${formatter.format(booking.startsAt)}\n'
+        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
         'Статус: ${_statusLabel(booking.status)}',
       );
     }
@@ -124,10 +125,10 @@ final class MessageTemplates {
 
   String paymentsQueue(List<TrainingBooking> bookings) {
     if (bookings.isEmpty) {
-      return 'Очередь подтверждения оплат пуста.';
+      return 'Очередь подтверждения оплат пока пустая ✨';
     }
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Заявки на подтверждение оплаты:'];
+    final lines = <String>['Заявки на подтверждение оплаты 🧾'];
     for (final booking in bookings) {
       final note = booking.paymentNote == null ? '' : '\nКомментарий: ${booking.paymentNote}';
       lines.add(
@@ -136,26 +137,27 @@ final class MessageTemplates {
       );
     }
     lines.add(
-      '\nПодтверждение: /approve_payment <id>\n'
-      'Отклонение: /reject_payment <id>',
+      '\nПодтвердить: /approve_payment <id>\n'
+      'Отклонить: /reject_payment <id>',
     );
     return lines.join('\n');
   }
 
   String adminOnlyAction() {
-    return 'Действие доступно только администраторам.';
+    return 'Это действие доступно только администраторам 🔒';
   }
 
   String paymentActionUsage() {
-    return 'Использование:\n/approve_payment <id>\n/reject_payment <id>';
+    return 'Использование:\n/approve_payment <id>\n/reject_payment <id>\n\n'
+        'Например: /approve_payment 42';
   }
 
   String bookingNotFound(int id) {
-    return 'Запись #$id не найдена.';
+    return 'Запись #$id не найдена 😕';
   }
 
   String bookingStatusUpdated(TrainingBooking booking) {
-    return 'Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)}.';
+    return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)} ✅';
   }
 
   Map<String, Object?> privateMenuKeyboard({required bool isAdmin}) {
@@ -190,9 +192,9 @@ final class MessageTemplates {
   String _statusLabel(BookingStatus status) {
     return switch (status) {
       BookingStatus.pendingPayment => 'Ожидает оплату',
-      BookingStatus.paymentSubmitted => 'Оплата на проверке',
-      BookingStatus.paid => 'Оплачено',
-      BookingStatus.paymentRejected => 'Оплата отклонена',
+      BookingStatus.paymentSubmitted => 'Оплата на проверке 👀',
+      BookingStatus.paid => 'Оплачено ✅',
+      BookingStatus.paymentRejected => 'Оплата отклонена ❌',
       BookingStatus.cancelled => 'Отменено',
     };
   }
