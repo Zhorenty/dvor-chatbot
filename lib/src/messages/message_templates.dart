@@ -38,10 +38,10 @@ final class MessageTemplates {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final lines = <String>['Ближайшие тренировки DVOR 💪'];
     for (final item in items) {
-      final coach = item.coach == null ? '' : '\nТренер: ${item.coach}';
-      final notes = item.notes == null ? '' : '\nПримечание: ${item.notes}';
+      final coach = item.coach == null ? '' : '\n🧑‍🏫 Тренер: ${item.coach}';
+      final notes = item.notes == null ? '' : '\n📝 Примечание: ${item.notes}';
       lines.add(
-        '\n• ${item.title}\n'
+        '\n• 🏋️ ${item.title}\n'
         '🕒 Когда: ${formatter.format(item.startsAt)}\n'
         '📍 Где: ${item.location}$coach$notes',
       );
