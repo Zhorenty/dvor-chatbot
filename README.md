@@ -76,7 +76,11 @@ dart run bin/dvor_bot.dart --token=123456:ABCDEF --target-chat-id=-1001234567890
 2. Установите зависимости:
    - `dart pub get`
 3. Запустите бота:
-   - `dart run bin/dvor_bot.dart`
+   - `make bot` (или `dart run bin/dvor_bot.dart`)
+4. Быстрые команды через `Makefile`:
+   - `make bot` — запуск бота
+   - `make bot-stop` — остановка запущенного процесса бота
+   - `make bot-restart` — перезапуск одной командой
 
 ## Проверка работоспособности (smoke test)
 

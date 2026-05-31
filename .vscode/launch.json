@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "DVOR Bot (Debug)",
+      "type": "dart",
+      "request": "launch",
+      "program": "bin/dvor_bot.dart",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "DVOR Bot (Run)",
+      "type": "dart",
+      "request": "launch",
+      "program": "bin/dvor_bot.dart",
+      "cwd": "${workspaceFolder}",
+      "noDebug": true
+    }
+  ]
+}

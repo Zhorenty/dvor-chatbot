@@ -37,14 +37,23 @@ final class MessageTemplates {
 
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final lines = <String>['Ближайшие тренировки DVOR 💪'];
-    for (final item in items) {
-      final coach = item.coach == null ? '' : '\n🧑‍🏫 Тренер: ${item.coach}';
-      final notes = item.notes == null ? '' : '\n📝 Примечание: ${item.notes}';
-      lines.add(
-        '\n• 🏋️ ${item.title}\n'
-        '🕒 Когда: ${formatter.format(item.startsAt)}\n'
-        '📍 Где: ${item.location}$coach$notes',
-      );
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final coach = item.coach?.trim();
+      final notes = item.notes?.trim();
+
+      lines.addAll(<String>[
+        '',
+        '• 🏋️ ${item.title}',
+        '   🕒 Когда: ${formatter.format(item.startsAt)}',
+        '   📍 Где: ${item.location}',
+        if (coach != null && coach.isNotEmpty) '   🧑‍🏫 Тренер: $coach',
+        if (notes != null && notes.isNotEmpty) '   📝 Примечание: $notes',
+      ]);
+
+      if (index != items.length - 1) {
+        lines.add('\n   ─────────────────');
+      }
     }
     return lines.join('\n');
   }
