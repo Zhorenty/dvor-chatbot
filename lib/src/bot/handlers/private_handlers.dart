@@ -112,21 +112,13 @@ final class PrivateHandlers {
             replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
           );
           return true;
-        case _PrivateFlowStep.bookingActions:
+        case _PrivateFlowStep.paymentConfirmation:
           final items = flowState!.availableTrainings;
           _flowByUserId[userId] = flowState.copyWith(step: _PrivateFlowStep.selectingTraining);
           await _sender.sendMessage(
             chatId,
             _templates.chooseTrainingForBooking(items),
             replyMarkup: _templates.bookingSelectionKeyboard(items),
-          );
-          return true;
-        case _PrivateFlowStep.paymentConfirmation:
-          _flowByUserId[userId] = flowState!.copyWith(step: _PrivateFlowStep.bookingActions);
-          await _sender.sendMessage(
-            chatId,
-            'Вернулись на шаг с реквизитами. Если нужно, открой их снова.',
-            replyMarkup: _templates.bookingActionsKeyboard(),
           );
           return true;
         case null:
@@ -180,7 +172,7 @@ final class PrivateHandlers {
         training: flowState.availableTrainings[index - 1],
       );
       _flowByUserId[userId] = flowState.copyWith(
-        step: _PrivateFlowStep.bookingActions,
+        step: _PrivateFlowStep.paymentConfirmation,
         activeBooking: result.booking,
       );
       await _sender.sendMessage(
@@ -188,7 +180,7 @@ final class PrivateHandlers {
         result.created
             ? _templates.bookingCreated(result.booking)
             : _templates.bookingAlreadyExists(result.booking),
-        replyMarkup: _templates.bookingActionsKeyboard(),
+        replyMarkup: _templates.paymentConfirmationKeyboard(),
       );
       return true;
     }
@@ -214,8 +206,8 @@ final class PrivateHandlers {
           flowState?.step != _PrivateFlowStep.paymentConfirmation) {
         await _sender.sendMessage(
           chatId,
-          'Сначала открой реквизиты через `${MessageTemplates.buttonPaymentDetails}`.',
-          replyMarkup: _templates.bookingActionsKeyboard(),
+          'Сначала выбери тренировку через `${MessageTemplates.buttonBookTraining}`.',
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
         );
         return true;
       }
@@ -224,32 +216,14 @@ final class PrivateHandlers {
         userId,
         note: note,
       );
+      if (booking != null) {
+        await _notifyAdminAboutPaymentSubmitted(booking);
+      }
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
         chatId,
         booking == null ? _templates.noPendingPayment() : _templates.paymentSubmitted(booking),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-      );
-      return true;
-    }
-
-    if (text == MessageTemplates.buttonPaymentDetails) {
-      if (userId == null) {
-        return false;
-      }
-      if (flowState?.step != _PrivateFlowStep.bookingActions) {
-        await _sender.sendMessage(
-          chatId,
-          'Сначала выбери тренировку через `${MessageTemplates.buttonBookTraining}`.',
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-        );
-        return true;
-      }
-      _flowByUserId[userId] = flowState!.copyWith(step: _PrivateFlowStep.paymentConfirmation);
-      await _sender.sendMessage(
-        chatId,
-        _templates.paymentDetailsSent(),
-        replyMarkup: _templates.paymentConfirmationKeyboard(),
       );
       return true;
     }
@@ -362,6 +336,21 @@ final class PrivateHandlers {
     return null;
   }
 
+  Future<void> _notifyAdminAboutPaymentSubmitted(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sender.sendMessage(
+        adminChatId,
+        _templates.paymentSubmittedAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about payment submission: $error', stackTrace);
+    }
+  }
+
   Future<void> _notifyAboutPaymentReview(
     TrainingBooking booking, {
     required int? moderatorUserId,
@@ -397,7 +386,6 @@ final class PrivateHandlers {
 
 enum _PrivateFlowStep {
   selectingTraining,
-  bookingActions,
   paymentConfirmation,
 }
 

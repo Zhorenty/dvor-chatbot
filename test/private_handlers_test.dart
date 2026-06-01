@@ -225,9 +225,10 @@ void main() {
       expect(bookingRepository.createCalls, 1);
       expect(bookingRepository.lastCreatedTraining?.title, 'Second session');
       expect(sender.messages.last.text, contains('записал тебя'));
+      expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
     });
 
-    test('paid button is available only after payment details step', () async {
+    test('paid button is available right after training is selected', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..submitResult = _booking(status: BookingStatus.paymentSubmitted);
@@ -257,23 +258,6 @@ void main() {
         'from': <String, dynamic>{'id': 1602},
         'text': '🎯 1. Book me',
       });
-
-      final blocked = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
-        'from': <String, dynamic>{'id': 1602},
-        'text': MessageTemplates.buttonSubmitPayment,
-      });
-      expect(blocked, isTrue);
-      expect(bookingRepository.submitCalls, 0);
-      expect(sender.messages.last.text, contains('Сначала открой реквизиты'));
-
-      final detailsSent = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
-        'from': <String, dynamic>{'id': 1602},
-        'text': MessageTemplates.buttonPaymentDetails,
-      });
-      expect(detailsSent, isTrue);
-      expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
 
       final submitted = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 162, 'type': 'private'},
@@ -305,6 +289,38 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(sender.messages.single.text, contains('отметку об оплате отправил администратору'));
+    });
+
+    test('sends admin chat notification when payment submitted', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..submitResult = _booking(
+          id: 55,
+          userId: 1701,
+          title: 'Functional',
+          status: BookingStatus.paymentSubmitted,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100777,
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1701, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1701},
+        'text': '/paid transfer sent',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(2));
+      expect(sender.messages[0].chatId, -100777);
+      expect(sender.messages[0].text, contains('Новое подтверждение оплаты'));
+      expect(sender.messages[1].chatId, 1701);
+      expect(sender.messages[1].text, contains('отметку об оплате отправил администратору'));
     });
 
     test('shows payments queue for admins', () async {

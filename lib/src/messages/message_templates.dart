@@ -10,7 +10,6 @@ final class MessageTemplates {
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonMyBookings = '🗂 Мои записи';
   static const String buttonSubmitPayment = '💸 Я оплатил';
-  static const String buttonPaymentDetails = '💳 Реквизиты для оплаты';
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';
   static const String buttonHelp = '🆘 Помощь';
@@ -98,7 +97,7 @@ final class MessageTemplates {
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
         '📍 Где: ${booking.location}\n\n'
-        'Дальше нажми `$buttonPaymentDetails`, чтобы получить реквизиты.';
+        '${paymentDetailsSent()}';
   }
 
   String bookingAlreadyExists(TrainingBooking booking) {
@@ -113,6 +112,19 @@ final class MessageTemplates {
     return 'Супер, отметку об оплате отправил администратору ✅\n'
         'ID записи: ${booking.id}\n'
         'Статус: ${_statusLabel(booking.status)}.';
+  }
+
+  String paymentSubmittedAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final note = booking.paymentNote?.trim();
+    return 'Новое подтверждение оплаты 💸\n'
+        'Запись: #${booking.id}\n'
+        'Пользователь: ${booking.userId}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        'Когда: ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_statusLabel(booking.status)}'
+        '${note == null || note.isEmpty ? '' : '\nКомментарий: $note'}\n\n'
+        'Проверь очередь: /payments_queue';
   }
 
   String noPendingPayment() {
@@ -278,22 +290,6 @@ final class MessageTemplates {
     );
     return <String, Object?>{
       'keyboard': rows,
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
-  }
-
-  Map<String, Object?> bookingActionsKeyboard() {
-    return <String, Object?>{
-      'keyboard': <List<Map<String, String>>>[
-        <Map<String, String>>[
-          <String, String>{'text': buttonPaymentDetails},
-        ],
-        <Map<String, String>>[
-          <String, String>{'text': buttonBack},
-          <String, String>{'text': buttonMainMenu},
-        ],
-      ],
       'resize_keyboard': true,
       'one_time_keyboard': false,
     };
