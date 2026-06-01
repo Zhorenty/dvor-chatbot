@@ -9,6 +9,7 @@ abstract interface class BookingRepository {
 
   Future<BookingCreateResult> createPendingBooking({
     required int userId,
+    String? userUsername,
     required TrainingInfo training,
   });
 
@@ -22,6 +23,11 @@ abstract interface class BookingRepository {
   Future<List<TrainingBooking>> listByStatus(
     BookingStatus status, {
     int limit = 20,
+  });
+
+  Future<List<TrainingBooking>> listByTrainingKeys(
+    Set<String> trainingKeys, {
+    int limit = 200,
   });
 
   Future<TrainingBooking?> updateStatus(

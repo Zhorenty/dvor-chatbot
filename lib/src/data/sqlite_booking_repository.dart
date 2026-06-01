@@ -40,6 +40,7 @@ final class SqliteBookingRepository implements BookingRepository {
       CREATE TABLE IF NOT EXISTS bookings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
+        user_username TEXT,
         training_key TEXT NOT NULL,
         training_title TEXT NOT NULL,
         starts_at TEXT NOT NULL,
@@ -56,6 +57,7 @@ final class SqliteBookingRepository implements BookingRepository {
     _addColumnIfMissing(
         db, 'ALTER TABLE bookings ADD COLUMN reminder_count INTEGER NOT NULL DEFAULT 0;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN last_reminder_at TEXT;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN user_username TEXT;');
     db.execute(
       'CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);',
     );
@@ -73,17 +75,20 @@ final class SqliteBookingRepository implements BookingRepository {
   @override
   Future<BookingCreateResult> createPendingBooking({
     required int userId,
+    String? userUsername,
     required TrainingInfo training,
   }) async {
     _expireOverduePendingBookings();
     final db = _database;
     final nowIso = _nowProvider().toUtc().toIso8601String();
     final key = training.sessionKey;
+    final normalizedUsername = _normalizeUsername(userUsername);
     try {
       db.execute(
         '''
         INSERT INTO bookings (
           user_id,
+          user_username,
           training_key,
           training_title,
           starts_at,
@@ -92,10 +97,11 @@ final class SqliteBookingRepository implements BookingRepository {
           payment_note,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           userId,
+          normalizedUsername,
           key,
           training.title,
           training.startsAt.toUtc().toIso8601String(),
@@ -112,6 +118,13 @@ final class SqliteBookingRepository implements BookingRepository {
       }
       return BookingCreateResult(booking: booking, created: true);
     } on SqliteException {
+      if (normalizedUsername != null) {
+        _updateBookingUsernameIfMissing(
+          userId: userId,
+          trainingKey: key,
+          userUsername: normalizedUsername,
+        );
+      }
       final existing = _findBookingByUserAndTraining(userId, key);
       if (existing == null) {
         rethrow;
@@ -188,6 +201,34 @@ final class SqliteBookingRepository implements BookingRepository {
       LIMIT ?;
       ''',
       <Object?>[status.dbValue, limit],
+    );
+    return result.map(_rowToBooking).toList(growable: false);
+  }
+
+  @override
+  Future<List<TrainingBooking>> listByTrainingKeys(
+    Set<String> trainingKeys, {
+    int limit = 200,
+  }) async {
+    _expireOverduePendingBookings();
+    if (trainingKeys.isEmpty) {
+      return const <TrainingBooking>[];
+    }
+    final db = _database;
+    final placeholders = List<String>.filled(trainingKeys.length, '?').join(', ');
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE training_key IN ($placeholders)
+        AND status != ?
+      ORDER BY starts_at ASC, created_at ASC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        ...trainingKeys,
+        BookingStatus.cancelled.dbValue,
+        limit,
+      ],
     );
     return result.map(_rowToBooking).toList(growable: false);
   }
@@ -308,6 +349,7 @@ final class SqliteBookingRepository implements BookingRepository {
     return TrainingBooking(
       id: row['id'] as int,
       userId: row['user_id'] as int,
+      userUsername: row['user_username'] as String?,
       trainingKey: row['training_key'] as String,
       trainingTitle: row['training_title'] as String,
       startsAt: DateTime.parse(row['starts_at'] as String).toLocal(),
@@ -327,5 +369,29 @@ final class SqliteBookingRepository implements BookingRepository {
         rethrow;
       }
     }
+  }
+
+  String? _normalizeUsername(String? username) {
+    final trimmed = username?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed.startsWith('@') ? trimmed.substring(1) : trimmed;
+  }
+
+  void _updateBookingUsernameIfMissing({
+    required int userId,
+    required String trainingKey,
+    required String userUsername,
+  }) {
+    final db = _database;
+    db.execute(
+      '''
+      UPDATE bookings
+      SET user_username = ?
+      WHERE user_id = ? AND training_key = ? AND user_username IS NULL;
+      ''',
+      <Object?>[userUsername, userId, trainingKey],
+    );
   }
 }

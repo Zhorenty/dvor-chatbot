@@ -32,6 +32,33 @@ void main() {
       expect(sender.messages.single.replyMarkup, isNotNull);
     });
 
+    test('shows only admin buttons in private menu for admin users', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{9100},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100},
+        'text': '/start',
+      });
+
+      expect(handled, isTrue);
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonRefreshSchedule));
+      expect(buttons, contains(MessageTemplates.buttonPaymentsQueue));
+      expect(buttons, contains(MessageTemplates.buttonParticipantsList));
+      expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonMyBookings)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonHelp)));
+    });
+
     test('handles wrapped update with message payload', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
@@ -134,7 +161,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.text, contains('Показываю ближайшие тренировки'));
-      expect(sender.messages.single.text, contains('/trainings, /book, /my_bookings, /paid'));
+      expect(sender.messages.single.text, contains('/trainings, /book, /my_bookings'));
       expect(sender.messages.single.text, isNot(contains('внешнего источника')));
     });
 
@@ -265,18 +292,19 @@ void main() {
       });
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 161, 'type': 'private'},
-        'from': <String, dynamic>{'id': 1601},
+        'from': <String, dynamic>{'id': 1601, 'username': 'second_user'},
         'text': '🎯 2. Second session',
       });
 
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 1);
       expect(bookingRepository.lastCreatedTraining?.title, 'Second session');
+      expect(bookingRepository.lastCreatedUsername, 'second_user');
       expect(sender.messages.last.text, contains('записал тебя'));
       expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
     });
 
-    test('paid button is available right after training is selected', () async {
+    test('payment is not submitted without proof file', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..submitResult = _booking(status: BookingStatus.paymentSubmitted);
@@ -313,33 +341,57 @@ void main() {
         'text': MessageTemplates.buttonSubmitPayment,
       });
       expect(submitted, isTrue);
-      expect(bookingRepository.submitCalls, 1);
+      expect(bookingRepository.submitCalls, 0);
+      expect(sender.messages.last.text, contains('пришли файл'));
     });
 
-    test('submits payment for latest pending booking', () async {
+    test('submits payment after sending payment proof file', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..submitResult = _booking(status: BookingStatus.paymentSubmitted);
       final handlers = PrivateHandlers(
         sender: sender,
-        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Book me',
+              startsAt: DateTime(2026, 7, 10, 18, 0),
+              location: 'Hall',
+            ),
+          ],
+        ),
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
       );
 
-      final handled = await handlers.handle(<String, dynamic>{
+      await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 17, 'type': 'private'},
         'from': <String, dynamic>{'id': 1700},
-        'text': '/paid transfer sent',
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 17, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1700},
+        'text': '🎯 1. Book me',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'message': <String, dynamic>{
+          'message_id': 301,
+          'chat': <String, dynamic>{'id': 17, 'type': 'private'},
+          'from': <String, dynamic>{'id': 1700},
+          'document': <String, Object?>{'file_id': 'doc-proof'},
+          'caption': 'Оплата по booking 99',
+        },
       });
 
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 1);
-      expect(sender.messages.single.text, contains('отметку об оплате отправил администратору'));
+      expect(sender.messages.last.text,
+          contains('файл с подтверждением оплаты отправил администратору'));
     });
 
-    test('sends admin chat notification when payment submitted', () async {
+    test('sends admin chat notification only after proof file is sent', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..submitResult = _booking(
@@ -350,28 +402,55 @@ void main() {
         );
       final handlers = PrivateHandlers(
         sender: sender,
-        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Functional',
+              startsAt: DateTime(2026, 7, 10, 18, 0),
+              location: 'Hall',
+            ),
+          ],
+        ),
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
         adminChatId: -100777,
       );
 
-      final handled = await handlers.handle(<String, dynamic>{
+      await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1701, 'type': 'private'},
         'from': <String, dynamic>{'id': 1701},
-        'text': '/paid transfer sent',
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1701, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1701},
+        'text': '🎯 1. Functional',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'message': <String, dynamic>{
+          'message_id': 401,
+          'chat': <String, dynamic>{'id': 1701, 'type': 'private'},
+          'from': <String, dynamic>{'id': 1701},
+          'photo': <Map<String, Object?>>[
+            <String, Object?>{'file_id': 'photo-proof'},
+          ],
+        },
       });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(2));
-      expect(sender.messages[0].chatId, -100777);
-      expect(sender.messages[0].text, contains('Новое подтверждение оплаты'));
-      final adminMarkup = sender.messages[0].replyMarkup;
+      expect(sender.copiedMessages, hasLength(1));
+      expect(sender.copiedMessages.single.toChatId, -100777);
+      final adminNotification = sender.messages[sender.messages.length - 2];
+      expect(adminNotification.chatId, -100777);
+      expect(adminNotification.text, contains('Новое подтверждение оплаты'));
+      final adminMarkup = adminNotification.replyMarkup;
       expect(adminMarkup, isNotNull);
       expect(adminMarkup!['inline_keyboard'], isA<List<Object?>>());
-      expect(sender.messages[1].chatId, 1701);
-      expect(sender.messages[1].text, contains('отметку об оплате отправил администратору'));
+      final userConfirmation = sender.messages.last;
+      expect(userConfirmation.chatId, 1701);
+      expect(
+          userConfirmation.text, contains('файл с подтверждением оплаты отправил администратору'));
     });
 
     test('shows payments queue for admins', () async {
@@ -398,6 +477,82 @@ void main() {
       expect(markup, isNotNull);
       final keyboard = markup!['inline_keyboard'];
       expect(keyboard, isA<List<Object?>>());
+    });
+
+    test('shows participants list for admins with tagged users', () async {
+      final sender = _FakeSender();
+      final training = TrainingInfo(
+        title: 'Morning Run',
+        startsAt: DateTime(2026, 9, 2, 7, 30),
+        location: 'Park',
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          _booking(
+            id: 70,
+            userId: 7001,
+            userUsername: 'runner_one',
+            trainingKey: training.sessionKey,
+            title: training.title,
+            startsAt: training.startsAt,
+            location: training.location,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[training]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2000},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2000},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Список записавшихся'));
+      expect(sender.messages.single.text, contains('@runner_one'));
+    });
+
+    test('shows tg user link when participant has no username', () async {
+      final sender = _FakeSender();
+      final training = TrainingInfo(
+        title: 'Evening Run',
+        startsAt: DateTime(2026, 9, 3, 19, 30),
+        location: 'Park',
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          _booking(
+            id: 71,
+            userId: 7101,
+            trainingKey: training.sessionKey,
+            title: training.title,
+            startsAt: training.startsAt,
+            location: training.location,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[training]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2001},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 21, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2001},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('tg://user?id=7101'));
     });
 
     test('notifies user and admin chat on approve payment', () async {
@@ -459,6 +614,48 @@ void main() {
       expect(sender.messages[2].chatId, 1950);
       expect(sender.messages[2].text, contains('Статус записи #22 обновлен'));
     });
+
+    test('payment moderation callback is not treated as training selection', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Admin training',
+              startsAt: DateTime(2026, 7, 15, 19, 0),
+              location: 'Main Hall',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1951},
+        adminChatId: -100557,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1951, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1951},
+        'text': '/book',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'callback_query': <String, dynamic>{
+          'id': 'cbq-2',
+          'from': <String, dynamic>{'id': 1951},
+          'data': '${MessageTemplates.callbackApprovePaymentPrefix}23',
+          'message': <String, dynamic>{
+            'chat': <String, dynamic>{'id': 1951, 'type': 'private'},
+          },
+        },
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.any((message) => message.text.contains('Не понял выбор')), isFalse);
+      expect(sender.messages.last.chatId, 1951);
+      expect(sender.messages.last.text, contains('Статус записи #23 обновлен'));
+    });
   });
 }
 
@@ -486,22 +683,27 @@ final class _FakeBookingRepository implements BookingRepository {
   int createCalls = 0;
   int submitCalls = 0;
   List<TrainingBooking> queue = const <TrainingBooking>[];
+  List<TrainingBooking> bookingsByTrainingKey = const <TrainingBooking>[];
   TrainingBooking? submitResult;
   TrainingInfo? lastCreatedTraining;
+  String? lastCreatedUsername;
   List<TrainingBooking> pendingForReminder = const <TrainingBooking>[];
   int remindersMarked = 0;
 
   @override
   Future<BookingCreateResult> createPendingBooking({
     required int userId,
+    String? userUsername,
     required TrainingInfo training,
   }) async {
     createCalls += 1;
     lastCreatedTraining = training;
+    lastCreatedUsername = userUsername;
     return BookingCreateResult(
       booking: _booking(
         id: 99,
         userId: userId,
+        userUsername: userUsername,
         title: training.title,
         startsAt: training.startsAt,
         location: training.location,
@@ -522,6 +724,17 @@ final class _FakeBookingRepository implements BookingRepository {
     int limit = 20,
   }) async {
     return queue;
+  }
+
+  @override
+  Future<List<TrainingBooking>> listByTrainingKeys(
+    Set<String> trainingKeys, {
+    int limit = 200,
+  }) async {
+    return bookingsByTrainingKey
+        .where((booking) => trainingKeys.contains(booking.trainingKey))
+        .take(limit)
+        .toList(growable: false);
   }
 
   @override
@@ -569,6 +782,8 @@ final class _FakeBookingRepository implements BookingRepository {
 TrainingBooking _booking({
   int id = 10,
   int userId = 1,
+  String? userUsername,
+  String? trainingKey,
   String title = 'Training',
   DateTime? startsAt,
   String location = 'Hall',
@@ -578,7 +793,8 @@ TrainingBooking _booking({
   return TrainingBooking(
     id: id,
     userId: userId,
-    trainingKey: 'key-$id',
+    userUsername: userUsername,
+    trainingKey: trainingKey ?? 'key-$id',
     trainingTitle: title,
     startsAt: startsAt ?? DateTime(2026, 8, 1, 18),
     location: location,
@@ -591,6 +807,7 @@ TrainingBooking _booking({
 
 final class _FakeSender implements MessageSender {
   final List<_SentMessage> messages = <_SentMessage>[];
+  final List<_CopiedMessage> copiedMessages = <_CopiedMessage>[];
 
   @override
   Future<int> sendMessage(
@@ -609,6 +826,24 @@ final class _FakeSender implements MessageSender {
     );
     return messages.length;
   }
+
+  @override
+  Future<int> copyMessage(
+    int chatId, {
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  }) async {
+    copiedMessages.add(
+      _CopiedMessage(
+        toChatId: chatId,
+        fromChatId: fromChatId,
+        messageId: messageId,
+        disableNotification: disableNotification,
+      ),
+    );
+    return copiedMessages.length;
+  }
 }
 
 final class _SentMessage {
@@ -623,4 +858,41 @@ final class _SentMessage {
   final String text;
   final bool disableNotification;
   final Map<String, Object?>? replyMarkup;
+}
+
+final class _CopiedMessage {
+  const _CopiedMessage({
+    required this.toChatId,
+    required this.fromChatId,
+    required this.messageId,
+    required this.disableNotification,
+  });
+
+  final int toChatId;
+  final int fromChatId;
+  final int messageId;
+  final bool disableNotification;
+}
+
+List<String> _keyboardTexts(Map<String, Object?>? replyMarkup) {
+  if (replyMarkup == null) {
+    return const <String>[];
+  }
+  final keyboard = replyMarkup['keyboard'];
+  if (keyboard is! List) {
+    return const <String>[];
+  }
+
+  final texts = <String>[];
+  for (final row in keyboard) {
+    if (row is! List) {
+      continue;
+    }
+    for (final button in row) {
+      if (button is Map && button['text'] is String) {
+        texts.add(button['text'] as String);
+      }
+    }
+  }
+  return texts;
 }

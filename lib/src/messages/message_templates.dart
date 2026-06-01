@@ -15,6 +15,7 @@ final class MessageTemplates {
   static const String buttonHelp = '🆘 Помощь';
   static const String buttonRefreshSchedule = '🔄 Обновить расписание';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
+  static const String buttonParticipantsList = '👥 Список записавшихся';
   static const String callbackApprovePaymentPrefix = 'payment:approve:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';
 
@@ -28,10 +29,10 @@ final class MessageTemplates {
         '• Показываю ближайшие тренировки с датой, временем и местом 📅\n'
         '• Помогаю записаться на выбранную тренировку ✍️\n'
         '• Показываю твои записи и текущие статусы 🗂\n'
-        '• Принимаю отметку об оплате и передаю ее на проверку 💸\n'
+        '• Принимаю файл с подтверждением оплаты и передаю его на проверку 💸\n'
         '• Напоминаю об оплате, если она еще не подтверждена ⏰\n\n'
         'Если кнопки вдруг пропали, используй команды:\n'
-        '/trainings, /book, /my_bookings, /paid.';
+        '/trainings, /book, /my_bookings.';
   }
 
   String trainings(List<TrainingInfo> items) {
@@ -111,7 +112,7 @@ final class MessageTemplates {
   }
 
   String paymentSubmitted(TrainingBooking booking) {
-    return 'Супер, отметку об оплате отправил администратору ✅\n'
+    return 'Супер, файл с подтверждением оплаты отправил администратору ✅\n'
         'ID записи: ${booking.id}\n'
         'Статус: ${_statusLabel(booking.status)}.';
   }
@@ -163,6 +164,36 @@ final class MessageTemplates {
       );
     }
     lines.add('\nНажми кнопку под заявкой, чтобы подтвердить или отклонить оплату.');
+    return lines.join('\n');
+  }
+
+  String trainingParticipants({
+    required List<TrainingInfo> trainings,
+    required Map<String, List<TrainingBooking>> bookingsByTrainingKey,
+  }) {
+    if (trainings.isEmpty) {
+      return 'Ближайших тренировок пока нет, показывать список не для чего.';
+    }
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>['Список записавшихся по тренировкам 👥'];
+    for (var index = 0; index < trainings.length; index++) {
+      final training = trainings[index];
+      final tags = bookingsByTrainingKey[training.sessionKey] ?? const <TrainingBooking>[];
+      lines.add(
+        '\n${index + 1}. ${training.title}\n'
+        '🕒 ${formatter.format(training.startsAt)}\n'
+        '📍 ${training.location}',
+      );
+      if (tags.isEmpty) {
+        lines.add('   — пока никто не записался');
+      } else {
+        for (final booking in tags) {
+          lines.add(
+            '   • ${_userTag(booking)} (${_statusLabel(booking.status)})',
+          );
+        }
+      }
+    }
     return lines.join('\n');
   }
 
@@ -257,7 +288,7 @@ final class MessageTemplates {
         '${booking.trainingTitle} (${formatter.format(booking.startsAt)})\n'
         'Текущий статус: ${_statusLabel(booking.status)}\n\n'
         '${paymentInstructions()}\n\n'
-        'После оплаты нажми `$buttonSubmitPayment`.';
+        'После оплаты отправь в этот чат файл с подтверждением (чек/скрин).';
   }
 
   String chooseTrainingForBooking(List<TrainingInfo> items) {
@@ -277,10 +308,31 @@ final class MessageTemplates {
 
   String paymentDetailsSent() {
     return '${paymentInstructions()}\n\n'
-        'Когда переведешь оплату, нажми `$buttonSubmitPayment`.';
+        'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин).';
+  }
+
+  String paymentProofRequired() {
+    return 'Чтобы отправить заявку администратору, пришли файл с подтверждением оплаты '
+        '(документ или фото чека).';
   }
 
   Map<String, Object?> privateMenuKeyboard({required bool isAdmin}) {
+    if (isAdmin) {
+      return <String, Object?>{
+        'keyboard': <List<Map<String, String>>>[
+          <Map<String, String>>[
+            <String, String>{'text': buttonRefreshSchedule},
+            <String, String>{'text': buttonPaymentsQueue},
+          ],
+          <Map<String, String>>[
+            <String, String>{'text': buttonParticipantsList},
+          ],
+        ],
+        'resize_keyboard': true,
+        'one_time_keyboard': false,
+      };
+    }
+
     final rows = <List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{'text': buttonTrainings},
@@ -293,14 +345,6 @@ final class MessageTemplates {
         <String, String>{'text': buttonHelp},
       ],
     ];
-    if (isAdmin) {
-      rows.add(
-        <Map<String, String>>[
-          <String, String>{'text': buttonRefreshSchedule},
-          <String, String>{'text': buttonPaymentsQueue},
-        ],
-      );
-    }
     return <String, Object?>{
       'keyboard': rows,
       'resize_keyboard': true,
@@ -334,9 +378,6 @@ final class MessageTemplates {
     return <String, Object?>{
       'keyboard': <List<Map<String, String>>>[
         <Map<String, String>>[
-          <String, String>{'text': buttonSubmitPayment},
-        ],
-        <Map<String, String>>[
           <String, String>{'text': buttonBack},
           <String, String>{'text': buttonMainMenu},
         ],
@@ -354,5 +395,13 @@ final class MessageTemplates {
       BookingStatus.paymentRejected => 'Оплата отклонена ❌',
       BookingStatus.cancelled => 'Отменено',
     };
+  }
+
+  String _userTag(TrainingBooking booking) {
+    final username = booking.userUsername?.trim();
+    if (username != null && username.isNotEmpty) {
+      return '@${username.startsWith('@') ? username.substring(1) : username}';
+    }
+    return 'tg://user?id=${booking.userId}';
   }
 }

@@ -44,14 +44,13 @@ final class PrivateHandlers {
       return false;
     }
     final text = context.text;
-    if (text == null) {
-      return false;
-    }
     final rawUserId = context.from?['id'];
     final userId = rawUserId is int ? rawUserId : null;
     final isAdmin = userId != null && _adminUserIds.contains(userId);
+    final flowState = userId == null ? null : _flowByUserId[userId];
+    final paymentProof = _extractPaymentProof(context.message);
 
-    if (text.startsWith('/start')) {
+    if (text != null && text.startsWith('/start')) {
       if (userId != null) {
         _flowByUserId.remove(userId);
       }
@@ -63,7 +62,8 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text.startsWith('/trainings') || text == MessageTemplates.buttonTrainings) {
+    if (text != null &&
+        (text.startsWith('/trainings') || text == MessageTemplates.buttonTrainings)) {
       final upcoming = _scheduleRepository.upcoming();
       if (userId != null) {
         _flowByUserId.remove(userId);
@@ -101,7 +101,6 @@ final class PrivateHandlers {
       return true;
     }
 
-    final flowState = userId == null ? null : _flowByUserId[userId];
     if (text == MessageTemplates.buttonBack) {
       if (userId == null) {
         return false;
@@ -134,7 +133,7 @@ final class PrivateHandlers {
       }
     }
 
-    if (text == MessageTemplates.buttonBookTraining || text.startsWith('/book')) {
+    if (text != null && (text == MessageTemplates.buttonBookTraining || text.startsWith('/book'))) {
       if (userId == null) {
         return false;
       }
@@ -160,7 +159,10 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (userId != null && flowState?.step == _PrivateFlowStep.selectingTraining) {
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingTraining &&
+        text != null &&
+        !text.startsWith('/')) {
       final index = _parseTrainingSelectionIndex(text);
       if (index == null || index < 1 || index > flowState!.availableTrainings.length) {
         await _sender.sendMessage(
@@ -172,6 +174,7 @@ final class PrivateHandlers {
       }
       final result = await _bookingRepository.createPendingBooking(
         userId: userId,
+        userUsername: context.from?['username']?.toString(),
         training: flowState.availableTrainings[index - 1],
       );
       _flowByUserId[userId] = flowState.copyWith(
@@ -188,7 +191,8 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text == MessageTemplates.buttonMyBookings || text.startsWith('/my_bookings')) {
+    if (text != null &&
+        (text == MessageTemplates.buttonMyBookings || text.startsWith('/my_bookings'))) {
       if (userId == null) {
         return false;
       }
@@ -201,26 +205,15 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text == MessageTemplates.buttonSubmitPayment || text.startsWith('/paid')) {
-      if (userId == null) {
-        return false;
-      }
-      if (text == MessageTemplates.buttonSubmitPayment &&
-          flowState?.step != _PrivateFlowStep.paymentConfirmation) {
-        await _sender.sendMessage(
-          chatId,
-          'Сначала выбери тренировку через `${MessageTemplates.buttonBookTraining}`.',
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-        );
-        return true;
-      }
-      final note = _tailAfterCommand(text);
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.paymentConfirmation &&
+        paymentProof != null) {
       final booking = await _bookingRepository.submitPaymentForLatestPending(
         userId,
-        note: note,
+        note: paymentProof.caption,
       );
       if (booking != null) {
-        await _notifyAdminAboutPaymentSubmitted(booking);
+        await _notifyAdminAboutPaymentSubmitted(booking, paymentProof: paymentProof);
       }
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
@@ -231,7 +224,29 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text == MessageTemplates.buttonRefreshSchedule || text.startsWith('/refresh_schedule')) {
+    if (text != null &&
+        (text == MessageTemplates.buttonSubmitPayment || text.startsWith('/paid'))) {
+      if (userId == null) {
+        return false;
+      }
+      if (flowState?.step != _PrivateFlowStep.paymentConfirmation) {
+        await _sender.sendMessage(
+          chatId,
+          'Сначала выбери тренировку через `${MessageTemplates.buttonBookTraining}`.',
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      await _sender.sendMessage(
+        chatId,
+        _templates.paymentProofRequired(),
+        replyMarkup: _templates.paymentConfirmationKeyboard(),
+      );
+      return true;
+    }
+
+    if (text != null &&
+        (text == MessageTemplates.buttonRefreshSchedule || text.startsWith('/refresh_schedule'))) {
       if (!isAdmin) {
         await _sender.sendMessage(
           chatId,
@@ -249,7 +264,8 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text == MessageTemplates.buttonPaymentsQueue || text.startsWith('/payments_queue')) {
+    if (text != null &&
+        (text == MessageTemplates.buttonPaymentsQueue || text.startsWith('/payments_queue'))) {
       if (!isAdmin) {
         await _sender.sendMessage(
           chatId,
@@ -269,7 +285,37 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text.startsWith('/approve_payment') || text.startsWith('/reject_payment')) {
+    if (text != null &&
+        (text == MessageTemplates.buttonParticipantsList ||
+            text.startsWith('/participants_list'))) {
+      if (!isAdmin) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final upcoming = _scheduleRepository.upcoming(limit: 12);
+      final keys = upcoming.map((item) => item.sessionKey).toSet();
+      final bookings = await _bookingRepository.listByTrainingKeys(keys);
+      final byTraining = <String, List<TrainingBooking>>{};
+      for (final booking in bookings) {
+        byTraining.putIfAbsent(booking.trainingKey, () => <TrainingBooking>[]).add(booking);
+      }
+      await _sender.sendMessage(
+        chatId,
+        _templates.trainingParticipants(
+          trainings: upcoming,
+          bookingsByTrainingKey: byTraining,
+        ),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return true;
+    }
+
+    if (text != null &&
+        (text.startsWith('/approve_payment') || text.startsWith('/reject_payment'))) {
       if (!isAdmin) {
         await _sender.sendMessage(
           chatId,
@@ -306,14 +352,6 @@ final class PrivateHandlers {
     return false;
   }
 
-  String? _tailAfterCommand(String text) {
-    final parts = text.trim().split(RegExp(r'\s+'));
-    if (parts.length < 2) {
-      return null;
-    }
-    return parts.skip(1).join(' ');
-  }
-
   int? _parseCommandId(String text) {
     final parts = text.trim().split(RegExp(r'\s+'));
     if (parts.length < 2) {
@@ -339,6 +377,32 @@ final class PrivateHandlers {
     return null;
   }
 
+  _PaymentProof? _extractPaymentProof(Map<String, dynamic>? message) {
+    if (message == null) {
+      return null;
+    }
+    final messageId = message['message_id'];
+    final chatRaw = message['chat'];
+    if (messageId is! int || chatRaw is! Map) {
+      return null;
+    }
+    final chat = Map<String, dynamic>.from(chatRaw);
+    final fromChatId = chat['id'];
+    if (fromChatId is! int) {
+      return null;
+    }
+    final hasDocument = message['document'] is Map;
+    final hasPhoto = message['photo'] is List && (message['photo'] as List).isNotEmpty;
+    if (!hasDocument && !hasPhoto) {
+      return null;
+    }
+    return _PaymentProof(
+      fromChatId: fromChatId,
+      messageId: messageId,
+      caption: message['caption']?.toString().trim(),
+    );
+  }
+
   _PrivateMessageContext? _extractContext(Map<String, dynamic> update) {
     final callback = update['callback_query'];
     if (callback is Map) {
@@ -358,6 +422,7 @@ final class PrivateHandlers {
         chat: Map<String, dynamic>.from(callbackChatRaw),
         from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
         text: text,
+        message: null,
       );
     }
 
@@ -373,6 +438,7 @@ final class PrivateHandlers {
         chat: Map<String, dynamic>.from(chatRaw),
         from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
         text: message['text']?.toString().trim(),
+        message: message,
       );
     }
 
@@ -385,6 +451,7 @@ final class PrivateHandlers {
       chat: Map<String, dynamic>.from(chatRaw),
       from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
       text: update['text']?.toString().trim(),
+      message: update,
     );
   }
 
@@ -405,12 +472,20 @@ final class PrivateHandlers {
     return null;
   }
 
-  Future<void> _notifyAdminAboutPaymentSubmitted(TrainingBooking booking) async {
+  Future<void> _notifyAdminAboutPaymentSubmitted(
+    TrainingBooking booking, {
+    required _PaymentProof paymentProof,
+  }) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
       return;
     }
     try {
+      await _sender.copyMessage(
+        adminChatId,
+        fromChatId: paymentProof.fromChatId,
+        messageId: paymentProof.messageId,
+      );
       await _sender.sendMessage(
         adminChatId,
         _templates.paymentSubmittedAdminNotification(booking),
@@ -459,11 +534,25 @@ final class _PrivateMessageContext {
     required this.chat,
     required this.from,
     required this.text,
+    required this.message,
   });
 
   final Map<String, dynamic> chat;
   final Map<String, dynamic>? from;
   final String? text;
+  final Map<String, dynamic>? message;
+}
+
+final class _PaymentProof {
+  const _PaymentProof({
+    required this.fromChatId,
+    required this.messageId,
+    required this.caption,
+  });
+
+  final int fromChatId;
+  final int messageId;
+  final String? caption;
 }
 
 enum _PrivateFlowStep {

@@ -4,6 +4,7 @@ final class TrainingBooking {
   const TrainingBooking({
     required this.id,
     required this.userId,
+    required this.userUsername,
     required this.trainingKey,
     required this.trainingTitle,
     required this.startsAt,
@@ -16,6 +17,7 @@ final class TrainingBooking {
 
   final int id;
   final int userId;
+  final String? userUsername;
   final String trainingKey;
   final String trainingTitle;
   final DateTime startsAt;

@@ -5,4 +5,11 @@ abstract interface class MessageSender {
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
   });
+
+  Future<int> copyMessage(
+    int chatId, {
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  });
 }

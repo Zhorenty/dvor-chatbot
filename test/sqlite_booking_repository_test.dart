@@ -33,6 +33,7 @@ void main() {
 
       final first = await repository.createPendingBooking(
         userId: 1001,
+        userUsername: '@runner_1001',
         training: training,
       );
       final second = await repository.createPendingBooking(
@@ -43,6 +44,48 @@ void main() {
       expect(first.created, isTrue);
       expect(second.created, isFalse);
       expect(first.booking.id, second.booking.id);
+      expect(first.booking.userUsername, 'runner_1001');
+      expect(second.booking.userUsername, 'runner_1001');
+
+      await repository.close();
+    });
+
+    test('lists bookings by training keys without cancelled records', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final firstTraining = TrainingInfo(
+        title: 'Functional',
+        startsAt: DateTime(2030, 6, 10, 19),
+        location: 'Gym A',
+      );
+      final secondTraining = TrainingInfo(
+        title: 'Cardio',
+        startsAt: DateTime(2030, 6, 11, 19),
+        location: 'Gym B',
+      );
+
+      final first = await repository.createPendingBooking(
+        userId: 4001,
+        userUsername: 'first_user',
+        training: firstTraining,
+      );
+      await repository.createPendingBooking(
+        userId: 4002,
+        userUsername: 'second_user',
+        training: secondTraining,
+      );
+      await repository.updateStatus(first.booking.id, BookingStatus.cancelled);
+
+      final result = await repository.listByTrainingKeys(
+        <String>{firstTraining.sessionKey, secondTraining.sessionKey},
+      );
+
+      expect(result, hasLength(1));
+      expect(result.single.trainingKey, secondTraining.sessionKey);
+      expect(result.single.userUsername, 'second_user');
 
       await repository.close();
     });

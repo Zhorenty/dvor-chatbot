@@ -113,6 +113,16 @@ final class _FakeSender implements MessageSender {
     );
     return messages.length;
   }
+
+  @override
+  Future<int> copyMessage(
+    int chatId, {
+    required int fromChatId,
+    required int messageId,
+    bool disableNotification = true,
+  }) async {
+    throw UnimplementedError('copyMessage is not used in group handlers tests');
+  }
 }
 
 final class _SentMessage {
