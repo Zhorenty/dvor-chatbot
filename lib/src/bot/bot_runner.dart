@@ -5,6 +5,8 @@ import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
+import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
@@ -24,18 +26,20 @@ final class BotRunner {
   })  : _config = config,
         _client = client,
         _scheduleRepository = scheduleRepository,
-        _bookingRepository = bookingRepository,
-        _sender = sender,
-        _templates = templates,
+        _scheduleSyncJob = ScheduleSyncJob(scheduleRepository: scheduleRepository),
+        _paymentReminderJob = PaymentReminderJob(
+          bookingRepository: bookingRepository,
+          sender: sender,
+          templates: templates,
+        ),
         _privateHandlers = privateHandlers,
         _groupHandlers = groupHandlers;
 
   final AppConfig _config;
   final TelegramClient _client;
   final TrainingScheduleRepository _scheduleRepository;
-  final BookingRepository _bookingRepository;
-  final MessageSender _sender;
-  final MessageTemplates _templates;
+  final ScheduleSyncJob _scheduleSyncJob;
+  final PaymentReminderJob _paymentReminderJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
 
@@ -56,14 +60,14 @@ final class BotRunner {
         if (_stopping) {
           return;
         }
-        unawaited(_refreshScheduleInBackground());
+        unawaited(_scheduleSyncJob.run());
       },
     );
     _paymentReminderTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       if (_stopping) {
         return;
       }
-      unawaited(_sendPaymentRemindersInBackground());
+      unawaited(_paymentReminderJob.run());
     });
 
     unawaited(_resolveBotUsernameInBackground());
@@ -121,38 +125,6 @@ final class BotRunner {
     }
     final normalized = Map<String, dynamic>.from(message);
     await _groupHandlers.handle(normalized, botUsername: _botUsername);
-  }
-
-  Future<void> _refreshScheduleInBackground() async {
-    final refreshOk = await _scheduleRepository.refresh();
-    if (!refreshOk) {
-      l.w('Background schedule refresh failed.');
-    }
-  }
-
-  Future<void> _sendPaymentRemindersInBackground() async {
-    try {
-      final now = DateTime.now();
-      final bookings = await _bookingRepository.listPendingPaymentForReminder(
-        createdBefore: now.subtract(const Duration(minutes: 30)),
-        remindedBefore: now.subtract(const Duration(minutes: 60)),
-        limit: 50,
-      );
-
-      for (final booking in bookings) {
-        try {
-          await _sender.sendMessage(
-            booking.userId,
-            _templates.pendingPaymentReminder(booking),
-          );
-          await _bookingRepository.markReminderSent(booking.id);
-        } on Object catch (error, stackTrace) {
-          l.w('Failed to send payment reminder for booking ${booking.id}: $error', stackTrace);
-        }
-      }
-    } on Object catch (error, stackTrace) {
-      l.w('Payment reminder job failed: $error', stackTrace);
-    }
   }
 
   void stop() {

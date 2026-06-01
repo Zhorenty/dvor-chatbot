@@ -2,29 +2,31 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
+import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
+import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
+import 'package:dvor_chatbot/src/messages/keyboards/telegram_keyboards.dart';
 import 'package:intl/intl.dart';
 
 final class MessageTemplates {
   const MessageTemplates();
 
-  static const String buttonTrainings = '📅 Расписание';
-  static const String buttonBookTraining = '✍️ Записаться';
-  static const String buttonMyBookings = '🗂 Мои записи';
-  static const String buttonSubmitPayment = '💸 Я оплатил';
-  static const String buttonBack = '⬅️ Назад';
-  static const String buttonMainMenu = '🏠 Главное меню';
-  static const String buttonHelp = '🆘 Помощь';
-  static const String buttonCategoryTrainings = '🏋️ Тренировки';
-  static const String buttonCategoryHikes = '🥾 Походы';
-  static const String buttonCategoryTrails = '🏃 Трейлы';
-  static const String buttonRefreshSchedule = '🔄 Обновить расписание';
-  static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
-  static const String buttonParticipantsList = '👥 Список записавшихся';
-  static const String buttonNoblesList = '🏰 Список дворян';
-  static const String callbackApprovePaymentPrefix = 'payment:approve:';
-  static const String callbackRejectPaymentPrefix = 'payment:reject:';
-  static const String scheduleDocumentUrl =
-      'https://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';
+  static const String buttonTrainings = MessageCopy.buttonTrainings;
+  static const String buttonBookTraining = MessageCopy.buttonBookTraining;
+  static const String buttonMyBookings = MessageCopy.buttonMyBookings;
+  static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
+  static const String buttonBack = MessageCopy.buttonBack;
+  static const String buttonMainMenu = MessageCopy.buttonMainMenu;
+  static const String buttonHelp = MessageCopy.buttonHelp;
+  static const String buttonCategoryTrainings = MessageCopy.buttonCategoryTrainings;
+  static const String buttonCategoryHikes = MessageCopy.buttonCategoryHikes;
+  static const String buttonCategoryTrails = MessageCopy.buttonCategoryTrails;
+  static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
+  static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
+  static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
+  static const String buttonNoblesList = MessageCopy.buttonNoblesList;
+  static const String callbackApprovePaymentPrefix = MessageCopy.callbackApprovePaymentPrefix;
+  static const String callbackRejectPaymentPrefix = MessageCopy.callbackRejectPaymentPrefix;
+  static const String scheduleDocumentUrl = MessageCopy.scheduleDocumentUrl;
 
   String privateWelcome() {
     return 'Привет! 👋 Я бот спортивного объединения DVOR.\n\n'
@@ -310,20 +312,7 @@ final class MessageTemplates {
   }
 
   Map<String, Object?> paymentDecisionInlineKeyboard(int bookingId) {
-    return <String, Object?>{
-      'inline_keyboard': <List<Map<String, String>>>[
-        <Map<String, String>>[
-          <String, String>{
-            'text': '✅ Подтвердить',
-            'callback_data': '$callbackApprovePaymentPrefix$bookingId',
-          },
-          <String, String>{
-            'text': '❌ Отклонить',
-            'callback_data': '$callbackRejectPaymentPrefix$bookingId',
-          },
-        ],
-      ],
-    };
+    return TelegramKeyboards.paymentDecisionInlineKeyboard(bookingId);
   }
 
   String bookingNotFound(int id) {
@@ -404,124 +393,35 @@ final class MessageTemplates {
   }
 
   Map<String, Object?> privateMenuKeyboard({required bool isAdmin}) {
-    if (isAdmin) {
-      return <String, Object?>{
-        'keyboard': <List<Map<String, String>>>[
-          <Map<String, String>>[
-            <String, String>{'text': buttonRefreshSchedule},
-            <String, String>{'text': buttonPaymentsQueue},
-          ],
-          <Map<String, String>>[
-            <String, String>{'text': buttonParticipantsList},
-            <String, String>{'text': buttonNoblesList},
-          ],
-        ],
-        'resize_keyboard': true,
-        'one_time_keyboard': false,
-      };
-    }
-
-    final rows = <List<Map<String, String>>>[
-      <Map<String, String>>[
-        <String, String>{'text': buttonTrainings},
-        <String, String>{'text': buttonBookTraining},
-      ],
-      <Map<String, String>>[
-        <String, String>{'text': buttonMyBookings},
-      ],
-      <Map<String, String>>[
-        <String, String>{'text': buttonHelp},
-      ],
-    ];
-    return <String, Object?>{
-      'keyboard': rows,
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return TelegramKeyboards.privateMenuKeyboard(isAdmin: isAdmin);
   }
 
   Map<String, Object?> bookingSelectionKeyboard(List<TrainingInfo> items) {
-    final rows = <List<Map<String, String>>>[];
-    for (var index = 0; index < items.length; index++) {
-      rows.add(
-        <Map<String, String>>[
-          <String, String>{'text': '🎯 ${index + 1}. ${items[index].title}'},
-        ],
-      );
-    }
-    rows.add(
-      <Map<String, String>>[
-        <String, String>{'text': buttonBack},
-        <String, String>{'text': buttonMainMenu},
-      ],
-    );
-    return <String, Object?>{
-      'keyboard': rows,
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return TelegramKeyboards.bookingSelectionKeyboard(items);
   }
 
   Map<String, Object?> categorySelectionKeyboard() {
-    return <String, Object?>{
-      'keyboard': <List<Map<String, String>>>[
-        <Map<String, String>>[
-          <String, String>{'text': buttonCategoryTrainings},
-          <String, String>{'text': buttonCategoryHikes},
-        ],
-        <Map<String, String>>[
-          <String, String>{'text': buttonCategoryTrails},
-        ],
-        <Map<String, String>>[
-          <String, String>{'text': buttonBack},
-          <String, String>{'text': buttonMainMenu},
-        ],
-      ],
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return TelegramKeyboards.categorySelectionKeyboard();
   }
 
   Map<String, Object?> paymentConfirmationKeyboard() {
-    return <String, Object?>{
-      'keyboard': <List<Map<String, String>>>[
-        <Map<String, String>>[
-          <String, String>{'text': buttonBack},
-          <String, String>{'text': buttonMainMenu},
-        ],
-      ],
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return TelegramKeyboards.paymentConfirmationKeyboard();
   }
 
   String _statusLabel(BookingStatus status) {
-    return switch (status) {
-      BookingStatus.pendingPayment => 'Ожидает оплату',
-      BookingStatus.paymentSubmitted => 'Оплата на проверке 👀',
-      BookingStatus.paid => 'Оплачено ✅',
-      BookingStatus.paymentRejected => 'Оплата отклонена ❌',
-      BookingStatus.cancelled => 'Отменено',
-    };
+    return MessageFormatters.statusLabel(status);
   }
 
   String _userTag(TrainingBooking booking) {
-    return _userTagById(booking.userId, username: booking.userUsername);
+    return MessageFormatters.userTag(booking);
   }
 
   String _userTagById(int userId, {String? username}) {
-    final normalizedUsername = username?.trim();
-    if (normalizedUsername != null && normalizedUsername.isNotEmpty) {
-      return '@${normalizedUsername.startsWith('@') ? normalizedUsername.substring(1) : normalizedUsername}';
-    }
-    return 'tg://user?id=$userId';
+    return MessageFormatters.userTagById(userId, username: username);
   }
 
   String _trainingPriceLabel(int? price) {
-    if (price == null || price <= 0) {
-      return 'бесплатная';
-    }
-    return '$price ₽';
+    return MessageFormatters.trainingPriceLabel(price);
   }
 
   String _myBookingDateLabel(
@@ -529,14 +429,11 @@ final class MessageTemplates {
     DateFormat dateTimeFormatter,
     DateFormat dateOnlyFormatter,
   ) {
-    if (_isOutdoorBooking(booking.trainingTitle)) {
-      return dateOnlyFormatter.format(booking.startsAt);
-    }
-    return dateTimeFormatter.format(booking.startsAt);
-  }
-
-  bool _isOutdoorBooking(String title) {
-    return title.startsWith('🥾 Поход:') || title.startsWith('🏃 Трейл:');
+    return MessageFormatters.bookingDateLabel(
+      booking,
+      dateTimeFormatter,
+      dateOnlyFormatter,
+    );
   }
 
   String _outdoorActivitiesList({
@@ -548,16 +445,10 @@ final class MessageTemplates {
     if (items.isEmpty) {
       return emptyText;
     }
-    final formatter = DateFormat('dd.MM.yyyy');
     final lines = <String>[title];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
-      final isOneDay = item.dateFrom.year == item.dateTo.year &&
-          item.dateFrom.month == item.dateTo.month &&
-          item.dateFrom.day == item.dateTo.day;
-      final dateLabel = isOneDay
-          ? formatter.format(item.dateFrom)
-          : '${formatter.format(item.dateFrom)} — ${formatter.format(item.dateTo)}';
+      final dateLabel = MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo);
       lines.addAll(<String>[
         '',
         '• $icon ${item.title}',

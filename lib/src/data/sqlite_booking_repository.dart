@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/sqlite/pending_payment_expiry_policy.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -18,6 +19,7 @@ final class SqliteBookingRepository implements BookingRepository {
   final String _dbPath;
   final Duration _pendingPaymentTtl;
   final DateTime Function() _nowProvider;
+  final PendingPaymentExpiryPolicy _pendingPaymentExpiryPolicy = const PendingPaymentExpiryPolicy();
   Database? _db;
 
   Database get _database {
@@ -298,18 +300,10 @@ final class SqliteBookingRepository implements BookingRepository {
     final db = _database;
     final cutoff = _nowProvider().toUtc().subtract(_pendingPaymentTtl).toIso8601String();
     final nowIso = _nowProvider().toUtc().toIso8601String();
-    db.execute(
-      '''
-      UPDATE bookings
-      SET status = ?, updated_at = ?
-      WHERE status = ? AND created_at < ?;
-      ''',
-      <Object?>[
-        BookingStatus.cancelled.dbValue,
-        nowIso,
-        BookingStatus.pendingPayment.dbValue,
-        cutoff,
-      ],
+    _pendingPaymentExpiryPolicy.expire(
+      database: db,
+      cutoffIsoUtc: cutoff,
+      nowIsoUtc: nowIso,
     );
   }
 

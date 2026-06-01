@@ -1,7 +1,18 @@
+import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
+import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
+import 'package:dvor_chatbot/src/application/payment_review_service.dart';
+import 'package:dvor_chatbot/src/application/schedule_query_service.dart';
+import 'package:dvor_chatbot/src/bot/handlers/private/admin_handler.dart';
+import 'package:dvor_chatbot/src/bot/handlers/private/booking_handler.dart';
+import 'package:dvor_chatbot/src/bot/handlers/private/payment_handler.dart';
+import 'package:dvor_chatbot/src/bot/handlers/private/private_context.dart';
+import 'package:dvor_chatbot/src/bot/handlers/private/private_flow_store.dart';
+import 'package:dvor_chatbot/src/bot/handlers/private/private_update_router.dart';
+import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
-import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -29,10 +40,23 @@ final class PrivateHandlers {
   final MessageTemplates _templates;
   final Set<int> _adminUserIds;
   final int? _adminChatId;
-  final Map<int, _PrivateFlowState> _flowByUserId = <int, _PrivateFlowState>{};
+  final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
+  late final ActivityCatalogService _catalogService =
+      ActivityCatalogService(scheduleRepository: _scheduleRepository);
+  late final ScheduleQueryService _scheduleQueryService =
+      ScheduleQueryService(catalogService: _catalogService, templates: _templates);
+  late final PaymentReviewService _paymentReviewService =
+      PaymentReviewService(bookingRepository: _bookingRepository, catalogService: _catalogService);
+  late final NoblesListService _noblesListService =
+      NoblesListService(bookingRepository: _bookingRepository, catalogService: _catalogService);
+  final PrivateUpdateRouter _updateRouter = const PrivateUpdateRouter();
+  final ScheduleHandler _scheduleHandler = const ScheduleHandler();
+  final BookingHandler _bookingHandler = const BookingHandler();
+  final PaymentHandler _paymentHandler = const PaymentHandler();
+  final AdminHandler _adminHandler = const AdminHandler();
 
   Future<bool> handle(Map<String, dynamic> update) async {
-    final context = _extractContext(update);
+    final context = extractPrivateMessageContext(update);
     if (context == null) {
       return false;
     }
@@ -48,8 +72,9 @@ final class PrivateHandlers {
     final rawUserId = context.from?['id'];
     final userId = rawUserId is int ? rawUserId : null;
     final isAdmin = userId != null && _adminUserIds.contains(userId);
+    final canRunAdminAction = _adminHandler.canRunAdminAction(isAdmin: isAdmin);
     final flowState = userId == null ? null : _flowByUserId[userId];
-    final paymentProof = _extractPaymentProof(context.message);
+    final paymentProof = extractPaymentProof(context.message);
 
     if (text != null && text.startsWith('/start')) {
       if (userId != null) {
@@ -266,7 +291,7 @@ final class PrivateHandlers {
       if (index == null || index < 1 || index > flowState!.availableTrainings.length) {
         await _sender.sendMessage(
           chatId,
-          'Не понял выбор. Нажми кнопку с нужной тренировкой 👇',
+          _bookingHandler.unknownSelectionText(),
           replyMarkup: _templates.bookingSelectionKeyboard(flowState!.availableTrainings),
         );
         return true;
@@ -331,7 +356,7 @@ final class PrivateHandlers {
       if (flowState?.step != _PrivateFlowStep.paymentConfirmation) {
         await _sender.sendMessage(
           chatId,
-          'Сначала выбери тренировку через `${MessageTemplates.buttonBookTraining}`.',
+          _paymentHandler.chooseBookingFirstText(MessageTemplates.buttonBookTraining),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
         );
         return true;
@@ -358,7 +383,7 @@ final class PrivateHandlers {
 
     if (text != null &&
         (text == MessageTemplates.buttonRefreshSchedule || text.startsWith('/refresh_schedule'))) {
-      if (!isAdmin) {
+      if (!canRunAdminAction) {
         await _sender.sendMessage(
           chatId,
           _templates.scheduleRefreshForbidden(),
@@ -378,13 +403,16 @@ final class PrivateHandlers {
 
     if (text != null &&
         (text == MessageTemplates.buttonPaymentsQueue || text.startsWith('/payments_queue'))) {
-      if (!isAdmin) {
+      if (!canRunAdminAction) {
         await _sender.sendMessage(
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
         );
         return true;
+      }
+      if (userId == null) {
+        return false;
       }
       _flowByUserId[userId] = const _PrivateFlowState(
         step: _PrivateFlowStep.selectingPaymentsQueueCategory,
@@ -401,13 +429,16 @@ final class PrivateHandlers {
     if (text != null &&
         (text == MessageTemplates.buttonParticipantsList ||
             text.startsWith('/participants_list'))) {
-      if (!isAdmin) {
+      if (!canRunAdminAction) {
         await _sender.sendMessage(
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
         );
         return true;
+      }
+      if (userId == null) {
+        return false;
       }
       _flowByUserId[userId] = const _PrivateFlowState(
         step: _PrivateFlowStep.selectingParticipantsCategory,
@@ -423,7 +454,7 @@ final class PrivateHandlers {
 
     if (text != null &&
         (text == MessageTemplates.buttonNoblesList || text.startsWith('/nobles_list'))) {
-      if (!isAdmin) {
+      if (!canRunAdminAction) {
         await _sender.sendMessage(
           chatId,
           _templates.adminOnlyAction(),
@@ -445,7 +476,7 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final bookingId = _parseCommandId(text);
+      final bookingId = _updateRouter.parseCommandId(text);
       if (bookingId == null) {
         await _sender.sendMessage(
           chatId,
@@ -478,39 +509,11 @@ final class PrivateHandlers {
   }
 
   String _scheduleTextByCategory(_ActivityCategory category) {
-    return switch (category) {
-      _ActivityCategory.trainings => _templates.trainings(_scheduleRepository.upcoming()),
-      _ActivityCategory.hikes => _templates.hikes(
-          _scheduleRepository
-              .upcomingOutdoorActivities()
-              .where((item) => item.type == OutdoorActivityType.hike)
-              .toList(growable: false),
-        ),
-      _ActivityCategory.trails => _templates.trails(
-          _scheduleRepository
-              .upcomingOutdoorActivities()
-              .where((item) => item.type == OutdoorActivityType.trail)
-              .toList(growable: false),
-        ),
-    };
+    return _scheduleQueryService.scheduleText(category);
   }
 
   List<TrainingInfo> _bookableItemsByCategory(_ActivityCategory category) {
-    return switch (category) {
-      _ActivityCategory.trainings => _scheduleRepository.upcoming(limit: 8),
-      _ActivityCategory.hikes => _scheduleRepository
-          .upcomingOutdoorActivities(limit: 20)
-          .where((item) => item.type == OutdoorActivityType.hike)
-          .take(8)
-          .map((item) => _toBookableInfo(item))
-          .toList(growable: false),
-      _ActivityCategory.trails => _scheduleRepository
-          .upcomingOutdoorActivities(limit: 20)
-          .where((item) => item.type == OutdoorActivityType.trail)
-          .take(8)
-          .map((item) => _toBookableInfo(item))
-          .toList(growable: false),
-    };
+    return _catalogService.bookableItems(category);
   }
 
   Future<void> _sendParticipantsByCategory({
@@ -526,28 +529,15 @@ final class PrivateHandlers {
       byTraining.putIfAbsent(booking.trainingKey, () => <TrainingBooking>[]).add(booking);
     }
 
-    final (title, emptyText) = switch (category) {
-      _ActivityCategory.trainings => (
-          'Список записавшихся по тренировкам 👥',
-          'Ближайших тренировок пока нет, показывать список не для чего.',
-        ),
-      _ActivityCategory.hikes => (
-          'Список записавшихся по походам 👥',
-          'Ближайших походов пока нет, показывать список не для чего.',
-        ),
-      _ActivityCategory.trails => (
-          'Список записавшихся по трейлам 👥',
-          'Ближайших трейлов пока нет, показывать список не для чего.',
-        ),
-    };
+    final copy = _scheduleHandler.participantsCopy(category);
 
     await _sender.sendMessage(
       chatId,
       _templates.trainingParticipants(
         trainings: trainings,
         bookingsByTrainingKey: byTraining,
-        title: title,
-        emptyText: emptyText,
+        title: copy.title,
+        emptyText: copy.emptyText,
       ),
       replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
     );
@@ -558,8 +548,7 @@ final class PrivateHandlers {
     required _ActivityCategory category,
     required bool isAdmin,
   }) async {
-    final queue = await _bookingRepository.listByStatus(BookingStatus.paymentSubmitted);
-    final filtered = queue.where((booking) => _bookingMatchesCategory(booking, category)).toList();
+    final filtered = await _paymentReviewService.queueByCategory(category);
     if (filtered.isEmpty) {
       await _sender.sendMessage(
         chatId,
@@ -583,235 +572,29 @@ final class PrivateHandlers {
     required int chatId,
     required bool isAdmin,
   }) async {
-    final statusBatches = await Future.wait<List<TrainingBooking>>(<Future<List<TrainingBooking>>>[
-      _bookingRepository.listByStatus(BookingStatus.pendingPayment, limit: 1000),
-      _bookingRepository.listByStatus(BookingStatus.paymentSubmitted, limit: 1000),
-      _bookingRepository.listByStatus(BookingStatus.paid, limit: 1000),
-      _bookingRepository.listByStatus(BookingStatus.paymentRejected, limit: 1000),
-    ]);
-    final allBookings = statusBatches.expand((items) => items);
-    final aggregated = <int, ({int userId, String? username, int trainingsCount})>{};
-    var totalTrainings = 0;
-    for (final booking in allBookings) {
-      if (_isHikeBooking(booking.trainingTitle) || _isTrailBooking(booking.trainingTitle)) {
-        continue;
-      }
-      totalTrainings += 1;
-      final current = aggregated[booking.userId];
-      aggregated[booking.userId] = (
-        userId: booking.userId,
-        username: booking.userUsername ?? current?.username,
-        trainingsCount: (current?.trainingsCount ?? 0) + 1,
-      );
-    }
-    final users = aggregated.values.toList(growable: false)
-      ..sort(
-        (left, right) => right.trainingsCount != left.trainingsCount
-            ? right.trainingsCount.compareTo(left.trainingsCount)
-            : left.userId.compareTo(right.userId),
-      );
+    final result = await _noblesListService.buildStats();
     await _sender.sendMessage(
       chatId,
-      _templates.noblesList(users, totalTrainings: totalTrainings),
+      _templates.noblesList(result.users, totalTrainings: result.totalTrainings),
       replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
     );
   }
 
   List<TrainingInfo> _participantItemsByCategory(_ActivityCategory category) {
-    return switch (category) {
-      _ActivityCategory.trainings => _scheduleRepository.upcoming(limit: 12),
-      _ActivityCategory.hikes => _scheduleRepository
-          .upcomingOutdoorActivities(limit: 24)
-          .where((item) => item.type == OutdoorActivityType.hike)
-          .take(12)
-          .map((item) => _toBookableInfo(item))
-          .toList(growable: false),
-      _ActivityCategory.trails => _scheduleRepository
-          .upcomingOutdoorActivities(limit: 24)
-          .where((item) => item.type == OutdoorActivityType.trail)
-          .take(12)
-          .map((item) => _toBookableInfo(item))
-          .toList(growable: false),
-    };
-  }
-
-  TrainingInfo _toBookableInfo(OutdoorActivityInfo item) {
-    final prefix = item.type == OutdoorActivityType.hike ? '🥾 Поход' : '🏃 Трейл';
-    return TrainingInfo(
-      title: '$prefix: ${item.title}',
-      startsAt: item.dateFrom,
-      location: item.description,
-      price: item.price,
-      notes: 'Даты: ${_dateRangeLabel(item)}',
-    );
-  }
-
-  String _dateRangeLabel(OutdoorActivityInfo item) {
-    final from = item.dateFrom;
-    final to = item.dateTo;
-    final sameDay = from.year == to.year && from.month == to.month && from.day == to.day;
-    String twoDigits(int value) => value.toString().padLeft(2, '0');
-    final fromLabel = '${twoDigits(from.day)}.${twoDigits(from.month)}.${from.year}';
-    if (sameDay) {
-      return fromLabel;
-    }
-    final toLabel = '${twoDigits(to.day)}.${twoDigits(to.month)}.${to.year}';
-    return '$fromLabel — $toLabel';
+    return _catalogService.participantItems(category);
   }
 
   _ActivityCategory? _parseCategory(String text) {
-    final normalized = text.trim().toLowerCase();
-    if (normalized == MessageTemplates.buttonCategoryTrainings.toLowerCase() ||
-        normalized.contains('трениров')) {
-      return _ActivityCategory.trainings;
-    }
-    if (normalized == MessageTemplates.buttonCategoryHikes.toLowerCase() ||
-        normalized.contains('поход')) {
-      return _ActivityCategory.hikes;
-    }
-    if (normalized == MessageTemplates.buttonCategoryTrails.toLowerCase() ||
-        normalized.contains('трейл')) {
-      return _ActivityCategory.trails;
-    }
-    return null;
-  }
-
-  bool _bookingMatchesCategory(TrainingBooking booking, _ActivityCategory category) {
-    final title = booking.trainingTitle;
-    return switch (category) {
-      _ActivityCategory.trainings => !_isHikeBooking(title) && !_isTrailBooking(title),
-      _ActivityCategory.hikes => _isHikeBooking(title),
-      _ActivityCategory.trails => _isTrailBooking(title),
-    };
-  }
-
-  bool _isHikeBooking(String title) => title.startsWith('🥾 Поход:');
-
-  bool _isTrailBooking(String title) => title.startsWith('🏃 Трейл:');
-
-  int? _parseCommandId(String text) {
-    final parts = text.trim().split(RegExp(r'\s+'));
-    if (parts.length < 2) {
-      return null;
-    }
-    return int.tryParse(parts[1]);
+    return _catalogService.parseCategory(text);
   }
 
   int? _parseTrainingSelectionIndex(String text) {
-    final trimmed = text.trim();
-    final direct = int.tryParse(trimmed);
-    if (direct != null) {
-      return direct;
-    }
-    final prefixed = RegExp(r'^🎯\s*(\d+)\.').firstMatch(trimmed);
-    if (prefixed != null) {
-      return int.tryParse(prefixed.group(1)!);
-    }
-    final numbered = RegExp(r'^(\d+)\.').firstMatch(trimmed);
-    if (numbered != null) {
-      return int.tryParse(numbered.group(1)!);
-    }
-    return null;
-  }
-
-  _PaymentProof? _extractPaymentProof(Map<String, dynamic>? message) {
-    if (message == null) {
-      return null;
-    }
-    final messageId = message['message_id'];
-    final chatRaw = message['chat'];
-    if (messageId is! int || chatRaw is! Map) {
-      return null;
-    }
-    final chat = Map<String, dynamic>.from(chatRaw);
-    final fromChatId = chat['id'];
-    if (fromChatId is! int) {
-      return null;
-    }
-    final hasDocument = message['document'] is Map;
-    final hasPhoto = message['photo'] is List && (message['photo'] as List).isNotEmpty;
-    if (!hasDocument && !hasPhoto) {
-      return null;
-    }
-    return _PaymentProof(
-      fromChatId: fromChatId,
-      messageId: messageId,
-      caption: message['caption']?.toString().trim(),
-    );
-  }
-
-  _PrivateMessageContext? _extractContext(Map<String, dynamic> update) {
-    final callback = update['callback_query'];
-    if (callback is Map) {
-      final callbackMap = Map<String, dynamic>.from(callback);
-      final callbackMessageRaw = callbackMap['message'];
-      final fromRaw = callbackMap['from'];
-      final text = _callbackToCommandText(callbackMap['data']?.toString());
-      if (callbackMessageRaw is! Map || text == null) {
-        return null;
-      }
-      final callbackMessage = Map<String, dynamic>.from(callbackMessageRaw);
-      final callbackChatRaw = callbackMessage['chat'];
-      if (callbackChatRaw is! Map) {
-        return null;
-      }
-      return _PrivateMessageContext(
-        chat: Map<String, dynamic>.from(callbackChatRaw),
-        from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
-        text: text,
-        message: null,
-      );
-    }
-
-    final messageRaw = update['message'];
-    if (messageRaw is Map) {
-      final message = Map<String, dynamic>.from(messageRaw);
-      final chatRaw = message['chat'];
-      if (chatRaw is! Map) {
-        return null;
-      }
-      final fromRaw = message['from'];
-      return _PrivateMessageContext(
-        chat: Map<String, dynamic>.from(chatRaw),
-        from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
-        text: message['text']?.toString().trim(),
-        message: message,
-      );
-    }
-
-    final chatRaw = update['chat'];
-    if (chatRaw is! Map) {
-      return null;
-    }
-    final fromRaw = update['from'];
-    return _PrivateMessageContext(
-      chat: Map<String, dynamic>.from(chatRaw),
-      from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
-      text: update['text']?.toString().trim(),
-      message: update,
-    );
-  }
-
-  String? _callbackToCommandText(String? callbackData) {
-    if (callbackData == null) {
-      return null;
-    }
-    if (callbackData.startsWith(MessageTemplates.callbackApprovePaymentPrefix)) {
-      final rawId = callbackData.substring(MessageTemplates.callbackApprovePaymentPrefix.length);
-      final bookingId = int.tryParse(rawId);
-      return bookingId == null ? null : '/approve_payment $bookingId';
-    }
-    if (callbackData.startsWith(MessageTemplates.callbackRejectPaymentPrefix)) {
-      final rawId = callbackData.substring(MessageTemplates.callbackRejectPaymentPrefix.length);
-      final bookingId = int.tryParse(rawId);
-      return bookingId == null ? null : '/reject_payment $bookingId';
-    }
-    return null;
+    return _updateRouter.parseTrainingSelectionIndex(text);
   }
 
   Future<void> _notifyAdminAboutPaymentSubmitted(
     TrainingBooking booking, {
-    required _PaymentProof paymentProof,
+    required PaymentProof paymentProof,
   }) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
@@ -868,67 +651,6 @@ final class PrivateHandlers {
   }
 }
 
-final class _PrivateMessageContext {
-  const _PrivateMessageContext({
-    required this.chat,
-    required this.from,
-    required this.text,
-    required this.message,
-  });
-
-  final Map<String, dynamic> chat;
-  final Map<String, dynamic>? from;
-  final String? text;
-  final Map<String, dynamic>? message;
-}
-
-final class _PaymentProof {
-  const _PaymentProof({
-    required this.fromChatId,
-    required this.messageId,
-    required this.caption,
-  });
-
-  final int fromChatId;
-  final int messageId;
-  final String? caption;
-}
-
-enum _PrivateFlowStep {
-  selectingScheduleCategory,
-  selectingBookingCategory,
-  selectingParticipantsCategory,
-  selectingPaymentsQueueCategory,
-  selectingTraining,
-  paymentConfirmation,
-}
-
-enum _ActivityCategory {
-  trainings,
-  hikes,
-  trails,
-}
-
-final class _PrivateFlowState {
-  const _PrivateFlowState({
-    required this.step,
-    required this.availableTrainings,
-    this.activeBooking,
-  });
-
-  final _PrivateFlowStep step;
-  final List<TrainingInfo> availableTrainings;
-  final TrainingBooking? activeBooking;
-
-  _PrivateFlowState copyWith({
-    _PrivateFlowStep? step,
-    List<TrainingInfo>? availableTrainings,
-    TrainingBooking? activeBooking,
-  }) {
-    return _PrivateFlowState(
-      step: step ?? this.step,
-      availableTrainings: availableTrainings ?? this.availableTrainings,
-      activeBooking: activeBooking ?? this.activeBooking,
-    );
-  }
-}
+typedef _PrivateFlowState = PrivateFlowState;
+typedef _PrivateFlowStep = PrivateFlowStep;
+typedef _ActivityCategory = ActivityCategory;
