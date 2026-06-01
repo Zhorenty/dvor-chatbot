@@ -85,7 +85,7 @@ void main() {
       expect(sender.messages.single.text, contains('DVOR'));
     });
 
-    test('handles /trainings command in private chat', () async {
+    test('handles /trainings command with category selection', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -106,14 +106,22 @@ void main() {
 
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 12, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1200},
         'text': '/trainings',
+      });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 12, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1200},
+        'text': MessageTemplates.buttonCategoryTrainings,
       });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.text, contains('Ближайшие тренировки'));
-      expect(sender.messages.single.text, contains('Тестовая тренировка'));
-      expect(sender.messages.single.text, contains('бесплатная'));
+      expect(categoryHandled, isTrue);
+      expect(sender.messages, hasLength(2));
+      expect(sender.messages.first.text, contains('Выбери раздел расписания'));
+      expect(sender.messages.last.text, contains('Ближайшие тренировки'));
+      expect(sender.messages.last.text, contains('Тестовая тренировка'));
+      expect(sender.messages.last.text, contains('бесплатная'));
     });
 
     test('handles menu trainings button in private chat', () async {
@@ -139,13 +147,19 @@ void main() {
         'from': <String, dynamic>{'id': 1301},
         'text': MessageTemplates.buttonTrainings,
       });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 13, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1301},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.text, contains('Тренировка из кнопки'));
+      expect(categoryHandled, isTrue);
+      expect(sender.messages, hasLength(2));
+      expect(sender.messages.last.text, contains('Тренировка из кнопки'));
     });
 
-    test('shows hikes and trails in trainings list', () async {
+    test('shows hikes in schedule category', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -185,13 +199,55 @@ void main() {
         'from': <String, dynamic>{'id': 1300},
         'text': MessageTemplates.buttonTrainings,
       });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 130, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1300},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.text, contains('Походы:'));
-      expect(sender.messages.single.text, contains('Поход на водопады'));
-      expect(sender.messages.single.text, contains('Трейлы:'));
-      expect(sender.messages.single.text, contains('Трейл перевал'));
+      expect(categoryHandled, isTrue);
+      expect(sender.messages, hasLength(2));
+      expect(sender.messages.last.text, contains('Ближайшие походы'));
+      expect(sender.messages.last.text, contains('Поход на водопады'));
+      expect(sender.messages.last.text, isNot(contains('Трейл перевал')));
+    });
+
+    test('shows trails in schedule category', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.trail,
+              title: 'Трейл перевал',
+              dateFrom: DateTime(2026, 6, 20),
+              dateTo: DateTime(2026, 6, 22, 23, 59, 59),
+              description: 'Трехдневный трек',
+            ),
+          ],
+        ),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 130, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1300},
+        'text': MessageTemplates.buttonTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 130, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1300},
+        'text': MessageTemplates.buttonCategoryTrails,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Ближайшие трейлы'));
+      expect(sender.messages.last.text, contains('Трейл перевал'));
     });
 
     test('help button shows client-facing bot capabilities', () async {
@@ -286,7 +342,7 @@ void main() {
       expect(sender.messages, isEmpty);
     });
 
-    test('book command starts training selection flow', () async {
+    test('book command starts booking category selection flow', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();
       final handlers = PrivateHandlers(
@@ -314,8 +370,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 0);
-      expect(sender.messages.single.text, contains('Выбери тренировку'));
-      expect(sender.messages.single.text, contains('бесплатная'));
+      expect(sender.messages.single.text, contains('Выбери категорию для записи'));
     });
 
     test('creates booking after selecting a training button', () async {
@@ -347,6 +402,11 @@ void main() {
         'from': <String, dynamic>{'id': 1601},
         'text': '/book',
       });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 161, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1601},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 161, 'type': 'private'},
         'from': <String, dynamic>{'id': 1601, 'username': 'second_user'},
@@ -359,6 +419,52 @@ void main() {
       expect(bookingRepository.lastCreatedUsername, 'second_user');
       expect(sender.messages.last.text, contains('записал тебя'));
       expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
+    });
+
+    test('creates booking after selecting a hike category item', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Поход на хребет',
+              dateFrom: DateTime(2026, 7, 13),
+              dateTo: DateTime(2026, 7, 14, 23, 59, 59),
+              description: 'Ночевка в лагере',
+              price: 3200,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1620},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1620},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1620},
+        'text': '🎯 1. 🥾 Поход: Поход на хребет',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.createCalls, 1);
+      expect(bookingRepository.lastCreatedTraining?.title, contains('Поход на хребет'));
+      expect(bookingRepository.lastCreatedTraining?.location, contains('Ночевка в лагере'));
+      expect(sender.messages.last.text, contains('записал тебя'));
     });
 
     test('payment is not submitted without proof file', () async {
@@ -385,6 +491,11 @@ void main() {
         'chat': <String, dynamic>{'id': 162, 'type': 'private'},
         'from': <String, dynamic>{'id': 1602},
         'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1602},
+        'text': MessageTemplates.buttonCategoryTrainings,
       });
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 162, 'type': 'private'},
@@ -430,6 +541,11 @@ void main() {
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 163, 'type': 'private'},
         'from': <String, dynamic>{'id': 1603},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 163, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1603},
         'text': '🎯 1. Book me',
       });
 
@@ -468,6 +584,11 @@ void main() {
         'chat': <String, dynamic>{'id': 17, 'type': 'private'},
         'from': <String, dynamic>{'id': 1700},
         'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 17, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1700},
+        'text': MessageTemplates.buttonCategoryTrainings,
       });
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 17, 'type': 'private'},
@@ -520,6 +641,11 @@ void main() {
         'chat': <String, dynamic>{'id': 1701, 'type': 'private'},
         'from': <String, dynamic>{'id': 1701},
         'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1701, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1701},
+        'text': MessageTemplates.buttonCategoryTrainings,
       });
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1701, 'type': 'private'},

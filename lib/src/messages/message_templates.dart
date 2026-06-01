@@ -14,6 +14,9 @@ final class MessageTemplates {
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';
   static const String buttonHelp = '🆘 Помощь';
+  static const String buttonCategoryTrainings = '🏋️ Тренировки';
+  static const String buttonCategoryHikes = '🥾 Походы';
+  static const String buttonCategoryTrails = '🏃 Трейлы';
   static const String buttonRefreshSchedule = '🔄 Обновить расписание';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
   static const String buttonParticipantsList = '👥 Список записавшихся';
@@ -30,7 +33,7 @@ final class MessageTemplates {
   String privateHelp() {
     return 'Вот чем я могу помочь 👇\n'
         '• Показываю ближайшие тренировки, походы и трейлы 📅\n'
-        '• Помогаю записаться на выбранную тренировку ✍️\n'
+        '• Помогаю записаться на выбранное мероприятие ✍️\n'
         '• Показываю твои записи и текущие статусы 🗂\n'
         '• Принимаю файл с подтверждением оплаты и передаю его на проверку 💸\n'
         '• Напоминаю об оплате, если она еще не подтверждена ⏰\n\n'
@@ -39,80 +42,63 @@ final class MessageTemplates {
         '/trainings, /book, /my_bookings.';
   }
 
-  String trainings(
-    List<TrainingInfo> items, {
-    List<OutdoorActivityInfo> outdoorActivities = const <OutdoorActivityInfo>[],
-  }) {
-    if (items.isEmpty && outdoorActivities.isEmpty) {
-      return 'Пока в расписании нет активностей 😌 Скоро добавим новые даты!';
+  String trainings(List<TrainingInfo> items) {
+    if (items.isEmpty) {
+      return 'Пока тренировок в расписании нет 😌 Скоро добавим новые даты!';
     }
 
-    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
-    final dateFormatter = DateFormat('dd.MM.yyyy');
-    final hasOutdoor = outdoorActivities.isNotEmpty;
-    final lines = <String>[
-      hasOutdoor ? 'Ближайшее расписание DVOR 💪' : 'Ближайшие тренировки DVOR 💪',
-    ];
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>['Ближайшие тренировки DVOR 💪'];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final coach = item.coach?.trim();
+      final notes = item.notes?.trim();
 
-    if (items.isNotEmpty) {
-      if (hasOutdoor) {
-        lines.add('\nТренировки:');
-      }
-      for (var index = 0; index < items.length; index++) {
-        final item = items[index];
-        final coach = item.coach?.trim();
-        final notes = item.notes?.trim();
+      lines.addAll(<String>[
+        '',
+        '• 🏋️ ${item.title}',
+        '   🕒 Когда: ${formatter.format(item.startsAt)}',
+        '   📍 Где: ${item.location}',
+        if (item.price != null) '   💳 Взнос: ${_trainingPriceLabel(item.price)}',
+        if (coach != null && coach.isNotEmpty) '   🧑‍🏫 Тренер: $coach',
+        if (notes != null && notes.isNotEmpty) '   📝 Примечание: $notes',
+      ]);
 
-        lines.addAll(<String>[
-          '',
-          '• 🏋️ ${item.title}',
-          '   🕒 Когда: ${dateTimeFormatter.format(item.startsAt)}',
-          '   📍 Где: ${item.location}',
-          if (item.price != null) '   💳 Взнос: ${_trainingPriceLabel(item.price)}',
-          if (coach != null && coach.isNotEmpty) '   🧑‍🏫 Тренер: $coach',
-          if (notes != null && notes.isNotEmpty) '   📝 Примечание: $notes',
-        ]);
-
-        if (index != items.length - 1) {
-          lines.add('\n   ─────────────────');
-        }
+      if (index != items.length - 1) {
+        lines.add('\n-----');
       }
     }
-
-    final hikes = outdoorActivities.where((item) => item.type == OutdoorActivityType.hike).toList();
-    final trails =
-        outdoorActivities.where((item) => item.type == OutdoorActivityType.trail).toList();
-
-    void appendOutdoorSection(
-      String title,
-      String icon,
-      List<OutdoorActivityInfo> sectionItems,
-    ) {
-      if (sectionItems.isEmpty) {
-        return;
-      }
-      lines.add('\n$title:');
-      for (final item in sectionItems) {
-        final isOneDay = item.dateFrom.year == item.dateTo.year &&
-            item.dateFrom.month == item.dateTo.month &&
-            item.dateFrom.day == item.dateTo.day;
-        final dateLabel = isOneDay
-            ? dateFormatter.format(item.dateFrom)
-            : '${dateFormatter.format(item.dateFrom)} — ${dateFormatter.format(item.dateTo)}';
-        lines.addAll(<String>[
-          '',
-          '• $icon ${item.title}',
-          '   🗓 Даты: $dateLabel',
-          '   📝 Описание: ${item.description}',
-          if (item.price != null) '   💳 Стоимость: ${_trainingPriceLabel(item.price)}',
-        ]);
-      }
-    }
-
-    appendOutdoorSection('Походы', '🥾', hikes);
-    appendOutdoorSection('Трейлы', '🏃', trails);
-
     return lines.join('\n');
+  }
+
+  String hikes(List<OutdoorActivityInfo> items) {
+    return _outdoorActivitiesList(
+      title: 'Ближайшие походы DVOR 🥾',
+      icon: '🥾',
+      items: items,
+      emptyText: 'Пока походов в расписании нет 😌',
+    );
+  }
+
+  String trails(List<OutdoorActivityInfo> items) {
+    return _outdoorActivitiesList(
+      title: 'Ближайшие трейлы DVOR 🏃',
+      icon: '🏃',
+      items: items,
+      emptyText: 'Пока трейлов в расписании нет 😌',
+    );
+  }
+
+  String chooseScheduleCategory() {
+    return 'Выбери раздел расписания 👇';
+  }
+
+  String chooseBookingCategory() {
+    return 'Выбери категорию для записи 👇';
+  }
+
+  String unknownCategory() {
+    return 'Не понял категорию. Нажми одну из кнопок ниже 👇';
   }
 
   String clubInfoPrivate() {
@@ -145,7 +131,7 @@ final class MessageTemplates {
   }
 
   String noUpcomingForBooking() {
-    return 'Пока нет ближайших тренировок для записи 😌';
+    return 'Пока нет ближайших мероприятий для записи 😌';
   }
 
   String bookingCreated(TrainingBooking booking) {
@@ -360,7 +346,7 @@ final class MessageTemplates {
       return noUpcomingForBooking();
     }
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Выбери тренировку для записи 👇'];
+    final lines = <String>['Выбери мероприятие для записи 👇'];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       final feeLabel = item.price == null ? '' : ', взнос: ${_trainingPriceLabel(item.price)}';
@@ -440,6 +426,26 @@ final class MessageTemplates {
     };
   }
 
+  Map<String, Object?> categorySelectionKeyboard() {
+    return <String, Object?>{
+      'keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': buttonCategoryTrainings},
+          <String, String>{'text': buttonCategoryHikes},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': buttonCategoryTrails},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': buttonBack},
+          <String, String>{'text': buttonMainMenu},
+        ],
+      ],
+      'resize_keyboard': true,
+      'one_time_keyboard': false,
+    };
+  }
+
   Map<String, Object?> paymentConfirmationKeyboard() {
     return <String, Object?>{
       'keyboard': <List<Map<String, String>>>[
@@ -476,5 +482,38 @@ final class MessageTemplates {
       return 'бесплатная';
     }
     return '$price ₽';
+  }
+
+  String _outdoorActivitiesList({
+    required String title,
+    required String icon,
+    required List<OutdoorActivityInfo> items,
+    required String emptyText,
+  }) {
+    if (items.isEmpty) {
+      return emptyText;
+    }
+    final formatter = DateFormat('dd.MM.yyyy');
+    final lines = <String>[title];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final isOneDay = item.dateFrom.year == item.dateTo.year &&
+          item.dateFrom.month == item.dateTo.month &&
+          item.dateFrom.day == item.dateTo.day;
+      final dateLabel = isOneDay
+          ? formatter.format(item.dateFrom)
+          : '${formatter.format(item.dateFrom)} — ${formatter.format(item.dateTo)}';
+      lines.addAll(<String>[
+        '',
+        '• $icon ${item.title}',
+        '   🗓 Даты: $dateLabel',
+        '   📝 Описание: ${item.description}',
+        if (item.price != null) '   💳 Стоимость: ${_trainingPriceLabel(item.price)}',
+      ]);
+      if (index != items.length - 1) {
+        lines.add('\n-----');
+      }
+    }
+    return lines.join('\n');
   }
 }

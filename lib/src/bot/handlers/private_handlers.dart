@@ -1,6 +1,7 @@
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -64,15 +65,17 @@ final class PrivateHandlers {
 
     if (text != null &&
         (text.startsWith('/trainings') || text == MessageTemplates.buttonTrainings)) {
-      final upcoming = _scheduleRepository.upcoming();
-      final upcomingOutdoor = _scheduleRepository.upcomingOutdoorActivities();
-      if (userId != null) {
-        _flowByUserId.remove(userId);
+      if (userId == null) {
+        return false;
       }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingScheduleCategory,
+        availableTrainings: <TrainingInfo>[],
+      );
       await _sender.sendMessage(
         chatId,
-        _templates.trainings(upcoming, outdoorActivities: upcomingOutdoor),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        _templates.chooseScheduleCategory(),
+        replyMarkup: _templates.categorySelectionKeyboard(),
       );
       return true;
     }
@@ -107,6 +110,8 @@ final class PrivateHandlers {
         return false;
       }
       switch (flowState?.step) {
+        case _PrivateFlowStep.selectingScheduleCategory:
+        case _PrivateFlowStep.selectingBookingCategory:
         case _PrivateFlowStep.selectingTraining:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
@@ -138,7 +143,54 @@ final class PrivateHandlers {
       if (userId == null) {
         return false;
       }
-      final upcoming = _scheduleRepository.upcoming(limit: 8);
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingBookingCategory,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseBookingCategory(),
+        replyMarkup: _templates.categorySelectionKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingScheduleCategory &&
+        text != null &&
+        !text.startsWith('/')) {
+      final category = _parseCategory(text);
+      if (category == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+        return true;
+      }
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        _scheduleTextByCategory(category),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingBookingCategory &&
+        text != null &&
+        !text.startsWith('/')) {
+      final category = _parseCategory(text);
+      if (category == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+        return true;
+      }
+      final upcoming = _bookableItemsByCategory(category);
       if (upcoming.isEmpty) {
         _flowByUserId.remove(userId);
         await _sender.sendMessage(
@@ -378,6 +430,83 @@ final class PrivateHandlers {
     return false;
   }
 
+  String _scheduleTextByCategory(_ActivityCategory category) {
+    return switch (category) {
+      _ActivityCategory.trainings => _templates.trainings(_scheduleRepository.upcoming()),
+      _ActivityCategory.hikes => _templates.hikes(
+          _scheduleRepository
+              .upcomingOutdoorActivities()
+              .where((item) => item.type == OutdoorActivityType.hike)
+              .toList(growable: false),
+        ),
+      _ActivityCategory.trails => _templates.trails(
+          _scheduleRepository
+              .upcomingOutdoorActivities()
+              .where((item) => item.type == OutdoorActivityType.trail)
+              .toList(growable: false),
+        ),
+    };
+  }
+
+  List<TrainingInfo> _bookableItemsByCategory(_ActivityCategory category) {
+    return switch (category) {
+      _ActivityCategory.trainings => _scheduleRepository.upcoming(limit: 8),
+      _ActivityCategory.hikes => _scheduleRepository
+          .upcomingOutdoorActivities(limit: 20)
+          .where((item) => item.type == OutdoorActivityType.hike)
+          .take(8)
+          .map((item) => _toBookableInfo(item))
+          .toList(growable: false),
+      _ActivityCategory.trails => _scheduleRepository
+          .upcomingOutdoorActivities(limit: 20)
+          .where((item) => item.type == OutdoorActivityType.trail)
+          .take(8)
+          .map((item) => _toBookableInfo(item))
+          .toList(growable: false),
+    };
+  }
+
+  TrainingInfo _toBookableInfo(OutdoorActivityInfo item) {
+    final prefix = item.type == OutdoorActivityType.hike ? '🥾 Поход' : '🏃 Трейл';
+    return TrainingInfo(
+      title: '$prefix: ${item.title}',
+      startsAt: item.dateFrom,
+      location: item.description,
+      price: item.price,
+      notes: 'Даты: ${_dateRangeLabel(item)}',
+    );
+  }
+
+  String _dateRangeLabel(OutdoorActivityInfo item) {
+    final from = item.dateFrom;
+    final to = item.dateTo;
+    final sameDay = from.year == to.year && from.month == to.month && from.day == to.day;
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+    final fromLabel = '${twoDigits(from.day)}.${twoDigits(from.month)}.${from.year}';
+    if (sameDay) {
+      return fromLabel;
+    }
+    final toLabel = '${twoDigits(to.day)}.${twoDigits(to.month)}.${to.year}';
+    return '$fromLabel — $toLabel';
+  }
+
+  _ActivityCategory? _parseCategory(String text) {
+    final normalized = text.trim().toLowerCase();
+    if (normalized == MessageTemplates.buttonCategoryTrainings.toLowerCase() ||
+        normalized.contains('трениров')) {
+      return _ActivityCategory.trainings;
+    }
+    if (normalized == MessageTemplates.buttonCategoryHikes.toLowerCase() ||
+        normalized.contains('поход')) {
+      return _ActivityCategory.hikes;
+    }
+    if (normalized == MessageTemplates.buttonCategoryTrails.toLowerCase() ||
+        normalized.contains('трейл')) {
+      return _ActivityCategory.trails;
+    }
+    return null;
+  }
+
   int? _parseCommandId(String text) {
     final parts = text.trim().split(RegExp(r'\s+'));
     if (parts.length < 2) {
@@ -582,8 +711,16 @@ final class _PaymentProof {
 }
 
 enum _PrivateFlowStep {
+  selectingScheduleCategory,
+  selectingBookingCategory,
   selectingTraining,
   paymentConfirmation,
+}
+
+enum _ActivityCategory {
+  trainings,
+  hikes,
+  trails,
 }
 
 final class _PrivateFlowState {
