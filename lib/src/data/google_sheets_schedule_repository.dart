@@ -77,23 +77,37 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         rows.first.map((cell) => _normalizeHeader(cell.toString())).toList(growable: false);
     final titleIndex = headers.indexOf('title');
     final startsAtIndex = headers.indexOf('starts_at');
+    final dateIndex = headers.indexOf('date');
+    final timeIndex = headers.indexOf('time');
     final locationIndex = headers.indexOf('location');
     final coachIndex = headers.indexOf('coach');
     final notesIndex = headers.indexOf('notes');
-    if (titleIndex < 0 || startsAtIndex < 0 || locationIndex < 0) {
-      throw const FormatException('CSV must contain title, starts_at, location columns');
+    final hasStartsAt = startsAtIndex >= 0;
+    final hasDateAndTime = dateIndex >= 0 && timeIndex >= 0;
+    if (titleIndex < 0 || locationIndex < 0 || (!hasStartsAt && !hasDateAndTime)) {
+      throw const FormatException(
+        'CSV must contain title, location and either starts_at or date/time columns',
+      );
     }
 
     final items = <TrainingInfo>[];
     for (final row in rows.skip(1)) {
       final title = _cell(row, titleIndex);
-      final startsAtRaw = _cell(row, startsAtIndex);
       final location = _cell(row, locationIndex);
-      if (title.isEmpty || startsAtRaw.isEmpty || location.isEmpty) {
+      if (title.isEmpty || location.isEmpty) {
         continue;
       }
 
-      final startsAt = _parseDateTime(startsAtRaw);
+      DateTime? startsAt;
+      if (hasStartsAt) {
+        final startsAtRaw = _cell(row, startsAtIndex);
+        if (startsAtRaw.isNotEmpty) {
+          startsAt = _parseDateTime(startsAtRaw);
+        }
+      }
+      if (startsAt == null && hasDateAndTime) {
+        startsAt = _parseDateAndTime(_cell(row, dateIndex), _cell(row, timeIndex));
+      }
       if (startsAt == null) {
         continue;
       }
@@ -188,6 +202,70 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         // Try next format.
       }
     }
+    return null;
+  }
+
+  DateTime? _parseDateAndTime(String dateRaw, String timeRaw) {
+    final dateNormalized = dateRaw.trim();
+    final timeNormalized = timeRaw.trim();
+    if (dateNormalized.isEmpty || timeNormalized.isEmpty) {
+      return null;
+    }
+
+    final combined = _parseDateTime('$dateNormalized $timeNormalized');
+    if (combined != null) {
+      return combined;
+    }
+
+    final date = _parseDate(dateNormalized);
+    final time = _parseTime(timeNormalized);
+    if (date == null || time == null) {
+      return null;
+    }
+
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute, time.second);
+  }
+
+  DateTime? _parseDate(String raw) {
+    final dateOnlyFormats = <DateFormat>[
+      DateFormat('yyyy-MM-dd'),
+      DateFormat('dd.MM.yyyy'),
+      DateFormat('d.M.yyyy'),
+      DateFormat('MM/dd/yyyy'),
+      DateFormat('M/d/yyyy'),
+      DateFormat('dd/MM/yyyy'),
+      DateFormat('d/M/yyyy'),
+    ];
+
+    for (final format in dateOnlyFormats) {
+      try {
+        return format.parseStrict(raw);
+      } on FormatException {
+        // Try next format.
+      }
+    }
+
+    return null;
+  }
+
+  DateTime? _parseTime(String raw) {
+    final timeFormats = <DateFormat>[
+      DateFormat('HH:mm:ss'),
+      DateFormat('H:mm:ss'),
+      DateFormat('HH:mm'),
+      DateFormat('H:mm'),
+      DateFormat('hh:mm a'),
+      DateFormat('h:mm a'),
+    ];
+
+    for (final format in timeFormats) {
+      try {
+        return format.parseStrict(raw);
+      } on FormatException {
+        // Try next format.
+      }
+    }
+
     return null;
   }
 
