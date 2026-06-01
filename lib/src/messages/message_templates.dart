@@ -18,6 +18,8 @@ final class MessageTemplates {
   static const String buttonParticipantsList = '👥 Список записавшихся';
   static const String callbackApprovePaymentPrefix = 'payment:approve:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';
+  static const String scheduleDocumentUrl =
+      'https://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';
 
   String privateWelcome() {
     return 'Привет! 👋 Я бот спортивного объединения DVOR.\n\n'
@@ -31,6 +33,7 @@ final class MessageTemplates {
         '• Показываю твои записи и текущие статусы 🗂\n'
         '• Принимаю файл с подтверждением оплаты и передаю его на проверку 💸\n'
         '• Напоминаю об оплате, если она еще не подтверждена ⏰\n\n'
+        'По остальным вопросам пиши в поддержку: @dvor_support 💬\n\n'
         'Если кнопки вдруг пропали, используй команды:\n'
         '/trainings, /book, /my_bookings.';
   }
@@ -88,6 +91,10 @@ final class MessageTemplates {
     return 'Эта кнопка только для админов 🔒';
   }
 
+  String scheduleDocumentLink() {
+    return 'Актуальное расписание в Google Sheets:\n$scheduleDocumentUrl';
+  }
+
   String noUpcomingForBooking() {
     return 'Пока нет ближайших тренировок для записи 😌';
   }
@@ -134,37 +141,64 @@ final class MessageTemplates {
     return 'Не нашел активной записи со статусом "Ожидает оплату" 🤔';
   }
 
-  String myBookings(List<TrainingBooking> bookings) {
+  String myBookings(
+    List<TrainingBooking> bookings, {
+    DateTime? now,
+  }) {
     if (bookings.isEmpty) {
       return 'У тебя пока нет записей на тренировки 🙃';
     }
+
+    final splitPoint = (now ?? DateTime.now()).toLocal();
+    final upcoming = bookings.where((booking) => !booking.startsAt.isBefore(splitPoint)).toList();
+    final past = bookings.where((booking) => booking.startsAt.isBefore(splitPoint)).toList();
+    past.sort((left, right) => right.startsAt.compareTo(left.startsAt));
+
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final lines = <String>['Твои записи 🗂'];
-    for (final booking in bookings) {
-      lines.add(
-        '\n• #${booking.id} ${booking.trainingTitle}\n'
-        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
-        'Статус: ${_statusLabel(booking.status)}',
-      );
+
+    if (upcoming.isNotEmpty) {
+      lines.add('\nАктуальные:');
+      for (final booking in upcoming) {
+        lines.add(
+          '\n• #${booking.id} ${booking.trainingTitle}\n'
+          '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+          'Статус: ${_statusLabel(booking.status)}',
+        );
+      }
+    }
+
+    if (past.isNotEmpty) {
+      lines.add('\nПрошедшие:');
+      for (final booking in past) {
+        lines.add(
+          '\n• #${booking.id} ${booking.trainingTitle}\n'
+          '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+          'Статус: ${_statusLabel(booking.status)}',
+        );
+      }
     }
     return lines.join('\n');
   }
 
-  String paymentsQueue(List<TrainingBooking> bookings) {
-    if (bookings.isEmpty) {
-      return 'Очередь подтверждения оплат пока пустая ✨';
-    }
+  String paymentsQueueEmpty() => 'Очередь подтверждения оплат пока пустая ✨';
+
+  String paymentsQueueIntro(int total) {
+    return 'Заявки на подтверждение оплаты 🧾\n'
+        'Всего ожидают проверки: $total.\n'
+        'Ниже отправил каждую заявку отдельным сообщением.';
+  }
+
+  String paymentsQueueItem(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Заявки на подтверждение оплаты 🧾'];
-    for (final booking in bookings) {
-      final note = booking.paymentNote == null ? '' : '\nКомментарий: ${booking.paymentNote}';
-      lines.add(
-        '\n• #${booking.id} | user ${booking.userId}\n'
-        '${booking.trainingTitle} (${formatter.format(booking.startsAt)})$note',
-      );
-    }
-    lines.add('\nНажми кнопку под заявкой, чтобы подтвердить или отклонить оплату.');
-    return lines.join('\n');
+    final note = booking.paymentNote == null ? '' : '\nКомментарий: ${booking.paymentNote}';
+    return 'Заявка #${booking.id}\n'
+        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 ${formatter.format(booking.startsAt)}\n'
+        '📍 ${booking.location}'
+        '$note\n\n'
+        'Подтверди или отклони оплату кнопками ниже.';
   }
 
   String trainingParticipants({
@@ -211,35 +245,16 @@ final class MessageTemplates {
       'inline_keyboard': <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{
-            'text': '✅ Подтвердить #$bookingId',
+            'text': '✅ Подтвердить',
             'callback_data': '$callbackApprovePaymentPrefix$bookingId',
           },
           <String, String>{
-            'text': '❌ Отклонить #$bookingId',
+            'text': '❌ Отклонить',
             'callback_data': '$callbackRejectPaymentPrefix$bookingId',
           },
         ],
       ],
     };
-  }
-
-  Map<String, Object?> paymentsQueueInlineKeyboard(List<TrainingBooking> bookings) {
-    final rows = <List<Map<String, String>>>[];
-    for (final booking in bookings) {
-      rows.add(
-        <Map<String, String>>[
-          <String, String>{
-            'text': '✅ #${booking.id}',
-            'callback_data': '$callbackApprovePaymentPrefix${booking.id}',
-          },
-          <String, String>{
-            'text': '❌ #${booking.id}',
-            'callback_data': '$callbackRejectPaymentPrefix${booking.id}',
-          },
-        ],
-      );
-    }
-    return <String, Object?>{'inline_keyboard': rows};
   }
 
   String bookingNotFound(int id) {
@@ -255,7 +270,7 @@ final class MessageTemplates {
         '• Получатель: Родион Одобеско\n'
         '• Банк: OZON БАНК\n'
         '• Номер телефона: +7 (918) 423-01-03\n'
-        '• Комментарий к переводу: Номер записи: $bookingId';
+        '• Комментарий к переводу: "Номер записи: $bookingId"';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
@@ -308,7 +323,8 @@ final class MessageTemplates {
 
   String paymentDetailsSent(int bookingId) {
     return '${paymentInstructions(bookingId)}\n\n'
-        'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин).';
+        'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин) 📎\n'
+        'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
   }
 
   String paymentProofRequired() {

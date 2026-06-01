@@ -199,7 +199,7 @@ final class PrivateHandlers {
       final bookings = await _bookingRepository.listUserBookings(userId);
       await _sender.sendMessage(
         chatId,
-        _templates.myBookings(bookings),
+        _templates.myBookings(bookings, now: DateTime.now()),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
       return true;
@@ -273,6 +273,7 @@ final class PrivateHandlers {
         refreshOk ? _templates.scheduleRefreshDone() : _templates.scheduleRefreshFailed(),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
+      await _sender.sendMessage(chatId, _templates.scheduleDocumentLink());
       return true;
     }
 
@@ -289,11 +290,23 @@ final class PrivateHandlers {
       final queue = await _bookingRepository.listByStatus(
         BookingStatus.paymentSubmitted,
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.paymentsQueue(queue),
-        replyMarkup: _templates.paymentsQueueInlineKeyboard(queue),
-      );
+      if (queue.isEmpty) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.paymentsQueueEmpty(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+
+      await _sender.sendMessage(chatId, _templates.paymentsQueueIntro(queue.length));
+      for (final booking in queue) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.paymentsQueueItem(booking),
+          replyMarkup: _templates.paymentDecisionInlineKeyboard(booking.id),
+        );
+      }
       return true;
     }
 

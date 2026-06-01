@@ -209,7 +209,9 @@ void main() {
 
       expect(handled, isTrue);
       expect(repository.refreshCalls, 1);
-      expect(sender.messages.single.text, contains('Расписание обновил'));
+      expect(sender.messages, hasLength(2));
+      expect(sender.messages.first.text, contains('Расписание обновил'));
+      expect(sender.messages.last.text, contains(MessageTemplates.scheduleDocumentUrl));
     });
 
     test('ignores non-private chat messages', () async {
@@ -498,7 +500,15 @@ void main() {
     test('shows payments queue for admins', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
-        ..queue = <TrainingBooking>[_booking(status: BookingStatus.paymentSubmitted)];
+        ..queue = <TrainingBooking>[
+          _booking(id: 81, status: BookingStatus.paymentSubmitted),
+          _booking(
+            id: 82,
+            status: BookingStatus.paymentSubmitted,
+            title: 'Morning session',
+            userUsername: 'queue_user',
+          ),
+        ];
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
@@ -514,11 +524,43 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.single.text, contains('Заявки на подтверждение оплаты'));
-      final markup = sender.messages.single.replyMarkup;
+      expect(sender.messages, hasLength(3));
+      expect(sender.messages.first.text, contains('Всего ожидают проверки: 2'));
+
+      final firstItemMessage = sender.messages[1];
+      expect(firstItemMessage.text, contains('Заявка #81'));
+      final markup = firstItemMessage.replyMarkup;
       expect(markup, isNotNull);
       final keyboard = markup!['inline_keyboard'];
       expect(keyboard, isA<List<Object?>>());
+
+      final firstRow = (keyboard as List<Object?>).first as List<Object?>;
+      final approveButton = firstRow.first as Map<Object?, Object?>;
+      expect(approveButton['text'], '✅ Подтвердить');
+    });
+
+    test('splits my bookings into upcoming and past sections', () {
+      final templates = const MessageTemplates();
+      final text = templates.myBookings(
+        <TrainingBooking>[
+          _booking(
+            id: 90,
+            startsAt: DateTime(2026, 6, 20, 19, 0),
+            status: BookingStatus.pendingPayment,
+          ),
+          _booking(
+            id: 91,
+            startsAt: DateTime(2026, 5, 20, 19, 0),
+            status: BookingStatus.paid,
+          ),
+        ],
+        now: DateTime(2026, 6, 1, 12, 0),
+      );
+
+      expect(text, contains('Актуальные:'));
+      expect(text, contains('Прошедшие:'));
+      expect(text, contains('#90'));
+      expect(text, contains('#91'));
     });
 
     test('shows participants list for admins with tagged users', () async {
