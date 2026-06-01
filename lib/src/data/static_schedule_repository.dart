@@ -21,6 +21,7 @@ final List<TrainingInfo> _items = <TrainingInfo>[
     title: 'Функциональная тренировка',
     startsAt: DateTime(2026, 6, 2, 19, 0),
     location: 'Спортзал DVOR, ул. Центральная, 10',
+    price: 500,
     coach: 'Алексей',
     notes: 'Возьмите воду и удобную сменную обувь',
   ),
@@ -28,12 +29,14 @@ final List<TrainingInfo> _items = <TrainingInfo>[
     title: 'Кардио + выносливость',
     startsAt: DateTime(2026, 6, 4, 19, 30),
     location: 'Стадион DVOR, сектор B',
+    price: 500,
     coach: 'Мария',
   ),
   TrainingInfo(
     title: 'Силовая база',
     startsAt: DateTime(2026, 6, 7, 11, 0),
     location: 'Спортзал DVOR, ул. Центральная, 10',
+    price: 500,
     coach: 'Алексей',
   ),
 ];

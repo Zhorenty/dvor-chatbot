@@ -3,6 +3,7 @@ final class TrainingInfo {
     required this.title,
     required this.startsAt,
     required this.location,
+    this.price,
     this.coach,
     this.notes,
   });
@@ -10,6 +11,7 @@ final class TrainingInfo {
   final String title;
   final DateTime startsAt;
   final String location;
+  final int? price;
   final String? coach;
   final String? notes;
 

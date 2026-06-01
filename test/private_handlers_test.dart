@@ -94,6 +94,7 @@ void main() {
               title: 'Тестовая тренировка',
               startsAt: DateTime(2026, 6, 4, 19, 0),
               location: 'Тестовый зал',
+              price: 0,
             ),
           ],
         ),
@@ -111,6 +112,7 @@ void main() {
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.text, contains('Ближайшие тренировки'));
       expect(sender.messages.single.text, contains('Тестовая тренировка'));
+      expect(sender.messages.single.text, contains('бесплатная'));
     });
 
     test('handles menu trainings button in private chat', () async {
@@ -244,6 +246,7 @@ void main() {
               title: 'Book me',
               startsAt: DateTime(2026, 7, 10, 18, 0),
               location: 'Hall',
+              price: 0,
             ),
           ],
         ),
@@ -261,6 +264,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 0);
       expect(sender.messages.single.text, contains('Выбери тренировку'));
+      expect(sender.messages.single.text, contains('бесплатная'));
     });
 
     test('creates booking after selecting a training button', () async {

@@ -55,6 +55,7 @@ final class MessageTemplates {
         '• 🏋️ ${item.title}',
         '   🕒 Когда: ${formatter.format(item.startsAt)}',
         '   📍 Где: ${item.location}',
+        if (item.price != null) '   💳 Взнос: ${_trainingPriceLabel(item.price)}',
         if (coach != null && coach.isNotEmpty) '   🧑‍🏫 Тренер: $coach',
         if (notes != null && notes.isNotEmpty) '   📝 Примечание: $notes',
       ]);
@@ -314,8 +315,9 @@ final class MessageTemplates {
     final lines = <String>['Выбери тренировку для записи 👇'];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
+      final feeLabel = item.price == null ? '' : ', взнос: ${_trainingPriceLabel(item.price)}';
       lines.add(
-        '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} (${item.location})',
+        '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} (${item.location}$feeLabel)',
       );
     }
     return lines.join('\n');
@@ -419,5 +421,12 @@ final class MessageTemplates {
       return '@${username.startsWith('@') ? username.substring(1) : username}';
     }
     return 'tg://user?id=${booking.userId}';
+  }
+
+  String _trainingPriceLabel(int? price) {
+    if (price == null || price <= 0) {
+      return 'бесплатная';
+    }
+    return '$price ₽';
   }
 }

@@ -80,6 +80,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     final dateIndex = headers.indexOf('date');
     final timeIndex = headers.indexOf('time');
     final locationIndex = headers.indexOf('location');
+    final priceIndex = headers.indexOf('price');
     final coachIndex = headers.indexOf('coach');
     final notesIndex = headers.indexOf('notes');
     final hasStartsAt = startsAtIndex >= 0;
@@ -117,6 +118,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           title: title,
           startsAt: startsAt,
           location: location,
+          price: _parsePrice(_optionalCell(row, priceIndex)),
           coach: _optionalCell(row, coachIndex),
           notes: _optionalCell(row, notesIndex),
         ),
@@ -279,6 +281,21 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
   String? _optionalCell(List<dynamic> row, int index) {
     final value = _cell(row, index);
     return value.isEmpty ? null : value;
+  }
+
+  int? _parsePrice(String? raw) {
+    if (raw == null) {
+      return null;
+    }
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+    final digitsOnly = normalized.replaceAll(RegExp(r'[^\d]'), '');
+    if (digitsOnly.isEmpty) {
+      return null;
+    }
+    return int.tryParse(digitsOnly);
   }
 
   String _normalizeHeader(String value) {
