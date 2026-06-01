@@ -15,6 +15,8 @@ final class MessageTemplates {
   static const String buttonHelp = '🆘 Помощь';
   static const String buttonRefreshSchedule = '🔄 Обновить расписание';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
+  static const String callbackApprovePaymentPrefix = 'payment:approve:';
+  static const String callbackRejectPaymentPrefix = 'payment:reject:';
 
   String privateWelcome() {
     return 'Привет! 👋 Я бот спортивного объединения DVOR.\n\n'
@@ -124,7 +126,7 @@ final class MessageTemplates {
         'Когда: ${formatter.format(booking.startsAt)}\n'
         'Статус: ${_statusLabel(booking.status)}'
         '${note == null || note.isEmpty ? '' : '\nКомментарий: $note'}\n\n'
-        'Проверь очередь: /payments_queue';
+        'Проверь заявку и нажми кнопку ниже 👇';
   }
 
   String noPendingPayment() {
@@ -160,10 +162,7 @@ final class MessageTemplates {
         '${booking.trainingTitle} (${formatter.format(booking.startsAt)})$note',
       );
     }
-    lines.add(
-      '\nПодтвердить: /approve_payment <id>\n'
-      'Отклонить: /reject_payment <id>',
-    );
+    lines.add('\nНажми кнопку под заявкой, чтобы подтвердить или отклонить оплату.');
     return lines.join('\n');
   }
 
@@ -174,6 +173,42 @@ final class MessageTemplates {
   String paymentActionUsage() {
     return 'Использование:\n/approve_payment <id>\n/reject_payment <id>\n\n'
         'Например: /approve_payment 42';
+  }
+
+  Map<String, Object?> paymentDecisionInlineKeyboard(int bookingId) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': '✅ Подтвердить #$bookingId',
+            'callback_data': '$callbackApprovePaymentPrefix$bookingId',
+          },
+          <String, String>{
+            'text': '❌ Отклонить #$bookingId',
+            'callback_data': '$callbackRejectPaymentPrefix$bookingId',
+          },
+        ],
+      ],
+    };
+  }
+
+  Map<String, Object?> paymentsQueueInlineKeyboard(List<TrainingBooking> bookings) {
+    final rows = <List<Map<String, String>>>[];
+    for (final booking in bookings) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': '✅ #${booking.id}',
+            'callback_data': '$callbackApprovePaymentPrefix${booking.id}',
+          },
+          <String, String>{
+            'text': '❌ #${booking.id}',
+            'callback_data': '$callbackRejectPaymentPrefix${booking.id}',
+          },
+        ],
+      );
+    }
+    return <String, Object?>{'inline_keyboard': rows};
   }
 
   String bookingNotFound(int id) {

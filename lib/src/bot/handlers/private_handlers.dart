@@ -30,21 +30,24 @@ final class PrivateHandlers {
   final int? _adminChatId;
   final Map<int, _PrivateFlowState> _flowByUserId = <int, _PrivateFlowState>{};
 
-  Future<bool> handle(Map<String, dynamic> message) async {
-    final chat = message['chat'];
-    if (chat is! Map || chat['type']?.toString() != 'private') {
+  Future<bool> handle(Map<String, dynamic> update) async {
+    final context = _extractContext(update);
+    if (context == null) {
+      return false;
+    }
+    final chat = context.chat;
+    if (chat['type']?.toString() != 'private') {
       return false;
     }
     final chatId = chat['id'];
     if (chatId is! int) {
       return false;
     }
-    final text = message['text']?.toString().trim();
+    final text = context.text;
     if (text == null) {
       return false;
     }
-    final from = message['from'];
-    final rawUserId = from is Map ? from['id'] : null;
+    final rawUserId = context.from?['id'];
     final userId = rawUserId is int ? rawUserId : null;
     final isAdmin = userId != null && _adminUserIds.contains(userId);
 
@@ -261,7 +264,7 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.paymentsQueue(queue),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.paymentsQueueInlineKeyboard(queue),
       );
       return true;
     }
@@ -336,6 +339,72 @@ final class PrivateHandlers {
     return null;
   }
 
+  _PrivateMessageContext? _extractContext(Map<String, dynamic> update) {
+    final callback = update['callback_query'];
+    if (callback is Map) {
+      final callbackMap = Map<String, dynamic>.from(callback);
+      final callbackMessageRaw = callbackMap['message'];
+      final fromRaw = callbackMap['from'];
+      final text = _callbackToCommandText(callbackMap['data']?.toString());
+      if (callbackMessageRaw is! Map || text == null) {
+        return null;
+      }
+      final callbackMessage = Map<String, dynamic>.from(callbackMessageRaw);
+      final callbackChatRaw = callbackMessage['chat'];
+      if (callbackChatRaw is! Map) {
+        return null;
+      }
+      return _PrivateMessageContext(
+        chat: Map<String, dynamic>.from(callbackChatRaw),
+        from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
+        text: text,
+      );
+    }
+
+    final messageRaw = update['message'];
+    if (messageRaw is Map) {
+      final message = Map<String, dynamic>.from(messageRaw);
+      final chatRaw = message['chat'];
+      if (chatRaw is! Map) {
+        return null;
+      }
+      final fromRaw = message['from'];
+      return _PrivateMessageContext(
+        chat: Map<String, dynamic>.from(chatRaw),
+        from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
+        text: message['text']?.toString().trim(),
+      );
+    }
+
+    final chatRaw = update['chat'];
+    if (chatRaw is! Map) {
+      return null;
+    }
+    final fromRaw = update['from'];
+    return _PrivateMessageContext(
+      chat: Map<String, dynamic>.from(chatRaw),
+      from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
+      text: update['text']?.toString().trim(),
+    );
+  }
+
+  String? _callbackToCommandText(String? callbackData) {
+    if (callbackData == null) {
+      return null;
+    }
+    if (callbackData.startsWith(MessageTemplates.callbackApprovePaymentPrefix)) {
+      final rawId = callbackData.substring(MessageTemplates.callbackApprovePaymentPrefix.length);
+      final bookingId = int.tryParse(rawId);
+      return bookingId == null ? null : '/approve_payment $bookingId';
+    }
+    if (callbackData.startsWith(MessageTemplates.callbackRejectPaymentPrefix)) {
+      final rawId = callbackData.substring(MessageTemplates.callbackRejectPaymentPrefix.length);
+      final bookingId = int.tryParse(rawId);
+      return bookingId == null ? null : '/reject_payment $bookingId';
+    }
+    return null;
+  }
+
   Future<void> _notifyAdminAboutPaymentSubmitted(TrainingBooking booking) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
@@ -345,6 +414,7 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         adminChatId,
         _templates.paymentSubmittedAdminNotification(booking),
+        replyMarkup: _templates.paymentDecisionInlineKeyboard(booking.id),
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about payment submission: $error', stackTrace);
@@ -382,6 +452,18 @@ final class PrivateHandlers {
       l.w('Failed to notify admin chat about payment review: $error', stackTrace);
     }
   }
+}
+
+final class _PrivateMessageContext {
+  const _PrivateMessageContext({
+    required this.chat,
+    required this.from,
+    required this.text,
+  });
+
+  final Map<String, dynamic> chat;
+  final Map<String, dynamic>? from;
+  final String? text;
 }
 
 enum _PrivateFlowStep {

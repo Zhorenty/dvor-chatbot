@@ -32,6 +32,31 @@ void main() {
       expect(sender.messages.single.replyMarkup, isNotNull);
     });
 
+    test('handles wrapped update with message payload', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'update_id': 101,
+        'message': <String, dynamic>{
+          'chat': <String, dynamic>{'id': 111, 'type': 'private'},
+          'from': <String, dynamic>{'id': 111},
+          'text': '/start',
+        },
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.chatId, 111);
+      expect(sender.messages.single.text, contains('DVOR'));
+    });
+
     test('handles /trainings command in private chat', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
@@ -319,6 +344,9 @@ void main() {
       expect(sender.messages, hasLength(2));
       expect(sender.messages[0].chatId, -100777);
       expect(sender.messages[0].text, contains('Новое подтверждение оплаты'));
+      final adminMarkup = sender.messages[0].replyMarkup;
+      expect(adminMarkup, isNotNull);
+      expect(adminMarkup!['inline_keyboard'], isA<List<Object?>>());
       expect(sender.messages[1].chatId, 1701);
       expect(sender.messages[1].text, contains('отметку об оплате отправил администратору'));
     });
@@ -343,6 +371,10 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages.single.text, contains('Заявки на подтверждение оплаты'));
+      final markup = sender.messages.single.replyMarkup;
+      expect(markup, isNotNull);
+      final keyboard = markup!['inline_keyboard'];
+      expect(keyboard, isA<List<Object?>>());
     });
 
     test('notifies user and admin chat on approve payment', () async {
@@ -371,6 +403,38 @@ void main() {
       expect(sender.messages[1].text, contains('Модерация оплаты выполнена'));
       expect(sender.messages[2].chatId, 19);
       expect(sender.messages[2].text, contains('Статус записи #10 обновлен'));
+    });
+
+    test('handles payment moderation callback buttons for admin', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1950},
+        adminChatId: -100556,
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'callback_query': <String, dynamic>{
+          'id': 'cbq-1',
+          'from': <String, dynamic>{'id': 1950},
+          'data': '${MessageTemplates.callbackRejectPaymentPrefix}22',
+          'message': <String, dynamic>{
+            'chat': <String, dynamic>{'id': 1950, 'type': 'private'},
+          },
+        },
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(3));
+      expect(sender.messages[0].chatId, 1);
+      expect(sender.messages[0].text, contains('отклонили'));
+      expect(sender.messages[1].chatId, -100556);
+      expect(sender.messages[2].chatId, 1950);
+      expect(sender.messages[2].text, contains('Статус записи #22 обновлен'));
     });
   });
 }
