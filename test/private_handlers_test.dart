@@ -115,6 +115,29 @@ void main() {
       expect(sender.messages.single.text, contains('Тренировка из кнопки'));
     });
 
+    test('help button shows client-facing bot capabilities', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 131, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1310},
+        'text': MessageTemplates.buttonHelp,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Показываю ближайшие тренировки'));
+      expect(sender.messages.single.text, contains('/trainings, /book, /my_bookings, /paid'));
+      expect(sender.messages.single.text, isNot(contains('внешнего источника')));
+    });
+
     test('refresh button is forbidden for non-admin users', () async {
       final sender = _FakeSender();
       final repository = _FakeScheduleRepository(const <TrainingInfo>[]);
