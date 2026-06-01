@@ -65,12 +65,13 @@ final class PrivateHandlers {
     if (text != null &&
         (text.startsWith('/trainings') || text == MessageTemplates.buttonTrainings)) {
       final upcoming = _scheduleRepository.upcoming();
+      final upcomingOutdoor = _scheduleRepository.upcomingOutdoorActivities();
       if (userId != null) {
         _flowByUserId.remove(userId);
       }
       await _sender.sendMessage(
         chatId,
-        _templates.trainings(upcoming),
+        _templates.trainings(upcoming, outdoorActivities: upcomingOutdoor),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
       return true;

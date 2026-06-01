@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
@@ -10,17 +11,23 @@ import 'package:l/l.dart';
 final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository {
   GoogleSheetsScheduleRepository({
     required Uri csvUrl,
+    int hikesSheetId = 294119056,
+    int trailsSheetId = 1220729038,
     Duration requestTimeout = const Duration(seconds: 10),
     Duration minRefreshInterval = const Duration(minutes: 5),
     http.Client? httpClient,
     DateTime Function()? nowProvider,
   })  : _csvUrl = csvUrl,
+        _hikesCsvUrl = _replaceGid(csvUrl, hikesSheetId),
+        _trailsCsvUrl = _replaceGid(csvUrl, trailsSheetId),
         _requestTimeout = requestTimeout,
         _minRefreshInterval = minRefreshInterval,
         _httpClient = httpClient ?? http.Client(),
         _nowProvider = nowProvider ?? DateTime.now;
 
   final Uri _csvUrl;
+  final Uri _hikesCsvUrl;
+  final Uri _trailsCsvUrl;
   final Duration _requestTimeout;
   final Duration _minRefreshInterval;
   final http.Client _httpClient;
@@ -28,12 +35,21 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
 
   DateTime? _lastRefreshAt;
   List<TrainingInfo> _cached = const <TrainingInfo>[];
+  List<OutdoorActivityInfo> _cachedOutdoor = const <OutdoorActivityInfo>[];
 
   @override
   List<TrainingInfo> upcoming({DateTime? now, int limit = 5}) {
     final current = now ?? _nowProvider();
     final items = _cached.where((item) => item.startsAt.isAfter(current)).toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    return items.take(limit).toList(growable: false);
+  }
+
+  @override
+  List<OutdoorActivityInfo> upcomingOutdoorActivities({DateTime? now, int limit = 8}) {
+    final current = now ?? _nowProvider();
+    final items = _cachedOutdoor.where((item) => !item.dateTo.isBefore(current)).toList()
+      ..sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
     return items.take(limit).toList(growable: false);
   }
 
@@ -47,16 +63,47 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     }
 
     try {
-      final response = await _httpClient.get(_csvUrl).timeout(_requestTimeout);
-      if (response.statusCode != 200) {
-        l.w('Google Sheets sync failed: HTTP ${response.statusCode}');
+      final trainingsResponse = await _httpClient.get(_csvUrl).timeout(_requestTimeout);
+      if (trainingsResponse.statusCode != 200) {
+        l.w('Google Sheets sync failed for trainings: HTTP ${trainingsResponse.statusCode}');
         return false;
       }
 
-      final parsed = _parseCsv(utf8.decode(response.bodyBytes));
-      _cached = parsed;
+      final parsedTrainings = _parseCsv(utf8.decode(trainingsResponse.bodyBytes));
+      var parsedHikes = _cachedOutdoor
+          .where((item) => item.type == OutdoorActivityType.hike)
+          .toList(growable: false);
+      var parsedTrails = _cachedOutdoor
+          .where((item) => item.type == OutdoorActivityType.trail)
+          .toList(growable: false);
+
+      final hikesResponse = await _httpClient.get(_hikesCsvUrl).timeout(_requestTimeout);
+      if (hikesResponse.statusCode == 200) {
+        parsedHikes = _parseOutdoorCsv(
+          utf8.decode(hikesResponse.bodyBytes),
+          OutdoorActivityType.hike,
+        );
+      } else {
+        l.w('Google Sheets sync skipped hikes: HTTP ${hikesResponse.statusCode}');
+      }
+
+      final trailsResponse = await _httpClient.get(_trailsCsvUrl).timeout(_requestTimeout);
+      if (trailsResponse.statusCode == 200) {
+        parsedTrails = _parseOutdoorCsv(
+          utf8.decode(trailsResponse.bodyBytes),
+          OutdoorActivityType.trail,
+        );
+      } else {
+        l.w('Google Sheets sync skipped trails: HTTP ${trailsResponse.statusCode}');
+      }
+
+      _cached = parsedTrainings;
+      _cachedOutdoor = <OutdoorActivityInfo>[...parsedHikes, ...parsedTrails];
       _lastRefreshAt = current;
-      l.i('Google Sheets sync completed. Loaded ${parsed.length} schedule rows.');
+      l.i(
+        'Google Sheets sync completed. '
+        'Loaded ${parsedTrainings.length} trainings and ${_cachedOutdoor.length} outdoor rows.',
+      );
       return true;
     } on TimeoutException catch (error) {
       l.w('Google Sheets sync timeout: $error');
@@ -121,6 +168,62 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           price: _parsePrice(_optionalCell(row, priceIndex)),
           coach: _optionalCell(row, coachIndex),
           notes: _optionalCell(row, notesIndex),
+        ),
+      );
+    }
+    return items;
+  }
+
+  List<OutdoorActivityInfo> _parseOutdoorCsv(String body, OutdoorActivityType type) {
+    final rows = _parseCsvRows(body);
+    if (rows.isEmpty) {
+      return const <OutdoorActivityInfo>[];
+    }
+
+    final headers =
+        rows.first.map((cell) => _normalizeHeader(cell.toString())).toList(growable: false);
+    final titleIndex = headers.indexOf('title');
+    final dateFromIndex = headers.indexOf('date_from');
+    final dateToIndex = headers.indexOf('date_to');
+    final descriptionIndex = headers.indexOf('description');
+    final priceIndex = headers.indexOf('price');
+
+    if (titleIndex < 0 || dateFromIndex < 0 || descriptionIndex < 0) {
+      l.w(
+        'Outdoor sheet parsing skipped: '
+        'required columns title/date_from/description are missing.',
+      );
+      return const <OutdoorActivityInfo>[];
+    }
+
+    final items = <OutdoorActivityInfo>[];
+    for (final row in rows.skip(1)) {
+      final title = _cell(row, titleIndex);
+      final description = _cell(row, descriptionIndex);
+      if (title.isEmpty || description.isEmpty) {
+        continue;
+      }
+
+      final dateFrom = _parseRangeDateTime(_cell(row, dateFromIndex), isEndOfDay: false);
+      if (dateFrom == null) {
+        continue;
+      }
+
+      final rawDateTo = _optionalCell(row, dateToIndex);
+      final dateTo = _parseRangeDateTime(rawDateTo ?? '', isEndOfDay: true) ??
+          _parseRangeDateTime(_cell(row, dateFromIndex), isEndOfDay: true);
+      if (dateTo == null) {
+        continue;
+      }
+
+      items.add(
+        OutdoorActivityInfo(
+          type: type,
+          title: title,
+          dateFrom: dateFrom,
+          dateTo: dateTo,
+          description: description,
+          price: _parsePrice(_optionalCell(row, priceIndex)),
         ),
       );
     }
@@ -250,6 +353,40 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     return null;
   }
 
+  DateTime? _parseRangeDateTime(String raw, {required bool isEndOfDay}) {
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return null;
+    }
+
+    final parsedDateTime = _parseDateTime(normalized);
+    if (parsedDateTime != null) {
+      final likelyDateOnly = !RegExp(r'[:T]').hasMatch(normalized);
+      if (!likelyDateOnly) {
+        return parsedDateTime;
+      }
+      return isEndOfDay
+          ? DateTime(
+              parsedDateTime.year,
+              parsedDateTime.month,
+              parsedDateTime.day,
+              23,
+              59,
+              59,
+            )
+          : DateTime(parsedDateTime.year, parsedDateTime.month, parsedDateTime.day);
+    }
+
+    final dateOnly = _parseDate(normalized);
+    if (dateOnly == null) {
+      return null;
+    }
+
+    return isEndOfDay
+        ? DateTime(dateOnly.year, dateOnly.month, dateOnly.day, 23, 59, 59)
+        : DateTime(dateOnly.year, dateOnly.month, dateOnly.day);
+  }
+
   DateTime? _parseTime(String raw) {
     final timeFormats = <DateFormat>[
       DateFormat('HH:mm:ss'),
@@ -300,5 +437,12 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
 
   String _normalizeHeader(String value) {
     return value.trim().toLowerCase().replaceAll(' ', '_');
+  }
+
+  static Uri _replaceGid(Uri source, int gid) {
+    final params = <String, String>{...source.queryParameters};
+    params['gid'] = '$gid';
+    params.putIfAbsent('format', () => 'csv');
+    return source.replace(queryParameters: params);
   }
 }

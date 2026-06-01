@@ -2,6 +2,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -144,6 +145,55 @@ void main() {
       expect(sender.messages.single.text, contains('Тренировка из кнопки'));
     });
 
+    test('shows hikes and trails in trainings list', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Тренировка',
+              startsAt: DateTime(2026, 6, 5, 19, 0),
+              location: 'Зал',
+            ),
+          ],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Поход на водопады',
+              dateFrom: DateTime(2026, 6, 10),
+              dateTo: DateTime(2026, 6, 10, 23, 59, 59),
+              description: 'Однодневный маршрут',
+              price: 2500,
+            ),
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.trail,
+              title: 'Трейл перевал',
+              dateFrom: DateTime(2026, 6, 20),
+              dateTo: DateTime(2026, 6, 22, 23, 59, 59),
+              description: 'Трехдневный трек',
+            ),
+          ],
+        ),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 130, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1300},
+        'text': MessageTemplates.buttonTrainings,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Походы:'));
+      expect(sender.messages.single.text, contains('Поход на водопады'));
+      expect(sender.messages.single.text, contains('Трейлы:'));
+      expect(sender.messages.single.text, contains('Трейл перевал'));
+    });
+
     test('help button shows client-facing bot capabilities', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
@@ -162,7 +212,8 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.text, contains('Показываю ближайшие тренировки'));
+      expect(
+          sender.messages.single.text, contains('Показываю ближайшие тренировки, походы и трейлы'));
       expect(sender.messages.single.text, contains('/trainings, /book, /my_bookings'));
       expect(sender.messages.single.text, isNot(contains('внешнего источника')));
     });
@@ -750,15 +801,21 @@ void main() {
 final class _FakeScheduleRepository implements TrainingScheduleRepository {
   _FakeScheduleRepository(
     this._items, {
+    this.outdoorItems = const <OutdoorActivityInfo>[],
     this.refreshResult = true,
   });
 
   final List<TrainingInfo> _items;
+  final List<OutdoorActivityInfo> outdoorItems;
   final bool refreshResult;
   int refreshCalls = 0;
 
   @override
   List<TrainingInfo> upcoming({DateTime? now, int limit = 5}) => _items.take(limit).toList();
+
+  @override
+  List<OutdoorActivityInfo> upcomingOutdoorActivities({DateTime? now, int limit = 8}) =>
+      outdoorItems.take(limit).toList();
 
   @override
   Future<bool> refresh({bool force = false}) async {
