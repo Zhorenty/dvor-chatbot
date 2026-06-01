@@ -153,7 +153,7 @@ final class MessageTemplates {
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
         '📍 Где: ${booking.location}\n\n'
-        '${paymentDetailsSent(booking.id)}';
+        '${paymentDetailsSent(booking)}';
   }
 
   String bookingAlreadyExists(TrainingBooking booking) {
@@ -326,15 +326,25 @@ final class MessageTemplates {
   String paymentInstructions(int bookingId) {
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Родион Одобеско\n'
-        '• Банк: OZON БАНК\n'
-        '• Номер телефона: +7 (918) 423-01-03\n'
+        '• Банк: 🟦 OZON БАНК 🟦\n'
+        '• Номер телефона: +7(918)423-01-03\n'
         '• Комментарий к переводу: "Номер записи: $bookingId"';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
-    return 'Оплату по записи #${booking.id} подтвердили ✅\n'
-        'Статус: ${_statusLabel(booking.status)}.\n'
-        'Спасибо!';
+    if (!_isOutdoorBookingTitle(booking.trainingTitle)) {
+      return 'Оплату по записи #${booking.id} подтвердили ✅\n'
+          'Статус: ${_statusLabel(booking.status)}.\n'
+          'Спасибо!';
+    }
+
+    return '✅ Оплата подтверждена.\n'
+        'Ты в команде outdvor🚸\n\n'
+        'Место за тобой, предоплата зафиксирована. С этого момента - ты часть команды.\n\n'
+        'Мы сделаем все, чтобы это приключение осталось с тобой надолго. '
+        'Горы, эмоции, новые люди и чувство "я справился" - это не забывается.\n'
+        'Скоро добавим тебя в общий чат поездки🟡\n\n'
+        'Готовься. Скоро стартуем 💚';
   }
 
   String paymentRejectedForUser(TrainingBooking booking) {
@@ -381,10 +391,27 @@ final class MessageTemplates {
     return lines.join('\n');
   }
 
-  String paymentDetailsSent(int bookingId) {
-    return '${paymentInstructions(bookingId)}\n\n'
-        'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин) 📎\n'
+  String paymentDetailsSent(TrainingBooking booking) {
+    if (!_isOutdoorBookingTitle(booking.trainingTitle)) {
+      return '${paymentInstructions(booking.id)}\n\n'
+          'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
+          'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
+    }
+
+    return '${paymentInstructions(booking.id)}\n\n'
+        'Правило Outdvor 🚸\n\n'
+        '• Предоплата невозвратна при отмене за 7 дней и менее до трейла/похода🦥\n\n'
+        'Это не штраф, а уважение к общим расходам на логистику, планирование '
+        'тренировки и трансфер. Такие мероприятия любят сильных и решительных💚💪\n'
+        'Спасибо за понимание\n'
+        '"outdvor"🚸\n\n'
+        'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
         'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
+  }
+
+  bool _isOutdoorBookingTitle(String title) {
+    final normalized = title.toLowerCase();
+    return normalized.contains('поход') || normalized.contains('трейл');
   }
 
   String paymentProofRequired() {
