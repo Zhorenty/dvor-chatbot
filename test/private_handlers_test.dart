@@ -345,6 +345,48 @@ void main() {
       expect(sender.messages.last.text, contains('пришли файл'));
     });
 
+    test('asks for payment proof file when text is sent at confirmation step', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..submitResult = _booking(status: BookingStatus.paymentSubmitted);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Book me',
+              startsAt: DateTime(2026, 7, 10, 18, 0),
+              location: 'Hall',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 163, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1603},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 163, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1603},
+        'text': '🎯 1. Book me',
+      });
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 163, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1603},
+        'text': 'уже оплатил',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.submitCalls, 0);
+      expect(sender.messages.last.text, contains('пришли файл'));
+    });
+
     test('submits payment after sending payment proof file', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()

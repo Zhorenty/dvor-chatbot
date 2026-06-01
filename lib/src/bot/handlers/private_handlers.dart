@@ -245,6 +245,18 @@ final class PrivateHandlers {
       return true;
     }
 
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.paymentConfirmation &&
+        text != null &&
+        !text.startsWith('/')) {
+      await _sender.sendMessage(
+        chatId,
+        _templates.paymentProofRequired(),
+        replyMarkup: _templates.paymentConfirmationKeyboard(),
+      );
+      return true;
+    }
+
     if (text != null &&
         (text == MessageTemplates.buttonRefreshSchedule || text.startsWith('/refresh_schedule'))) {
       if (!isAdmin) {
