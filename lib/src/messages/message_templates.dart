@@ -96,24 +96,24 @@ final class MessageTemplates {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     return 'Отлично, записал тебя! ✅\n'
         'Статус: ${_statusLabel(booking.status)}\n'
-        'ID записи: ${booking.id}\n'
+        'Номер записи: ${booking.id}\n'
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
         '📍 Где: ${booking.location}\n\n'
-        '${paymentDetailsSent()}';
+        '${paymentDetailsSent(booking.id)}';
   }
 
   String bookingAlreadyExists(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     return 'Ты уже записан(а) на эту тренировку 👌\n'
-        'ID записи: ${booking.id}\n'
+        'Номер записи: ${booking.id}\n'
         'Текущий статус: ${_statusLabel(booking.status)}\n'
         '🕒 Когда: ${formatter.format(booking.startsAt)}';
   }
 
   String paymentSubmitted(TrainingBooking booking) {
     return 'Супер, файл с подтверждением оплаты отправил администратору ✅\n'
-        'ID записи: ${booking.id}\n'
+        'Номер записи: ${booking.id}\n'
         'Статус: ${_statusLabel(booking.status)}.';
   }
 
@@ -250,12 +250,12 @@ final class MessageTemplates {
     return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)} ✅';
   }
 
-  String paymentInstructions() {
+  String paymentInstructions(int bookingId) {
     return 'Реквизиты для оплаты:\n'
-        '• Получатель: DVOR CLUB\n'
-        '• Банк: DVOR BANK\n'
-        '• Номер карты: 0000 1111 2222 3333\n'
-        '• Комментарий к переводу: ID записи';
+        '• Получатель: Родион Одобеско\n'
+        '• Банк: OZON БАНК\n'
+        '• Номер телефона: +7 (918) 423-01-03\n'
+        '• Комментарий к переводу: Номер записи: $bookingId';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
@@ -287,7 +287,7 @@ final class MessageTemplates {
         'Запись: #${booking.id}\n'
         '${booking.trainingTitle} (${formatter.format(booking.startsAt)})\n'
         'Текущий статус: ${_statusLabel(booking.status)}\n\n'
-        '${paymentInstructions()}\n\n'
+        '${paymentInstructions(booking.id)}\n\n'
         'После оплаты отправь в этот чат файл с подтверждением (чек/скрин).';
   }
 
@@ -306,8 +306,8 @@ final class MessageTemplates {
     return lines.join('\n');
   }
 
-  String paymentDetailsSent() {
-    return '${paymentInstructions()}\n\n'
+  String paymentDetailsSent(int bookingId) {
+    return '${paymentInstructions(bookingId)}\n\n'
         'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин).';
   }
 
