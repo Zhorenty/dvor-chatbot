@@ -678,7 +678,7 @@ void main() {
           userConfirmation.text, contains('файл с подтверждением оплаты отправил администратору'));
     });
 
-    test('shows payments queue for admins', () async {
+    test('shows payments queue for selected admin category', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..queue = <TrainingBooking>[
@@ -686,7 +686,7 @@ void main() {
           _booking(
             id: 82,
             status: BookingStatus.paymentSubmitted,
-            title: 'Morning session',
+            title: '🥾 Поход: Morning session',
             userUsername: 'queue_user',
           ),
         ];
@@ -703,13 +703,20 @@ void main() {
         'from': <String, dynamic>{'id': 1800},
         'text': '/payments_queue',
       });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 18, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1800},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
 
       expect(handled, isTrue);
+      expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(3));
-      expect(sender.messages.first.text, contains('Всего ожидают проверки: 2'));
+      expect(sender.messages.first.text, contains('Выбери категорию для заявок'));
+      expect(sender.messages[1].text, contains('Всего ожидают проверки: 1'));
 
-      final firstItemMessage = sender.messages[1];
-      expect(firstItemMessage.text, contains('Заявка #81'));
+      final firstItemMessage = sender.messages[2];
+      expect(firstItemMessage.text, contains('Заявка #82'));
       final markup = firstItemMessage.replyMarkup;
       expect(markup, isNotNull);
       final keyboard = markup!['inline_keyboard'];
@@ -744,7 +751,7 @@ void main() {
       expect(text, contains('#91'));
     });
 
-    test('shows participants list for admins with tagged users', () async {
+    test('shows participants list for selected admin category', () async {
       final sender = _FakeSender();
       final training = TrainingInfo(
         title: 'Morning Run',
@@ -776,11 +783,18 @@ void main() {
         'from': <String, dynamic>{'id': 2000},
         'text': MessageTemplates.buttonParticipantsList,
       });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2000},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.text, contains('Список записавшихся'));
-      expect(sender.messages.single.text, contains('@runner_one'));
+      expect(categoryHandled, isTrue);
+      expect(sender.messages, hasLength(2));
+      expect(sender.messages.first.text, contains('Выбери категорию для списка записавшихся'));
+      expect(sender.messages.last.text, contains('Список записавшихся'));
+      expect(sender.messages.last.text, contains('@runner_one'));
     });
 
     test('shows tg user link when participant has no username', () async {
@@ -814,10 +828,16 @@ void main() {
         'from': <String, dynamic>{'id': 2001},
         'text': MessageTemplates.buttonParticipantsList,
       });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 21, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2001},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.text, contains('tg://user?id=7101'));
+      expect(categoryHandled, isTrue);
+      expect(sender.messages, hasLength(2));
+      expect(sender.messages.last.text, contains('tg://user?id=7101'));
     });
 
     test('notifies user and admin chat on approve payment', () async {

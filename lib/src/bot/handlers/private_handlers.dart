@@ -112,6 +112,8 @@ final class PrivateHandlers {
       switch (flowState?.step) {
         case _PrivateFlowStep.selectingScheduleCategory:
         case _PrivateFlowStep.selectingBookingCategory:
+        case _PrivateFlowStep.selectingParticipantsCategory:
+        case _PrivateFlowStep.selectingPaymentsQueueCategory:
         case _PrivateFlowStep.selectingTraining:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
@@ -208,6 +210,50 @@ final class PrivateHandlers {
         chatId,
         _templates.chooseTrainingForBooking(upcoming),
         replyMarkup: _templates.bookingSelectionKeyboard(upcoming),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingParticipantsCategory &&
+        text != null &&
+        !text.startsWith('/')) {
+      final category = _parseCategory(text);
+      if (category == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+        return true;
+      }
+      _flowByUserId.remove(userId);
+      await _sendParticipantsByCategory(
+        chatId: chatId,
+        category: category,
+        isAdmin: isAdmin,
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingPaymentsQueueCategory &&
+        text != null &&
+        !text.startsWith('/')) {
+      final category = _parseCategory(text);
+      if (category == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+        return true;
+      }
+      _flowByUserId.remove(userId);
+      await _sendPaymentsQueueByCategory(
+        chatId: chatId,
+        category: category,
+        isAdmin: isAdmin,
       );
       return true;
     }
@@ -340,26 +386,15 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final queue = await _bookingRepository.listByStatus(
-        BookingStatus.paymentSubmitted,
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingPaymentsQueueCategory,
+        availableTrainings: <TrainingInfo>[],
       );
-      if (queue.isEmpty) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.paymentsQueueEmpty(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-        );
-        return true;
-      }
-
-      await _sender.sendMessage(chatId, _templates.paymentsQueueIntro(queue.length));
-      for (final booking in queue) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.paymentsQueueItem(booking),
-          replyMarkup: _templates.paymentDecisionInlineKeyboard(booking.id),
-        );
-      }
+      await _sender.sendMessage(
+        chatId,
+        _templates.choosePaymentsQueueCategory(),
+        replyMarkup: _templates.categorySelectionKeyboard(),
+      );
       return true;
     }
 
@@ -374,20 +409,14 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final upcoming = _scheduleRepository.upcoming(limit: 12);
-      final keys = upcoming.map((item) => item.sessionKey).toSet();
-      final bookings = await _bookingRepository.listByTrainingKeys(keys);
-      final byTraining = <String, List<TrainingBooking>>{};
-      for (final booking in bookings) {
-        byTraining.putIfAbsent(booking.trainingKey, () => <TrainingBooking>[]).add(booking);
-      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingParticipantsCategory,
+        availableTrainings: <TrainingInfo>[],
+      );
       await _sender.sendMessage(
         chatId,
-        _templates.trainingParticipants(
-          trainings: upcoming,
-          bookingsByTrainingKey: byTraining,
-        ),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        _templates.chooseParticipantsCategory(),
+        replyMarkup: _templates.categorySelectionKeyboard(),
       );
       return true;
     }
@@ -466,6 +495,90 @@ final class PrivateHandlers {
     };
   }
 
+  Future<void> _sendParticipantsByCategory({
+    required int chatId,
+    required _ActivityCategory category,
+    required bool isAdmin,
+  }) async {
+    final trainings = _participantItemsByCategory(category);
+    final keys = trainings.map((item) => item.sessionKey).toSet();
+    final bookings = await _bookingRepository.listByTrainingKeys(keys);
+    final byTraining = <String, List<TrainingBooking>>{};
+    for (final booking in bookings) {
+      byTraining.putIfAbsent(booking.trainingKey, () => <TrainingBooking>[]).add(booking);
+    }
+
+    final (title, emptyText) = switch (category) {
+      _ActivityCategory.trainings => (
+          'Список записавшихся по тренировкам 👥',
+          'Ближайших тренировок пока нет, показывать список не для чего.',
+        ),
+      _ActivityCategory.hikes => (
+          'Список записавшихся по походам 👥',
+          'Ближайших походов пока нет, показывать список не для чего.',
+        ),
+      _ActivityCategory.trails => (
+          'Список записавшихся по трейлам 👥',
+          'Ближайших трейлов пока нет, показывать список не для чего.',
+        ),
+    };
+
+    await _sender.sendMessage(
+      chatId,
+      _templates.trainingParticipants(
+        trainings: trainings,
+        bookingsByTrainingKey: byTraining,
+        title: title,
+        emptyText: emptyText,
+      ),
+      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+    );
+  }
+
+  Future<void> _sendPaymentsQueueByCategory({
+    required int chatId,
+    required _ActivityCategory category,
+    required bool isAdmin,
+  }) async {
+    final queue = await _bookingRepository.listByStatus(BookingStatus.paymentSubmitted);
+    final filtered = queue.where((booking) => _bookingMatchesCategory(booking, category)).toList();
+    if (filtered.isEmpty) {
+      await _sender.sendMessage(
+        chatId,
+        _templates.paymentsQueueEmpty(),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return;
+    }
+
+    await _sender.sendMessage(chatId, _templates.paymentsQueueIntro(filtered.length));
+    for (final booking in filtered) {
+      await _sender.sendMessage(
+        chatId,
+        _templates.paymentsQueueItem(booking),
+        replyMarkup: _templates.paymentDecisionInlineKeyboard(booking.id),
+      );
+    }
+  }
+
+  List<TrainingInfo> _participantItemsByCategory(_ActivityCategory category) {
+    return switch (category) {
+      _ActivityCategory.trainings => _scheduleRepository.upcoming(limit: 12),
+      _ActivityCategory.hikes => _scheduleRepository
+          .upcomingOutdoorActivities(limit: 24)
+          .where((item) => item.type == OutdoorActivityType.hike)
+          .take(12)
+          .map((item) => _toBookableInfo(item))
+          .toList(growable: false),
+      _ActivityCategory.trails => _scheduleRepository
+          .upcomingOutdoorActivities(limit: 24)
+          .where((item) => item.type == OutdoorActivityType.trail)
+          .take(12)
+          .map((item) => _toBookableInfo(item))
+          .toList(growable: false),
+    };
+  }
+
   TrainingInfo _toBookableInfo(OutdoorActivityInfo item) {
     final prefix = item.type == OutdoorActivityType.hike ? '🥾 Поход' : '🏃 Трейл';
     return TrainingInfo(
@@ -506,6 +619,19 @@ final class PrivateHandlers {
     }
     return null;
   }
+
+  bool _bookingMatchesCategory(TrainingBooking booking, _ActivityCategory category) {
+    final title = booking.trainingTitle;
+    return switch (category) {
+      _ActivityCategory.trainings => !_isHikeBooking(title) && !_isTrailBooking(title),
+      _ActivityCategory.hikes => _isHikeBooking(title),
+      _ActivityCategory.trails => _isTrailBooking(title),
+    };
+  }
+
+  bool _isHikeBooking(String title) => title.startsWith('🥾 Поход:');
+
+  bool _isTrailBooking(String title) => title.startsWith('🏃 Трейл:');
 
   int? _parseCommandId(String text) {
     final parts = text.trim().split(RegExp(r'\s+'));
@@ -713,6 +839,8 @@ final class _PaymentProof {
 enum _PrivateFlowStep {
   selectingScheduleCategory,
   selectingBookingCategory,
+  selectingParticipantsCategory,
+  selectingPaymentsQueueCategory,
   selectingTraining,
   paymentConfirmation,
 }

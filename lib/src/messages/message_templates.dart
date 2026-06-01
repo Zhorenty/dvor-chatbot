@@ -101,6 +101,14 @@ final class MessageTemplates {
     return 'Не понял категорию. Нажми одну из кнопок ниже 👇';
   }
 
+  String chooseParticipantsCategory() {
+    return 'Выбери категорию для списка записавшихся 👇';
+  }
+
+  String choosePaymentsQueueCategory() {
+    return 'Выбери категорию для заявок на оплату 👇';
+  }
+
   String clubInfoPrivate() {
     return 'Добро пожаловать в спортивное объединение DVOR! 🎉\n\n'
         'Мы регулярно проводим тренировки, делимся расписанием и новостями клуба.\n'
@@ -239,12 +247,14 @@ final class MessageTemplates {
   String trainingParticipants({
     required List<TrainingInfo> trainings,
     required Map<String, List<TrainingBooking>> bookingsByTrainingKey,
+    String title = 'Список записавшихся по тренировкам 👥',
+    String emptyText = 'Ближайших тренировок пока нет, показывать список не для чего.',
   }) {
     if (trainings.isEmpty) {
-      return 'Ближайших тренировок пока нет, показывать список не для чего.';
+      return emptyText;
     }
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Список записавшихся по тренировкам 👥'];
+    final lines = <String>[title];
     for (var index = 0; index < trainings.length; index++) {
       final training = trainings[index];
       final tags = bookingsByTrainingKey[training.sessionKey] ?? const <TrainingBooking>[];
