@@ -858,6 +858,20 @@ void main() {
             userId: 5003,
             status: BookingStatus.paymentRejected,
           ),
+          _booking(
+            id: 805,
+            userId: 5001,
+            userUsername: 'runner_one',
+            title: '🥾 Поход: Архыз',
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 806,
+            userId: 5002,
+            userUsername: 'runner_two',
+            title: '🏃 Трейл: Лаго-Наки',
+            status: BookingStatus.paymentSubmitted,
+          ),
         ];
       final handlers = PrivateHandlers(
         sender: sender,
@@ -881,6 +895,8 @@ void main() {
       expect(text, contains('1. @runner_one (5001) — 2'));
       expect(text, contains('2. @runner_two (5002) — 1'));
       expect(text, contains('tg://user?id=5003 (5003) — 1'));
+      expect(text, isNot(contains('Поход')));
+      expect(text, isNot(contains('Трейл')));
     });
 
     test('forbids nobles list for non-admin users', () async {

@@ -593,6 +593,9 @@ final class PrivateHandlers {
     final aggregated = <int, ({int userId, String? username, int trainingsCount})>{};
     var totalTrainings = 0;
     for (final booking in allBookings) {
+      if (_isHikeBooking(booking.trainingTitle) || _isTrailBooking(booking.trainingTitle)) {
+        continue;
+      }
       totalTrainings += 1;
       final current = aggregated[booking.userId];
       aggregated[booking.userId] = (
