@@ -10,6 +10,9 @@ final class MessageTemplates {
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonMyBookings = '🗂 Мои записи';
   static const String buttonSubmitPayment = '💸 Я оплатил';
+  static const String buttonPaymentDetails = '💳 Реквизиты для оплаты';
+  static const String buttonBack = '⬅️ Назад';
+  static const String buttonMainMenu = '🏠 Главное меню';
   static const String buttonHelp = '🆘 Помощь';
   static const String buttonRefreshSchedule = '🔄 Обновить расписание';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
@@ -22,7 +25,7 @@ final class MessageTemplates {
   String privateHelp() {
     return 'Вот что я умею прямо сейчас 👇\n'
         '• Показываю ближайшие тренировки 📅\n'
-        '• Записываю на ближайшую тренировку ✍️\n'
+        '• Записываю на выбранную тренировку через кнопки ✍️\n'
         '• Принимаю отметку об оплате и отправляю админам 💸\n'
         '• Обновляю расписание из внешнего источника 🔄\n'
         '• Помогаю новичкам в группе 🙌\n\n'
@@ -95,7 +98,7 @@ final class MessageTemplates {
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
         '📍 Где: ${booking.location}\n\n'
-        'После перевода нажми кнопку `$buttonSubmitPayment` или используй /paid <комментарий>.';
+        'Дальше нажми `$buttonPaymentDetails`, чтобы получить реквизиты.';
   }
 
   String bookingAlreadyExists(TrainingBooking booking) {
@@ -169,6 +172,67 @@ final class MessageTemplates {
     return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)} ✅';
   }
 
+  String paymentInstructions() {
+    return 'Реквизиты для оплаты:\n'
+        '• Получатель: DVOR CLUB\n'
+        '• Банк: DVOR BANK\n'
+        '• Номер карты: 0000 1111 2222 3333\n'
+        '• Комментарий к переводу: ID записи';
+  }
+
+  String paymentApprovedForUser(TrainingBooking booking) {
+    return 'Оплату по записи #${booking.id} подтвердили ✅\n'
+        'Статус: ${_statusLabel(booking.status)}.\n'
+        'Спасибо!';
+  }
+
+  String paymentRejectedForUser(TrainingBooking booking) {
+    return 'Оплату по записи #${booking.id} отклонили ❌\n'
+        'Статус: ${_statusLabel(booking.status)}.\n'
+        'Проверь детали платежа и отправь подтверждение еще раз.';
+  }
+
+  String paymentReviewAdminNotification({
+    required TrainingBooking booking,
+    required int moderatorUserId,
+  }) {
+    return 'Модерация оплаты выполнена 🧾\n'
+        'Запись: #${booking.id}\n'
+        'Пользователь: ${booking.userId}\n'
+        'Статус: ${_statusLabel(booking.status)}\n'
+        'Проверил админ: $moderatorUserId';
+  }
+
+  String pendingPaymentReminder(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Напоминание об оплате 💸\n'
+        'Запись: #${booking.id}\n'
+        '${booking.trainingTitle} (${formatter.format(booking.startsAt)})\n'
+        'Текущий статус: ${_statusLabel(booking.status)}\n\n'
+        '${paymentInstructions()}\n\n'
+        'После оплаты нажми `$buttonSubmitPayment`.';
+  }
+
+  String chooseTrainingForBooking(List<TrainingInfo> items) {
+    if (items.isEmpty) {
+      return noUpcomingForBooking();
+    }
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>['Выбери тренировку для записи 👇'];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      lines.add(
+        '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} (${item.location})',
+      );
+    }
+    return lines.join('\n');
+  }
+
+  String paymentDetailsSent() {
+    return '${paymentInstructions()}\n\n'
+        'Когда переведешь оплату, нажми `$buttonSubmitPayment`.';
+  }
+
   Map<String, Object?> privateMenuKeyboard({required bool isAdmin}) {
     final rows = <List<Map<String, String>>>[
       <Map<String, String>>[
@@ -177,7 +241,6 @@ final class MessageTemplates {
       ],
       <Map<String, String>>[
         <String, String>{'text': buttonMyBookings},
-        <String, String>{'text': buttonSubmitPayment},
       ],
       <Map<String, String>>[
         <String, String>{'text': buttonHelp},
@@ -193,6 +256,60 @@ final class MessageTemplates {
     }
     return <String, Object?>{
       'keyboard': rows,
+      'resize_keyboard': true,
+      'one_time_keyboard': false,
+    };
+  }
+
+  Map<String, Object?> bookingSelectionKeyboard(List<TrainingInfo> items) {
+    final rows = <List<Map<String, String>>>[];
+    for (var index = 0; index < items.length; index++) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': '🎯 ${index + 1}. ${items[index].title}'},
+        ],
+      );
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{'text': buttonBack},
+        <String, String>{'text': buttonMainMenu},
+      ],
+    );
+    return <String, Object?>{
+      'keyboard': rows,
+      'resize_keyboard': true,
+      'one_time_keyboard': false,
+    };
+  }
+
+  Map<String, Object?> bookingActionsKeyboard() {
+    return <String, Object?>{
+      'keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': buttonPaymentDetails},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': buttonBack},
+          <String, String>{'text': buttonMainMenu},
+        ],
+      ],
+      'resize_keyboard': true,
+      'one_time_keyboard': false,
+    };
+  }
+
+  Map<String, Object?> paymentConfirmationKeyboard() {
+    return <String, Object?>{
+      'keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': buttonSubmitPayment},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': buttonBack},
+          <String, String>{'text': buttonMainMenu},
+        ],
+      ],
       'resize_keyboard': true,
       'one_time_keyboard': false,
     };

@@ -46,11 +46,16 @@ final class SqliteBookingRepository implements BookingRepository {
         location TEXT NOT NULL,
         status TEXT NOT NULL,
         payment_note TEXT,
+        reminder_count INTEGER NOT NULL DEFAULT 0,
+        last_reminder_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         UNIQUE(user_id, training_key)
       );
     ''');
+    _addColumnIfMissing(
+        db, 'ALTER TABLE bookings ADD COLUMN reminder_count INTEGER NOT NULL DEFAULT 0;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN last_reminder_at TEXT;');
     db.execute(
       'CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);',
     );
@@ -205,6 +210,49 @@ final class SqliteBookingRepository implements BookingRepository {
     return _findBookingById(bookingId);
   }
 
+  @override
+  Future<List<TrainingBooking>> listPendingPaymentForReminder({
+    required DateTime createdBefore,
+    required DateTime remindedBefore,
+    int limit = 20,
+  }) async {
+    _expireOverduePendingBookings();
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE status = ?
+        AND created_at <= ?
+        AND (last_reminder_at IS NULL OR last_reminder_at <= ?)
+      ORDER BY created_at ASC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        BookingStatus.pendingPayment.dbValue,
+        createdBefore.toUtc().toIso8601String(),
+        remindedBefore.toUtc().toIso8601String(),
+        limit,
+      ],
+    );
+    return result.map(_rowToBooking).toList(growable: false);
+  }
+
+  @override
+  Future<void> markReminderSent(int bookingId) async {
+    final db = _database;
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    db.execute(
+      '''
+      UPDATE bookings
+      SET reminder_count = reminder_count + 1,
+          last_reminder_at = ?,
+          updated_at = ?
+      WHERE id = ?;
+      ''',
+      <Object?>[nowIso, nowIso, bookingId],
+    );
+  }
+
   void _expireOverduePendingBookings() {
     final db = _database;
     final cutoff = _nowProvider().toUtc().subtract(_pendingPaymentTtl).toIso8601String();
@@ -269,5 +317,15 @@ final class SqliteBookingRepository implements BookingRepository {
       createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
       updatedAt: DateTime.parse(row['updated_at'] as String).toLocal(),
     );
+  }
+
+  void _addColumnIfMissing(Database db, String sql) {
+    try {
+      db.execute(sql);
+    } on SqliteException catch (error) {
+      if (!error.toString().contains('duplicate column name')) {
+        rethrow;
+      }
+    }
   }
 }

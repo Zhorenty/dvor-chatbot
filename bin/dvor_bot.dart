@@ -26,12 +26,16 @@ Future<void> main(List<String> args) async {
     config: config,
     client: client,
     scheduleRepository: scheduleRepository,
+    bookingRepository: bookingRepository,
+    sender: client,
+    templates: templates,
     privateHandlers: PrivateHandlers(
       sender: client,
       scheduleRepository: scheduleRepository,
       bookingRepository: bookingRepository,
       templates: templates,
       adminUserIds: config.adminUserIds,
+      adminChatId: config.adminChatId,
     ),
     groupHandlers: GroupHandlers(
       sender: client,

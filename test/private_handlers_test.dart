@@ -156,7 +156,7 @@ void main() {
       expect(sender.messages, isEmpty);
     });
 
-    test('creates pending booking on /book', () async {
+    test('book command starts training selection flow', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();
       final handlers = PrivateHandlers(
@@ -182,8 +182,106 @@ void main() {
       });
 
       expect(handled, isTrue);
+      expect(bookingRepository.createCalls, 0);
+      expect(sender.messages.single.text, contains('Выбери тренировку'));
+    });
+
+    test('creates booking after selecting a training button', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Book me',
+              startsAt: DateTime(2026, 7, 10, 18, 0),
+              location: 'Hall',
+            ),
+            TrainingInfo(
+              title: 'Second session',
+              startsAt: DateTime(2026, 7, 11, 18, 0),
+              location: 'Hall 2',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 161, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1601},
+        'text': '/book',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 161, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1601},
+        'text': '🎯 2. Second session',
+      });
+
+      expect(handled, isTrue);
       expect(bookingRepository.createCalls, 1);
-      expect(sender.messages.single.text, contains('записал тебя'));
+      expect(bookingRepository.lastCreatedTraining?.title, 'Second session');
+      expect(sender.messages.last.text, contains('записал тебя'));
+    });
+
+    test('paid button is available only after payment details step', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..submitResult = _booking(status: BookingStatus.paymentSubmitted);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Book me',
+              startsAt: DateTime(2026, 7, 10, 18, 0),
+              location: 'Hall',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1602},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1602},
+        'text': '🎯 1. Book me',
+      });
+
+      final blocked = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1602},
+        'text': MessageTemplates.buttonSubmitPayment,
+      });
+      expect(blocked, isTrue);
+      expect(bookingRepository.submitCalls, 0);
+      expect(sender.messages.last.text, contains('Сначала открой реквизиты'));
+
+      final detailsSent = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1602},
+        'text': MessageTemplates.buttonPaymentDetails,
+      });
+      expect(detailsSent, isTrue);
+      expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
+
+      final submitted = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1602},
+        'text': MessageTemplates.buttonSubmitPayment,
+      });
+      expect(submitted, isTrue);
+      expect(bookingRepository.submitCalls, 1);
     });
 
     test('submits payment for latest pending booking', () async {
@@ -230,6 +328,34 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages.single.text, contains('Заявки на подтверждение оплаты'));
     });
+
+    test('notifies user and admin chat on approve payment', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1900},
+        adminChatId: -100555,
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 19, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1900},
+        'text': '/approve_payment 10',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(3));
+      expect(sender.messages[0].chatId, 1);
+      expect(sender.messages[0].text, contains('подтвердили'));
+      expect(sender.messages[1].chatId, -100555);
+      expect(sender.messages[1].text, contains('Модерация оплаты выполнена'));
+      expect(sender.messages[2].chatId, 19);
+      expect(sender.messages[2].text, contains('Статус записи #10 обновлен'));
+    });
   });
 }
 
@@ -258,6 +384,9 @@ final class _FakeBookingRepository implements BookingRepository {
   int submitCalls = 0;
   List<TrainingBooking> queue = const <TrainingBooking>[];
   TrainingBooking? submitResult;
+  TrainingInfo? lastCreatedTraining;
+  List<TrainingBooking> pendingForReminder = const <TrainingBooking>[];
+  int remindersMarked = 0;
 
   @override
   Future<BookingCreateResult> createPendingBooking({
@@ -265,6 +394,7 @@ final class _FakeBookingRepository implements BookingRepository {
     required TrainingInfo training,
   }) async {
     createCalls += 1;
+    lastCreatedTraining = training;
     return BookingCreateResult(
       booking: _booking(
         id: 99,
@@ -316,6 +446,20 @@ final class _FakeBookingRepository implements BookingRepository {
   @override
   Future<TrainingBooking?> updateStatus(int bookingId, BookingStatus status) async {
     return _booking(id: bookingId, status: status);
+  }
+
+  @override
+  Future<List<TrainingBooking>> listPendingPaymentForReminder({
+    required DateTime createdBefore,
+    required DateTime remindedBefore,
+    int limit = 20,
+  }) async {
+    return pendingForReminder.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<void> markReminderSent(int bookingId) async {
+    remindersMarked += 1;
   }
 }
 

@@ -28,4 +28,12 @@ abstract interface class BookingRepository {
     int bookingId,
     BookingStatus status,
   );
+
+  Future<List<TrainingBooking>> listPendingPaymentForReminder({
+    required DateTime createdBefore,
+    required DateTime remindedBefore,
+    int limit = 20,
+  });
+
+  Future<void> markReminderSent(int bookingId);
 }

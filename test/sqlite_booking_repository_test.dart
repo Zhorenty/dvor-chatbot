@@ -76,5 +76,40 @@ void main() {
 
       await repository.close();
     });
+
+    test('returns pending bookings for reminder and marks reminder sent', () async {
+      final now = DateTime(2030, 6, 1, 12, 0);
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => now,
+      );
+      await repository.init();
+
+      final created = await repository.createPendingBooking(
+        userId: 3001,
+        training: TrainingInfo(
+          title: 'Strength',
+          startsAt: DateTime(2030, 6, 12, 18),
+          location: 'Gym C',
+        ),
+      );
+
+      final reminders = await repository.listPendingPaymentForReminder(
+        createdBefore: now.add(const Duration(minutes: 1)),
+        remindedBefore: now.add(const Duration(minutes: 1)),
+      );
+      expect(reminders, hasLength(1));
+      expect(reminders.single.id, created.booking.id);
+
+      await repository.markReminderSent(created.booking.id);
+
+      final afterMark = await repository.listPendingPaymentForReminder(
+        createdBefore: now.add(const Duration(minutes: 1)),
+        remindedBefore: now.subtract(const Duration(minutes: 1)),
+      );
+      expect(afterMark, isEmpty);
+
+      await repository.close();
+    });
   });
 }

@@ -16,6 +16,7 @@ final class AppConfig {
     required this.bookingsDbPath,
     required this.pendingPaymentTtlMinutes,
     required this.adminUserIds,
+    required this.adminChatId,
     required this.logLevel,
   });
 
@@ -29,6 +30,7 @@ final class AppConfig {
   final String bookingsDbPath;
   final int pendingPaymentTtlMinutes;
   final Set<int> adminUserIds;
+  final int? adminChatId;
   final String logLevel;
 
   static AppConfig fromArgs(List<String> args) {
@@ -53,6 +55,10 @@ final class AppConfig {
       ..addOption(
         'admin-user-ids',
         help: 'Comma-separated Telegram user ids with admin actions',
+      )
+      ..addOption(
+        'admin-chat-id',
+        help: 'Telegram chat id for admin notifications',
       )
       ..addOption(
         'bookings-db-path',
@@ -116,6 +122,7 @@ final class AppConfig {
     final scheduleSyncIntervalRaw =
         resolve('SCHEDULE_SYNC_INTERVAL_SECONDS', 'schedule-sync-interval-seconds');
     final adminUserIdsRaw = resolve('ADMIN_USER_IDS', 'admin-user-ids');
+    final adminChatIdRaw = resolve('ADMIN_CHAT_ID', 'admin-chat-id');
     final bookingsDbPath =
         resolve('BOOKINGS_DB_PATH', 'bookings-db-path') ?? 'data/bookings.sqlite';
     final pendingPaymentTtlRaw =
@@ -144,6 +151,7 @@ final class AppConfig {
       bookingsDbPath: bookingsDbPath,
       pendingPaymentTtlMinutes: int.tryParse(pendingPaymentTtlRaw ?? '')?.clamp(5, 1440) ?? 120,
       adminUserIds: _parseIntSet(adminUserIdsRaw),
+      adminChatId: int.tryParse(adminChatIdRaw ?? ''),
       logLevel: logLevel,
     );
   }
