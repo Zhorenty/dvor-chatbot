@@ -751,6 +751,39 @@ void main() {
       expect(text, contains('#91'));
     });
 
+    test('shows date without time for hike and trail bookings', () {
+      final templates = const MessageTemplates();
+      final text = templates.myBookings(
+        <TrainingBooking>[
+          _booking(
+            id: 92,
+            title: '🏃 Трейл: TRAIL двора — Адыгея',
+            startsAt: DateTime(2026, 6, 6, 0, 0),
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 93,
+            title: '🥾 Поход: Лаго-Наки',
+            startsAt: DateTime(2026, 6, 7, 14, 30),
+            status: BookingStatus.pendingPayment,
+          ),
+          _booking(
+            id: 94,
+            title: 'Тренировка: Функциональная',
+            startsAt: DateTime(2026, 6, 8, 19, 15),
+            status: BookingStatus.pendingPayment,
+          ),
+        ],
+        now: DateTime(2026, 6, 1, 12, 0),
+      );
+
+      expect(text, contains('🏃 Трейл: TRAIL двора — Адыгея\n🕒 Когда: 06.06.2026\n'));
+      expect(text, contains('🥾 Поход: Лаго-Наки\n🕒 Когда: 07.06.2026\n'));
+      expect(text, contains('Тренировка: Функциональная\n🕒 Когда: 08.06.2026 19:15\n'));
+      expect(text, isNot(contains('06.06.2026 00:00')));
+      expect(text, isNot(contains('07.06.2026 14:30')));
+    });
+
     test('shows participants list for selected admin category', () async {
       final sender = _FakeSender();
       final training = TrainingInfo(
@@ -854,7 +887,7 @@ void main() {
 
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 19, 'type': 'private'},
-        'from': <String, dynamic>{'id': 1900},
+        'from': <String, dynamic>{'id': 1900, 'username': 'chief_admin'},
         'text': '/approve_payment 10',
       });
 
@@ -864,6 +897,8 @@ void main() {
       expect(sender.messages[0].text, contains('подтвердили'));
       expect(sender.messages[1].chatId, -100555);
       expect(sender.messages[1].text, contains('Модерация оплаты выполнена'));
+      expect(sender.messages[1].text, contains('Пользователь: tg://user?id=1 (1)'));
+      expect(sender.messages[1].text, contains('Проверил админ: @chief_admin (1900)'));
       expect(sender.messages[2].chatId, 19);
       expect(sender.messages[2].text, contains('Статус записи #10 обновлен'));
     });
@@ -883,7 +918,7 @@ void main() {
       final handled = await handlers.handle(<String, dynamic>{
         'callback_query': <String, dynamic>{
           'id': 'cbq-1',
-          'from': <String, dynamic>{'id': 1950},
+          'from': <String, dynamic>{'id': 1950, 'username': 'moderator_anna'},
           'data': '${MessageTemplates.callbackRejectPaymentPrefix}22',
           'message': <String, dynamic>{
             'chat': <String, dynamic>{'id': 1950, 'type': 'private'},
@@ -896,6 +931,7 @@ void main() {
       expect(sender.messages[0].chatId, 1);
       expect(sender.messages[0].text, contains('отклонили'));
       expect(sender.messages[1].chatId, -100556);
+      expect(sender.messages[1].text, contains('Проверил админ: @moderator_anna (1950)'));
       expect(sender.messages[2].chatId, 1950);
       expect(sender.messages[2].text, contains('Статус записи #22 обновлен'));
     });

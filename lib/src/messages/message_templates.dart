@@ -197,7 +197,8 @@ final class MessageTemplates {
     final past = bookings.where((booking) => booking.startsAt.isBefore(splitPoint)).toList();
     past.sort((left, right) => right.startsAt.compareTo(left.startsAt));
 
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final lines = <String>['Твои записи 🗂'];
 
     if (upcoming.isNotEmpty) {
@@ -205,7 +206,7 @@ final class MessageTemplates {
       for (final booking in upcoming) {
         lines.add(
           '\n• #${booking.id} ${booking.trainingTitle}\n'
-          '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+          '🕒 Когда: ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
           'Статус: ${_statusLabel(booking.status)}',
         );
       }
@@ -216,7 +217,7 @@ final class MessageTemplates {
       for (final booking in past) {
         lines.add(
           '\n• #${booking.id} ${booking.trainingTitle}\n'
-          '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+          '🕒 Когда: ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
           'Статус: ${_statusLabel(booking.status)}',
         );
       }
@@ -333,12 +334,13 @@ final class MessageTemplates {
   String paymentReviewAdminNotification({
     required TrainingBooking booking,
     required int moderatorUserId,
+    String? moderatorUsername,
   }) {
     return 'Модерация оплаты выполнена 🧾\n'
         'Запись: #${booking.id}\n'
-        'Пользователь: ${booking.userId}\n'
+        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
         'Статус: ${_statusLabel(booking.status)}\n'
-        'Проверил админ: $moderatorUserId';
+        'Проверил админ: ${_userTagById(moderatorUserId, username: moderatorUsername)} ($moderatorUserId)';
   }
 
   String pendingPaymentReminder(TrainingBooking booking) {
@@ -480,11 +482,15 @@ final class MessageTemplates {
   }
 
   String _userTag(TrainingBooking booking) {
-    final username = booking.userUsername?.trim();
-    if (username != null && username.isNotEmpty) {
-      return '@${username.startsWith('@') ? username.substring(1) : username}';
+    return _userTagById(booking.userId, username: booking.userUsername);
+  }
+
+  String _userTagById(int userId, {String? username}) {
+    final normalizedUsername = username?.trim();
+    if (normalizedUsername != null && normalizedUsername.isNotEmpty) {
+      return '@${normalizedUsername.startsWith('@') ? normalizedUsername.substring(1) : normalizedUsername}';
     }
-    return 'tg://user?id=${booking.userId}';
+    return 'tg://user?id=$userId';
   }
 
   String _trainingPriceLabel(int? price) {
@@ -492,6 +498,21 @@ final class MessageTemplates {
       return 'бесплатная';
     }
     return '$price ₽';
+  }
+
+  String _myBookingDateLabel(
+    TrainingBooking booking,
+    DateFormat dateTimeFormatter,
+    DateFormat dateOnlyFormatter,
+  ) {
+    if (_isOutdoorBooking(booking.trainingTitle)) {
+      return dateOnlyFormatter.format(booking.startsAt);
+    }
+    return dateTimeFormatter.format(booking.startsAt);
+  }
+
+  bool _isOutdoorBooking(String title) {
+    return title.startsWith('🥾 Поход:') || title.startsWith('🏃 Трейл:');
   }
 
   String _outdoorActivitiesList({

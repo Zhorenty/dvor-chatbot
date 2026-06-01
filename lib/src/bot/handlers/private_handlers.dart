@@ -444,7 +444,11 @@ final class PrivateHandlers {
           text.startsWith('/approve_payment') ? BookingStatus.paid : BookingStatus.paymentRejected;
       final booking = await _bookingRepository.updateStatus(bookingId, status);
       if (booking != null) {
-        await _notifyAboutPaymentReview(booking, moderatorUserId: userId);
+        await _notifyAboutPaymentReview(
+          booking,
+          moderatorUserId: userId,
+          moderatorUsername: context.from?['username']?.toString(),
+        );
       }
       await _sender.sendMessage(
         chatId,
@@ -780,6 +784,7 @@ final class PrivateHandlers {
   Future<void> _notifyAboutPaymentReview(
     TrainingBooking booking, {
     required int? moderatorUserId,
+    String? moderatorUsername,
   }) async {
     try {
       await _sender.sendMessage(
@@ -802,6 +807,7 @@ final class PrivateHandlers {
         _templates.paymentReviewAdminNotification(
           booking: booking,
           moderatorUserId: moderatorUserId,
+          moderatorUsername: moderatorUsername,
         ),
       );
     } on Object catch (error, stackTrace) {
