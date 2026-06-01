@@ -20,6 +20,7 @@ final class MessageTemplates {
   static const String buttonRefreshSchedule = '🔄 Обновить расписание';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
   static const String buttonParticipantsList = '👥 Список записавшихся';
+  static const String buttonNoblesList = '🏰 Список дворян';
   static const String callbackApprovePaymentPrefix = 'payment:approve:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';
   static const String scheduleDocumentUrl =
@@ -277,6 +278,28 @@ final class MessageTemplates {
     return lines.join('\n');
   }
 
+  String noblesList(
+    List<({int userId, String? username, int trainingsCount})> users, {
+    int totalTrainings = 0,
+  }) {
+    if (users.isEmpty) {
+      return 'Пока нет данных по записям, список дворян пуст.';
+    }
+    final lines = <String>[
+      'Список дворян 🏰',
+      'Всего записей на тренировки: $totalTrainings',
+      '',
+    ];
+    for (var index = 0; index < users.length; index++) {
+      final user = users[index];
+      lines.add(
+        '${index + 1}. ${_userTagById(user.userId, username: user.username)} (${user.userId}) — '
+        '${user.trainingsCount}',
+      );
+    }
+    return lines.join('\n');
+  }
+
   String adminOnlyAction() {
     return 'Это действие доступно только администраторам 🔒';
   }
@@ -390,6 +413,7 @@ final class MessageTemplates {
           ],
           <Map<String, String>>[
             <String, String>{'text': buttonParticipantsList},
+            <String, String>{'text': buttonNoblesList},
           ],
         ],
         'resize_keyboard': true,

@@ -422,6 +422,20 @@ final class PrivateHandlers {
     }
 
     if (text != null &&
+        (text == MessageTemplates.buttonNoblesList || text.startsWith('/nobles_list'))) {
+      if (!isAdmin) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      await _sendNoblesList(chatId: chatId, isAdmin: isAdmin);
+      return true;
+    }
+
+    if (text != null &&
         (text.startsWith('/approve_payment') || text.startsWith('/reject_payment'))) {
       if (!isAdmin) {
         await _sender.sendMessage(
@@ -563,6 +577,41 @@ final class PrivateHandlers {
         replyMarkup: _templates.paymentDecisionInlineKeyboard(booking.id),
       );
     }
+  }
+
+  Future<void> _sendNoblesList({
+    required int chatId,
+    required bool isAdmin,
+  }) async {
+    final statusBatches = await Future.wait<List<TrainingBooking>>(<Future<List<TrainingBooking>>>[
+      _bookingRepository.listByStatus(BookingStatus.pendingPayment, limit: 1000),
+      _bookingRepository.listByStatus(BookingStatus.paymentSubmitted, limit: 1000),
+      _bookingRepository.listByStatus(BookingStatus.paid, limit: 1000),
+      _bookingRepository.listByStatus(BookingStatus.paymentRejected, limit: 1000),
+    ]);
+    final allBookings = statusBatches.expand((items) => items);
+    final aggregated = <int, ({int userId, String? username, int trainingsCount})>{};
+    var totalTrainings = 0;
+    for (final booking in allBookings) {
+      totalTrainings += 1;
+      final current = aggregated[booking.userId];
+      aggregated[booking.userId] = (
+        userId: booking.userId,
+        username: booking.userUsername ?? current?.username,
+        trainingsCount: (current?.trainingsCount ?? 0) + 1,
+      );
+    }
+    final users = aggregated.values.toList(growable: false)
+      ..sort(
+        (left, right) => right.trainingsCount != left.trainingsCount
+            ? right.trainingsCount.compareTo(left.trainingsCount)
+            : left.userId.compareTo(right.userId),
+      );
+    await _sender.sendMessage(
+      chatId,
+      _templates.noblesList(users, totalTrainings: totalTrainings),
+      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+    );
   }
 
   List<TrainingInfo> _participantItemsByCategory(_ActivityCategory category) {

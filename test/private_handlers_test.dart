@@ -54,6 +54,7 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonRefreshSchedule));
       expect(buttons, contains(MessageTemplates.buttonPaymentsQueue));
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
+      expect(buttons, contains(MessageTemplates.buttonNoblesList));
       expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
       expect(buttons, isNot(contains(MessageTemplates.buttonMyBookings)));
@@ -830,6 +831,79 @@ void main() {
       expect(sender.messages.last.text, contains('@runner_one'));
     });
 
+    test('shows nobles list for admin with training counts', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          _booking(
+            id: 801,
+            userId: 5002,
+            userUsername: 'runner_two',
+            status: BookingStatus.pendingPayment,
+          ),
+          _booking(
+            id: 802,
+            userId: 5001,
+            userUsername: 'runner_one',
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 803,
+            userId: 5001,
+            userUsername: 'runner_one',
+            status: BookingStatus.paymentSubmitted,
+          ),
+          _booking(
+            id: 804,
+            userId: 5003,
+            status: BookingStatus.paymentRejected,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2100},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 21, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2100},
+        'text': MessageTemplates.buttonNoblesList,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      final text = sender.messages.single.text;
+      expect(text, contains('Список дворян'));
+      expect(text, contains('Всего записей на тренировки: 4'));
+      expect(text, contains('1. @runner_one (5001) — 2'));
+      expect(text, contains('2. @runner_two (5002) — 1'));
+      expect(text, contains('tg://user?id=5003 (5003) — 1'));
+    });
+
+    test('forbids nobles list for non-admin users', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{9999},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 22, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2200},
+        'text': MessageTemplates.buttonNoblesList,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('только администраторам'));
+    });
+
     test('shows tg user link when participant has no username', () async {
       final sender = _FakeSender();
       final training = TrainingInfo(
@@ -1050,7 +1124,7 @@ final class _FakeBookingRepository implements BookingRepository {
     BookingStatus status, {
     int limit = 20,
   }) async {
-    return queue;
+    return queue.where((item) => item.status == status).take(limit).toList(growable: false);
   }
 
   @override
