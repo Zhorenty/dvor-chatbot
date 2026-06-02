@@ -672,8 +672,8 @@ final class PrivateHandlers {
       );
       await _sender.sendMessage(
         adminChatId,
-        _templates.paymentSubmittedAdminNotification(booking),
-        replyMarkup: _templates.paymentDecisionInlineKeyboard(booking.id),
+        _templates.paymentSubmittedAdminNotification(),
+        replyMarkup: _templates.openPaymentsQueueInlineKeyboard(),
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about payment submission: $error', stackTrace);

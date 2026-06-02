@@ -118,5 +118,8 @@ String? callbackToCommandText(String? callbackData) {
     final bookingId = int.tryParse(rawId);
     return bookingId == null ? null : '/reject_payment $bookingId';
   }
+  if (callbackData == MessageTemplates.callbackOpenPaymentsQueue) {
+    return '/payments_queue';
+  }
   return null;
 }

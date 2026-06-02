@@ -27,6 +27,7 @@ final class MessageTemplates {
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
   static const String callbackApprovePaymentPrefix = MessageCopy.callbackApprovePaymentPrefix;
   static const String callbackRejectPaymentPrefix = MessageCopy.callbackRejectPaymentPrefix;
+  static const String callbackOpenPaymentsQueue = MessageCopy.callbackOpenPaymentsQueue;
   static const String scheduleDocumentUrl = MessageCopy.scheduleDocumentUrl;
 
   String privateWelcome() {
@@ -183,17 +184,10 @@ final class MessageTemplates {
         'Статус: ${_statusLabel(booking.status)}.';
   }
 
-  String paymentSubmittedAdminNotification(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final note = booking.paymentNote?.trim();
-    return 'Новое подтверждение оплаты 💸\n'
-        'Запись: #${booking.id}\n'
-        'Пользователь: ${booking.userId}\n'
-        'Тренировка: ${booking.trainingTitle}\n'
-        'Когда: ${formatter.format(booking.startsAt)}\n'
-        'Статус: ${_statusLabel(booking.status)}'
-        '${note == null || note.isEmpty ? '' : '\nКомментарий: $note'}\n\n'
-        'Проверь заявку и нажми кнопку ниже 👇';
+  String paymentSubmittedAdminNotification() {
+    return 'Новое подтверждение оплаты 💸\n\n'
+        'Пришла новая заявка на проверку оплаты.\n'
+        'Нажми кнопку ниже, чтобы открыть очередь заявок 👇';
   }
 
   String starterBonusApplied(TrainingBooking booking) {
@@ -349,6 +343,10 @@ final class MessageTemplates {
 
   Map<String, Object?> paymentDecisionInlineKeyboard(int bookingId) {
     return TelegramKeyboards.paymentDecisionInlineKeyboard(bookingId);
+  }
+
+  Map<String, Object?> openPaymentsQueueInlineKeyboard() {
+    return TelegramKeyboards.openPaymentsQueueInlineKeyboard();
   }
 
   String bookingNotFound(int id) {

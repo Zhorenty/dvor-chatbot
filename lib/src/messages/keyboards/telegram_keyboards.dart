@@ -123,4 +123,17 @@ final class TelegramKeyboards {
       ],
     };
   }
+
+  static Map<String, Object?> openPaymentsQueueInlineKeyboard() {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonPaymentsQueue,
+            'callback_data': MessageCopy.callbackOpenPaymentsQueue,
+          },
+        ],
+      ],
+    };
+  }
 }

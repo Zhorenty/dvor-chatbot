@@ -837,6 +837,11 @@ void main() {
       final adminMarkup = adminNotification.replyMarkup;
       expect(adminMarkup, isNotNull);
       expect(adminMarkup!['inline_keyboard'], isA<List<Object?>>());
+      final adminKeyboard = adminMarkup['inline_keyboard']! as List<Object?>;
+      final adminFirstRow = adminKeyboard.first as List<Object?>;
+      final openQueueButton = adminFirstRow.first as Map<Object?, Object?>;
+      expect(openQueueButton['text'], MessageTemplates.buttonPaymentsQueue);
+      expect(openQueueButton['callback_data'], MessageTemplates.callbackOpenPaymentsQueue);
       final userConfirmation = sender.messages.last;
       expect(userConfirmation.chatId, 1701);
       expect(
@@ -1188,6 +1193,33 @@ void main() {
       expect(sender.messages[1].text, contains('Проверил админ: @moderator_anna (1950)'));
       expect(sender.messages[2].chatId, 1950);
       expect(sender.messages[2].text, contains('Статус записи #22 обновлен'));
+    });
+
+    test('opens payments queue flow from admin notification callback', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1952},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'callback_query': <String, dynamic>{
+          'id': 'cbq-open-queue',
+          'from': <String, dynamic>{'id': 1952},
+          'data': MessageTemplates.callbackOpenPaymentsQueue,
+          'message': <String, dynamic>{
+            'chat': <String, dynamic>{'id': 1952, 'type': 'private'},
+          },
+        },
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.chatId, 1952);
+      expect(sender.messages.single.text, contains('Выбери категорию для заявок'));
     });
 
     test('payment moderation callback is not treated as training selection', () async {
