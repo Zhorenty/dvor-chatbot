@@ -742,6 +742,10 @@ void main() {
         'from': <String, dynamic>{'id': 1620},
         'text': MessageTemplates.buttonCategoryHikes,
       });
+      final chooseActivityText = sender.messages.last.text;
+      expect(chooseActivityText, contains('Выбери мероприятие для записи'));
+      expect(chooseActivityText, contains('🥾 Поход: Поход на хребет — 13.07.2026'));
+      expect(chooseActivityText, isNot(contains('13.07.2026 00:00')));
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 162, 'type': 'private'},
         'from': <String, dynamic>{'id': 1620},
@@ -1085,6 +1089,28 @@ void main() {
       expect(text, contains('Тренировка: Функциональная\n🕒 Когда: 08.06.2026 19:15\n'));
       expect(text, isNot(contains('06.06.2026 00:00')));
       expect(text, isNot(contains('07.06.2026 14:30')));
+    });
+
+    test('uses date without time in outdoor booking confirmations', () {
+      final templates = const MessageTemplates();
+      final outdoorBooking = _booking(
+        id: 95,
+        trainingKey: 'hikes|2026-06-07T00:00:00.000Z|🥾 Поход: ЧЕРНОГОР|Маршрут',
+        title: '🥾 Поход: ЧЕРНОГОР ВОСХОЖДЕНИЕ',
+        startsAt: DateTime(2026, 6, 7, 14, 30),
+      );
+
+      final createdText = templates.bookingCreated(outdoorBooking);
+      final existingText = templates.bookingAlreadyExists(outdoorBooking);
+      final reminderText = templates.pendingPaymentReminder(outdoorBooking);
+
+      expect(createdText, contains('🕒 Когда: 07.06.2026'));
+      expect(existingText, contains('🕒 Когда: 07.06.2026'));
+      expect(reminderText, contains('ЧЕРНОГОР ВОСХОЖДЕНИЕ (07.06.2026)'));
+
+      expect(createdText, isNot(contains('07.06.2026 14:30')));
+      expect(existingText, isNot(contains('07.06.2026 14:30')));
+      expect(reminderText, isNot(contains('07.06.2026 14:30')));
     });
 
     test('reschedules training booking from my bookings and notifies admin chat', () async {

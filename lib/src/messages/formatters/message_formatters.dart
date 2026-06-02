@@ -1,5 +1,7 @@
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
+import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:intl/intl.dart';
 
 final class MessageFormatters {
@@ -62,13 +64,36 @@ final class MessageFormatters {
     DateFormat dateTimeFormatter,
     DateFormat dateOnlyFormatter,
   ) {
-    if (_isOutdoorBooking(booking.trainingTitle)) {
+    if (isOutdoorBooking(booking)) {
       return dateOnlyFormatter.format(booking.startsAt);
     }
     return dateTimeFormatter.format(booking.startsAt);
   }
 
-  static bool _isOutdoorBooking(String title) {
+  static String trainingDateLabel(
+    TrainingInfo training,
+    DateFormat dateTimeFormatter,
+    DateFormat dateOnlyFormatter,
+  ) {
+    if (_isOutdoorCategory(training.category)) {
+      return dateOnlyFormatter.format(training.startsAt);
+    }
+    return dateTimeFormatter.format(training.startsAt);
+  }
+
+  static bool isOutdoorBooking(TrainingBooking booking) {
+    final trainingKey = booking.trainingKey.toLowerCase();
+    if (trainingKey.startsWith('hikes|') || trainingKey.startsWith('trails|')) {
+      return true;
+    }
+    return _isOutdoorBookingTitle(booking.trainingTitle);
+  }
+
+  static bool _isOutdoorCategory(ActivityCategory category) {
+    return category == ActivityCategory.hikes || category == ActivityCategory.trails;
+  }
+
+  static bool _isOutdoorBookingTitle(String title) {
     return title.startsWith('🥾 Поход:') || title.startsWith('🏃 Трейл:');
   }
 }

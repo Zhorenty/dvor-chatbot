@@ -194,22 +194,24 @@ final class MessageTemplates {
   }
 
   String bookingCreated(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Отлично, записал тебя! ✅\n'
         'Статус: ${_statusLabel(booking.status)}\n'
         'Номер записи: ${booking.id}\n'
         'Тренировка: ${booking.trainingTitle}\n'
-        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${booking.location}\n\n'
         '${paymentDetailsSent(booking)}';
   }
 
   String bookingAlreadyExists(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Ты уже записан(а) на эту тренировку 👌\n'
         'Номер записи: ${booking.id}\n'
         'Текущий статус: ${_statusLabel(booking.status)}\n'
-        '🕒 Когда: ${formatter.format(booking.startsAt)}';
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
   }
 
   String paymentSubmitted(TrainingBooking booking) {
@@ -300,10 +302,11 @@ final class MessageTemplates {
   }
 
   String bookingActions(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Запись #${booking.id}\n'
         '${booking.trainingTitle}\n'
-        '🕒 ${formatter.format(booking.startsAt)}\n\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n\n'
         'Выбери действие 👇';
   }
 
@@ -347,17 +350,20 @@ final class MessageTemplates {
   }
 
   String bookingCancelled(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Запись #${booking.id} отменена ✅\n'
         '${booking.trainingTitle}\n'
-        '🕒 ${formatter.format(booking.startsAt)}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         'Статус: ${_statusLabel(booking.status)}';
   }
 
   String outdoorCancellationTooLate(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
-        'До начала (${formatter.format(booking.startsAt)}) осталось меньше 7 дней.';
+        'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
+        'осталось меньше 7 дней.';
   }
 
   String paymentsQueueEmpty() => 'Очередь подтверждения оплат пока пустая ✨';
@@ -369,12 +375,13 @@ final class MessageTemplates {
   }
 
   String paymentsQueueItem(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final note = booking.paymentNote == null ? '' : '\nКомментарий: ${booking.paymentNote}';
     return 'Заявка #${booking.id}\n'
         'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
         'Тренировка: ${booking.trainingTitle}\n'
-        '🕒 ${formatter.format(booking.startsAt)}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 ${booking.location}'
         '$note\n\n'
         'Подтверди или отклони оплату кнопками ниже.';
@@ -389,14 +396,15 @@ final class MessageTemplates {
     if (trainings.isEmpty) {
       return emptyText;
     }
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final lines = <String>[title];
     for (var index = 0; index < trainings.length; index++) {
       final training = trainings[index];
       final tags = bookingsByTrainingKey[training.sessionKey] ?? const <TrainingBooking>[];
       lines.add(
         '\n${index + 1}. ${training.title}\n'
-        '🕒 ${formatter.format(training.startsAt)}\n'
+        '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 ${training.location}',
       );
       if (tags.isEmpty) {
@@ -468,7 +476,7 @@ final class MessageTemplates {
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
-    if (!_isOutdoorBookingTitle(booking.trainingTitle)) {
+    if (!MessageFormatters.isOutdoorBooking(booking)) {
       return 'Оплату по записи #${booking.id} подтвердили ✅\n'
           'Статус: ${_statusLabel(booking.status)}.\n'
           'Спасибо!';
@@ -514,19 +522,21 @@ final class MessageTemplates {
   }
 
   String bookingCancelledAdminNotification(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Отмена outdoor-записи пользователем ❌\n'
         'Запись: #${booking.id}\n'
         'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
         'Событие: ${booking.trainingTitle}\n'
-        'Дата: ${formatter.format(booking.startsAt)}';
+        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
   }
 
   String pendingPaymentReminder(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Напоминание об оплате 💸\n'
         'Запись: #${booking.id}\n'
-        '${booking.trainingTitle} (${formatter.format(booking.startsAt)})\n'
+        '${booking.trainingTitle} (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)})\n'
         'Текущий статус: ${_statusLabel(booking.status)}\n\n'
         '${paymentInstructions(booking.id)}\n\n'
         'После оплаты отправь в этот чат файл с подтверждением (чек/скрин).';
@@ -536,20 +546,23 @@ final class MessageTemplates {
     if (items.isEmpty) {
       return noUpcomingForBooking();
     }
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final lines = <String>['Выбери мероприятие для записи 👇'];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       final feeLabel = item.price == null ? '' : ', взнос: ${_trainingPriceLabel(item.price)}';
       lines.add(
-        '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} (${item.location}$feeLabel)',
+        '${index + 1}. ${item.title} — '
+        '${_trainingDateLabel(item, dateTimeFormatter, dateOnlyFormatter)} '
+        '(${item.location}$feeLabel)',
       );
     }
     return lines.join('\n');
   }
 
   String paymentDetailsSent(TrainingBooking booking) {
-    if (!_isOutdoorBookingTitle(booking.trainingTitle)) {
+    if (!MessageFormatters.isOutdoorBooking(booking)) {
       return '${paymentInstructions(booking.id)}\n\n'
           'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
           'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
@@ -563,11 +576,6 @@ final class MessageTemplates {
         '\n\n'
         'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
         'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
-  }
-
-  bool _isOutdoorBookingTitle(String title) {
-    final normalized = title.toLowerCase();
-    return normalized.contains('поход') || normalized.contains('трейл');
   }
 
   String paymentProofRequired() {
@@ -650,6 +658,30 @@ final class MessageTemplates {
   ) {
     return MessageFormatters.bookingDateLabel(
       booking,
+      dateTimeFormatter,
+      dateOnlyFormatter,
+    );
+  }
+
+  String _bookingDateLabel(
+    TrainingBooking booking,
+    DateFormat dateTimeFormatter,
+    DateFormat dateOnlyFormatter,
+  ) {
+    return MessageFormatters.bookingDateLabel(
+      booking,
+      dateTimeFormatter,
+      dateOnlyFormatter,
+    );
+  }
+
+  String _trainingDateLabel(
+    TrainingInfo training,
+    DateFormat dateTimeFormatter,
+    DateFormat dateOnlyFormatter,
+  ) {
+    return MessageFormatters.trainingDateLabel(
+      training,
       dateTimeFormatter,
       dateOnlyFormatter,
     );
