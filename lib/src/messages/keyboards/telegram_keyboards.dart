@@ -30,8 +30,6 @@ final class TelegramKeyboards {
       ],
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonBookTraining},
-      ],
-      <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonMyBookings},
       ],
       <Map<String, String>>[

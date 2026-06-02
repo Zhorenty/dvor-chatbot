@@ -128,9 +128,6 @@ final class MessageTemplates {
         '   🔗 ${trainer.link}',
         '   📝 ${trainer.description}',
       ]);
-      if (index != trainers.length - 1) {
-        lines.add('\n-----');
-      }
     }
     return lines.join('\n');
   }
