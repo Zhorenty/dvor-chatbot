@@ -18,6 +18,8 @@ abstract interface class BookingRepository {
   Future<TrainingBooking?> submitPaymentForLatestPending(
     int userId, {
     String? note,
+    int? paymentProofChatId,
+    int? paymentProofMessageId,
   });
 
   Future<List<TrainingBooking>> listByStatus(

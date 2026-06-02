@@ -18,6 +18,8 @@ TrainingBooking _booking({
   int id = 10,
   int userId = 1,
   String? userUsername,
+  int? paymentProofChatId,
+  int? paymentProofMessageId,
   String? trainingKey,
   String title = 'Training',
   DateTime? startsAt,
@@ -28,6 +30,8 @@ TrainingBooking _booking({
     id: id,
     userId: userId,
     userUsername: userUsername,
+    paymentProofChatId: paymentProofChatId,
+    paymentProofMessageId: paymentProofMessageId,
     trainingKey: trainingKey,
     title: title,
     startsAt: startsAt,
@@ -92,6 +96,33 @@ void main() {
       expect(sender.deletedMessages, hasLength(1));
       expect(sender.deletedMessages.single.chatId, -100900);
       expect(sender.deletedMessages.single.messageId, 45);
+    });
+
+    test('shows starter bonus onboarding offer on /start when available', () async {
+      final sender = _FakeSender();
+      final onboardingRepository = _FakeOnboardingRepository()
+        ..seedUser(userId: 112, bonusAvailable: true);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        onboardingRepository: onboardingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 112, 'type': 'private'},
+        'from': <String, dynamic>{'id': 112},
+        'text': '/start',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(2));
+      expect(sender.messages.first.text, contains('DVOR'));
+      expect(sender.messages.last.text, contains('бесплатная тренировка'));
+      expect(sender.messages.last.text, contains(MessageTemplates.buttonBookTraining));
+      expect(sender.messages.last.text, contains(MessageTemplates.buttonUseStarterBonus));
     });
 
     test('shows only admin buttons in private menu for admin users', () async {
@@ -402,6 +433,29 @@ void main() {
 
       expect(handled, isFalse);
       expect(sender.messages, isEmpty);
+    });
+
+    test('sends fallback for unknown private message', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 140, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1400},
+        'text': 'какая погода?',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Пока не понял сообщение'));
+      expect(sender.messages.single.text, contains(MessageTemplates.buttonHelp));
+      expect(sender.messages.single.replyMarkup, isNotNull);
     });
 
     test('book command starts booking category selection flow', () async {
@@ -829,8 +883,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.copiedMessages, hasLength(1));
-      expect(sender.copiedMessages.single.toChatId, -100777);
+      expect(sender.copiedMessages, isEmpty);
       final adminNotification = sender.messages[sender.messages.length - 2];
       expect(adminNotification.chatId, -100777);
       expect(adminNotification.text, contains('Новое подтверждение оплаты'));
@@ -852,12 +905,19 @@ void main() {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..queue = <TrainingBooking>[
-          _booking(id: 81, status: BookingStatus.paymentSubmitted),
+          _booking(
+            id: 81,
+            status: BookingStatus.paymentSubmitted,
+            paymentProofChatId: 50081,
+            paymentProofMessageId: 90081,
+          ),
           _booking(
             id: 82,
             status: BookingStatus.paymentSubmitted,
             title: '🥾 Поход: Morning session',
             userUsername: 'queue_user',
+            paymentProofChatId: 50082,
+            paymentProofMessageId: 90082,
           ),
         ];
       final handlers = PrivateHandlers(
@@ -884,6 +944,10 @@ void main() {
       expect(sender.messages, hasLength(3));
       expect(sender.messages.first.text, contains('Выбери категорию для заявок'));
       expect(sender.messages[1].text, contains('Всего ожидают проверки: 1'));
+      expect(sender.copiedMessages, hasLength(1));
+      expect(sender.copiedMessages.single.toChatId, 18);
+      expect(sender.copiedMessages.single.fromChatId, 50082);
+      expect(sender.copiedMessages.single.messageId, 90082);
 
       final firstItemMessage = sender.messages[2];
       expect(firstItemMessage.text, contains('Заявка #82'));

@@ -49,6 +49,8 @@ final class SqliteBookingRepository implements BookingRepository {
         location TEXT NOT NULL,
         status TEXT NOT NULL,
         payment_note TEXT,
+        payment_proof_chat_id INTEGER,
+        payment_proof_message_id INTEGER,
         reminder_count INTEGER NOT NULL DEFAULT 0,
         last_reminder_at TEXT,
         created_at TEXT NOT NULL,
@@ -60,6 +62,8 @@ final class SqliteBookingRepository implements BookingRepository {
         db, 'ALTER TABLE bookings ADD COLUMN reminder_count INTEGER NOT NULL DEFAULT 0;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN last_reminder_at TEXT;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN user_username TEXT;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN payment_proof_chat_id INTEGER;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN payment_proof_message_id INTEGER;');
     db.execute(
       'CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);',
     );
@@ -155,6 +159,8 @@ final class SqliteBookingRepository implements BookingRepository {
   Future<TrainingBooking?> submitPaymentForLatestPending(
     int userId, {
     String? note,
+    int? paymentProofChatId,
+    int? paymentProofMessageId,
   }) async {
     _expireOverduePendingBookings();
     final db = _database;
@@ -175,12 +181,18 @@ final class SqliteBookingRepository implements BookingRepository {
     db.execute(
       '''
       UPDATE bookings
-      SET status = ?, payment_note = ?, updated_at = ?
+      SET status = ?,
+          payment_note = ?,
+          payment_proof_chat_id = ?,
+          payment_proof_message_id = ?,
+          updated_at = ?
       WHERE id = ?;
       ''',
       <Object?>[
         BookingStatus.paymentSubmitted.dbValue,
         note?.trim().isEmpty == true ? null : note?.trim(),
+        paymentProofChatId,
+        paymentProofMessageId,
         nowIso,
         bookingId,
       ],
@@ -350,6 +362,8 @@ final class SqliteBookingRepository implements BookingRepository {
       location: row['location'] as String,
       status: BookingStatus.fromDbValue(row['status'] as String),
       paymentNote: row['payment_note'] as String?,
+      paymentProofChatId: row['payment_proof_chat_id'] as int?,
+      paymentProofMessageId: row['payment_proof_message_id'] as int?,
       createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
       updatedAt: DateTime.parse(row['updated_at'] as String).toLocal(),
     );

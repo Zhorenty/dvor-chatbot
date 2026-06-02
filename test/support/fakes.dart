@@ -108,6 +108,8 @@ final class FakeBookingRepository implements BookingRepository {
   Future<TrainingBooking?> submitPaymentForLatestPending(
     int userId, {
     String? note,
+    int? paymentProofChatId,
+    int? paymentProofMessageId,
   }) async {
     submitCalls += 1;
     return submitResult;
@@ -137,6 +139,8 @@ TrainingBooking fakeBooking({
   int id = 10,
   int userId = 1,
   String? userUsername,
+  int? paymentProofChatId,
+  int? paymentProofMessageId,
   String? trainingKey,
   String title = 'Training',
   DateTime? startsAt,
@@ -154,6 +158,8 @@ TrainingBooking fakeBooking({
     location: location,
     status: status,
     paymentNote: null,
+    paymentProofChatId: paymentProofChatId,
+    paymentProofMessageId: paymentProofMessageId,
     createdAt: now,
     updatedAt: now,
   );

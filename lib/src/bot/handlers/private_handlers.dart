@@ -84,15 +84,24 @@ final class PrivateHandlers {
     final paymentProof = extractPaymentProof(context.message);
 
     if (text != null && text.startsWith('/start')) {
+      var starterBonusAvailable = false;
       if (userId != null) {
         _flowByUserId.remove(userId);
         await _handleStartCleanup(userId);
+        starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
       }
       await _sender.sendMessage(
         chatId,
         _templates.privateWelcome(),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
+      if (starterBonusAvailable) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.starterBonusOnboardingOffer(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+      }
       return true;
     }
 
@@ -349,9 +358,11 @@ final class PrivateHandlers {
       final booking = await _bookingRepository.submitPaymentForLatestPending(
         userId,
         note: paymentProof.caption,
+        paymentProofChatId: paymentProof.fromChatId,
+        paymentProofMessageId: paymentProof.messageId,
       );
       if (booking != null) {
-        await _notifyAdminAboutPaymentSubmitted(booking, paymentProof: paymentProof);
+        await _notifyAdminAboutPaymentSubmitted();
       }
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
@@ -569,7 +580,12 @@ final class PrivateHandlers {
       return true;
     }
 
-    return false;
+    await _sender.sendMessage(
+      chatId,
+      _templates.privateFallback(),
+      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+    );
+    return true;
   }
 
   String _scheduleTextByCategory(_ActivityCategory category) {
@@ -624,6 +640,19 @@ final class PrivateHandlers {
 
     await _sender.sendMessage(chatId, _templates.paymentsQueueIntro(filtered.length));
     for (final booking in filtered) {
+      final proofChatId = booking.paymentProofChatId;
+      final proofMessageId = booking.paymentProofMessageId;
+      if (proofChatId != null && proofMessageId != null) {
+        try {
+          await _sender.copyMessage(
+            chatId,
+            fromChatId: proofChatId,
+            messageId: proofMessageId,
+          );
+        } on Object catch (error, stackTrace) {
+          l.w('Failed to copy payment proof for booking ${booking.id}: $error', stackTrace);
+        }
+      }
       await _sender.sendMessage(
         chatId,
         _templates.paymentsQueueItem(booking),
@@ -656,20 +685,12 @@ final class PrivateHandlers {
     return _updateRouter.parseTrainingSelectionIndex(text);
   }
 
-  Future<void> _notifyAdminAboutPaymentSubmitted(
-    TrainingBooking booking, {
-    required PaymentProof paymentProof,
-  }) async {
+  Future<void> _notifyAdminAboutPaymentSubmitted() async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
       return;
     }
     try {
-      await _sender.copyMessage(
-        adminChatId,
-        fromChatId: paymentProof.fromChatId,
-        messageId: paymentProof.messageId,
-      );
       await _sender.sendMessage(
         adminChatId,
         _templates.paymentSubmittedAdminNotification(),

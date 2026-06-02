@@ -13,6 +13,8 @@ final class TrainingBooking {
     required this.createdAt,
     required this.updatedAt,
     this.paymentNote,
+    this.paymentProofChatId,
+    this.paymentProofMessageId,
   });
 
   final int id;
@@ -24,6 +26,8 @@ final class TrainingBooking {
   final String location;
   final BookingStatus status;
   final String? paymentNote;
+  final int? paymentProofChatId;
+  final int? paymentProofMessageId;
   final DateTime createdAt;
   final DateTime updatedAt;
 }

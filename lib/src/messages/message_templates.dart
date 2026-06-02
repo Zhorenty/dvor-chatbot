@@ -35,6 +35,12 @@ final class MessageTemplates {
         'Давай начнем: кнопки внизу помогут быстро открыть расписание, записаться и посмотреть справку 😉';
   }
 
+  String starterBonusOnboardingOffer() {
+    return '🎁 Тебе доступна бесплатная тренировка за старт!\n\n'
+        'Нажми «${MessageCopy.buttonBookTraining}», выбери тренировку и в подтверждении записи '
+        'используй кнопку «${MessageCopy.buttonUseStarterBonus}».';
+  }
+
   String privateHelp() {
     return 'Вот чем я могу помочь 👇\n'
         '• Показываю ближайшие тренировки, походы и трейлы 📅\n'
@@ -45,6 +51,12 @@ final class MessageTemplates {
         'По остальным вопросам пиши в поддержку: @dvor_support 💬\n\n'
         'Если кнопки вдруг пропали, используй команды:\n'
         '/trainings, /book, /my_bookings.';
+  }
+
+  String privateFallback() {
+    return 'Пока не понял сообщение 🤔\n'
+        'Используй кнопки меню ниже или нажми «${MessageCopy.buttonHelp}», '
+        'чтобы посмотреть доступные действия.';
   }
 
   String trainings(List<TrainingInfo> items) {
