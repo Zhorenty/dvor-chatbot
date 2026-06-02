@@ -179,13 +179,45 @@ final class PrivateHandlers {
         case _PrivateFlowStep.selectingBookingCategory:
         case _PrivateFlowStep.selectingParticipantsCategory:
         case _PrivateFlowStep.selectingPaymentsQueueCategory:
-        case _PrivateFlowStep.selectingTraining:
         case _PrivateFlowStep.selectingBookingToManage:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
             chatId,
             'Вернул в главное меню 👇',
             replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+        case _PrivateFlowStep.viewingScheduleCategory:
+          _flowByUserId[userId] =
+              flowState!.copyWith(step: _PrivateFlowStep.selectingScheduleCategory);
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseScheduleCategory(),
+            replyMarkup: _templates.categorySelectionKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.selectingTraining:
+          final selectedCategory = flowState?.selectedCategory;
+          if (selectedCategory != null && flowState?.bookingFromSchedulePreview == true) {
+            _flowByUserId[userId] = flowState!.copyWith(
+              step: _PrivateFlowStep.viewingScheduleCategory,
+              availableTrainings: const <TrainingInfo>[],
+            );
+            await _sender.sendMessage(
+              chatId,
+              _scheduleTextByCategory(selectedCategory),
+              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            );
+            return true;
+          }
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingBookingCategory,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseBookingCategory(),
+            replyMarkup: _templates.categorySelectionKeyboard(),
           );
           return true;
         case _PrivateFlowStep.paymentConfirmation:
@@ -240,6 +272,19 @@ final class PrivateHandlers {
       if (userId == null) {
         return false;
       }
+      final scheduleCategoryContext = flowState?.step == _PrivateFlowStep.viewingScheduleCategory
+          ? flowState?.selectedCategory
+          : null;
+      if (scheduleCategoryContext != null) {
+        await _openBookingByCategory(
+          chatId: chatId,
+          userId: userId,
+          isAdmin: isAdmin,
+          category: scheduleCategoryContext,
+          fromSchedulePreview: true,
+        );
+        return true;
+      }
       _flowByUserId[userId] = const _PrivateFlowState(
         step: _PrivateFlowStep.selectingBookingCategory,
         availableTrainings: <TrainingInfo>[],
@@ -265,7 +310,11 @@ final class PrivateHandlers {
         );
         return true;
       }
-      _flowByUserId.remove(userId);
+      _flowByUserId[userId] = _PrivateFlowState(
+        step: _PrivateFlowStep.viewingScheduleCategory,
+        availableTrainings: const <TrainingInfo>[],
+        selectedCategory: category,
+      );
       await _sender.sendMessage(
         chatId,
         _scheduleTextByCategory(category),
@@ -287,24 +336,12 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final upcoming = _bookableItemsByCategory(category);
-      if (upcoming.isEmpty) {
-        _flowByUserId.remove(userId);
-        await _sender.sendMessage(
-          chatId,
-          _templates.noUpcomingForBooking(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-        );
-        return true;
-      }
-      _flowByUserId[userId] = _PrivateFlowState(
-        step: _PrivateFlowStep.selectingTraining,
-        availableTrainings: upcoming,
-      );
-      await _sender.sendMessage(
-        chatId,
-        _templates.chooseTrainingForBooking(upcoming),
-        replyMarkup: _templates.bookingSelectionKeyboard(upcoming),
+      await _openBookingByCategory(
+        chatId: chatId,
+        userId: userId,
+        isAdmin: isAdmin,
+        category: category,
+        fromSchedulePreview: false,
       );
       return true;
     }
@@ -930,6 +967,36 @@ final class PrivateHandlers {
       chatId,
       _templates.noblesList(result.users, totalTrainings: result.totalTrainings),
       replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+    );
+  }
+
+  Future<void> _openBookingByCategory({
+    required int chatId,
+    required int userId,
+    required bool isAdmin,
+    required _ActivityCategory category,
+    required bool fromSchedulePreview,
+  }) async {
+    final upcoming = _bookableItemsByCategory(category);
+    if (upcoming.isEmpty) {
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        _templates.noUpcomingForBooking(),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return;
+    }
+    _flowByUserId[userId] = _PrivateFlowState(
+      step: _PrivateFlowStep.selectingTraining,
+      availableTrainings: upcoming,
+      selectedCategory: category,
+      bookingFromSchedulePreview: fromSchedulePreview,
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.chooseTrainingForBooking(upcoming),
+      replyMarkup: _templates.bookingSelectionKeyboard(upcoming),
     );
   }
 

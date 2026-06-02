@@ -1,8 +1,10 @@
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 
 enum PrivateFlowStep {
   selectingScheduleCategory,
+  viewingScheduleCategory,
   selectingBookingCategory,
   selectingParticipantsCategory,
   selectingPaymentsQueueCategory,
@@ -20,6 +22,8 @@ final class PrivateFlowState {
     this.availableBookings = const <TrainingBooking>[],
     this.activeBooking,
     this.selectedBooking,
+    this.selectedCategory,
+    this.bookingFromSchedulePreview = false,
     this.starterBonusOffered = false,
   });
 
@@ -28,6 +32,8 @@ final class PrivateFlowState {
   final List<TrainingBooking> availableBookings;
   final TrainingBooking? activeBooking;
   final TrainingBooking? selectedBooking;
+  final ActivityCategory? selectedCategory;
+  final bool bookingFromSchedulePreview;
   final bool starterBonusOffered;
 
   PrivateFlowState copyWith({
@@ -36,6 +42,8 @@ final class PrivateFlowState {
     List<TrainingBooking>? availableBookings,
     TrainingBooking? activeBooking,
     TrainingBooking? selectedBooking,
+    ActivityCategory? selectedCategory,
+    bool? bookingFromSchedulePreview,
     bool? starterBonusOffered,
   }) {
     return PrivateFlowState(
@@ -44,6 +52,8 @@ final class PrivateFlowState {
       availableBookings: availableBookings ?? this.availableBookings,
       activeBooking: activeBooking ?? this.activeBooking,
       selectedBooking: selectedBooking ?? this.selectedBooking,
+      selectedCategory: selectedCategory ?? this.selectedCategory,
+      bookingFromSchedulePreview: bookingFromSchedulePreview ?? this.bookingFromSchedulePreview,
       starterBonusOffered: starterBonusOffered ?? this.starterBonusOffered,
     );
   }

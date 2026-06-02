@@ -558,6 +558,100 @@ void main() {
       expect(sender.messages.single.text, contains('Выбери категорию для записи'));
     });
 
+    test('book button uses viewed schedule category without reselect', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Поход на Бзерпинский карниз',
+              dateFrom: DateTime(2026, 7, 20),
+              dateTo: DateTime(2026, 7, 21, 23, 59, 59),
+              description: 'Двухдневный маршрут',
+              price: 4100,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1610, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1610},
+        'text': MessageTemplates.buttonTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1610, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1610},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1610, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1610},
+        'text': MessageTemplates.buttonBookTraining,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(3));
+      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
+      expect(sender.messages.last.text, contains('🥾 Поход: Поход на Бзерпинский карниз'));
+      expect(sender.messages.last.text, isNot(contains('Выбери категорию для записи')));
+    });
+
+    test('back from quick booking returns to viewed schedule category', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.trail,
+              title: 'Трейл Фишт',
+              dateFrom: DateTime(2026, 8, 2),
+              dateTo: DateTime(2026, 8, 3, 23, 59, 59),
+              description: 'Горный маршрут',
+            ),
+          ],
+        ),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1611},
+        'text': MessageTemplates.buttonTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1611},
+        'text': MessageTemplates.buttonCategoryTrails,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1611},
+        'text': MessageTemplates.buttonBookTraining,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1611},
+        'text': MessageTemplates.buttonBack,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Ближайшие трейлы DVOR'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+    });
+
     test('creates booking after selecting a training button', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();
