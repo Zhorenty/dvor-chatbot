@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
+import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -10,6 +11,7 @@ import 'support/fakes.dart';
 
 typedef _FakeScheduleRepository = FakeScheduleRepository;
 typedef _FakeBookingRepository = FakeBookingRepository;
+typedef _FakeOnboardingRepository = FakeOnboardingRepository;
 typedef _FakeSender = FakeSender;
 
 TrainingBooking _booking({
@@ -58,6 +60,38 @@ void main() {
       expect(sender.messages.single.chatId, 11);
       expect(sender.messages.single.text, contains('DVOR'));
       expect(sender.messages.single.replyMarkup, isNotNull);
+    });
+
+    test('deletes group welcome message when user sends /start', () async {
+      final sender = _FakeSender();
+      final onboardingRepository = _FakeOnboardingRepository()
+        ..seedUser(
+          userId: 111,
+          pendingWelcome: const PendingWelcomeMessage(
+            userId: 111,
+            groupChatId: -100900,
+            welcomeMessageId: 45,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        onboardingRepository: onboardingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 111, 'type': 'private'},
+        'from': <String, dynamic>{'id': 111},
+        'text': '/start',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.deletedMessages, hasLength(1));
+      expect(sender.deletedMessages.single.chatId, -100900);
+      expect(sender.deletedMessages.single.messageId, 45);
     });
 
     test('shows only admin buttons in private menu for admin users', () async {
@@ -447,6 +481,109 @@ void main() {
       expect(bookingRepository.lastCreatedUsername, 'second_user');
       expect(sender.messages.last.text, contains('записал тебя'));
       expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
+    });
+
+    test('shows starter bonus button and applies free training once', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final onboardingRepository = _FakeOnboardingRepository()
+        ..seedUser(userId: 1604, bonusAvailable: true);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Starter session',
+              startsAt: DateTime(2026, 7, 12, 19, 0),
+              location: 'Hall',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        onboardingRepository: onboardingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 164, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1604},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 164, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1604},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 164, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1604},
+        'text': '🎯 1. Starter session',
+      });
+
+      final keyboardBefore = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(keyboardBefore, contains(MessageTemplates.buttonUseStarterBonus));
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 164, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1604},
+        'text': MessageTemplates.buttonUseStarterBonus,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Бесплатная тренировка активирована'));
+      expect(sender.messages.last.text, contains('Статус: Оплачено'));
+    });
+
+    test('sends admin notification for starter bonus booking', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final onboardingRepository = _FakeOnboardingRepository()
+        ..seedUser(userId: 1605, bonusAvailable: true);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Admin starter session',
+              startsAt: DateTime(2026, 7, 13, 19, 0),
+              location: 'Hall',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        onboardingRepository: onboardingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100778,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 165, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1605},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 165, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1605},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 165, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1605},
+        'text': '🎯 1. Admin starter session',
+      });
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 165, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1605},
+        'text': MessageTemplates.buttonUseStarterBonus,
+      });
+
+      expect(handled, isTrue);
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100778).text;
+      expect(adminMessage, contains('Стартовая бесплатная запись'));
+      expect(adminMessage, contains('Формат: бесплатная тренировка за старт'));
     });
 
     test('creates booking after selecting a hike category item', () async {

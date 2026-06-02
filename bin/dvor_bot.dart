@@ -6,7 +6,9 @@ import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_schedule_repository.dart';
+import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
+import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/static_schedule_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -20,28 +22,32 @@ Future<void> main(List<String> args) async {
   final templates = MessageTemplates();
   final scheduleRepository = _createScheduleRepository(config);
   final bookingRepository = _createBookingRepository(config);
+  final onboardingRepository = _createOnboardingRepository(config);
   await bookingRepository.init();
+  await onboardingRepository.init();
 
   final runner = BotRunner(
     config: config,
     client: client,
     scheduleRepository: scheduleRepository,
     bookingRepository: bookingRepository,
+    onboardingRepository: onboardingRepository,
     sender: client,
     templates: templates,
     privateHandlers: PrivateHandlers(
       sender: client,
       scheduleRepository: scheduleRepository,
       bookingRepository: bookingRepository,
+      onboardingRepository: onboardingRepository,
       templates: templates,
       adminUserIds: config.adminUserIds,
       adminChatId: config.adminChatId,
     ),
     groupHandlers: GroupHandlers(
       sender: client,
+      onboardingRepository: onboardingRepository,
       templates: templates,
       targetChatId: config.targetChatId,
-      sendGroupFallback: config.sendGroupFallback,
     ),
   );
 
@@ -51,6 +57,7 @@ Future<void> main(List<String> args) async {
     await runner.start();
   } finally {
     await bookingRepository.close();
+    await onboardingRepository.close();
   }
 }
 
@@ -76,6 +83,12 @@ BookingRepository _createBookingRepository(AppConfig config) {
   return SqliteBookingRepository(
     dbPath: config.bookingsDbPath,
     pendingPaymentTtl: Duration(minutes: config.pendingPaymentTtlMinutes),
+  );
+}
+
+OnboardingRepository _createOnboardingRepository(AppConfig config) {
+  return SqliteOnboardingRepository(
+    dbPath: config.bookingsDbPath,
   );
 }
 

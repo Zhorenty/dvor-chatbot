@@ -83,14 +83,25 @@ final class TelegramKeyboards {
     };
   }
 
-  static Map<String, Object?> paymentConfirmationKeyboard() {
-    return <String, Object?>{
-      'keyboard': <List<Map<String, String>>>[
+  static Map<String, Object?> paymentConfirmationKeyboard({
+    required bool showStarterBonus,
+  }) {
+    final rows = <List<Map<String, String>>>[];
+    if (showStarterBonus) {
+      rows.add(
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonBack},
-          <String, String>{'text': MessageCopy.buttonMainMenu},
+          <String, String>{'text': MessageCopy.buttonUseStarterBonus},
         ],
+      );
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonBack},
+        <String, String>{'text': MessageCopy.buttonMainMenu},
       ],
+    );
+    return <String, Object?>{
+      'keyboard': rows,
       'resize_keyboard': true,
       'one_time_keyboard': false,
     };

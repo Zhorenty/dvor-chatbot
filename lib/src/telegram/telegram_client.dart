@@ -151,6 +151,24 @@ final class TelegramClient implements MessageSender {
     return result['message_id'] as int;
   }
 
+  @override
+  Future<void> deleteMessage(
+    int chatId, {
+    required int messageId,
+  }) async {
+    final payload = await _post(
+      'deleteMessage',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'message_id': messageId,
+      },
+    );
+    final result = payload['result'];
+    if (result != true) {
+      throw const TelegramApiException('Telegram did not confirm message deletion');
+    }
+  }
+
   void close() {
     _httpClient.close();
   }

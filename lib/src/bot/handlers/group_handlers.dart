@@ -1,28 +1,28 @@
+import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
-import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:l/l.dart';
 
 final class GroupHandlers {
-  const GroupHandlers({
+  GroupHandlers({
     required MessageSender sender,
+    OnboardingRepository onboardingRepository = const NoopOnboardingRepository(),
     required MessageTemplates templates,
     required int? targetChatId,
-    required bool sendGroupFallback,
+    DateTime Function()? nowProvider,
   })  : _sender = sender,
+        _onboardingRepository = onboardingRepository,
         _templates = templates,
         _targetChatId = targetChatId,
-        _sendGroupFallback = sendGroupFallback;
+        _nowProvider = nowProvider ?? DateTime.now;
 
   final MessageSender _sender;
+  final OnboardingRepository _onboardingRepository;
   final MessageTemplates _templates;
   final int? _targetChatId;
-  final bool _sendGroupFallback;
+  final DateTime Function() _nowProvider;
 
-  Future<bool> handle(
-    Map<String, dynamic> message, {
-    required String? botUsername,
-  }) async {
+  Future<bool> handle(Map<String, dynamic> message) async {
     final chat = message['chat'];
     if (chat is! Map) {
       return false;
@@ -45,7 +45,6 @@ final class GroupHandlers {
       return false;
     }
 
-    final failedDmCount = <int>[];
     for (final item in newMembers.whereType<Map<Object?, Object?>>()) {
       final user = Map<String, dynamic>.from(item);
       if (user['is_bot'] == true) {
@@ -57,24 +56,35 @@ final class GroupHandlers {
       }
 
       try {
-        await _sender.sendMessage(userId, _templates.clubInfoPrivate());
-      } on TelegramApiException catch (error) {
-        failedDmCount.add(userId);
-        l.w('Cannot send DM to user $userId: $error');
+        final welcomeMessageId = await _sender.sendMessage(
+          chatId,
+          _templates.groupWelcome(
+            username: user['username']?.toString(),
+            userId: userId,
+            firstName: user['first_name']?.toString(),
+          ),
+          disableNotification: true,
+        );
+        final joinedAt = _extractJoinedAt(message) ?? _nowProvider();
+        await _onboardingRepository.registerGroupWelcome(
+          userId: userId,
+          groupChatId: chatId,
+          welcomeMessageId: welcomeMessageId,
+          joinedAt: joinedAt,
+        );
       } on Object catch (error) {
-        failedDmCount.add(userId);
-        l.w('Unknown DM error for user $userId: $error');
+        l.w('Failed to process welcome for user $userId: $error');
       }
     }
 
-    if (failedDmCount.isNotEmpty && _sendGroupFallback) {
-      await _sender.sendMessage(
-        chatId,
-        _templates.groupFallback(botUsername: botUsername),
-        disableNotification: true,
-      );
-    }
-
     return true;
+  }
+
+  DateTime? _extractJoinedAt(Map<String, dynamic> message) {
+    final rawDate = message['date'];
+    if (rawDate is! int) {
+      return null;
+    }
+    return DateTime.fromMillisecondsSinceEpoch(rawDate * 1000, isUtc: true).toLocal();
   }
 }

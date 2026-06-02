@@ -5,6 +5,7 @@ final class MessageCopy {
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonMyBookings = '🗂 Мои записи';
   static const String buttonSubmitPayment = '💸 Я оплатил';
+  static const String buttonUseStarterBonus = '🎁 Использовать бесплатную тренировку';
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';
   static const String buttonHelp = '🆘 Помощь';

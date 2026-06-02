@@ -10,6 +10,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private/private_flow_store.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_update_router.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
@@ -24,22 +25,28 @@ final class PrivateHandlers {
     required MessageSender sender,
     required TrainingScheduleRepository scheduleRepository,
     required BookingRepository bookingRepository,
+    OnboardingRepository onboardingRepository = const NoopOnboardingRepository(),
     required MessageTemplates templates,
     required Set<int> adminUserIds,
     int? adminChatId,
+    DateTime Function()? nowProvider,
   })  : _sender = sender,
         _scheduleRepository = scheduleRepository,
         _bookingRepository = bookingRepository,
+        _onboardingRepository = onboardingRepository,
         _templates = templates,
         _adminUserIds = adminUserIds,
-        _adminChatId = adminChatId;
+        _adminChatId = adminChatId,
+        _nowProvider = nowProvider ?? DateTime.now;
 
   final MessageSender _sender;
   final TrainingScheduleRepository _scheduleRepository;
   final BookingRepository _bookingRepository;
+  final OnboardingRepository _onboardingRepository;
   final MessageTemplates _templates;
   final Set<int> _adminUserIds;
   final int? _adminChatId;
+  final DateTime Function() _nowProvider;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
   late final ActivityCatalogService _catalogService =
       ActivityCatalogService(scheduleRepository: _scheduleRepository);
@@ -79,6 +86,7 @@ final class PrivateHandlers {
     if (text != null && text.startsWith('/start')) {
       if (userId != null) {
         _flowByUserId.remove(userId);
+        await _handleStartCleanup(userId);
       }
       await _sender.sendMessage(
         chatId,
@@ -301,16 +309,22 @@ final class PrivateHandlers {
         userUsername: context.from?['username']?.toString(),
         training: flowState.availableTrainings[index - 1],
       );
+      final selectedTraining = flowState.availableTrainings[index - 1];
+      final starterBonusOffered = selectedTraining.category == _ActivityCategory.trainings &&
+          await _onboardingRepository.hasStarterBonusAvailable(userId);
       _flowByUserId[userId] = flowState.copyWith(
         step: _PrivateFlowStep.paymentConfirmation,
         activeBooking: result.booking,
+        starterBonusOffered: starterBonusOffered,
       );
       await _sender.sendMessage(
         chatId,
         result.created
             ? _templates.bookingCreated(result.booking)
             : _templates.bookingAlreadyExists(result.booking),
-        replyMarkup: _templates.paymentConfirmationKeyboard(),
+        replyMarkup: _templates.paymentConfirmationKeyboard(
+          showStarterBonus: starterBonusOffered,
+        ),
       );
       return true;
     }
@@ -349,6 +363,52 @@ final class PrivateHandlers {
     }
 
     if (text != null &&
+        text == MessageTemplates.buttonUseStarterBonus &&
+        flowState?.step == _PrivateFlowStep.paymentConfirmation) {
+      if (userId == null || flowState == null) {
+        return false;
+      }
+      final activeBooking = flowState.activeBooking;
+      final canUseBonus = flowState.starterBonusOffered &&
+          activeBooking != null &&
+          _catalogService.categoryForBooking(activeBooking) == _ActivityCategory.trainings;
+      if (!canUseBonus) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.starterBonusUnavailable(),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: flowState.starterBonusOffered,
+          ),
+        );
+        return true;
+      }
+      final consumed = await _onboardingRepository.consumeStarterBonus(
+        userId,
+        consumedAt: _nowProvider(),
+      );
+      if (!consumed) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.starterBonusUnavailable(),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: flowState.starterBonusOffered,
+          ),
+        );
+        return true;
+      }
+      final updated = await _bookingRepository.updateStatus(activeBooking.id, BookingStatus.paid);
+      final booking = updated ?? activeBooking;
+      await _notifyAdminAboutStarterBonusApplied(booking);
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        _templates.starterBonusApplied(booking),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return true;
+    }
+
+    if (text != null &&
         (text == MessageTemplates.buttonSubmitPayment || text.startsWith('/paid'))) {
       if (userId == null) {
         return false;
@@ -364,7 +424,9 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.paymentProofRequired(),
-        replyMarkup: _templates.paymentConfirmationKeyboard(),
+        replyMarkup: _templates.paymentConfirmationKeyboard(
+          showStarterBonus: flowState?.starterBonusOffered ?? false,
+        ),
       );
       return true;
     }
@@ -376,7 +438,9 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.paymentProofRequired(),
-        replyMarkup: _templates.paymentConfirmationKeyboard(),
+        replyMarkup: _templates.paymentConfirmationKeyboard(
+          showStarterBonus: flowState!.starterBonusOffered,
+        ),
       );
       return true;
     }
@@ -647,6 +711,43 @@ final class PrivateHandlers {
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about payment review: $error', stackTrace);
+    }
+  }
+
+  Future<void> _handleStartCleanup(int userId) async {
+    try {
+      final welcome = await _onboardingRepository.markStartedAndGetPendingWelcome(
+        userId,
+        startedAt: _nowProvider(),
+      );
+      if (welcome == null) {
+        return;
+      }
+      await _sender.deleteMessage(
+        welcome.groupChatId,
+        messageId: welcome.welcomeMessageId,
+      );
+      await _onboardingRepository.markWelcomeDeleted(
+        userId: userId,
+        deletedAt: _nowProvider(),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to cleanup group welcome on /start for user $userId: $error', stackTrace);
+    }
+  }
+
+  Future<void> _notifyAdminAboutStarterBonusApplied(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sender.sendMessage(
+        adminChatId,
+        _templates.starterBonusAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about starter bonus booking: $error', stackTrace);
     }
   }
 }

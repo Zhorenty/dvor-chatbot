@@ -12,4 +12,9 @@ abstract interface class MessageSender {
     required int messageId,
     bool disableNotification = true,
   });
+
+  Future<void> deleteMessage(
+    int chatId, {
+    required int messageId,
+  });
 }

@@ -4,9 +4,11 @@ import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
+import 'package:dvor_chatbot/src/jobs/welcome_cleanup_job.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
@@ -19,6 +21,7 @@ final class BotRunner {
     required TelegramClient client,
     required TrainingScheduleRepository scheduleRepository,
     required BookingRepository bookingRepository,
+    required OnboardingRepository onboardingRepository,
     required MessageSender sender,
     required MessageTemplates templates,
     required PrivateHandlers privateHandlers,
@@ -32,6 +35,10 @@ final class BotRunner {
           sender: sender,
           templates: templates,
         ),
+        _welcomeCleanupJob = WelcomeCleanupJob(
+          onboardingRepository: onboardingRepository,
+          sender: sender,
+        ),
         _privateHandlers = privateHandlers,
         _groupHandlers = groupHandlers;
 
@@ -40,14 +47,15 @@ final class BotRunner {
   final TrainingScheduleRepository _scheduleRepository;
   final ScheduleSyncJob _scheduleSyncJob;
   final PaymentReminderJob _paymentReminderJob;
+  final WelcomeCleanupJob _welcomeCleanupJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
 
   bool _stopping = false;
   int _offset = 0;
-  String? _botUsername;
   Timer? _scheduleSyncTimer;
   Timer? _paymentReminderTimer;
+  Timer? _welcomeCleanupTimer;
 
   Future<void> start() async {
     final initialRefreshOk = await _scheduleRepository.refresh(force: true);
@@ -69,8 +77,12 @@ final class BotRunner {
       }
       unawaited(_paymentReminderJob.run());
     });
-
-    unawaited(_resolveBotUsernameInBackground());
+    _welcomeCleanupTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (_stopping) {
+        return;
+      }
+      unawaited(_welcomeCleanupJob.run());
+    });
 
     while (!_stopping) {
       try {
@@ -101,19 +113,6 @@ final class BotRunner {
     }
   }
 
-  Future<void> _resolveBotUsernameInBackground() async {
-    try {
-      _botUsername = await _client.getBotUsername();
-      l.i('Bot username: ${_botUsername ?? 'unknown'}');
-    } on TimeoutException {
-      l.i('Bot username is not available yet (getMe timed out). Continuing.');
-    } on TelegramApiException catch (error, stackTrace) {
-      l.w('Failed to resolve bot username: $error', stackTrace);
-    } on Object catch (error, stackTrace) {
-      l.w('Unexpected error resolving bot username: $error', stackTrace);
-    }
-  }
-
   Future<void> _handleUpdate(Map<String, dynamic> update) async {
     final privateHandled = await _privateHandlers.handle(update);
     if (privateHandled) {
@@ -124,13 +123,14 @@ final class BotRunner {
       return;
     }
     final normalized = Map<String, dynamic>.from(message);
-    await _groupHandlers.handle(normalized, botUsername: _botUsername);
+    await _groupHandlers.handle(normalized);
   }
 
   void stop() {
     _stopping = true;
     _scheduleSyncTimer?.cancel();
     _paymentReminderTimer?.cancel();
+    _welcomeCleanupTimer?.cancel();
     _client.close();
   }
 }

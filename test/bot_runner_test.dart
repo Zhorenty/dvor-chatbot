@@ -60,6 +60,7 @@ void main() {
     final sender = FakeSender();
     final scheduleRepository = FakeScheduleRepository(const []);
     final bookingRepository = FakeBookingRepository();
+    final onboardingRepository = FakeOnboardingRepository();
     final templates = const MessageTemplates();
     runner = BotRunner(
       config: const AppConfig(
@@ -82,20 +83,22 @@ void main() {
       ),
       scheduleRepository: scheduleRepository,
       bookingRepository: bookingRepository,
+      onboardingRepository: onboardingRepository,
       sender: sender,
       templates: templates,
       privateHandlers: PrivateHandlers(
         sender: sender,
         scheduleRepository: scheduleRepository,
         bookingRepository: bookingRepository,
+        onboardingRepository: onboardingRepository,
         templates: templates,
         adminUserIds: const <int>{},
       ),
       groupHandlers: GroupHandlers(
         sender: sender,
+        onboardingRepository: onboardingRepository,
         templates: templates,
         targetChatId: null,
-        sendGroupFallback: true,
       ),
     );
 

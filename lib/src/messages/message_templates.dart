@@ -14,6 +14,7 @@ final class MessageTemplates {
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
   static const String buttonMyBookings = MessageCopy.buttonMyBookings;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
+  static const String buttonUseStarterBonus = MessageCopy.buttonUseStarterBonus;
   static const String buttonBack = MessageCopy.buttonBack;
   static const String buttonMainMenu = MessageCopy.buttonMainMenu;
   static const String buttonHelp = MessageCopy.buttonHelp;
@@ -125,6 +126,18 @@ final class MessageTemplates {
     return 'Не удалось отправить личное сообщение новому участнику 😕 $botLink';
   }
 
+  String groupWelcome({
+    required String? username,
+    required int userId,
+    required String? firstName,
+  }) {
+    final mention = _groupMention(username: username, userId: userId, firstName: firstName);
+    return 'Привет, $mention! 🏃\n'
+        'Ты уже в игре!\n'
+        'Переходи в бота «Двор» — там твой первый шаг к победе и подарок за старт. '
+        'Вперёд, чемпион! 🏆';
+  }
+
   String scheduleRefreshDone() {
     return 'Готово! Расписание обновил ✅';
   }
@@ -181,6 +194,29 @@ final class MessageTemplates {
         'Статус: ${_statusLabel(booking.status)}'
         '${note == null || note.isEmpty ? '' : '\nКомментарий: $note'}\n\n'
         'Проверь заявку и нажми кнопку ниже 👇';
+  }
+
+  String starterBonusApplied(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Готово! Бесплатная тренировка активирована 🎁\n'
+        'Запись: #${booking.id}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_statusLabel(booking.status)}';
+  }
+
+  String starterBonusUnavailable() {
+    return 'Стартовый бонус уже недоступен. Продолжай запись по стандартному сценарию оплаты 💪';
+  }
+
+  String starterBonusAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Стартовая бесплатная запись 🎁\n'
+        'Запись: #${booking.id}\n'
+        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        'Когда: ${formatter.format(booking.startsAt)}\n'
+        'Формат: бесплатная тренировка за старт';
   }
 
   String noPendingPayment() {
@@ -402,9 +438,8 @@ final class MessageTemplates {
         'Правило Outdvor 🚸\n\n'
         '• Предоплата невозвратна при отмене за 7 дней и менее до трейла/похода🦥\n\n'
         'Это не штраф, а уважение к общим расходам на логистику, планирование '
-        'тренировки и трансфер. Такие мероприятия любят сильных и решительных💚💪\n'
-        'Спасибо за понимание\n'
-        '"outdvor"🚸\n\n'
+        'тренировки и трансфер. Такие мероприятия любят сильных и решительных. Спасибо за понимание. 💚💪\n'
+        '\n\n'
         'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
         'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
   }
@@ -431,8 +466,26 @@ final class MessageTemplates {
     return TelegramKeyboards.categorySelectionKeyboard();
   }
 
-  Map<String, Object?> paymentConfirmationKeyboard() {
-    return TelegramKeyboards.paymentConfirmationKeyboard();
+  Map<String, Object?> paymentConfirmationKeyboard({
+    required bool showStarterBonus,
+  }) {
+    return TelegramKeyboards.paymentConfirmationKeyboard(showStarterBonus: showStarterBonus);
+  }
+
+  String _groupMention({
+    required String? username,
+    required int userId,
+    required String? firstName,
+  }) {
+    final normalizedUsername = username?.trim();
+    if (normalizedUsername != null && normalizedUsername.isNotEmpty) {
+      return normalizedUsername.startsWith('@') ? normalizedUsername : '@$normalizedUsername';
+    }
+    final normalizedFirstName = firstName?.trim();
+    if (normalizedFirstName != null && normalizedFirstName.isNotEmpty) {
+      return normalizedFirstName;
+    }
+    return 'tg://user?id=$userId';
   }
 
   String _statusLabel(BookingStatus status) {

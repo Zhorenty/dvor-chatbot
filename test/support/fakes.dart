@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
@@ -161,6 +162,7 @@ TrainingBooking fakeBooking({
 final class FakeSender implements MessageSender {
   final List<SentMessage> messages = <SentMessage>[];
   final List<CopiedMessage> copiedMessages = <CopiedMessage>[];
+  final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
 
   @override
   Future<int> sendMessage(
@@ -197,6 +199,19 @@ final class FakeSender implements MessageSender {
     );
     return copiedMessages.length;
   }
+
+  @override
+  Future<void> deleteMessage(
+    int chatId, {
+    required int messageId,
+  }) async {
+    deletedMessages.add(
+      DeletedMessage(
+        chatId: chatId,
+        messageId: messageId,
+      ),
+    );
+  }
 }
 
 final class SentMessage {
@@ -225,6 +240,117 @@ final class CopiedMessage {
   final int fromChatId;
   final int messageId;
   final bool disableNotification;
+}
+
+final class DeletedMessage {
+  const DeletedMessage({
+    required this.chatId,
+    required this.messageId,
+  });
+
+  final int chatId;
+  final int messageId;
+}
+
+final class FakeOnboardingRepository implements OnboardingRepository {
+  final Map<int, _FakeOnboardingState> _stateByUserId = <int, _FakeOnboardingState>{};
+  final List<PendingWelcomeMessage> readyForDelete = <PendingWelcomeMessage>[];
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<bool> consumeStarterBonus(
+    int userId, {
+    required DateTime consumedAt,
+  }) async {
+    final state = _stateByUserId[userId];
+    if (state == null || !state.bonusAvailable || state.bonusConsumed) {
+      return false;
+    }
+    state.bonusConsumed = true;
+    return true;
+  }
+
+  @override
+  Future<bool> hasStarterBonusAvailable(int userId) async {
+    final state = _stateByUserId[userId];
+    if (state == null) {
+      return false;
+    }
+    return state.bonusAvailable && !state.bonusConsumed;
+  }
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<List<PendingWelcomeMessage>> listWelcomeMessagesReadyForDelete({
+    required DateTime now,
+    Duration ttl = const Duration(minutes: 3),
+    int limit = 100,
+  }) async {
+    return readyForDelete.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<void> markWelcomeDeleted({
+    required int userId,
+    required DateTime deletedAt,
+  }) async {
+    final state = _stateByUserId[userId];
+    if (state == null) {
+      return;
+    }
+    state.pendingWelcome = null;
+  }
+
+  @override
+  Future<PendingWelcomeMessage?> markStartedAndGetPendingWelcome(
+    int userId, {
+    required DateTime startedAt,
+  }) async {
+    return _stateByUserId[userId]?.pendingWelcome;
+  }
+
+  @override
+  Future<void> registerGroupWelcome({
+    required int userId,
+    required int groupChatId,
+    required int welcomeMessageId,
+    required DateTime joinedAt,
+  }) async {
+    _stateByUserId[userId] = _FakeOnboardingState(
+      pendingWelcome: PendingWelcomeMessage(
+        userId: userId,
+        groupChatId: groupChatId,
+        welcomeMessageId: welcomeMessageId,
+      ),
+      bonusAvailable: false,
+    );
+  }
+
+  void seedUser({
+    required int userId,
+    bool bonusAvailable = false,
+    PendingWelcomeMessage? pendingWelcome,
+  }) {
+    _stateByUserId[userId] = _FakeOnboardingState(
+      pendingWelcome: pendingWelcome,
+      bonusAvailable: bonusAvailable,
+    );
+  }
+}
+
+final class _FakeOnboardingState {
+  _FakeOnboardingState({
+    required this.pendingWelcome,
+    required this.bonusAvailable,
+  });
+
+  PendingWelcomeMessage? pendingWelcome;
+  bool bonusAvailable;
+  bool bonusConsumed = false;
 }
 
 List<String> keyboardTexts(Map<String, Object?>? replyMarkup) {

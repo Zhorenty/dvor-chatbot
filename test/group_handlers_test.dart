@@ -1,75 +1,76 @@
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
+import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
-import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('GroupHandlers', () {
     test('sends DM to each new non-bot member', () async {
       final sender = _FakeSender();
+      final onboarding = _FakeOnboardingRepository();
       final handlers = GroupHandlers(
         sender: sender,
+        onboardingRepository: onboarding,
         templates: const MessageTemplates(),
         targetChatId: -100123,
-        sendGroupFallback: true,
       );
 
       final handled = await handlers.handle(
         <String, dynamic>{
+          'date': DateTime(2026, 6, 1, 19, 0).millisecondsSinceEpoch ~/ 1000,
           'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
           'new_chat_members': <Map<String, Object?>>[
-            <String, Object?>{'id': 1001, 'is_bot': false},
+            <String, Object?>{'id': 1001, 'is_bot': false, 'username': 'new_runner'},
             <String, Object?>{'id': 1002, 'is_bot': false},
           ],
         },
-        botUsername: 'dvor_test_bot',
       );
 
       expect(handled, isTrue);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages[0].chatId, 1001);
-      expect(sender.messages[1].chatId, 1002);
-      expect(
-        sender.messages
-            .map((m) => m.text)
-            .every((text) => text.contains('спортивное объединение DVOR')),
-        isTrue,
-      );
+      expect(sender.messages[0].chatId, -100123);
+      expect(sender.messages[1].chatId, -100123);
+      expect(sender.messages[0].text, contains('Привет, @new_runner!'));
+      expect(sender.messages[0].text, contains('подарок за старт'));
+      expect(onboarding.records, hasLength(2));
+      expect(onboarding.records[0].userId, 1001);
+      expect(onboarding.records[0].groupChatId, -100123);
+      expect(onboarding.records[0].welcomeMessageId, 1);
     });
 
-    test('sends fallback in group when direct message fails', () async {
-      final sender = _FakeSender(failingChatIds: <int>{2001});
+    test('skips bot members and does not store welcome for them', () async {
+      final sender = _FakeSender();
+      final onboarding = _FakeOnboardingRepository();
       final handlers = GroupHandlers(
         sender: sender,
+        onboardingRepository: onboarding,
         templates: const MessageTemplates(),
         targetChatId: -100500,
-        sendGroupFallback: true,
       );
 
       final handled = await handlers.handle(
         <String, dynamic>{
           'chat': <String, dynamic>{'id': -100500, 'type': 'supergroup'},
           'new_chat_members': <Map<String, Object?>>[
-            <String, Object?>{'id': 2001, 'is_bot': false},
+            <String, Object?>{'id': 2001, 'is_bot': true},
           ],
         },
-        botUsername: 'dvor_test_bot',
       );
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.chatId, -100500);
-      expect(sender.messages.single.text, contains('https://t.me/dvor_test_bot'));
+      expect(sender.messages, isEmpty);
+      expect(onboarding.records, isEmpty);
     });
 
     test('ignores other groups when target chat id is configured', () async {
       final sender = _FakeSender();
+      final onboarding = _FakeOnboardingRepository();
       final handlers = GroupHandlers(
         sender: sender,
+        onboardingRepository: onboarding,
         templates: const MessageTemplates(),
         targetChatId: -1001,
-        sendGroupFallback: true,
       );
 
       final handled = await handlers.handle(
@@ -79,19 +80,16 @@ void main() {
             <String, Object?>{'id': 3001, 'is_bot': false},
           ],
         },
-        botUsername: 'dvor_test_bot',
       );
 
       expect(handled, isFalse);
       expect(sender.messages, isEmpty);
+      expect(onboarding.records, isEmpty);
     });
   });
 }
 
 final class _FakeSender implements MessageSender {
-  _FakeSender({Set<int>? failingChatIds}) : _failingChatIds = failingChatIds ?? <int>{};
-
-  final Set<int> _failingChatIds;
   final List<_SentMessage> messages = <_SentMessage>[];
 
   @override
@@ -101,9 +99,6 @@ final class _FakeSender implements MessageSender {
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
   }) async {
-    if (_failingChatIds.contains(chatId)) {
-      throw const TelegramApiException('Forbidden: bot was blocked by the user', statusCode: 403);
-    }
     messages.add(
       _SentMessage(
         chatId: chatId,
@@ -123,6 +118,14 @@ final class _FakeSender implements MessageSender {
   }) async {
     throw UnimplementedError('copyMessage is not used in group handlers tests');
   }
+
+  @override
+  Future<void> deleteMessage(
+    int chatId, {
+    required int messageId,
+  }) async {
+    throw UnimplementedError('deleteMessage is not used in group handlers tests');
+  }
 }
 
 final class _SentMessage {
@@ -135,4 +138,78 @@ final class _SentMessage {
   final int chatId;
   final String text;
   final bool disableNotification;
+}
+
+final class _FakeOnboardingRepository implements OnboardingRepository {
+  final List<_WelcomeRecord> records = <_WelcomeRecord>[];
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<bool> consumeStarterBonus(
+    int userId, {
+    required DateTime consumedAt,
+  }) async {
+    return false;
+  }
+
+  @override
+  Future<bool> hasStarterBonusAvailable(int userId) async {
+    return false;
+  }
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<List<PendingWelcomeMessage>> listWelcomeMessagesReadyForDelete({
+    required DateTime now,
+    Duration ttl = const Duration(minutes: 3),
+    int limit = 100,
+  }) async {
+    return const <PendingWelcomeMessage>[];
+  }
+
+  @override
+  Future<void> markWelcomeDeleted({
+    required int userId,
+    required DateTime deletedAt,
+  }) async {}
+
+  @override
+  Future<PendingWelcomeMessage?> markStartedAndGetPendingWelcome(
+    int userId, {
+    required DateTime startedAt,
+  }) async {
+    return null;
+  }
+
+  @override
+  Future<void> registerGroupWelcome({
+    required int userId,
+    required int groupChatId,
+    required int welcomeMessageId,
+    required DateTime joinedAt,
+  }) async {
+    records.add(
+      _WelcomeRecord(
+        userId: userId,
+        groupChatId: groupChatId,
+        welcomeMessageId: welcomeMessageId,
+      ),
+    );
+  }
+}
+
+final class _WelcomeRecord {
+  const _WelcomeRecord({
+    required this.userId,
+    required this.groupChatId,
+    required this.welcomeMessageId,
+  });
+
+  final int userId;
+  final int groupChatId;
+  final int welcomeMessageId;
 }
