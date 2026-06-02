@@ -25,4 +25,12 @@ final class PrivateUpdateRouter {
     }
     return null;
   }
+
+  int? parseBookingIdSelection(String text) {
+    final match = RegExp(r'#(\d+)').firstMatch(text.trim());
+    if (match == null) {
+      return null;
+    }
+    return int.tryParse(match.group(1)!);
+  }
 }

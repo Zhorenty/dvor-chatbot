@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:test/test.dart';
 
@@ -151,6 +152,111 @@ void main() {
         remindedBefore: now.subtract(const Duration(minutes: 1)),
       );
       expect(afterMark, isEmpty);
+
+      await repository.close();
+    });
+
+    test('reschedules user booking and preserves payment status', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final initial = await repository.createPendingBooking(
+        userId: 5001,
+        training: TrainingInfo(
+          title: 'Initial session',
+          startsAt: DateTime(2030, 6, 12, 18),
+          location: 'Gym A',
+        ),
+      );
+      await repository.updateStatus(initial.booking.id, BookingStatus.paid);
+
+      final result = await repository.rescheduleBooking(
+        userId: 5001,
+        bookingId: initial.booking.id,
+        training: TrainingInfo(
+          title: 'Moved session',
+          startsAt: DateTime(2030, 6, 15, 18),
+          location: 'Gym B',
+        ),
+      );
+
+      expect(result.outcome, BookingRescheduleOutcome.success);
+      expect(result.booking, isNotNull);
+      expect(result.booking!.id, initial.booking.id);
+      expect(result.booking!.trainingTitle, 'Moved session');
+      expect(result.booking!.location, 'Gym B');
+      expect(result.booking!.status, BookingStatus.paid);
+
+      await repository.close();
+    });
+
+    test('returns conflict when rescheduling to already booked slot', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final first = await repository.createPendingBooking(
+        userId: 5002,
+        training: TrainingInfo(
+          title: 'Session A',
+          startsAt: DateTime(2030, 6, 12, 18),
+          location: 'Gym A',
+        ),
+      );
+      final second = await repository.createPendingBooking(
+        userId: 5002,
+        training: TrainingInfo(
+          title: 'Session B',
+          startsAt: DateTime(2030, 6, 13, 18),
+          location: 'Gym B',
+        ),
+      );
+
+      final result = await repository.rescheduleBooking(
+        userId: 5002,
+        bookingId: first.booking.id,
+        training: TrainingInfo(
+          title: second.booking.trainingTitle,
+          startsAt: second.booking.startsAt,
+          location: second.booking.location,
+        ),
+      );
+
+      expect(result.outcome, BookingRescheduleOutcome.conflict);
+
+      await repository.close();
+    });
+
+    test('cancels only booking owner records', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final created = await repository.createPendingBooking(
+        userId: 5003,
+        training: TrainingInfo(
+          title: 'Cancelable',
+          startsAt: DateTime(2030, 6, 20, 18),
+          location: 'Gym',
+        ),
+      );
+
+      final denied = await repository.cancelBooking(
+        userId: 5004,
+        bookingId: created.booking.id,
+      );
+      expect(denied.outcome, BookingActionOutcome.notFound);
+
+      final success = await repository.cancelBooking(
+        userId: 5003,
+        bookingId: created.booking.id,
+      );
+      expect(success.outcome, BookingActionOutcome.success);
+      expect(success.booking?.status, BookingStatus.cancelled);
 
       await repository.close();
     });

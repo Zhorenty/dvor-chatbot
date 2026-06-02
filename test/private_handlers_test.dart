@@ -1021,6 +1021,280 @@ void main() {
       expect(text, isNot(contains('07.06.2026 14:30')));
     });
 
+    test('reschedules training booking from my bookings and notifies admin chat', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 301,
+            userId: 2301,
+            trainingKey: TrainingInfo(
+              title: 'Old session',
+              startsAt: DateTime(2026, 7, 5, 19, 0),
+              location: 'Hall A',
+            ).sessionKey,
+            title: 'Old session',
+            startsAt: DateTime(2026, 7, 5, 19, 0),
+            location: 'Hall A',
+            status: BookingStatus.paid,
+          ),
+        ]
+        ..rescheduleResult = BookingRescheduleResult(
+          outcome: BookingRescheduleOutcome.success,
+          booking: _booking(
+            id: 301,
+            userId: 2301,
+            trainingKey: TrainingInfo(
+              title: 'New session',
+              startsAt: DateTime(2026, 7, 8, 19, 0),
+              location: 'Hall B',
+            ).sessionKey,
+            title: 'New session',
+            startsAt: DateTime(2026, 7, 8, 19, 0),
+            location: 'Hall B',
+            status: BookingStatus.paid,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Old session',
+              startsAt: DateTime(2026, 7, 5, 19, 0),
+              location: 'Hall A',
+            ),
+            TrainingInfo(
+              title: 'New session',
+              startsAt: DateTime(2026, 7, 8, 19, 0),
+              location: 'Hall B',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100601,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2301, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': '/my_bookings',
+      });
+      final afterSelection = sender.messages.last;
+      expect(_keyboardTexts(afterSelection.replyMarkup), contains('🧾 #301 Old session'));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2301, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': '🧾 #301 Old session',
+      });
+      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(actionButtons, contains(MessageTemplates.buttonRescheduleBooking));
+      expect(actionButtons, isNot(contains(MessageTemplates.buttonCancelBooking)));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2301, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': MessageTemplates.buttonRescheduleBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2301, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': '🎯 2. New session',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.rescheduleCalls, 1);
+      expect(bookingRepository.lastRescheduledBookingId, 301);
+      expect(bookingRepository.lastRescheduleTraining?.title, 'New session');
+      expect(sender.messages.last.chatId, 2301);
+      expect(sender.messages.last.text, contains('перенесена'));
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100601);
+      expect(adminMessage.text, contains('Перенос записи пользователем'));
+      expect(adminMessage.text, contains('Было: Old session'));
+      expect(adminMessage.text, contains('Стало: New session'));
+    });
+
+    test('shows conflict message when rescheduling to already booked training', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 302,
+            userId: 2302,
+            trainingKey: TrainingInfo(
+              title: 'Core',
+              startsAt: DateTime(2026, 7, 6, 19, 0),
+              location: 'Hall A',
+            ).sessionKey,
+            title: 'Core',
+            startsAt: DateTime(2026, 7, 6, 19, 0),
+            location: 'Hall A',
+          ),
+        ]
+        ..rescheduleResult = const BookingRescheduleResult(
+          outcome: BookingRescheduleOutcome.conflict,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Core',
+              startsAt: DateTime(2026, 7, 6, 19, 0),
+              location: 'Hall A',
+            ),
+            TrainingInfo(
+              title: 'Speed',
+              startsAt: DateTime(2026, 7, 9, 19, 0),
+              location: 'Hall B',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2302, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2302, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': '🧾 #302 Core',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2302, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonRescheduleBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2302, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': '🎯 2. Speed',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.rescheduleCalls, 1);
+      expect(sender.messages.last.text, contains('уже есть запись на выбранную тренировку'));
+    });
+
+    test('cancels outdoor booking before 7 days and notifies admin chat', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 401,
+            userId: 2401,
+            trainingKey: 'hikes|2026-06-10T12:00:00.000Z|🥾 Поход: Архыз|Маршрут',
+            title: '🥾 Поход: Архыз',
+            startsAt: now.add(const Duration(days: 9)),
+            location: 'Маршрут',
+            status: BookingStatus.paid,
+          ),
+        ]
+        ..cancelResult = BookingActionResult(
+          outcome: BookingActionOutcome.success,
+          booking: _booking(
+            id: 401,
+            userId: 2401,
+            trainingKey: 'hikes|2026-06-10T12:00:00.000Z|🥾 Поход: Архыз|Маршрут',
+            title: '🥾 Поход: Архыз',
+            startsAt: now.add(const Duration(days: 9)),
+            location: 'Маршрут',
+            status: BookingStatus.cancelled,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100602,
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2401, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2401},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2401, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2401},
+        'text': '🧾 #401 🥾 Поход: Архыз',
+      });
+      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(actionButtons, contains(MessageTemplates.buttonCancelBooking));
+      expect(actionButtons, isNot(contains(MessageTemplates.buttonRescheduleBooking)));
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2401, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2401},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 1);
+      expect(bookingRepository.lastCancelledBookingId, 401);
+      expect(sender.messages.last.text, contains('отменена'));
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100602);
+      expect(adminMessage.text, contains('Отмена outdoor-записи пользователем'));
+      expect(adminMessage.text, contains('🥾 Поход: Архыз'));
+    });
+
+    test('does not cancel outdoor booking when less than 7 days left', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 402,
+            userId: 2402,
+            trainingKey: 'trails|2026-06-08T11:00:00.000Z|🏃 Трейл: Плато|Горы',
+            title: '🏃 Трейл: Плато',
+            startsAt: now.add(const Duration(days: 6, hours: 23)),
+            location: 'Горы',
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2402, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2402},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2402, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2402},
+        'text': '🧾 #402 🏃 Трейл: Плато',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2402, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2402},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 0);
+      expect(sender.messages.last.text, contains('меньше 7 дней'));
+    });
+
     test('shows participants list for selected admin category', () async {
       final sender = _FakeSender();
       final training = TrainingInfo(

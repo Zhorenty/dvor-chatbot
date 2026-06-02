@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 
@@ -91,6 +92,62 @@ final class TelegramKeyboards {
       rows.add(
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonUseStarterBonus},
+        ],
+      );
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonBack},
+        <String, String>{'text': MessageCopy.buttonMainMenu},
+      ],
+    );
+    return <String, Object?>{
+      'keyboard': rows,
+      'resize_keyboard': true,
+      'one_time_keyboard': false,
+    };
+  }
+
+  static Map<String, Object?> bookingManagementSelectionKeyboard(
+    List<TrainingBooking> bookings,
+  ) {
+    final rows = <List<Map<String, String>>>[];
+    for (final booking in bookings) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': '🧾 #${booking.id} ${booking.trainingTitle}'},
+        ],
+      );
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonBack},
+        <String, String>{'text': MessageCopy.buttonMainMenu},
+      ],
+    );
+    return <String, Object?>{
+      'keyboard': rows,
+      'resize_keyboard': true,
+      'one_time_keyboard': false,
+    };
+  }
+
+  static Map<String, Object?> bookingActionsKeyboard({
+    required bool canReschedule,
+    required bool canCancel,
+  }) {
+    final rows = <List<Map<String, String>>>[];
+    if (canReschedule) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonRescheduleBooking},
+        ],
+      );
+    }
+    if (canCancel) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonCancelBooking},
         ],
       );
     }

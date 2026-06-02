@@ -36,11 +36,23 @@ final class FakeScheduleRepository implements TrainingScheduleRepository {
 final class FakeBookingRepository implements BookingRepository {
   int createCalls = 0;
   int submitCalls = 0;
+  int cancelCalls = 0;
+  int rescheduleCalls = 0;
   List<TrainingBooking> queue = const <TrainingBooking>[];
   List<TrainingBooking> bookingsByTrainingKey = const <TrainingBooking>[];
+  List<TrainingBooking> userBookings = const <TrainingBooking>[];
   TrainingBooking? submitResult;
   TrainingInfo? lastCreatedTraining;
   String? lastCreatedUsername;
+  int? lastCancelledBookingId;
+  int? lastRescheduledBookingId;
+  TrainingInfo? lastRescheduleTraining;
+  BookingActionResult cancelResult = const BookingActionResult(
+    outcome: BookingActionOutcome.success,
+  );
+  BookingRescheduleResult rescheduleResult = const BookingRescheduleResult(
+    outcome: BookingRescheduleOutcome.success,
+  );
   List<TrainingBooking> pendingForReminder = const <TrainingBooking>[];
   int remindersMarked = 0;
 
@@ -93,15 +105,43 @@ final class FakeBookingRepository implements BookingRepository {
 
   @override
   Future<List<TrainingBooking>> listUserBookings(int userId, {int limit = 10}) async {
-    return <TrainingBooking>[
-      fakeBooking(
-        id: 1,
-        userId: userId,
-        title: 'Test booking',
-        startsAt: DateTime(2026, 7, 10, 18),
-        location: 'Gym',
-      ),
-    ];
+    if (userBookings.isEmpty) {
+      return <TrainingBooking>[
+        fakeBooking(
+          id: 1,
+          userId: userId,
+          title: 'Test booking',
+          startsAt: DateTime(2026, 7, 10, 18),
+          location: 'Gym',
+        ),
+      ];
+    }
+    return userBookings
+        .where((booking) => booking.userId == userId)
+        .take(limit)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<BookingActionResult> cancelBooking({
+    required int userId,
+    required int bookingId,
+  }) async {
+    cancelCalls += 1;
+    lastCancelledBookingId = bookingId;
+    return cancelResult;
+  }
+
+  @override
+  Future<BookingRescheduleResult> rescheduleBooking({
+    required int userId,
+    required int bookingId,
+    required TrainingInfo training,
+  }) async {
+    rescheduleCalls += 1;
+    lastRescheduledBookingId = bookingId;
+    lastRescheduleTraining = training;
+    return rescheduleResult;
   }
 
   @override

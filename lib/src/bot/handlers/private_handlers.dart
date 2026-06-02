@@ -158,6 +158,7 @@ final class PrivateHandlers {
         case _PrivateFlowStep.selectingParticipantsCategory:
         case _PrivateFlowStep.selectingPaymentsQueueCategory:
         case _PrivateFlowStep.selectingTraining:
+        case _PrivateFlowStep.selectingBookingToManage:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
             chatId,
@@ -172,6 +173,35 @@ final class PrivateHandlers {
             chatId,
             _templates.chooseTrainingForBooking(items),
             replyMarkup: _templates.bookingSelectionKeyboard(items),
+          );
+          return true;
+        case _PrivateFlowStep.selectingBookingAction:
+          final bookings = flowState!.availableBookings;
+          _flowByUserId[userId] =
+              flowState.copyWith(step: _PrivateFlowStep.selectingBookingToManage);
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseBookingToManage(bookings),
+            replyMarkup: _templates.bookingManagementSelectionKeyboard(bookings),
+          );
+          return true;
+        case _PrivateFlowStep.selectingRescheduleTraining:
+          final selectedBooking = flowState?.selectedBooking;
+          if (selectedBooking == null) {
+            _flowByUserId.remove(userId);
+            await _sender.sendMessage(
+              chatId,
+              'Вернул в главное меню 👇',
+              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            );
+            return true;
+          }
+          _flowByUserId[userId] =
+              flowState!.copyWith(step: _PrivateFlowStep.selectingBookingAction);
+          await _sender.sendMessage(
+            chatId,
+            _templates.bookingActions(selectedBooking),
+            replyMarkup: _bookingActionsKeyboard(selectedBooking),
           );
           return true;
         case null:
@@ -345,12 +375,215 @@ final class PrivateHandlers {
         return false;
       }
       final bookings = await _bookingRepository.listUserBookings(userId);
+      final activeBookings = bookings
+          .where(
+            (booking) =>
+                booking.status != BookingStatus.cancelled &&
+                !booking.startsAt.isBefore(_nowProvider()),
+          )
+          .toList(growable: false);
       await _sender.sendMessage(
         chatId,
-        _templates.myBookings(bookings, now: DateTime.now()),
+        _templates.myBookings(bookings, now: _nowProvider()),
+        replyMarkup: activeBookings.isEmpty
+            ? _templates.privateMenuKeyboard(isAdmin: isAdmin)
+            : _templates.bookingManagementSelectionKeyboard(activeBookings),
+      );
+      if (activeBookings.isNotEmpty) {
+        _flowByUserId[userId] = _PrivateFlowState(
+          step: _PrivateFlowStep.selectingBookingToManage,
+          availableTrainings: const <TrainingInfo>[],
+          availableBookings: activeBookings,
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseBookingToManage(activeBookings),
+          replyMarkup: _templates.bookingManagementSelectionKeyboard(activeBookings),
+        );
+      }
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingBookingToManage &&
+        text != null &&
+        !text.startsWith('/')) {
+      final currentFlow = flowState!;
+      final selectedBookingId = _parseBookingSelectionId(text);
+      TrainingBooking? selectedBooking;
+      for (final booking in currentFlow.availableBookings) {
+        if (booking.id == selectedBookingId) {
+          selectedBooking = booking;
+          break;
+        }
+      }
+      if (selectedBooking == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseBookingToManage(currentFlow.availableBookings),
+          replyMarkup: _templates.bookingManagementSelectionKeyboard(currentFlow.availableBookings),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = currentFlow.copyWith(
+        step: _PrivateFlowStep.selectingBookingAction,
+        selectedBooking: selectedBooking,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.bookingActions(selectedBooking),
+        replyMarkup: _bookingActionsKeyboard(selectedBooking),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingBookingAction &&
+        text == MessageTemplates.buttonRescheduleBooking) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null ||
+          _catalogService.categoryForBooking(selectedBooking) != _ActivityCategory.trainings) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final trainings = _bookableItemsByCategory(_ActivityCategory.trainings);
+      if (trainings.isEmpty) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseTrainingForReschedule(const <TrainingInfo>[], booking: selectedBooking),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        _flowByUserId.remove(userId);
+        return true;
+      }
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingRescheduleTraining,
+        availableTrainings: trainings,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseTrainingForReschedule(trainings, booking: selectedBooking),
+        replyMarkup: _templates.bookingSelectionKeyboard(trainings),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingBookingAction &&
+        text == MessageTemplates.buttonCancelBooking) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null ||
+          !_isOutdoorCategory(_catalogService.categoryForBooking(selectedBooking))) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final canCancel =
+          selectedBooking.startsAt.difference(_nowProvider()) >= const Duration(days: 7);
+      if (!canCancel) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.outdoorCancellationTooLate(selectedBooking),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        _flowByUserId.remove(userId);
+        return true;
+      }
+      final cancelResult = await _bookingRepository.cancelBooking(
+        userId: userId,
+        bookingId: selectedBooking.id,
+      );
+      _flowByUserId.remove(userId);
+      if (cancelResult.outcome == BookingActionOutcome.success && cancelResult.booking != null) {
+        await _notifyAdminAboutBookingCancelled(cancelResult.booking!);
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingCancelled(cancelResult.booking!),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      await _sender.sendMessage(
+        chatId,
+        _templates.bookingNotFound(selectedBooking.id),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
       return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingRescheduleTraining &&
+        text != null &&
+        !text.startsWith('/')) {
+      final currentFlow = flowState!;
+      final selectedBooking = currentFlow.selectedBooking;
+      if (selectedBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          'Вернул в главное меню 👇',
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final index = _parseTrainingSelectionIndex(text);
+      if (index == null || index < 1 || index > currentFlow.availableTrainings.length) {
+        await _sender.sendMessage(
+          chatId,
+          _bookingHandler.unknownSelectionText(),
+          replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
+        );
+        return true;
+      }
+      final targetTraining = currentFlow.availableTrainings[index - 1];
+      if (targetTraining.sessionKey == selectedBooking.trainingKey) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingRescheduleSameTraining(),
+          replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
+        );
+        return true;
+      }
+      final before = selectedBooking;
+      final result = await _bookingRepository.rescheduleBooking(
+        userId: userId,
+        bookingId: selectedBooking.id,
+        training: targetTraining,
+      );
+      switch (result.outcome) {
+        case BookingRescheduleOutcome.success:
+          _flowByUserId.remove(userId);
+          final after = result.booking ?? before;
+          await _notifyAdminAboutBookingRescheduled(before: before, after: after);
+          await _sender.sendMessage(
+            chatId,
+            _templates.bookingRescheduled(from: before, to: after),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+        case BookingRescheduleOutcome.notFound:
+          _flowByUserId.remove(userId);
+          await _sender.sendMessage(
+            chatId,
+            _templates.bookingNotFound(selectedBooking.id),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+        case BookingRescheduleOutcome.conflict:
+          await _sender.sendMessage(
+            chatId,
+            _templates.bookingRescheduleConflict(),
+            replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
+          );
+          return true;
+      }
     }
 
     if (userId != null &&
@@ -690,6 +923,22 @@ final class PrivateHandlers {
     return _updateRouter.parseTrainingSelectionIndex(text);
   }
 
+  int? _parseBookingSelectionId(String text) {
+    return _updateRouter.parseBookingIdSelection(text);
+  }
+
+  bool _isOutdoorCategory(_ActivityCategory category) {
+    return category == _ActivityCategory.hikes || category == _ActivityCategory.trails;
+  }
+
+  Map<String, Object?> _bookingActionsKeyboard(TrainingBooking booking) {
+    final category = _catalogService.categoryForBooking(booking);
+    return _templates.bookingActionsKeyboard(
+      canReschedule: category == _ActivityCategory.trainings,
+      canCancel: _isOutdoorCategory(category),
+    );
+  }
+
   Future<void> _notifyAdminAboutPaymentSubmitted() async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
@@ -774,6 +1023,39 @@ final class PrivateHandlers {
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about starter bonus booking: $error', stackTrace);
+    }
+  }
+
+  Future<void> _notifyAdminAboutBookingRescheduled({
+    required TrainingBooking before,
+    required TrainingBooking after,
+  }) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sender.sendMessage(
+        adminChatId,
+        _templates.bookingRescheduledAdminNotification(before: before, after: after),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about booking reschedule: $error', stackTrace);
+    }
+  }
+
+  Future<void> _notifyAdminAboutBookingCancelled(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sender.sendMessage(
+        adminChatId,
+        _templates.bookingCancelledAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about booking cancellation: $error', stackTrace);
     }
   }
 }

@@ -15,6 +15,17 @@ abstract interface class BookingRepository {
 
   Future<List<TrainingBooking>> listUserBookings(int userId, {int limit = 10});
 
+  Future<BookingActionResult> cancelBooking({
+    required int userId,
+    required int bookingId,
+  });
+
+  Future<BookingRescheduleResult> rescheduleBooking({
+    required int userId,
+    required int bookingId,
+    required TrainingInfo training,
+  });
+
   Future<TrainingBooking?> submitPaymentForLatestPending(
     int userId, {
     String? note,

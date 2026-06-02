@@ -15,6 +15,8 @@ final class MessageTemplates {
   static const String buttonMyBookings = MessageCopy.buttonMyBookings;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
   static const String buttonUseStarterBonus = MessageCopy.buttonUseStarterBonus;
+  static const String buttonRescheduleBooking = MessageCopy.buttonRescheduleBooking;
+  static const String buttonCancelBooking = MessageCopy.buttonCancelBooking;
   static const String buttonBack = MessageCopy.buttonBack;
   static const String buttonMainMenu = MessageCopy.buttonMainMenu;
   static const String buttonHelp = MessageCopy.buttonHelp;
@@ -270,6 +272,74 @@ final class MessageTemplates {
     return lines.join('\n');
   }
 
+  String chooseBookingToManage(List<TrainingBooking> bookings) {
+    if (bookings.isEmpty) {
+      return 'Сейчас нет записей, которыми можно управлять.';
+    }
+    return 'Выбери запись для управления 👇';
+  }
+
+  String bookingActions(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Запись #${booking.id}\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${formatter.format(booking.startsAt)}\n\n'
+        'Выбери действие 👇';
+  }
+
+  String chooseTrainingForReschedule(List<TrainingInfo> items, {required TrainingBooking booking}) {
+    if (items.isEmpty) {
+      return 'Сейчас нет ближайших тренировок для переноса.';
+    }
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>[
+      'Куда перенести запись #${booking.id}?',
+      'Текущая тренировка: ${booking.trainingTitle}',
+      '',
+      'Выбери новую тренировку 👇',
+    ];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      lines.add(
+        '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} (${item.location})',
+      );
+    }
+    return lines.join('\n');
+  }
+
+  String bookingRescheduled({
+    required TrainingBooking from,
+    required TrainingBooking to,
+  }) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Готово! Запись #${to.id} перенесена ✅\n'
+        'Было: ${from.trainingTitle} (${formatter.format(from.startsAt)})\n'
+        'Стало: ${to.trainingTitle} (${formatter.format(to.startsAt)})\n'
+        'Статус оплаты сохранен: ${_statusLabel(to.status)}';
+  }
+
+  String bookingRescheduleConflict() {
+    return 'Не удалось перенести запись: у тебя уже есть запись на выбранную тренировку.';
+  }
+
+  String bookingRescheduleSameTraining() {
+    return 'Эта запись уже на выбранной тренировке. Выбери другую дату.';
+  }
+
+  String bookingCancelled(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Запись #${booking.id} отменена ✅\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_statusLabel(booking.status)}';
+  }
+
+  String outdoorCancellationTooLate(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
+        'До начала (${formatter.format(booking.startsAt)}) осталось меньше 7 дней.';
+  }
+
   String paymentsQueueEmpty() => 'Очередь подтверждения оплат пока пустая ✨';
 
   String paymentsQueueIntro(int total) {
@@ -411,6 +481,27 @@ final class MessageTemplates {
         'Проверил админ: ${_userTagById(moderatorUserId, username: moderatorUsername)} ($moderatorUserId)';
   }
 
+  String bookingRescheduledAdminNotification({
+    required TrainingBooking before,
+    required TrainingBooking after,
+  }) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Перенос записи пользователем 🔁\n'
+        'Запись: #${after.id}\n'
+        'Пользователь: ${_userTag(after)} (${after.userId})\n'
+        'Было: ${before.trainingTitle} (${formatter.format(before.startsAt)})\n'
+        'Стало: ${after.trainingTitle} (${formatter.format(after.startsAt)})';
+  }
+
+  String bookingCancelledAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Отмена outdoor-записи пользователем ❌\n'
+        'Запись: #${booking.id}\n'
+        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
+        'Событие: ${booking.trainingTitle}\n'
+        'Дата: ${formatter.format(booking.startsAt)}';
+  }
+
   String pendingPaymentReminder(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     return 'Напоминание об оплате 💸\n'
@@ -480,6 +571,20 @@ final class MessageTemplates {
     required bool showStarterBonus,
   }) {
     return TelegramKeyboards.paymentConfirmationKeyboard(showStarterBonus: showStarterBonus);
+  }
+
+  Map<String, Object?> bookingManagementSelectionKeyboard(List<TrainingBooking> bookings) {
+    return TelegramKeyboards.bookingManagementSelectionKeyboard(bookings);
+  }
+
+  Map<String, Object?> bookingActionsKeyboard({
+    required bool canReschedule,
+    required bool canCancel,
+  }) {
+    return TelegramKeyboards.bookingActionsKeyboard(
+      canReschedule: canReschedule,
+      canCancel: canCancel,
+    );
   }
 
   String _groupMention({

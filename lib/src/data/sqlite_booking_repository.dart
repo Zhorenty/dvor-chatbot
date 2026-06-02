@@ -156,6 +156,67 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<BookingActionResult> cancelBooking({
+    required int userId,
+    required int bookingId,
+  }) async {
+    _expireOverduePendingBookings();
+    final existing = _findBookingById(bookingId);
+    if (existing == null || existing.userId != userId) {
+      return const BookingActionResult(outcome: BookingActionOutcome.notFound);
+    }
+    final updated = await updateStatus(bookingId, BookingStatus.cancelled);
+    return BookingActionResult(
+      outcome: BookingActionOutcome.success,
+      booking: updated,
+    );
+  }
+
+  @override
+  Future<BookingRescheduleResult> rescheduleBooking({
+    required int userId,
+    required int bookingId,
+    required TrainingInfo training,
+  }) async {
+    _expireOverduePendingBookings();
+    final existing = _findBookingById(bookingId);
+    if (existing == null || existing.userId != userId) {
+      return const BookingRescheduleResult(outcome: BookingRescheduleOutcome.notFound);
+    }
+    final db = _database;
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    try {
+      db.execute(
+        '''
+        UPDATE bookings
+        SET training_key = ?,
+            training_title = ?,
+            starts_at = ?,
+            location = ?,
+            updated_at = ?
+        WHERE id = ? AND user_id = ?;
+        ''',
+        <Object?>[
+          training.sessionKey,
+          training.title,
+          training.startsAt.toUtc().toIso8601String(),
+          training.location,
+          nowIso,
+          bookingId,
+          userId,
+        ],
+      );
+    } on SqliteException {
+      return const BookingRescheduleResult(outcome: BookingRescheduleOutcome.conflict);
+    }
+    final updated = _findBookingById(bookingId);
+    return BookingRescheduleResult(
+      outcome: BookingRescheduleOutcome.success,
+      booking: updated,
+    );
+  }
+
+  @override
   Future<TrainingBooking?> submitPaymentForLatestPending(
     int userId, {
     String? note,

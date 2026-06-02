@@ -41,3 +41,34 @@ final class BookingCreateResult {
   final TrainingBooking booking;
   final bool created;
 }
+
+enum BookingActionOutcome {
+  success,
+  notFound,
+}
+
+final class BookingActionResult {
+  const BookingActionResult({
+    required this.outcome,
+    this.booking,
+  });
+
+  final BookingActionOutcome outcome;
+  final TrainingBooking? booking;
+}
+
+enum BookingRescheduleOutcome {
+  success,
+  notFound,
+  conflict,
+}
+
+final class BookingRescheduleResult {
+  const BookingRescheduleResult({
+    required this.outcome,
+    this.booking,
+  });
+
+  final BookingRescheduleOutcome outcome;
+  final TrainingBooking? booking;
+}
