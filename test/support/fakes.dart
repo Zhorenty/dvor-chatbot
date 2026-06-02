@@ -1,8 +1,10 @@
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
@@ -176,6 +178,26 @@ final class FakeBookingRepository implements BookingRepository {
   @override
   Future<void> markReminderSent(int bookingId) async {
     remindersMarked += 1;
+  }
+}
+
+final class FakeTrainerDirectoryRepository implements TrainerDirectoryRepository {
+  FakeTrainerDirectoryRepository(
+    this.items, {
+    this.refreshResult = true,
+  });
+
+  final List<TrainerInfo> items;
+  final bool refreshResult;
+  int refreshCalls = 0;
+
+  @override
+  List<TrainerInfo> list({int limit = 20}) => items.take(limit).toList(growable: false);
+
+  @override
+  Future<bool> refresh({bool force = false}) async {
+    refreshCalls += 1;
+    return refreshResult;
   }
 }
 

@@ -11,6 +11,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private/private_update_router.dart
 import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
@@ -27,6 +28,7 @@ final class PrivateHandlers {
     required TrainingScheduleRepository scheduleRepository,
     required BookingRepository bookingRepository,
     OnboardingRepository onboardingRepository = const NoopOnboardingRepository(),
+    TrainerDirectoryRepository trainerDirectoryRepository = const NoopTrainerDirectoryRepository(),
     required MessageTemplates templates,
     required Set<int> adminUserIds,
     int? adminChatId,
@@ -35,6 +37,7 @@ final class PrivateHandlers {
         _scheduleRepository = scheduleRepository,
         _bookingRepository = bookingRepository,
         _onboardingRepository = onboardingRepository,
+        _trainerDirectoryRepository = trainerDirectoryRepository,
         _templates = templates,
         _adminUserIds = adminUserIds,
         _adminChatId = adminChatId,
@@ -44,6 +47,7 @@ final class PrivateHandlers {
   final TrainingScheduleRepository _scheduleRepository;
   final BookingRepository _bookingRepository;
   final OnboardingRepository _onboardingRepository;
+  final TrainerDirectoryRepository _trainerDirectoryRepository;
   final MessageTemplates _templates;
   final Set<int> _adminUserIds;
   final int? _adminChatId;
@@ -119,6 +123,24 @@ final class PrivateHandlers {
         chatId,
         _templates.chooseScheduleCategory(),
         replyMarkup: _templates.categorySelectionKeyboard(),
+      );
+      return true;
+    }
+
+    if (text != null &&
+        (text.startsWith('/coaches') || text == MessageTemplates.buttonCoachingStaff)) {
+      if (userId != null) {
+        _flowByUserId.remove(userId);
+      }
+      final refreshOk = await _trainerDirectoryRepository.refresh();
+      if (!refreshOk) {
+        l.w('Trainer directory refresh failed. Using cached trainers list.');
+      }
+      final trainers = _trainerDirectoryRepository.list(limit: 30);
+      await _sender.sendMessage(
+        chatId,
+        _templates.coachingStaff(trainers),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
       return true;
     }

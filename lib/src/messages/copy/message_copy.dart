@@ -2,6 +2,7 @@ final class MessageCopy {
   const MessageCopy._();
 
   static const String buttonTrainings = '📅 Расписание';
+  static const String buttonCoachingStaff = '🧑‍🏫 Тренерский штаб';
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonMyBookings = '🗂 Мои записи';
   static const String buttonSubmitPayment = '💸 Я оплатил';

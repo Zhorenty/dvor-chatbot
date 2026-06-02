@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
@@ -11,6 +12,7 @@ final class MessageTemplates {
   const MessageTemplates();
 
   static const String buttonTrainings = MessageCopy.buttonTrainings;
+  static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
   static const String buttonMyBookings = MessageCopy.buttonMyBookings;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
@@ -46,6 +48,7 @@ final class MessageTemplates {
   String privateHelp() {
     return 'Вот чем я могу помочь 👇\n'
         '• Показываю ближайшие тренировки, походы и трейлы 📅\n'
+        '• Показываю список тренеров и контакты штаба 🧑‍🏫\n'
         '• Помогаю записаться на выбранное мероприятие ✍️\n'
         '• Показываю твои записи и текущие статусы 🗂\n'
         '• Принимаю файл с подтверждением оплаты и передаю его на проверку 💸\n'
@@ -110,6 +113,26 @@ final class MessageTemplates {
 
   String chooseScheduleCategory() {
     return 'Выбери раздел расписания 👇';
+  }
+
+  String coachingStaff(List<TrainerInfo> trainers) {
+    if (trainers.isEmpty) {
+      return 'Список тренеров пока пуст. Попробуй чуть позже 🙏';
+    }
+    final lines = <String>['Тренерский штаб DVOR 🧑‍🏫'];
+    for (var index = 0; index < trainers.length; index++) {
+      final trainer = trainers[index];
+      lines.addAll(<String>[
+        '',
+        '${index + 1}. ${trainer.name}',
+        '   🔗 ${trainer.link}',
+        '   📝 ${trainer.description}',
+      ]);
+      if (index != trainers.length - 1) {
+        lines.add('\n-----');
+      }
+    }
+    return lines.join('\n');
   }
 
   String chooseBookingCategory() {

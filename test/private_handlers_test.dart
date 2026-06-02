@@ -2,6 +2,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
@@ -14,6 +15,7 @@ typedef _FakeScheduleRepository = FakeScheduleRepository;
 typedef _FakeBookingRepository = FakeBookingRepository;
 typedef _FakeOnboardingRepository = FakeOnboardingRepository;
 typedef _FakeSender = FakeSender;
+typedef _FakeTrainerDirectoryRepository = FakeTrainerDirectoryRepository;
 
 TrainingBooking _booking({
   int id = 10,
@@ -154,6 +156,70 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
       expect(buttons, isNot(contains(MessageTemplates.buttonMyBookings)));
       expect(buttons, isNot(contains(MessageTemplates.buttonHelp)));
+    });
+
+    test('shows coaching staff button for regular users in private menu', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9101, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9101},
+        'text': '/start',
+      });
+
+      expect(handled, isTrue);
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonCoachingStaff));
+    });
+
+    test('handles coaching staff button and prints trainers list', () async {
+      final sender = _FakeSender();
+      final trainerDirectoryRepository = _FakeTrainerDirectoryRepository(
+        const <TrainerInfo>[
+          TrainerInfo(
+            name: 'Алексей Петров',
+            link: '@alxpetrov',
+            description: 'Силовая и функциональная подготовка',
+          ),
+          TrainerInfo(
+            name: 'Мария Романова',
+            link: '@maria_run',
+            description: 'Беговые тренировки и восстановление',
+          ),
+        ],
+      );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        trainerDirectoryRepository: trainerDirectoryRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9102, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9102},
+        'text': MessageTemplates.buttonCoachingStaff,
+      });
+
+      expect(handled, isTrue);
+      expect(trainerDirectoryRepository.refreshCalls, 1);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Тренерский штаб DVOR'));
+      expect(sender.messages.single.text, contains('Алексей Петров'));
+      expect(sender.messages.single.text, contains('@maria_run'));
+      expect(
+        _keyboardTexts(sender.messages.single.replyMarkup),
+        contains(MessageTemplates.buttonCoachingStaff),
+      );
     });
 
     test('handles wrapped update with message payload', () async {

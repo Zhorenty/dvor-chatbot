@@ -26,6 +26,9 @@ final class TelegramKeyboards {
     final rows = <List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonTrainings},
+        <String, String>{'text': MessageCopy.buttonCoachingStaff},
+      ],
+      <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonBookTraining},
       ],
       <Map<String, String>>[
