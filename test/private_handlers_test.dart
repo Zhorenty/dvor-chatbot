@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
+import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
@@ -25,6 +26,7 @@ TrainingBooking _booking({
   DateTime? startsAt,
   String location = 'Hall',
   BookingStatus status = BookingStatus.pendingPayment,
+  String? paymentNote,
 }) {
   return fakeBooking(
     id: id,
@@ -37,6 +39,7 @@ TrainingBooking _booking({
     startsAt: startsAt,
     location: location,
     status: status,
+    paymentNote: paymentNote,
   );
 }
 
@@ -1036,6 +1039,17 @@ void main() {
             startsAt: training.startsAt,
             location: training.location,
           ),
+          _booking(
+            id: 72,
+            userId: 7002,
+            userUsername: 'runner_bonus',
+            trainingKey: training.sessionKey,
+            title: training.title,
+            startsAt: training.startsAt,
+            location: training.location,
+            status: BookingStatus.paid,
+            paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+          ),
         ];
       final handlers = PrivateHandlers(
         sender: sender,
@@ -1062,6 +1076,7 @@ void main() {
       expect(sender.messages.first.text, contains('Выбери категорию для списка записавшихся'));
       expect(sender.messages.last.text, contains('Список записавшихся'));
       expect(sender.messages.last.text, contains('@runner_one'));
+      expect(sender.messages.last.text, contains('@runner_bonus (Бесплатная тренировка 🎁)'));
     });
 
     test('shows nobles list for admin with training counts', () async {

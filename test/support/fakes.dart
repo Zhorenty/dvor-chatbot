@@ -116,8 +116,12 @@ final class FakeBookingRepository implements BookingRepository {
   }
 
   @override
-  Future<TrainingBooking?> updateStatus(int bookingId, BookingStatus status) async {
-    return fakeBooking(id: bookingId, status: status);
+  Future<TrainingBooking?> updateStatus(
+    int bookingId,
+    BookingStatus status, {
+    String? paymentNote,
+  }) async {
+    return fakeBooking(id: bookingId, status: status, paymentNote: paymentNote);
   }
 
   @override
@@ -146,6 +150,7 @@ TrainingBooking fakeBooking({
   DateTime? startsAt,
   String location = 'Hall',
   BookingStatus status = BookingStatus.pendingPayment,
+  String? paymentNote,
 }) {
   final now = DateTime(2026, 1, 1, 10);
   return TrainingBooking(
@@ -157,7 +162,7 @@ TrainingBooking fakeBooking({
     startsAt: startsAt ?? DateTime(2026, 8, 1, 18),
     location: location,
     status: status,
-    paymentNote: null,
+    paymentNote: paymentNote,
     paymentProofChatId: paymentProofChatId,
     paymentProofMessageId: paymentProofMessageId,
     createdAt: now,

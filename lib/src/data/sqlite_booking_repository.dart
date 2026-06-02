@@ -250,18 +250,30 @@ final class SqliteBookingRepository implements BookingRepository {
   @override
   Future<TrainingBooking?> updateStatus(
     int bookingId,
-    BookingStatus status,
-  ) async {
+    BookingStatus status, {
+    String? paymentNote,
+  }) async {
     final db = _database;
     final nowIso = _nowProvider().toUtc().toIso8601String();
-    db.execute(
-      '''
-      UPDATE bookings
-      SET status = ?, updated_at = ?
-      WHERE id = ?;
-      ''',
-      <Object?>[status.dbValue, nowIso, bookingId],
-    );
+    if (paymentNote == null) {
+      db.execute(
+        '''
+        UPDATE bookings
+        SET status = ?, updated_at = ?
+        WHERE id = ?;
+        ''',
+        <Object?>[status.dbValue, nowIso, bookingId],
+      );
+    } else {
+      db.execute(
+        '''
+        UPDATE bookings
+        SET status = ?, payment_note = ?, updated_at = ?
+        WHERE id = ?;
+        ''',
+        <Object?>[status.dbValue, paymentNote, nowIso, bookingId],
+      );
+    }
     return _findBookingById(bookingId);
   }
 

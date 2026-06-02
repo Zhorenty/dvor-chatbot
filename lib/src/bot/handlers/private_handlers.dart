@@ -16,6 +16,7 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
+import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
@@ -407,7 +408,11 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final updated = await _bookingRepository.updateStatus(activeBooking.id, BookingStatus.paid);
+      final updated = await _bookingRepository.updateStatus(
+        activeBooking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+      );
       final booking = updated ?? activeBooking;
       await _notifyAdminAboutStarterBonusApplied(booking);
       _flowByUserId.remove(userId);

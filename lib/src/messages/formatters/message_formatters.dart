@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 final class MessageFormatters {
   const MessageFormatters._();
+  static const String starterBonusPaymentNoteMarker = '__starter_bonus__';
 
   static String statusLabel(BookingStatus status) {
     return switch (status) {
@@ -13,6 +14,14 @@ final class MessageFormatters {
       BookingStatus.paymentRejected => 'Оплата отклонена ❌',
       BookingStatus.cancelled => 'Отменено',
     };
+  }
+
+  static String participantStatusLabel(TrainingBooking booking) {
+    if (booking.status == BookingStatus.paid &&
+        booking.paymentNote == starterBonusPaymentNoteMarker) {
+      return 'Бесплатная тренировка 🎁';
+    }
+    return statusLabel(booking.status);
   }
 
   static String userTag(TrainingBooking booking) {

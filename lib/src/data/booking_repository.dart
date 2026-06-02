@@ -34,8 +34,9 @@ abstract interface class BookingRepository {
 
   Future<TrainingBooking?> updateStatus(
     int bookingId,
-    BookingStatus status,
-  );
+    BookingStatus status, {
+    String? paymentNote,
+  });
 
   Future<List<TrainingBooking>> listPendingPaymentForReminder({
     required DateTime createdBefore,

@@ -314,7 +314,7 @@ final class MessageTemplates {
       } else {
         for (final booking in tags) {
           lines.add(
-            '   • ${_userTag(booking)} (${_statusLabel(booking.status)})',
+            '   • ${_userTag(booking)} (${_participantStatusLabel(booking)})',
           );
         }
       }
@@ -500,6 +500,10 @@ final class MessageTemplates {
 
   String _statusLabel(BookingStatus status) {
     return MessageFormatters.statusLabel(status);
+  }
+
+  String _participantStatusLabel(TrainingBooking booking) {
+    return MessageFormatters.participantStatusLabel(booking);
   }
 
   String _userTag(TrainingBooking booking) {
