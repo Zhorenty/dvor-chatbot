@@ -55,7 +55,7 @@ final class MessageTemplates {
         '• Напоминаю об оплате, если она еще не подтверждена ⏰\n\n'
         'По остальным вопросам пиши в поддержку: @dvor_support 💬\n\n'
         'Если кнопки вдруг пропали, используй команды:\n'
-        '/trainings, /book, /my_bookings.';
+        '/trainings, /book, /my_bookings, /coaches.';
   }
 
   String privateFallback() {
