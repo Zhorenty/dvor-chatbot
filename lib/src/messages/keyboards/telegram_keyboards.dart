@@ -5,10 +5,18 @@ import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 final class TelegramKeyboards {
   const TelegramKeyboards._();
 
+  static Map<String, Object?> _replyKeyboard(List<List<Map<String, String>>> rows) {
+    return <String, Object?>{
+      'keyboard': rows,
+      'resize_keyboard': true,
+      'one_time_keyboard': false,
+    };
+  }
+
   static Map<String, Object?> privateMenuKeyboard({required bool isAdmin}) {
     if (isAdmin) {
-      return <String, Object?>{
-        'keyboard': <List<Map<String, String>>>[
+      return _replyKeyboard(
+        <List<Map<String, String>>>[
           <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonRefreshSchedule},
             <String, String>{'text': MessageCopy.buttonPaymentsQueue},
@@ -18,9 +26,7 @@ final class TelegramKeyboards {
             <String, String>{'text': MessageCopy.buttonNoblesList},
           ],
         ],
-        'resize_keyboard': true,
-        'one_time_keyboard': false,
-      };
+      );
     }
 
     final rows = <List<Map<String, String>>>[
@@ -36,11 +42,7 @@ final class TelegramKeyboards {
         <String, String>{'text': MessageCopy.buttonHelp},
       ],
     ];
-    return <String, Object?>{
-      'keyboard': rows,
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return _replyKeyboard(rows);
   }
 
   static Map<String, Object?> bookingSelectionKeyboard(List<TrainingInfo> items) {
@@ -58,11 +60,7 @@ final class TelegramKeyboards {
         <String, String>{'text': MessageCopy.buttonMainMenu},
       ],
     );
-    return <String, Object?>{
-      'keyboard': rows,
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return _replyKeyboard(rows);
   }
 
   static Map<String, Object?> categorySelectionKeyboard({
@@ -70,8 +68,8 @@ final class TelegramKeyboards {
     String hikesLabel = MessageCopy.buttonCategoryHikes,
     String trailsLabel = MessageCopy.buttonCategoryTrails,
   }) {
-    return <String, Object?>{
-      'keyboard': <List<Map<String, String>>>[
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{'text': trainingsLabel},
           <String, String>{'text': hikesLabel},
@@ -84,9 +82,7 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],
       ],
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    );
   }
 
   static Map<String, Object?> paymentConfirmationKeyboard({
@@ -106,11 +102,7 @@ final class TelegramKeyboards {
         <String, String>{'text': MessageCopy.buttonMainMenu},
       ],
     );
-    return <String, Object?>{
-      'keyboard': rows,
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return _replyKeyboard(rows);
   }
 
   static Map<String, Object?> bookingManagementSelectionKeyboard(
@@ -130,11 +122,7 @@ final class TelegramKeyboards {
         <String, String>{'text': MessageCopy.buttonMainMenu},
       ],
     );
-    return <String, Object?>{
-      'keyboard': rows,
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return _replyKeyboard(rows);
   }
 
   static Map<String, Object?> bookingActionsKeyboard({
@@ -162,11 +150,7 @@ final class TelegramKeyboards {
         <String, String>{'text': MessageCopy.buttonMainMenu},
       ],
     );
-    return <String, Object?>{
-      'keyboard': rows,
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return _replyKeyboard(rows);
   }
 
   static Map<String, Object?> paymentDecisionInlineKeyboard(int bookingId) {
