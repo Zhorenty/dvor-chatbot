@@ -220,9 +220,10 @@ final class MessageTemplates {
         'Статус: ${_statusLabel(booking.status)}.';
   }
 
-  String paymentSubmittedAdminNotification() {
+  String paymentSubmittedAdminNotification(TrainingBooking booking) {
     return 'Новое подтверждение оплаты 💸\n\n'
         'Пришла новая заявка на проверку оплаты.\n'
+        'Мероприятие: ${booking.trainingTitle}\n'
         'Нажми кнопку ниже, чтобы открыть очередь заявок 👇';
   }
 
@@ -455,8 +456,10 @@ final class MessageTemplates {
     return TelegramKeyboards.paymentDecisionInlineKeyboard(bookingId);
   }
 
-  Map<String, Object?> openPaymentsQueueInlineKeyboard() {
-    return TelegramKeyboards.openPaymentsQueueInlineKeyboard();
+  Map<String, Object?> openPaymentsQueueInlineKeyboard({required int total}) {
+    return TelegramKeyboards.openPaymentsQueueInlineKeyboard(
+      buttonLabel: _labelWithCount(MessageCopy.buttonPaymentsQueue, total),
+    );
   }
 
   String bookingNotFound(int id) {
@@ -595,6 +598,18 @@ final class MessageTemplates {
     return TelegramKeyboards.categorySelectionKeyboard();
   }
 
+  Map<String, Object?> paymentsQueueCategorySelectionKeyboard({
+    required int trainings,
+    required int hikes,
+    required int trails,
+  }) {
+    return TelegramKeyboards.categorySelectionKeyboard(
+      trainingsLabel: _labelWithCount(MessageCopy.buttonCategoryTrainings, trainings),
+      hikesLabel: _labelWithCount(MessageCopy.buttonCategoryHikes, hikes),
+      trailsLabel: _labelWithCount(MessageCopy.buttonCategoryTrails, trails),
+    );
+  }
+
   Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
   }) {
@@ -712,5 +727,9 @@ final class MessageTemplates {
       }
     }
     return lines.join('\n');
+  }
+
+  String _labelWithCount(String label, int count) {
+    return '$label ($count)';
   }
 }

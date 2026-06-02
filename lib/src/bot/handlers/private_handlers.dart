@@ -374,10 +374,15 @@ final class PrivateHandlers {
         !text.startsWith('/')) {
       final category = _parseCategory(text);
       if (category == null) {
+        final counters = await _paymentReviewService.queueCounters();
         await _sender.sendMessage(
           chatId,
           _templates.unknownCategory(),
-          replyMarkup: _templates.categorySelectionKeyboard(),
+          replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
+            trainings: counters.trainings,
+            hikes: counters.hikes,
+            trails: counters.trails,
+          ),
         );
         return true;
       }
@@ -655,7 +660,7 @@ final class PrivateHandlers {
         paymentProofMessageId: paymentProof.messageId,
       );
       if (booking != null) {
-        await _notifyAdminAboutPaymentSubmitted();
+        await _notifyAdminAboutPaymentSubmitted(booking);
       }
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
@@ -790,10 +795,15 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingPaymentsQueueCategory,
         availableTrainings: <TrainingInfo>[],
       );
+      final counters = await _paymentReviewService.queueCounters();
       await _sender.sendMessage(
         chatId,
         _templates.choosePaymentsQueueCategory(),
-        replyMarkup: _templates.categorySelectionKeyboard(),
+        replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
+          trainings: counters.trainings,
+          hikes: counters.hikes,
+          trails: counters.trails,
+        ),
       );
       return true;
     }
@@ -1028,16 +1038,17 @@ final class PrivateHandlers {
     );
   }
 
-  Future<void> _notifyAdminAboutPaymentSubmitted() async {
+  Future<void> _notifyAdminAboutPaymentSubmitted(TrainingBooking booking) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
       return;
     }
     try {
+      final counters = await _paymentReviewService.queueCounters();
       await _sender.sendMessage(
         adminChatId,
-        _templates.paymentSubmittedAdminNotification(),
-        replyMarkup: _templates.openPaymentsQueueInlineKeyboard(),
+        _templates.paymentSubmittedAdminNotification(booking),
+        replyMarkup: _templates.openPaymentsQueueInlineKeyboard(total: counters.total),
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about payment submission: $error', stackTrace);

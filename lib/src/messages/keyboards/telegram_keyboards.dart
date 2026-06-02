@@ -65,15 +65,19 @@ final class TelegramKeyboards {
     };
   }
 
-  static Map<String, Object?> categorySelectionKeyboard() {
+  static Map<String, Object?> categorySelectionKeyboard({
+    String trainingsLabel = MessageCopy.buttonCategoryTrainings,
+    String hikesLabel = MessageCopy.buttonCategoryHikes,
+    String trailsLabel = MessageCopy.buttonCategoryTrails,
+  }) {
     return <String, Object?>{
       'keyboard': <List<Map<String, String>>>[
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonCategoryTrainings},
-          <String, String>{'text': MessageCopy.buttonCategoryHikes},
+          <String, String>{'text': trainingsLabel},
+          <String, String>{'text': hikesLabel},
         ],
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonCategoryTrails},
+          <String, String>{'text': trailsLabel},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
@@ -182,12 +186,14 @@ final class TelegramKeyboards {
     };
   }
 
-  static Map<String, Object?> openPaymentsQueueInlineKeyboard() {
+  static Map<String, Object?> openPaymentsQueueInlineKeyboard({
+    String buttonLabel = MessageCopy.buttonPaymentsQueue,
+  }) {
     return <String, Object?>{
       'inline_keyboard': <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{
-            'text': MessageCopy.buttonPaymentsQueue,
+            'text': buttonLabel,
             'callback_data': MessageCopy.callbackOpenPaymentsQueue,
           },
         ],

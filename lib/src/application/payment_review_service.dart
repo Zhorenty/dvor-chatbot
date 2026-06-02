@@ -20,4 +20,41 @@ final class PaymentReviewService {
         .where((booking) => _catalogService.categoryForBooking(booking) == category)
         .toList(growable: false);
   }
+
+  Future<PaymentQueueCounters> queueCounters() async {
+    final queue = await _bookingRepository.listByStatus(BookingStatus.paymentSubmitted);
+    var trainings = 0;
+    var hikes = 0;
+    var trails = 0;
+    for (final booking in queue) {
+      switch (_catalogService.categoryForBooking(booking)) {
+        case ActivityCategory.trainings:
+          trainings++;
+        case ActivityCategory.hikes:
+          hikes++;
+        case ActivityCategory.trails:
+          trails++;
+      }
+    }
+    return PaymentQueueCounters(
+      total: queue.length,
+      trainings: trainings,
+      hikes: hikes,
+      trails: trails,
+    );
+  }
+}
+
+final class PaymentQueueCounters {
+  const PaymentQueueCounters({
+    required this.total,
+    required this.trainings,
+    required this.hikes,
+    required this.trails,
+  });
+
+  final int total;
+  final int trainings;
+  final int hikes;
+  final int trails;
 }

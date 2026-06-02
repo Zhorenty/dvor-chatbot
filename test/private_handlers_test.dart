@@ -999,13 +999,15 @@ void main() {
 
     test('sends admin chat notification only after proof file is sent', () async {
       final sender = _FakeSender();
+      final submittedBooking = _booking(
+        id: 55,
+        userId: 1701,
+        title: 'Functional',
+        status: BookingStatus.paymentSubmitted,
+      );
       final bookingRepository = _FakeBookingRepository()
-        ..submitResult = _booking(
-          id: 55,
-          userId: 1701,
-          title: 'Functional',
-          status: BookingStatus.paymentSubmitted,
-        );
+        ..submitResult = submittedBooking
+        ..queue = <TrainingBooking>[submittedBooking];
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(
@@ -1054,13 +1056,14 @@ void main() {
       final adminNotification = sender.messages[sender.messages.length - 2];
       expect(adminNotification.chatId, -100777);
       expect(adminNotification.text, contains('Новое подтверждение оплаты'));
+      expect(adminNotification.text, contains('Мероприятие: Functional'));
       final adminMarkup = adminNotification.replyMarkup;
       expect(adminMarkup, isNotNull);
       expect(adminMarkup!['inline_keyboard'], isA<List<Object?>>());
       final adminKeyboard = adminMarkup['inline_keyboard']! as List<Object?>;
       final adminFirstRow = adminKeyboard.first as List<Object?>;
       final openQueueButton = adminFirstRow.first as Map<Object?, Object?>;
-      expect(openQueueButton['text'], MessageTemplates.buttonPaymentsQueue);
+      expect(openQueueButton['text'], '${MessageTemplates.buttonPaymentsQueue} (1)');
       expect(openQueueButton['callback_data'], MessageTemplates.callbackOpenPaymentsQueue);
       final userConfirmation = sender.messages.last;
       expect(userConfirmation.chatId, 1701);
@@ -1110,6 +1113,24 @@ void main() {
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(3));
       expect(sender.messages.first.text, contains('Выбери категорию для заявок'));
+      final categoryMarkup = sender.messages.first.replyMarkup;
+      expect(categoryMarkup, isNotNull);
+      expect(
+        categoryMarkup!['keyboard'],
+        <List<Map<String, String>>>[
+          <Map<String, String>>[
+            <String, String>{'text': '${MessageTemplates.buttonCategoryTrainings} (1)'},
+            <String, String>{'text': '${MessageTemplates.buttonCategoryHikes} (1)'},
+          ],
+          <Map<String, String>>[
+            <String, String>{'text': '${MessageTemplates.buttonCategoryTrails} (0)'},
+          ],
+          <Map<String, String>>[
+            <String, String>{'text': MessageTemplates.buttonBack},
+            <String, String>{'text': MessageTemplates.buttonMainMenu},
+          ],
+        ],
+      );
       expect(sender.messages[1].text, contains('Всего ожидают проверки: 1'));
       expect(sender.copiedMessages, hasLength(1));
       expect(sender.copiedMessages.single.toChatId, 18);
