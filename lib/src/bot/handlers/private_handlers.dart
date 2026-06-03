@@ -1780,19 +1780,28 @@ final class PrivateHandlers {
   }
 
   bool? _parseBookingSegmentSelection(String text) {
-    final normalized = text.trim().toLowerCase();
-    final activeButton = MessageTemplates.buttonActiveBookings.toLowerCase();
-    final archivedButton = MessageTemplates.buttonArchivedBookings.toLowerCase();
-    if (normalized.startsWith(activeButton) || normalized.startsWith('🟢')) {
+    final normalized = text
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'\(\d+\)'), '')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    final activeButton =
+        MessageTemplates.buttonActiveBookings.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
+    final archivedButton = MessageTemplates.buttonArchivedBookings
+        .toLowerCase()
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (normalized == activeButton ||
+        normalized.startsWith(activeButton) ||
+        normalized.contains('🟢') ||
+        normalized.contains('актив')) {
       return false;
     }
-    if (normalized.startsWith(archivedButton) || normalized.startsWith('📦')) {
-      return true;
-    }
-    if (normalized.contains('актив')) {
-      return false;
-    }
-    if (normalized.contains('архив')) {
+    if (normalized == archivedButton ||
+        normalized.startsWith(archivedButton) ||
+        normalized.contains('📦') ||
+        normalized.contains('архив')) {
       return true;
     }
     return null;

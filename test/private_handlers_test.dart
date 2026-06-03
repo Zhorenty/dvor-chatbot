@@ -1823,6 +1823,41 @@ void main() {
       expect(buttons, contains('${MessageTemplates.buttonCategoryTrails} (0)'));
     });
 
+    test('opens categories after selecting active segment with count text format', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..adminSegmentCounts = (active: 2, archived: 0)
+        ..adminCategoryCounts = (trainings: 2, hikes: 0, trails: 0);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2311},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': MessageTemplates.buttonBookingsList,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': '🟢 Активные (2)',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Выбери категорию мероприятий'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains('${MessageTemplates.buttonCategoryTrainings} (2)'));
+    });
+
     test('creates booking from admin wizard', () async {
       final sender = _FakeSender();
       final training = TrainingInfo(
