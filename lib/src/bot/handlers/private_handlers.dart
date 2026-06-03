@@ -1057,16 +1057,8 @@ final class PrivateHandlers {
         text != null &&
         !text.startsWith('/')) {
       final archived = _parseBookingSegmentSelection(text);
-      l.i(
-        'Admin bookings segment selection: raw="$text", '
-        'len=${text.length}, runes=${text.runes.toList()}, parsedArchived=$archived',
-      );
       if (archived == null) {
         final counters = await _bookingRepository.adminCountBySegment();
-        l.i(
-          'Admin bookings segment selection unresolved, staying on segment picker. '
-          'active=${counters.active}, archived=${counters.archived}',
-        );
         await _sender.sendMessage(
           chatId,
           _templates.chooseBookingListSegment(),
@@ -1083,7 +1075,6 @@ final class PrivateHandlers {
         selectedCategory: null,
         availableBookings: const <TrainingBooking>[],
       );
-      l.i('Admin bookings segment selected -> archived=$archived, moving to category picker');
       await _sendAdminBookingCategoryPicker(chatId: chatId, archived: archived);
       return true;
     }
@@ -1093,7 +1084,6 @@ final class PrivateHandlers {
         text != null &&
         !text.startsWith('/')) {
       final category = _parseCategory(text);
-      l.i('Admin bookings category selection: raw="$text", parsedCategory=$category');
       if (category == null) {
         await _sendAdminBookingCategoryPicker(
           chatId: chatId,
@@ -1790,45 +1780,13 @@ final class PrivateHandlers {
   }
 
   bool? _parseBookingSegmentSelection(String text) {
-    final hasCountSuffix = RegExp(r'\(\d+\)').hasMatch(text);
-    final normalized = text
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'\(\d+\)'), '')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    final activeButton =
-        MessageTemplates.buttonActiveBookings.toLowerCase().replaceAll(RegExp(r'\s+'), ' ').trim();
-    final archivedButton = MessageTemplates.buttonArchivedBookings
-        .toLowerCase()
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    if (normalized == activeButton ||
-        normalized.startsWith(activeButton) ||
-        normalized.contains('🟢') ||
-        normalized.contains('актив')) {
+    final normalized = text.toLowerCase().replaceAll(RegExp(r'[^a-zа-я0-9]+'), ' ').trim();
+    if (normalized.contains('активн') || normalized.contains('active')) {
       return false;
     }
-    if (normalized == archivedButton ||
-        normalized.startsWith(archivedButton) ||
-        normalized.contains('📦') ||
-        normalized.contains('архив') ||
-        normalized.contains('рхив')) {
+    if (normalized.contains('архивн') || normalized.contains('archiv')) {
       return true;
     }
-    if (hasCountSuffix) {
-      // Defensive fallback: keyboard values come with count suffix.
-      // If we failed to classify but received a counted label, treat it as "active".
-      l.i(
-        'Admin bookings segment fallback applied for text="$text", normalized="$normalized", '
-        'hasCountSuffix=$hasCountSuffix',
-      );
-      return false;
-    }
-    l.i(
-      'Admin bookings segment parse returned null for text="$text", normalized="$normalized", '
-      'activeButton="$activeButton", archivedButton="$archivedButton"',
-    );
     return null;
   }
 
