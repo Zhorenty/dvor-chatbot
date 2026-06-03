@@ -1780,6 +1780,7 @@ final class PrivateHandlers {
   }
 
   bool? _parseBookingSegmentSelection(String text) {
+    final hasCountSuffix = RegExp(r'\(\d+\)').hasMatch(text);
     final normalized = text
         .trim()
         .toLowerCase()
@@ -1801,8 +1802,14 @@ final class PrivateHandlers {
     if (normalized == archivedButton ||
         normalized.startsWith(archivedButton) ||
         normalized.contains('📦') ||
-        normalized.contains('архив')) {
+        normalized.contains('архив') ||
+        normalized.contains('рхив')) {
       return true;
+    }
+    if (hasCountSuffix) {
+      // Defensive fallback: keyboard values come with count suffix.
+      // If we failed to classify but received a counted label, treat it as "active".
+      return false;
     }
     return null;
   }
