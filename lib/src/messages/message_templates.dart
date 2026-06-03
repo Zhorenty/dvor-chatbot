@@ -749,6 +749,18 @@ final class MessageTemplates {
     );
   }
 
+  Map<String, Object?> bookingsCategorySelectionKeyboard({
+    required int trainings,
+    required int hikes,
+    required int trails,
+  }) {
+    return TelegramKeyboards.categorySelectionKeyboard(
+      trainingsLabel: _labelWithCount(MessageCopy.buttonCategoryTrainings, trainings),
+      hikesLabel: _labelWithCount(MessageCopy.buttonCategoryHikes, hikes),
+      trailsLabel: _labelWithCount(MessageCopy.buttonCategoryTrails, trails),
+    );
+  }
+
   Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
   }) {

@@ -59,6 +59,8 @@ final class FakeBookingRepository implements BookingRepository {
   List<TrainingBooking> pendingForReminder = const <TrainingBooking>[];
   int remindersMarked = 0;
   ({int active, int archived}) adminSegmentCounts = (active: 0, archived: 0);
+  ({int trainings, int hikes, int trails}) adminCategoryCounts =
+      (trainings: 0, hikes: 0, trails: 0);
   List<TrainingBooking> adminBookings = const <TrainingBooking>[];
   ActivityCategory? lastAdminListCategory;
   bool? lastAdminListArchived;
@@ -190,6 +192,13 @@ final class FakeBookingRepository implements BookingRepository {
   @override
   Future<({int active, int archived})> adminCountBySegment() async {
     return adminSegmentCounts;
+  }
+
+  @override
+  Future<({int trainings, int hikes, int trails})> adminCountByCategory({
+    required bool archived,
+  }) async {
+    return adminCategoryCounts;
   }
 
   @override

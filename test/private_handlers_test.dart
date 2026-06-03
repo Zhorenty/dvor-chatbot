@@ -1721,6 +1721,7 @@ void main() {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..adminSegmentCounts = (active: 0, archived: 1)
+        ..adminCategoryCounts = (trainings: 2, hikes: 0, trails: 0)
         ..adminBookings = <TrainingBooking>[
           _booking(
             id: 501,
@@ -1756,6 +1757,9 @@ void main() {
         'from': <String, dynamic>{'id': 2301},
         'text': '${MessageTemplates.buttonArchivedBookings} (1)',
       });
+      final categoryButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(categoryButtons, contains('${MessageTemplates.buttonCategoryTrainings} (2)'));
+      expect(categoryButtons, contains('${MessageTemplates.buttonCategoryTrails} (0)'));
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 23, 'type': 'private'},
         'from': <String, dynamic>{'id': 2301},

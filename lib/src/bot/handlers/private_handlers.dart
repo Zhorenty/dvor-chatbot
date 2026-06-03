@@ -289,10 +289,9 @@ final class PrivateHandlers {
             availableBookings: const <TrainingBooking>[],
             selectedBooking: null,
           );
-          await _sender.sendMessage(
-            chatId,
-            _templates.chooseBookingManagementCategory(),
-            replyMarkup: _templates.categorySelectionKeyboard(),
+          await _sendAdminBookingCategoryPicker(
+            chatId: chatId,
+            archived: flowState.adminViewingArchived,
           );
           return true;
         case _PrivateFlowStep.selectingAdminBookingAction:
@@ -1076,11 +1075,7 @@ final class PrivateHandlers {
         selectedCategory: null,
         availableBookings: const <TrainingBooking>[],
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.chooseBookingManagementCategory(),
-        replyMarkup: _templates.categorySelectionKeyboard(),
-      );
+      await _sendAdminBookingCategoryPicker(chatId: chatId, archived: archived);
       return true;
     }
 
@@ -1090,10 +1085,10 @@ final class PrivateHandlers {
         !text.startsWith('/')) {
       final category = _parseCategory(text);
       if (category == null) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.unknownCategory(),
-          replyMarkup: _templates.categorySelectionKeyboard(),
+        await _sendAdminBookingCategoryPicker(
+          chatId: chatId,
+          archived: flowState?.adminViewingArchived ?? false,
+          forceUnknownCategoryCopy: true,
         );
         return true;
       }
@@ -1835,6 +1830,25 @@ final class PrivateHandlers {
       replyMarkup: _templates.bookingSegmentKeyboard(
         activeCount: counters.active,
         archivedCount: counters.archived,
+      ),
+    );
+  }
+
+  Future<void> _sendAdminBookingCategoryPicker({
+    required int chatId,
+    required bool archived,
+    bool forceUnknownCategoryCopy = false,
+  }) async {
+    final counters = await _bookingRepository.adminCountByCategory(archived: archived);
+    await _sender.sendMessage(
+      chatId,
+      forceUnknownCategoryCopy
+          ? _templates.unknownCategory()
+          : _templates.chooseBookingManagementCategory(),
+      replyMarkup: _templates.bookingsCategorySelectionKeyboard(
+        trainings: counters.trainings,
+        hikes: counters.hikes,
+        trails: counters.trails,
       ),
     );
   }

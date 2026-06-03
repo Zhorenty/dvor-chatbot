@@ -60,6 +60,10 @@ abstract interface class BookingRepository {
 
   Future<({int active, int archived})> adminCountBySegment();
 
+  Future<({int trainings, int hikes, int trails})> adminCountByCategory({
+    required bool archived,
+  });
+
   Future<List<TrainingBooking>> adminListBookings({
     required ActivityCategory category,
     required bool archived,
