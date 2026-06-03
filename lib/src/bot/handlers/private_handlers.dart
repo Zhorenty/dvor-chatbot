@@ -289,9 +289,10 @@ final class PrivateHandlers {
             availableBookings: const <TrainingBooking>[],
             selectedBooking: null,
           );
-          await _sendAdminBookingCategoryPicker(
-            chatId: chatId,
-            archived: flowState.adminViewingArchived,
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseBookingManagementCategory(),
+            replyMarkup: _templates.categorySelectionKeyboard(),
           );
           return true;
         case _PrivateFlowStep.selectingAdminBookingAction:
@@ -1075,7 +1076,11 @@ final class PrivateHandlers {
         selectedCategory: null,
         availableBookings: const <TrainingBooking>[],
       );
-      await _sendAdminBookingCategoryPicker(chatId: chatId, archived: archived);
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseBookingManagementCategory(),
+        replyMarkup: _templates.categorySelectionKeyboard(),
+      );
       return true;
     }
 
@@ -1085,10 +1090,10 @@ final class PrivateHandlers {
         !text.startsWith('/')) {
       final category = _parseCategory(text);
       if (category == null) {
-        await _sendAdminBookingCategoryPicker(
-          chatId: chatId,
-          archived: flowState?.adminViewingArchived ?? false,
-          forceUnknownCategoryCopy: true,
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
         );
         return true;
       }
@@ -1780,11 +1785,11 @@ final class PrivateHandlers {
   }
 
   bool? _parseBookingSegmentSelection(String text) {
-    final normalized = text.toLowerCase().replaceAll(RegExp(r'[^a-zа-я0-9]+'), ' ').trim();
-    if (normalized.contains('активн') || normalized.contains('active')) {
+    final normalized = text.trim().toLowerCase();
+    if (normalized.contains('актив')) {
       return false;
     }
-    if (normalized.contains('архивн') || normalized.contains('archiv')) {
+    if (normalized.contains('архив')) {
       return true;
     }
     return null;
@@ -1830,25 +1835,6 @@ final class PrivateHandlers {
       replyMarkup: _templates.bookingSegmentKeyboard(
         activeCount: counters.active,
         archivedCount: counters.archived,
-      ),
-    );
-  }
-
-  Future<void> _sendAdminBookingCategoryPicker({
-    required int chatId,
-    required bool archived,
-    bool forceUnknownCategoryCopy = false,
-  }) async {
-    final counters = await _bookingRepository.adminCountByCategory(archived: archived);
-    await _sender.sendMessage(
-      chatId,
-      forceUnknownCategoryCopy
-          ? _templates.unknownCategory()
-          : _templates.chooseBookingManagementCategory(),
-      replyMarkup: _templates.bookingsCategorySelectionKeyboard(
-        trainings: counters.trainings,
-        hikes: counters.hikes,
-        trails: counters.trails,
       ),
     );
   }

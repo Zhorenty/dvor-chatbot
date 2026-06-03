@@ -21,7 +21,7 @@ final class MessageCopy {
   static const String buttonNoblesList = '🏰 Список дворян';
   static const String buttonManageBookings = '🛠 Управление записями';
   static const String buttonBookingsList = '📋 Список записей';
-  static const String buttonCreateBooking = '🆕 Создать запись';
+  static const String buttonCreateBooking = '➕ Создать запись';
   static const String buttonActiveBookings = '🟢 Активные';
   static const String buttonArchivedBookings = '📦 Архивные';
   static const String buttonEditBooking = '✏️ Редактировать';

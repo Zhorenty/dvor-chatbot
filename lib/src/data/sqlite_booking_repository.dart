@@ -409,38 +409,6 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
-  Future<({int trainings, int hikes, int trails})> adminCountByCategory({
-    required bool archived,
-  }) async {
-    _expireOverduePendingBookings();
-    final db = _database;
-    final nowIso = _nowProvider().toUtc().toIso8601String();
-    final segmentCondition = _segmentConditionSql(archived);
-    final trainingsCondition = _categoryConditionSql(ActivityCategory.trainings);
-    final hikesCondition = _categoryConditionSql(ActivityCategory.hikes);
-    final trailsCondition = _categoryConditionSql(ActivityCategory.trails);
-    final result = db.select(
-      '''
-      SELECT
-        SUM(CASE WHEN ($trainingsCondition) AND $segmentCondition THEN 1 ELSE 0 END) AS trainings_count,
-        SUM(CASE WHEN ($hikesCondition) AND $segmentCondition THEN 1 ELSE 0 END) AS hikes_count,
-        SUM(CASE WHEN ($trailsCondition) AND $segmentCondition THEN 1 ELSE 0 END) AS trails_count
-      FROM bookings;
-      ''',
-      <Object?>[
-        nowIso,
-        BookingStatus.cancelled.dbValue,
-      ],
-    );
-    final row = result.first;
-    return (
-      trainings: (row['trainings_count'] as int?) ?? 0,
-      hikes: (row['hikes_count'] as int?) ?? 0,
-      trails: (row['trails_count'] as int?) ?? 0,
-    );
-  }
-
-  @override
   Future<List<TrainingBooking>> adminListBookings({
     required ActivityCategory category,
     required bool archived,
@@ -450,7 +418,8 @@ final class SqliteBookingRepository implements BookingRepository {
     final db = _database;
     final nowIso = _nowProvider().toUtc().toIso8601String();
     final whereCategory = _categoryConditionSql(category);
-    final whereSegment = _segmentConditionSql(archived);
+    final whereSegment =
+        archived ? '(starts_at < ? OR status = ?)' : '(starts_at >= ? AND status != ?)';
     final orderBy = archived ? 'starts_at DESC, updated_at DESC' : 'starts_at ASC, updated_at DESC';
     final result = db.select(
       '''
@@ -691,9 +660,5 @@ final class SqliteBookingRepository implements BookingRepository {
       ActivityCategory.trails =>
         "(training_key LIKE 'trails|%' OR training_title LIKE '🏃 Трейл:%')",
     };
-  }
-
-  String _segmentConditionSql(bool archived) {
-    return archived ? '(starts_at < ? OR status = ?)' : '(starts_at >= ? AND status != ?)';
   }
 }
