@@ -1783,6 +1783,67 @@ void main() {
       expect(sender.messages.last.text, contains('переведена в архив'));
     });
 
+    test('restores archived booking when event is upcoming', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..adminSegmentCounts = (active: 0, archived: 1)
+        ..adminBookings = <TrainingBooking>[
+          _booking(
+            id: 502,
+            userId: 9002,
+            userUsername: 'restore_runner',
+            trainingKey: 'trainings|2026-10-02T10:00:00.000Z|Morning Run|Park',
+            title: 'Morning Run',
+            startsAt: DateTime(2026, 10, 2, 10, 0),
+            location: 'Park',
+            status: BookingStatus.cancelled,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2303},
+        nowProvider: () => DateTime(2026, 9, 30, 10, 0),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2303},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2303},
+        'text': MessageTemplates.buttonBookingsList,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2303},
+        'text': '${MessageTemplates.buttonArchivedBookings} (1)',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2303},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2303},
+        'text': '🧾 #502 Morning Run',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2303},
+        'text': MessageTemplates.buttonRestoreBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.adminBookings.single.status, BookingStatus.pendingPayment);
+      expect(sender.messages.last.text, contains('восстановлена'));
+    });
+
     test('creates booking from admin wizard', () async {
       final sender = _FakeSender();
       final training = TrainingInfo(

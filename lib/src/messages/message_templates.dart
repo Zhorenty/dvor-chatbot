@@ -36,6 +36,7 @@ final class MessageTemplates {
   static const String buttonArchivedBookings = MessageCopy.buttonArchivedBookings;
   static const String buttonEditBooking = MessageCopy.buttonEditBooking;
   static const String buttonDeleteBooking = MessageCopy.buttonDeleteBooking;
+  static const String buttonRestoreBooking = MessageCopy.buttonRestoreBooking;
   static const String buttonEditBookingPayment = MessageCopy.buttonEditBookingPayment;
   static const String buttonEditBookingUsername = MessageCopy.buttonEditBookingUsername;
   static const String buttonEditBookingEvent = MessageCopy.buttonEditBookingEvent;
@@ -240,6 +241,14 @@ final class MessageTemplates {
 
   String adminBookingDeleted(TrainingBooking booking) {
     return 'Запись #${booking.id} переведена в архив ✅';
+  }
+
+  String adminBookingRestored(TrainingBooking booking) {
+    return 'Запись #${booking.id} восстановлена ✅';
+  }
+
+  String adminBookingRestoreNotAllowed(TrainingBooking booking) {
+    return 'Запись #${booking.id} нельзя восстановить: мероприятие уже прошло.';
   }
 
   String chooseCreateBookingCategory() {
@@ -783,8 +792,10 @@ final class MessageTemplates {
     );
   }
 
-  Map<String, Object?> adminBookingActionsKeyboard() {
-    return TelegramKeyboards.adminBookingActionsKeyboard();
+  Map<String, Object?> adminBookingActionsKeyboard({
+    required bool canRestore,
+  }) {
+    return TelegramKeyboards.adminBookingActionsKeyboard(canRestore: canRestore);
   }
 
   Map<String, Object?> adminBookingEditFieldsKeyboard() {

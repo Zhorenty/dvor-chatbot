@@ -221,13 +221,19 @@ final class TelegramKeyboards {
     );
   }
 
-  static Map<String, Object?> adminBookingActionsKeyboard() {
+  static Map<String, Object?> adminBookingActionsKeyboard({
+    required bool canRestore,
+  }) {
     return _replyKeyboard(
       <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonEditBooking},
           <String, String>{'text': MessageCopy.buttonDeleteBooking},
         ],
+        if (canRestore)
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonRestoreBooking},
+          ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
           <String, String>{'text': MessageCopy.buttonMainMenu},

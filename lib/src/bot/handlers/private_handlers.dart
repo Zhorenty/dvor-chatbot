@@ -323,7 +323,7 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.adminBookingActions(selectedBooking),
-            replyMarkup: _templates.adminBookingActionsKeyboard(),
+            replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
           );
           return true;
         case _PrivateFlowStep.selectingAdminBookingEditStatus:
@@ -363,7 +363,7 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.adminBookingActions(selectedBooking),
-            replyMarkup: _templates.adminBookingActionsKeyboard(),
+            replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
           );
           return true;
         case _PrivateFlowStep.selectingAdminCreateCategory:
@@ -1148,7 +1148,7 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.adminBookingActions(selectedBooking),
-        replyMarkup: _templates.adminBookingActionsKeyboard(),
+        replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
       );
       return true;
     }
@@ -1218,10 +1218,11 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.adminBookingActions(selectedBooking),
-          replyMarkup: _templates.adminBookingActionsKeyboard(),
+          replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
         );
         return true;
       }
+
       if (text == MessageTemplates.buttonConfirmDeleteBooking) {
         final archived = await _bookingRepository.adminArchiveBooking(selectedBooking.id);
         if (archived == null) {
@@ -1244,6 +1245,52 @@ final class PrivateHandlers {
         );
         return true;
       }
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingAction &&
+        text == MessageTemplates.buttonRestoreBooking) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (!_canRestoreBooking(selectedBooking)) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingRestoreNotAllowed(selectedBooking),
+          replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
+        );
+        return true;
+      }
+      final restored = await _bookingRepository.adminUpdateBooking(
+        bookingId: selectedBooking.id,
+        status: BookingStatus.pendingPayment,
+      );
+      if (restored == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingNotFound(selectedBooking.id),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        _flowByUserId.remove(userId);
+        return true;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.adminBookingRestored(restored),
+        replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+      );
+      return true;
     }
 
     if (userId != null &&
@@ -1286,7 +1333,7 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.noUpcomingForBooking(),
-            replyMarkup: _templates.adminBookingActionsKeyboard(),
+            replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
           );
           return true;
         }
@@ -1849,6 +1896,17 @@ final class PrivateHandlers {
       canReschedule: category == _ActivityCategory.trainings,
       canCancel: _isOutdoorCategory(category),
     );
+  }
+
+  Map<String, Object?> _adminBookingActionsKeyboard(TrainingBooking booking) {
+    return _templates.adminBookingActionsKeyboard(canRestore: _canRestoreBooking(booking));
+  }
+
+  bool _canRestoreBooking(TrainingBooking booking) {
+    if (booking.status != BookingStatus.cancelled) {
+      return false;
+    }
+    return booking.startsAt.isAfter(_nowProvider());
   }
 
   Future<void> _notifyAdminAboutPaymentSubmitted(TrainingBooking booking) async {

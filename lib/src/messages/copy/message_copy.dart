@@ -21,11 +21,12 @@ final class MessageCopy {
   static const String buttonNoblesList = '🏰 Список дворян';
   static const String buttonManageBookings = '🛠 Управление записями';
   static const String buttonBookingsList = '📋 Список записей';
-  static const String buttonCreateBooking = '➕ Создать запись';
+  static const String buttonCreateBooking = '📝 Создать запись';
   static const String buttonActiveBookings = '🟢 Активные';
   static const String buttonArchivedBookings = '📦 Архивные';
   static const String buttonEditBooking = '✏️ Редактировать';
   static const String buttonDeleteBooking = '🗑 Удалить';
+  static const String buttonRestoreBooking = '♻️ Восстановить';
   static const String buttonEditBookingPayment = '💳 Изменить оплату';
   static const String buttonEditBookingUsername = '👤 Изменить пользователя';
   static const String buttonEditBookingEvent = '📌 Изменить мероприятие';
