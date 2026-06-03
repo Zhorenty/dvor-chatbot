@@ -2,6 +2,7 @@ import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
@@ -57,6 +58,12 @@ final class FakeBookingRepository implements BookingRepository {
   );
   List<TrainingBooking> pendingForReminder = const <TrainingBooking>[];
   int remindersMarked = 0;
+  ({int active, int archived}) adminSegmentCounts = (active: 0, archived: 0);
+  List<TrainingBooking> adminBookings = const <TrainingBooking>[];
+  ActivityCategory? lastAdminListCategory;
+  bool? lastAdminListArchived;
+  int adminArchiveCalls = 0;
+  int? lastAdminArchivedBookingId;
 
   @override
   Future<BookingCreateResult> createPendingBooking({
@@ -178,6 +185,79 @@ final class FakeBookingRepository implements BookingRepository {
   @override
   Future<void> markReminderSent(int bookingId) async {
     remindersMarked += 1;
+  }
+
+  @override
+  Future<({int active, int archived})> adminCountBySegment() async {
+    return adminSegmentCounts;
+  }
+
+  @override
+  Future<List<TrainingBooking>> adminListBookings({
+    required ActivityCategory category,
+    required bool archived,
+    int limit = 30,
+  }) async {
+    lastAdminListCategory = category;
+    lastAdminListArchived = archived;
+    return adminBookings.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<TrainingBooking> adminCreateBooking({
+    int userId = 0,
+    required String userUsername,
+    required TrainingInfo training,
+    required BookingStatus status,
+  }) async {
+    final created = fakeBooking(
+      id: 777,
+      userId: userId,
+      userUsername: userUsername,
+      trainingKey: training.sessionKey,
+      title: training.title,
+      startsAt: training.startsAt,
+      location: training.location,
+      status: status,
+    );
+    adminBookings = <TrainingBooking>[...adminBookings, created];
+    return created;
+  }
+
+  @override
+  Future<TrainingBooking?> adminUpdateBooking({
+    required int bookingId,
+    String? userUsername,
+    TrainingInfo? training,
+    BookingStatus? status,
+  }) async {
+    final index = adminBookings.indexWhere((item) => item.id == bookingId);
+    if (index < 0) {
+      return null;
+    }
+    final current = adminBookings[index];
+    final updated = fakeBooking(
+      id: current.id,
+      userId: current.userId,
+      userUsername: userUsername ?? current.userUsername,
+      trainingKey: training?.sessionKey ?? current.trainingKey,
+      title: training?.title ?? current.trainingTitle,
+      startsAt: training?.startsAt ?? current.startsAt,
+      location: training?.location ?? current.location,
+      status: status ?? current.status,
+      paymentNote: current.paymentNote,
+    );
+    final items = adminBookings.toList(growable: true);
+    items[index] = updated;
+    adminBookings = items;
+    return updated;
+  }
+
+  @override
+  Future<TrainingBooking?> adminArchiveBooking(int bookingId) async {
+    adminArchiveCalls += 1;
+    lastAdminArchivedBookingId = bookingId;
+    return adminUpdateBooking(bookingId: bookingId, status: BookingStatus.cancelled);
   }
 }
 

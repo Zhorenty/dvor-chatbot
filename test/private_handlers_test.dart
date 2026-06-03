@@ -152,6 +152,7 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonPaymentsQueue));
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
       expect(buttons, contains(MessageTemplates.buttonNoblesList));
+      expect(buttons, contains(MessageTemplates.buttonManageBookings));
       expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
       expect(buttons, isNot(contains(MessageTemplates.buttonMyBookings)));
@@ -1690,6 +1691,155 @@ void main() {
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(2));
       expect(sender.messages.last.text, contains('tg://user?id=7101'));
+    });
+
+    test('opens admin booking management menu', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2300},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2300},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Управление записями'));
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonBookingsList));
+      expect(buttons, contains(MessageTemplates.buttonCreateBooking));
+    });
+
+    test('archives selected booking from admin management flow', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..adminSegmentCounts = (active: 0, archived: 1)
+        ..adminBookings = <TrainingBooking>[
+          _booking(
+            id: 501,
+            userId: 9001,
+            userUsername: 'archived_runner',
+            trainingKey: 'trainings|2026-10-01T10:00:00.000Z|Morning Run|Park',
+            title: 'Morning Run',
+            startsAt: DateTime(2026, 10, 1, 10, 0),
+            location: 'Park',
+            status: BookingStatus.pendingPayment,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2301},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': MessageTemplates.buttonBookingsList,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': '${MessageTemplates.buttonArchivedBookings} (1)',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': '🧾 #501 Morning Run',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': MessageTemplates.buttonDeleteBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': MessageTemplates.buttonConfirmDeleteBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.adminArchiveCalls, 1);
+      expect(bookingRepository.lastAdminArchivedBookingId, 501);
+      expect(sender.messages.last.text, contains('переведена в архив'));
+    });
+
+    test('creates booking from admin wizard', () async {
+      final sender = _FakeSender();
+      final training = TrainingInfo(
+        title: 'Bootcamp',
+        startsAt: DateTime(2026, 9, 18, 19, 0),
+        location: 'Main Hall',
+      );
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[training]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2302},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonCreateBooking,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': '🎯 1. Bootcamp',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': '@new_runner',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonStatusPaid,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonConfirmCreateBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.adminBookings, hasLength(1));
+      expect(bookingRepository.adminBookings.single.userUsername, 'new_runner');
+      expect(bookingRepository.adminBookings.single.status, BookingStatus.paid);
+      expect(sender.messages.last.text, contains('создана'));
     });
 
     test('notifies user and admin chat on approve payment', () async {

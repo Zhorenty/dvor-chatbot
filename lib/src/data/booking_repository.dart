@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -56,4 +57,28 @@ abstract interface class BookingRepository {
   });
 
   Future<void> markReminderSent(int bookingId);
+
+  Future<({int active, int archived})> adminCountBySegment();
+
+  Future<List<TrainingBooking>> adminListBookings({
+    required ActivityCategory category,
+    required bool archived,
+    int limit = 30,
+  });
+
+  Future<TrainingBooking> adminCreateBooking({
+    int userId = 0,
+    required String userUsername,
+    required TrainingInfo training,
+    required BookingStatus status,
+  });
+
+  Future<TrainingBooking?> adminUpdateBooking({
+    required int bookingId,
+    String? userUsername,
+    TrainingInfo? training,
+    BookingStatus? status,
+  });
+
+  Future<TrainingBooking?> adminArchiveBooking(int bookingId);
 }

@@ -19,6 +19,26 @@ final class MessageCopy {
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
   static const String buttonParticipantsList = '👥 Список записавшихся';
   static const String buttonNoblesList = '🏰 Список дворян';
+  static const String buttonManageBookings = '🛠 Управление записями';
+  static const String buttonBookingsList = '📋 Список записей';
+  static const String buttonCreateBooking = '➕ Создать запись';
+  static const String buttonActiveBookings = '🟢 Активные';
+  static const String buttonArchivedBookings = '📦 Архивные';
+  static const String buttonEditBooking = '✏️ Редактировать';
+  static const String buttonDeleteBooking = '🗑 Удалить';
+  static const String buttonEditBookingPayment = '💳 Изменить оплату';
+  static const String buttonEditBookingUsername = '👤 Изменить пользователя';
+  static const String buttonEditBookingEvent = '📌 Изменить мероприятие';
+  static const String buttonConfirmDeleteBooking = '✅ Да, удалить';
+  static const String buttonCancelDeleteBooking = '↩️ Не удалять';
+  static const String buttonBackToBookingsList = '📋 К списку записей';
+  static const String buttonCreateAnotherBooking = '➕ Создать еще';
+  static const String buttonConfirmCreateBooking = '✅ Создать';
+  static const String buttonCancelCreateBooking = '↩️ Не создавать';
+  static const String buttonStatusPendingPayment = '⏳ Ожидает оплату';
+  static const String buttonStatusPaymentSubmitted = '🧾 На проверке';
+  static const String buttonStatusPaid = '✅ Оплачено';
+  static const String buttonStatusPaymentRejected = '❌ Оплата отклонена';
 
   static const String callbackApprovePaymentPrefix = 'payment:approve:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';

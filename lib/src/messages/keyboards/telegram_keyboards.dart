@@ -25,6 +25,9 @@ final class TelegramKeyboards {
             <String, String>{'text': MessageCopy.buttonParticipantsList},
             <String, String>{'text': MessageCopy.buttonNoblesList},
           ],
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonManageBookings},
+          ],
         ],
       );
     }
@@ -183,5 +186,134 @@ final class TelegramKeyboards {
         ],
       ],
     };
+  }
+
+  static Map<String, Object?> adminBookingManagementKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBookingsList},
+          <String, String>{'text': MessageCopy.buttonCreateBooking},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> bookingSegmentKeyboard({
+    required int activeCount,
+    required int archivedCount,
+  }) {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': '${MessageCopy.buttonActiveBookings} ($activeCount)'},
+          <String, String>{'text': '${MessageCopy.buttonArchivedBookings} ($archivedCount)'},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminBookingActionsKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonEditBooking},
+          <String, String>{'text': MessageCopy.buttonDeleteBooking},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminBookingEditFieldsKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonEditBookingPayment},
+          <String, String>{'text': MessageCopy.buttonEditBookingUsername},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonEditBookingEvent},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminBookingDeleteConfirmKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonConfirmDeleteBooking},
+          <String, String>{'text': MessageCopy.buttonCancelDeleteBooking},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminBookingAfterActionKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBackToBookingsList},
+          <String, String>{'text': MessageCopy.buttonCreateAnotherBooking},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminCreateBookingConfirmationKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonConfirmCreateBooking},
+          <String, String>{'text': MessageCopy.buttonCancelCreateBooking},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> bookingPaymentStatusKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonStatusPendingPayment},
+          <String, String>{'text': MessageCopy.buttonStatusPaymentSubmitted},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonStatusPaid},
+          <String, String>{'text': MessageCopy.buttonStatusPaymentRejected},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
   }
 }

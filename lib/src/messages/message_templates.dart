@@ -29,6 +29,26 @@ final class MessageTemplates {
   static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
+  static const String buttonManageBookings = MessageCopy.buttonManageBookings;
+  static const String buttonBookingsList = MessageCopy.buttonBookingsList;
+  static const String buttonCreateBooking = MessageCopy.buttonCreateBooking;
+  static const String buttonActiveBookings = MessageCopy.buttonActiveBookings;
+  static const String buttonArchivedBookings = MessageCopy.buttonArchivedBookings;
+  static const String buttonEditBooking = MessageCopy.buttonEditBooking;
+  static const String buttonDeleteBooking = MessageCopy.buttonDeleteBooking;
+  static const String buttonEditBookingPayment = MessageCopy.buttonEditBookingPayment;
+  static const String buttonEditBookingUsername = MessageCopy.buttonEditBookingUsername;
+  static const String buttonEditBookingEvent = MessageCopy.buttonEditBookingEvent;
+  static const String buttonConfirmDeleteBooking = MessageCopy.buttonConfirmDeleteBooking;
+  static const String buttonCancelDeleteBooking = MessageCopy.buttonCancelDeleteBooking;
+  static const String buttonBackToBookingsList = MessageCopy.buttonBackToBookingsList;
+  static const String buttonCreateAnotherBooking = MessageCopy.buttonCreateAnotherBooking;
+  static const String buttonConfirmCreateBooking = MessageCopy.buttonConfirmCreateBooking;
+  static const String buttonCancelCreateBooking = MessageCopy.buttonCancelCreateBooking;
+  static const String buttonStatusPendingPayment = MessageCopy.buttonStatusPendingPayment;
+  static const String buttonStatusPaymentSubmitted = MessageCopy.buttonStatusPaymentSubmitted;
+  static const String buttonStatusPaid = MessageCopy.buttonStatusPaid;
+  static const String buttonStatusPaymentRejected = MessageCopy.buttonStatusPaymentRejected;
   static const String callbackApprovePaymentPrefix = MessageCopy.callbackApprovePaymentPrefix;
   static const String callbackRejectPaymentPrefix = MessageCopy.callbackRejectPaymentPrefix;
   static const String callbackOpenPaymentsQueue = MessageCopy.callbackOpenPaymentsQueue;
@@ -146,6 +166,125 @@ final class MessageTemplates {
 
   String choosePaymentsQueueCategory() {
     return 'Выбери категорию для заявок на оплату 👇';
+  }
+
+  String chooseBookingManagementAction() {
+    return 'Управление записями: выбери действие 👇';
+  }
+
+  String chooseBookingListSegment() {
+    return 'Какой список открыть? 👇';
+  }
+
+  String chooseBookingManagementCategory() {
+    return 'Выбери категорию мероприятий для управления 👇';
+  }
+
+  String chooseAdminBookingFromList(List<TrainingBooking> bookings) {
+    if (bookings.isEmpty) {
+      return 'Список пуст для выбранных фильтров.';
+    }
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>['Выбери запись 👇'];
+    for (final booking in bookings) {
+      final username = _userTag(booking);
+      lines.add(
+        '#${booking.id} | $username | ${_statusLabel(booking.status)} | ${formatter.format(booking.startsAt)}',
+      );
+    }
+    return lines.join('\n');
+  }
+
+  String adminBookingActions(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Запись #${booking.id}\n'
+        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
+        'Событие: ${booking.trainingTitle}\n'
+        'Дата: ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_statusLabel(booking.status)}\n\n'
+        'Выбери действие 👇';
+  }
+
+  String chooseAdminBookingEditField(TrainingBooking booking) {
+    return 'Что изменить в записи #${booking.id}?';
+  }
+
+  String chooseAdminBookingPaymentStatus(TrainingBooking booking) {
+    return 'Выбери новый статус оплаты для записи #${booking.id} 👇';
+  }
+
+  String adminBookingAskUsername(TrainingBooking booking) {
+    return 'Отправь username пользователя для записи #${booking.id} '
+        '(можно с @ или без).';
+  }
+
+  String adminBookingUsernameUpdated(TrainingBooking booking) {
+    return 'Готово. Пользователь для записи #${booking.id}: ${_userTag(booking)}';
+  }
+
+  String adminBookingEventUpdated(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Событие для записи #${booking.id} обновлено ✅\n'
+        '${booking.trainingTitle}\n'
+        '${formatter.format(booking.startsAt)}';
+  }
+
+  String adminBookingPaymentStatusUpdated(TrainingBooking booking) {
+    return 'Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)} ✅';
+  }
+
+  String adminBookingDeleteConfirm(TrainingBooking booking) {
+    return 'Удалить запись #${booking.id}? '
+        'Запись перейдет в архив со статусом «Отменена».';
+  }
+
+  String adminBookingDeleted(TrainingBooking booking) {
+    return 'Запись #${booking.id} переведена в архив ✅';
+  }
+
+  String chooseCreateBookingCategory() {
+    return 'Создание записи: выбери категорию 👇';
+  }
+
+  String chooseCreateBookingEvent(List<TrainingInfo> items) {
+    if (items.isEmpty) {
+      return 'В выбранной категории нет доступных мероприятий для записи.';
+    }
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>['Выбери мероприятие для новой записи 👇'];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      lines.add(
+          '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} (${item.location})');
+    }
+    return lines.join('\n');
+  }
+
+  String createBookingAskUsername() {
+    return 'Введи username пользователя для новой записи '
+        '(можно с @ или без).';
+  }
+
+  String chooseCreateBookingPaymentStatus() {
+    return 'Выбери стартовый статус оплаты 👇';
+  }
+
+  String createBookingPreview({
+    required TrainingInfo training,
+    required String username,
+    required BookingStatus status,
+  }) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Проверь данные новой записи:\n'
+        'Пользователь: @$username\n'
+        'Событие: ${training.title}\n'
+        'Дата: ${formatter.format(training.startsAt)}\n'
+        'Локация: ${training.location}\n'
+        'Статус: ${_statusLabel(status)}';
+  }
+
+  String adminBookingCreated(TrainingBooking booking) {
+    return 'Запись #${booking.id} создана ✅';
   }
 
   String clubInfoPrivate() {
@@ -628,6 +767,44 @@ final class MessageTemplates {
       canReschedule: canReschedule,
       canCancel: canCancel,
     );
+  }
+
+  Map<String, Object?> adminBookingManagementKeyboard() {
+    return TelegramKeyboards.adminBookingManagementKeyboard();
+  }
+
+  Map<String, Object?> bookingSegmentKeyboard({
+    required int activeCount,
+    required int archivedCount,
+  }) {
+    return TelegramKeyboards.bookingSegmentKeyboard(
+      activeCount: activeCount,
+      archivedCount: archivedCount,
+    );
+  }
+
+  Map<String, Object?> adminBookingActionsKeyboard() {
+    return TelegramKeyboards.adminBookingActionsKeyboard();
+  }
+
+  Map<String, Object?> adminBookingEditFieldsKeyboard() {
+    return TelegramKeyboards.adminBookingEditFieldsKeyboard();
+  }
+
+  Map<String, Object?> adminBookingDeleteConfirmKeyboard() {
+    return TelegramKeyboards.adminBookingDeleteConfirmKeyboard();
+  }
+
+  Map<String, Object?> adminBookingAfterActionKeyboard() {
+    return TelegramKeyboards.adminBookingAfterActionKeyboard();
+  }
+
+  Map<String, Object?> adminCreateBookingConfirmationKeyboard() {
+    return TelegramKeyboards.adminCreateBookingConfirmationKeyboard();
+  }
+
+  Map<String, Object?> bookingPaymentStatusKeyboard() {
+    return TelegramKeyboards.bookingPaymentStatusKeyboard();
   }
 
   String _groupMention({

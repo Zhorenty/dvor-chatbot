@@ -258,6 +258,164 @@ final class PrivateHandlers {
             replyMarkup: _bookingActionsKeyboard(selectedBooking),
           );
           return true;
+        case _PrivateFlowStep.selectingAdminBookingManagementAction:
+          _flowByUserId.remove(userId);
+          await _sender.sendMessage(
+            chatId,
+            'Вернул в главное меню 👇',
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminBookingListSegment:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseBookingManagementAction(),
+            replyMarkup: _templates.adminBookingManagementKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminBookingListCategory:
+          await _openAdminBookingListSegment(
+            chatId: chatId,
+            userId: userId,
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminBookingFromList:
+          _flowByUserId[userId] = flowState!.copyWith(
+            step: _PrivateFlowStep.selectingAdminBookingListCategory,
+            availableBookings: const <TrainingBooking>[],
+            selectedBooking: null,
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseBookingManagementCategory(),
+            replyMarkup: _templates.categorySelectionKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminBookingAction:
+          final bookings = flowState!.availableBookings;
+          _flowByUserId[userId] = flowState.copyWith(
+            step: _PrivateFlowStep.selectingAdminBookingFromList,
+            selectedBooking: null,
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseAdminBookingFromList(bookings),
+            replyMarkup: _templates.bookingManagementSelectionKeyboard(bookings),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminBookingEditField:
+          final selectedBooking = flowState?.selectedBooking;
+          if (selectedBooking == null) {
+            _flowByUserId.remove(userId);
+            await _sender.sendMessage(
+              chatId,
+              'Вернул в главное меню 👇',
+              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            );
+            return true;
+          }
+          _flowByUserId[userId] =
+              flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingAction);
+          await _sender.sendMessage(
+            chatId,
+            _templates.adminBookingActions(selectedBooking),
+            replyMarkup: _templates.adminBookingActionsKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminBookingEditStatus:
+        case _PrivateFlowStep.enteringAdminBookingUsername:
+        case _PrivateFlowStep.selectingAdminBookingEditEvent:
+          final selectedBooking = flowState?.selectedBooking;
+          if (selectedBooking == null) {
+            _flowByUserId.remove(userId);
+            await _sender.sendMessage(
+              chatId,
+              'Вернул в главное меню 👇',
+              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            );
+            return true;
+          }
+          _flowByUserId[userId] =
+              flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingEditField);
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseAdminBookingEditField(selectedBooking),
+            replyMarkup: _templates.adminBookingEditFieldsKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.confirmingAdminBookingDelete:
+          final selectedBooking = flowState?.selectedBooking;
+          if (selectedBooking == null) {
+            _flowByUserId.remove(userId);
+            await _sender.sendMessage(
+              chatId,
+              'Вернул в главное меню 👇',
+              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            );
+            return true;
+          }
+          _flowByUserId[userId] =
+              flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingAction);
+          await _sender.sendMessage(
+            chatId,
+            _templates.adminBookingActions(selectedBooking),
+            replyMarkup: _templates.adminBookingActionsKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminCreateCategory:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseBookingManagementAction(),
+            replyMarkup: _templates.adminBookingManagementKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminCreateEvent:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminCreateCategory,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseCreateBookingCategory(),
+            replyMarkup: _templates.categorySelectionKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.enteringAdminCreateUsername:
+          final trainings = flowState!.availableTrainings;
+          _flowByUserId[userId] =
+              flowState.copyWith(step: _PrivateFlowStep.selectingAdminCreateEvent);
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseCreateBookingEvent(trainings),
+            replyMarkup: _templates.bookingSelectionKeyboard(trainings),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminCreateStatus:
+          _flowByUserId[userId] =
+              flowState!.copyWith(step: _PrivateFlowStep.enteringAdminCreateUsername);
+          await _sender.sendMessage(
+            chatId,
+            _templates.createBookingAskUsername(),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+        case _PrivateFlowStep.confirmingAdminCreate:
+          _flowByUserId[userId] =
+              flowState!.copyWith(step: _PrivateFlowStep.selectingAdminCreateStatus);
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseCreateBookingPaymentStatus(),
+            replyMarkup: _templates.bookingPaymentStatusKeyboard(),
+          );
+          return true;
         case null:
           await _sender.sendMessage(
             chatId,
@@ -848,6 +1006,606 @@ final class PrivateHandlers {
       return true;
     }
 
+    if (text != null && text == MessageTemplates.buttonManageBookings) {
+      if (!canRunAdminAction) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (userId == null) {
+        return false;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseBookingManagementAction(),
+        replyMarkup: _templates.adminBookingManagementKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingManagementAction &&
+        text != null) {
+      if (text == MessageTemplates.buttonBookingsList ||
+          text == MessageTemplates.buttonBackToBookingsList) {
+        await _openAdminBookingListSegment(chatId: chatId, userId: userId);
+        return true;
+      }
+      if (text == MessageTemplates.buttonCreateBooking ||
+          text == MessageTemplates.buttonCreateAnotherBooking) {
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminCreateCategory,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseCreateBookingCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+        return true;
+      }
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingListSegment &&
+        text != null &&
+        !text.startsWith('/')) {
+      final archived = _parseBookingSegmentSelection(text);
+      if (archived == null) {
+        final counters = await _bookingRepository.adminCountBySegment();
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseBookingListSegment(),
+          replyMarkup: _templates.bookingSegmentKeyboard(
+            activeCount: counters.active,
+            archivedCount: counters.archived,
+          ),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingAdminBookingListCategory,
+        adminViewingArchived: archived,
+        selectedCategory: null,
+        availableBookings: const <TrainingBooking>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseBookingManagementCategory(),
+        replyMarkup: _templates.categorySelectionKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingListCategory &&
+        text != null &&
+        !text.startsWith('/')) {
+      final category = _parseCategory(text);
+      if (category == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+        return true;
+      }
+      final archived = flowState?.adminViewingArchived ?? false;
+      final bookings = await _bookingRepository.adminListBookings(
+        category: category,
+        archived: archived,
+      );
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingAdminBookingFromList,
+        selectedCategory: category,
+        availableBookings: bookings,
+        selectedBooking: null,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseAdminBookingFromList(bookings),
+        replyMarkup: bookings.isEmpty
+            ? _templates.adminBookingManagementKeyboard()
+            : _templates.bookingManagementSelectionKeyboard(bookings),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingFromList &&
+        text != null &&
+        !text.startsWith('/')) {
+      final selectedBookingId = _parseBookingSelectionId(text);
+      final bookings = flowState?.availableBookings ?? const <TrainingBooking>[];
+      TrainingBooking? selectedBooking;
+      for (final booking in bookings) {
+        if (booking.id == selectedBookingId) {
+          selectedBooking = booking;
+          break;
+        }
+      }
+      if (selectedBooking == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseAdminBookingFromList(bookings),
+          replyMarkup: bookings.isEmpty
+              ? _templates.adminBookingManagementKeyboard()
+              : _templates.bookingManagementSelectionKeyboard(bookings),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingAdminBookingAction,
+        selectedBooking: selectedBooking,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.adminBookingActions(selectedBooking),
+        replyMarkup: _templates.adminBookingActionsKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingAction &&
+        text == MessageTemplates.buttonEditBooking) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      _flowByUserId[userId] =
+          flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingEditField);
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseAdminBookingEditField(selectedBooking),
+        replyMarkup: _templates.adminBookingEditFieldsKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingAction &&
+        text == MessageTemplates.buttonDeleteBooking) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      _flowByUserId[userId] =
+          flowState!.copyWith(step: _PrivateFlowStep.confirmingAdminBookingDelete);
+      await _sender.sendMessage(
+        chatId,
+        _templates.adminBookingDeleteConfirm(selectedBooking),
+        replyMarkup: _templates.adminBookingDeleteConfirmKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.confirmingAdminBookingDelete &&
+        text != null) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (text == MessageTemplates.buttonCancelDeleteBooking) {
+        _flowByUserId[userId] =
+            flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingAction);
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingActions(selectedBooking),
+          replyMarkup: _templates.adminBookingActionsKeyboard(),
+        );
+        return true;
+      }
+      if (text == MessageTemplates.buttonConfirmDeleteBooking) {
+        final archived = await _bookingRepository.adminArchiveBooking(selectedBooking.id);
+        if (archived == null) {
+          await _sender.sendMessage(
+            chatId,
+            _templates.bookingNotFound(selectedBooking.id),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          _flowByUserId.remove(userId);
+          return true;
+        }
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingDeleted(archived),
+          replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+        );
+        return true;
+      }
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingEditField &&
+        text != null) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (text == MessageTemplates.buttonEditBookingPayment) {
+        _flowByUserId[userId] =
+            flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingEditStatus);
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseAdminBookingPaymentStatus(selectedBooking),
+          replyMarkup: _templates.bookingPaymentStatusKeyboard(),
+        );
+        return true;
+      }
+      if (text == MessageTemplates.buttonEditBookingUsername) {
+        _flowByUserId[userId] =
+            flowState!.copyWith(step: _PrivateFlowStep.enteringAdminBookingUsername);
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingAskUsername(selectedBooking),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (text == MessageTemplates.buttonEditBookingEvent) {
+        final category = _catalogService.categoryForBooking(selectedBooking);
+        final items = _bookableItemsByCategory(category);
+        if (items.isEmpty) {
+          await _sender.sendMessage(
+            chatId,
+            _templates.noUpcomingForBooking(),
+            replyMarkup: _templates.adminBookingActionsKeyboard(),
+          );
+          return true;
+        }
+        _flowByUserId[userId] = flowState!.copyWith(
+          step: _PrivateFlowStep.selectingAdminBookingEditEvent,
+          availableTrainings: items,
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseCreateBookingEvent(items),
+          replyMarkup: _templates.bookingSelectionKeyboard(items),
+        );
+        return true;
+      }
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingEditStatus &&
+        text != null &&
+        !text.startsWith('/')) {
+      final selectedBooking = flowState?.selectedBooking;
+      final status = _parsePaymentStatusSelection(text);
+      if (selectedBooking == null || status == null) {
+        await _sender.sendMessage(
+          chatId,
+          selectedBooking == null
+              ? _templates.privateFallback()
+              : _templates.chooseAdminBookingPaymentStatus(selectedBooking),
+          replyMarkup: selectedBooking == null
+              ? _templates.privateMenuKeyboard(isAdmin: isAdmin)
+              : _templates.bookingPaymentStatusKeyboard(),
+        );
+        if (selectedBooking == null) {
+          _flowByUserId.remove(userId);
+        }
+        return true;
+      }
+      final updated = await _bookingRepository.adminUpdateBooking(
+        bookingId: selectedBooking.id,
+        status: status,
+      );
+      if (updated == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingNotFound(selectedBooking.id),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.adminBookingPaymentStatusUpdated(updated),
+        replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringAdminBookingUsername &&
+        text != null &&
+        !text.startsWith('/')) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final normalizedUsername = _normalizeUsernameInput(text);
+      if (normalizedUsername == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingAskUsername(selectedBooking),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final updated = await _bookingRepository.adminUpdateBooking(
+        bookingId: selectedBooking.id,
+        userUsername: normalizedUsername,
+      );
+      if (updated == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingNotFound(selectedBooking.id),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.adminBookingUsernameUpdated(updated),
+        replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminBookingEditEvent &&
+        text != null &&
+        !text.startsWith('/')) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final index = _parseTrainingSelectionIndex(text);
+      final items = flowState?.availableTrainings ?? const <TrainingInfo>[];
+      if (index == null || index < 1 || index > items.length) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseCreateBookingEvent(items),
+          replyMarkup: _templates.bookingSelectionKeyboard(items),
+        );
+        return true;
+      }
+      final updated = await _bookingRepository.adminUpdateBooking(
+        bookingId: selectedBooking.id,
+        training: items[index - 1],
+      );
+      if (updated == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingNotFound(selectedBooking.id),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.adminBookingEventUpdated(updated),
+        replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminCreateCategory &&
+        text != null &&
+        !text.startsWith('/')) {
+      final category = _parseCategory(text);
+      if (category == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+        return true;
+      }
+      final items = _bookableItemsByCategory(category);
+      if (items.isEmpty) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.noUpcomingForBooking(),
+          replyMarkup: _templates.adminBookingManagementKeyboard(),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminCreateEvent,
+        availableTrainings: items,
+        selectedCategory: category,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseCreateBookingEvent(items),
+        replyMarkup: _templates.bookingSelectionKeyboard(items),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminCreateEvent &&
+        text != null &&
+        !text.startsWith('/')) {
+      final index = _parseTrainingSelectionIndex(text);
+      final items = flowState?.availableTrainings ?? const <TrainingInfo>[];
+      if (index == null || index < 1 || index > items.length) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseCreateBookingEvent(items),
+          replyMarkup: _templates.bookingSelectionKeyboard(items),
+        );
+        return true;
+      }
+      final selectedTraining = items[index - 1];
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.enteringAdminCreateUsername,
+        adminCreateTraining: selectedTraining,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.createBookingAskUsername(),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringAdminCreateUsername &&
+        text != null &&
+        !text.startsWith('/')) {
+      final normalizedUsername = _normalizeUsernameInput(text);
+      if (normalizedUsername == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.createBookingAskUsername(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingAdminCreateStatus,
+        adminCreateUsername: normalizedUsername,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseCreateBookingPaymentStatus(),
+        replyMarkup: _templates.bookingPaymentStatusKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminCreateStatus &&
+        text != null &&
+        !text.startsWith('/')) {
+      final status = _parsePaymentStatusSelection(text);
+      final training = flowState?.adminCreateTraining;
+      final username = flowState?.adminCreateUsername;
+      if (status == null || training == null || username == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseCreateBookingPaymentStatus(),
+          replyMarkup: _templates.bookingPaymentStatusKeyboard(),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.confirmingAdminCreate,
+        adminCreateStatus: status,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.createBookingPreview(training: training, username: username, status: status),
+        replyMarkup: _templates.adminCreateBookingConfirmationKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.confirmingAdminCreate &&
+        text != null) {
+      if (text == MessageTemplates.buttonCancelCreateBooking) {
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseBookingManagementAction(),
+          replyMarkup: _templates.adminBookingManagementKeyboard(),
+        );
+        return true;
+      }
+      if (text == MessageTemplates.buttonConfirmCreateBooking) {
+        final training = flowState?.adminCreateTraining;
+        final username = flowState?.adminCreateUsername;
+        final status = flowState?.adminCreateStatus;
+        if (training == null || username == null || status == null) {
+          await _sender.sendMessage(
+            chatId,
+            _templates.privateFallback(),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          _flowByUserId.remove(userId);
+          return true;
+        }
+        final created = await _bookingRepository.adminCreateBooking(
+          userUsername: username,
+          training: training,
+          status: status,
+        );
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingCreated(created),
+          replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+        );
+        return true;
+      }
+    }
+
     if (text != null &&
         (text.startsWith('/approve_payment') || text.startsWith('/reject_payment'))) {
       if (!isAdmin) {
@@ -1024,6 +1782,61 @@ final class PrivateHandlers {
 
   int? _parseBookingSelectionId(String text) {
     return _updateRouter.parseBookingIdSelection(text);
+  }
+
+  bool? _parseBookingSegmentSelection(String text) {
+    final normalized = text.trim().toLowerCase();
+    if (normalized.contains('актив')) {
+      return false;
+    }
+    if (normalized.contains('архив')) {
+      return true;
+    }
+    return null;
+  }
+
+  BookingStatus? _parsePaymentStatusSelection(String text) {
+    final normalized = text.trim().toLowerCase();
+    if (normalized.contains('ожидает')) {
+      return BookingStatus.pendingPayment;
+    }
+    if (normalized.contains('проверке') || normalized.contains('проверк')) {
+      return BookingStatus.paymentSubmitted;
+    }
+    if (normalized.contains('оплачен') || normalized.contains('оплачено')) {
+      return BookingStatus.paid;
+    }
+    if (normalized.contains('отклон')) {
+      return BookingStatus.paymentRejected;
+    }
+    return null;
+  }
+
+  String? _normalizeUsernameInput(String text) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed.startsWith('@') ? trimmed.substring(1) : trimmed;
+  }
+
+  Future<void> _openAdminBookingListSegment({
+    required int chatId,
+    required int userId,
+  }) async {
+    final counters = await _bookingRepository.adminCountBySegment();
+    _flowByUserId[userId] = const _PrivateFlowState(
+      step: _PrivateFlowStep.selectingAdminBookingListSegment,
+      availableTrainings: <TrainingInfo>[],
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.chooseBookingListSegment(),
+      replyMarkup: _templates.bookingSegmentKeyboard(
+        activeCount: counters.active,
+        archivedCount: counters.archived,
+      ),
+    );
   }
 
   bool _isOutdoorCategory(_ActivityCategory category) {

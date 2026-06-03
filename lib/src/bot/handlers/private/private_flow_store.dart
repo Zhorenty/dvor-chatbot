@@ -1,6 +1,9 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
+
+const Object _privateFlowUnset = Object();
 
 enum PrivateFlowStep {
   selectingScheduleCategory,
@@ -13,6 +16,21 @@ enum PrivateFlowStep {
   selectingBookingToManage,
   selectingBookingAction,
   selectingRescheduleTraining,
+  selectingAdminBookingManagementAction,
+  selectingAdminBookingListSegment,
+  selectingAdminBookingListCategory,
+  selectingAdminBookingFromList,
+  selectingAdminBookingAction,
+  selectingAdminBookingEditField,
+  selectingAdminBookingEditStatus,
+  enteringAdminBookingUsername,
+  selectingAdminBookingEditEvent,
+  confirmingAdminBookingDelete,
+  selectingAdminCreateCategory,
+  selectingAdminCreateEvent,
+  enteringAdminCreateUsername,
+  selectingAdminCreateStatus,
+  confirmingAdminCreate,
 }
 
 final class PrivateFlowState {
@@ -25,6 +43,10 @@ final class PrivateFlowState {
     this.selectedCategory,
     this.bookingFromSchedulePreview = false,
     this.starterBonusOffered = false,
+    this.adminViewingArchived = false,
+    this.adminCreateStatus,
+    this.adminCreateUsername,
+    this.adminCreateTraining,
   });
 
   final PrivateFlowStep step;
@@ -35,26 +57,50 @@ final class PrivateFlowState {
   final ActivityCategory? selectedCategory;
   final bool bookingFromSchedulePreview;
   final bool starterBonusOffered;
+  final bool adminViewingArchived;
+  final BookingStatus? adminCreateStatus;
+  final String? adminCreateUsername;
+  final TrainingInfo? adminCreateTraining;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
     List<TrainingInfo>? availableTrainings,
     List<TrainingBooking>? availableBookings,
-    TrainingBooking? activeBooking,
-    TrainingBooking? selectedBooking,
-    ActivityCategory? selectedCategory,
+    Object? activeBooking = _privateFlowUnset,
+    Object? selectedBooking = _privateFlowUnset,
+    Object? selectedCategory = _privateFlowUnset,
     bool? bookingFromSchedulePreview,
     bool? starterBonusOffered,
+    bool? adminViewingArchived,
+    Object? adminCreateStatus = _privateFlowUnset,
+    Object? adminCreateUsername = _privateFlowUnset,
+    Object? adminCreateTraining = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
       availableTrainings: availableTrainings ?? this.availableTrainings,
       availableBookings: availableBookings ?? this.availableBookings,
-      activeBooking: activeBooking ?? this.activeBooking,
-      selectedBooking: selectedBooking ?? this.selectedBooking,
-      selectedCategory: selectedCategory ?? this.selectedCategory,
+      activeBooking: identical(activeBooking, _privateFlowUnset)
+          ? this.activeBooking
+          : activeBooking as TrainingBooking?,
+      selectedBooking: identical(selectedBooking, _privateFlowUnset)
+          ? this.selectedBooking
+          : selectedBooking as TrainingBooking?,
+      selectedCategory: identical(selectedCategory, _privateFlowUnset)
+          ? this.selectedCategory
+          : selectedCategory as ActivityCategory?,
       bookingFromSchedulePreview: bookingFromSchedulePreview ?? this.bookingFromSchedulePreview,
       starterBonusOffered: starterBonusOffered ?? this.starterBonusOffered,
+      adminViewingArchived: adminViewingArchived ?? this.adminViewingArchived,
+      adminCreateStatus: identical(adminCreateStatus, _privateFlowUnset)
+          ? this.adminCreateStatus
+          : adminCreateStatus as BookingStatus?,
+      adminCreateUsername: identical(adminCreateUsername, _privateFlowUnset)
+          ? this.adminCreateUsername
+          : adminCreateUsername as String?,
+      adminCreateTraining: identical(adminCreateTraining, _privateFlowUnset)
+          ? this.adminCreateTraining
+          : adminCreateTraining as TrainingInfo?,
     );
   }
 }

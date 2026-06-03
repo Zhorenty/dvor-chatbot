@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/pending_payment_expiry_policy.dart';
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -381,6 +382,180 @@ final class SqliteBookingRepository implements BookingRepository {
     );
   }
 
+  @override
+  Future<({int active, int archived})> adminCountBySegment() async {
+    _expireOverduePendingBookings();
+    final db = _database;
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    final result = db.select(
+      '''
+      SELECT
+        SUM(CASE WHEN starts_at >= ? AND status != ? THEN 1 ELSE 0 END) AS active_count,
+        SUM(CASE WHEN starts_at < ? OR status = ? THEN 1 ELSE 0 END) AS archived_count
+      FROM bookings;
+      ''',
+      <Object?>[
+        nowIso,
+        BookingStatus.cancelled.dbValue,
+        nowIso,
+        BookingStatus.cancelled.dbValue,
+      ],
+    );
+    final row = result.first;
+    return (
+      active: (row['active_count'] as int?) ?? 0,
+      archived: (row['archived_count'] as int?) ?? 0,
+    );
+  }
+
+  @override
+  Future<List<TrainingBooking>> adminListBookings({
+    required ActivityCategory category,
+    required bool archived,
+    int limit = 30,
+  }) async {
+    _expireOverduePendingBookings();
+    final db = _database;
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    final whereCategory = _categoryConditionSql(category);
+    final whereSegment =
+        archived ? '(starts_at < ? OR status = ?)' : '(starts_at >= ? AND status != ?)';
+    final orderBy = archived ? 'starts_at DESC, updated_at DESC' : 'starts_at ASC, updated_at DESC';
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE ($whereCategory)
+        AND $whereSegment
+      ORDER BY $orderBy
+      LIMIT ?;
+      ''',
+      <Object?>[
+        nowIso,
+        BookingStatus.cancelled.dbValue,
+        limit,
+      ],
+    );
+    return result.map(_rowToBooking).toList(growable: false);
+  }
+
+  @override
+  Future<TrainingBooking> adminCreateBooking({
+    int userId = 0,
+    required String userUsername,
+    required TrainingInfo training,
+    required BookingStatus status,
+  }) async {
+    _expireOverduePendingBookings();
+    final db = _database;
+    final normalizedUsername = _normalizeUsername(userUsername);
+    if (normalizedUsername == null) {
+      throw ArgumentError.value(userUsername, 'userUsername', 'username must not be empty');
+    }
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    final trainingKey = training.sessionKey;
+    try {
+      db.execute(
+        '''
+        INSERT INTO bookings (
+          user_id,
+          user_username,
+          training_key,
+          training_title,
+          starts_at,
+          location,
+          status,
+          payment_note,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ''',
+        <Object?>[
+          userId,
+          normalizedUsername,
+          trainingKey,
+          training.title,
+          training.startsAt.toUtc().toIso8601String(),
+          training.location,
+          status.dbValue,
+          null,
+          nowIso,
+          nowIso,
+        ],
+      );
+      final created = _findBookingByUserAndTraining(userId, trainingKey);
+      if (created == null) {
+        throw StateError('Inserted admin booking is missing in database.');
+      }
+      return created;
+    } on SqliteException {
+      final existing = _findBookingByUserAndTraining(userId, trainingKey);
+      if (existing == null) {
+        rethrow;
+      }
+      final updated = await adminUpdateBooking(
+        bookingId: existing.id,
+        userUsername: normalizedUsername,
+        status: status,
+      );
+      return updated ?? existing;
+    }
+  }
+
+  @override
+  Future<TrainingBooking?> adminUpdateBooking({
+    required int bookingId,
+    String? userUsername,
+    TrainingInfo? training,
+    BookingStatus? status,
+  }) async {
+    final db = _database;
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    final columns = <String>[];
+    final args = <Object?>[];
+    final normalizedUsername = _normalizeUsername(userUsername);
+    if (userUsername != null && normalizedUsername == null) {
+      throw ArgumentError.value(userUsername, 'userUsername', 'username must not be empty');
+    }
+    if (normalizedUsername != null) {
+      columns.add('user_username = ?');
+      args.add(normalizedUsername);
+    }
+    if (training != null) {
+      columns.add('training_key = ?');
+      args.add(training.sessionKey);
+      columns.add('training_title = ?');
+      args.add(training.title);
+      columns.add('starts_at = ?');
+      args.add(training.startsAt.toUtc().toIso8601String());
+      columns.add('location = ?');
+      args.add(training.location);
+    }
+    if (status != null) {
+      columns.add('status = ?');
+      args.add(status.dbValue);
+    }
+    if (columns.isEmpty) {
+      return _findBookingById(bookingId);
+    }
+    columns.add('updated_at = ?');
+    args.add(nowIso);
+    args.add(bookingId);
+    db.execute(
+      '''
+      UPDATE bookings
+      SET ${columns.join(', ')}
+      WHERE id = ?;
+      ''',
+      args,
+    );
+    return _findBookingById(bookingId);
+  }
+
+  @override
+  Future<TrainingBooking?> adminArchiveBooking(int bookingId) async {
+    return updateStatus(bookingId, BookingStatus.cancelled);
+  }
+
   void _expireOverduePendingBookings() {
     final db = _database;
     final cutoff = _nowProvider().toUtc().subtract(_pendingPaymentTtl).toIso8601String();
@@ -474,5 +649,16 @@ final class SqliteBookingRepository implements BookingRepository {
       ''',
       <Object?>[userUsername, userId, trainingKey],
     );
+  }
+
+  String _categoryConditionSql(ActivityCategory category) {
+    return switch (category) {
+      ActivityCategory.trainings => "(training_key LIKE 'trainings|%' OR "
+          "(training_key NOT LIKE 'hikes|%' AND training_key NOT LIKE 'trails|%' "
+          "AND training_title NOT LIKE '🥾 Поход:%' AND training_title NOT LIKE '🏃 Трейл:%'))",
+      ActivityCategory.hikes => "(training_key LIKE 'hikes|%' OR training_title LIKE '🥾 Поход:%')",
+      ActivityCategory.trails =>
+        "(training_key LIKE 'trails|%' OR training_title LIKE '🏃 Трейл:%')",
+    };
   }
 }
