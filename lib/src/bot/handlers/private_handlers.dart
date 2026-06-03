@@ -1057,8 +1057,16 @@ final class PrivateHandlers {
         text != null &&
         !text.startsWith('/')) {
       final archived = _parseBookingSegmentSelection(text);
+      l.i(
+        'Admin bookings segment selection: raw="$text", '
+        'len=${text.length}, runes=${text.runes.toList()}, parsedArchived=$archived',
+      );
       if (archived == null) {
         final counters = await _bookingRepository.adminCountBySegment();
+        l.i(
+          'Admin bookings segment selection unresolved, staying on segment picker. '
+          'active=${counters.active}, archived=${counters.archived}',
+        );
         await _sender.sendMessage(
           chatId,
           _templates.chooseBookingListSegment(),
@@ -1075,6 +1083,7 @@ final class PrivateHandlers {
         selectedCategory: null,
         availableBookings: const <TrainingBooking>[],
       );
+      l.i('Admin bookings segment selected -> archived=$archived, moving to category picker');
       await _sendAdminBookingCategoryPicker(chatId: chatId, archived: archived);
       return true;
     }
@@ -1084,6 +1093,7 @@ final class PrivateHandlers {
         text != null &&
         !text.startsWith('/')) {
       final category = _parseCategory(text);
+      l.i('Admin bookings category selection: raw="$text", parsedCategory=$category');
       if (category == null) {
         await _sendAdminBookingCategoryPicker(
           chatId: chatId,
@@ -1809,8 +1819,16 @@ final class PrivateHandlers {
     if (hasCountSuffix) {
       // Defensive fallback: keyboard values come with count suffix.
       // If we failed to classify but received a counted label, treat it as "active".
+      l.i(
+        'Admin bookings segment fallback applied for text="$text", normalized="$normalized", '
+        'hasCountSuffix=$hasCountSuffix',
+      );
       return false;
     }
+    l.i(
+      'Admin bookings segment parse returned null for text="$text", normalized="$normalized", '
+      'activeButton="$activeButton", archivedButton="$archivedButton"',
+    );
     return null;
   }
 
