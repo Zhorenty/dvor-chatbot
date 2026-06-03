@@ -1781,6 +1781,14 @@ final class PrivateHandlers {
 
   bool? _parseBookingSegmentSelection(String text) {
     final normalized = text.trim().toLowerCase();
+    final activeButton = MessageTemplates.buttonActiveBookings.toLowerCase();
+    final archivedButton = MessageTemplates.buttonArchivedBookings.toLowerCase();
+    if (normalized.startsWith(activeButton) || normalized.startsWith('🟢')) {
+      return false;
+    }
+    if (normalized.startsWith(archivedButton) || normalized.startsWith('📦')) {
+      return true;
+    }
     if (normalized.contains('актив')) {
       return false;
     }
