@@ -103,6 +103,7 @@ final class TelegramClient implements MessageSender {
     String text, {
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
+    String? parseMode,
   }) async {
     final body = <String, Object?>{
       'chat_id': chatId,
@@ -111,6 +112,9 @@ final class TelegramClient implements MessageSender {
     };
     if (replyMarkup != null) {
       body['reply_markup'] = replyMarkup;
+    }
+    if (parseMode != null) {
+      body['parse_mode'] = parseMode;
     }
 
     final payload = await _post(

@@ -335,6 +335,7 @@ final class FakeSender implements MessageSender {
     String text, {
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
+    String? parseMode,
   }) async {
     messages.add(
       SentMessage(
@@ -342,6 +343,7 @@ final class FakeSender implements MessageSender {
         text: text,
         disableNotification: disableNotification,
         replyMarkup: replyMarkup,
+        parseMode: parseMode,
       ),
     );
     return messages.length;
@@ -385,12 +387,14 @@ final class SentMessage {
     required this.text,
     required this.disableNotification,
     required this.replyMarkup,
+    required this.parseMode,
   });
 
   final int chatId;
   final String text;
   final bool disableNotification;
   final Map<String, Object?>? replyMarkup;
+  final String? parseMode;
 }
 
 final class CopiedMessage {

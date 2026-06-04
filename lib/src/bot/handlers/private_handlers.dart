@@ -104,6 +104,7 @@ final class PrivateHandlers {
         chatId,
         _templates.privateWelcome(),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        parseMode: 'HTML',
       );
       if (starterBonusAvailable) {
         await _sender.sendMessage(

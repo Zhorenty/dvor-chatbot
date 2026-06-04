@@ -4,6 +4,7 @@ abstract interface class MessageSender {
     String text, {
     bool disableNotification = true,
     Map<String, Object?>? replyMarkup,
+    String? parseMode,
   });
 
   Future<int> copyMessage(

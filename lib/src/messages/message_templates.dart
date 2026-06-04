@@ -60,10 +60,10 @@ final class MessageTemplates {
   static const String scheduleDocumentUrl = MessageCopy.scheduleDocumentUrl;
 
   String privateWelcome() {
-    final botUsername = _botUsername;
-    final link = botUsername == null || botUsername.isEmpty
-        ? null
-        : 'https://t.me/$botUsername?start=start';
+    final botLink = _botDeepLink();
+    final botChatLine = botLink == null
+        ? '🤖 Чат с ботом: напиши боту в личку и нажми Start'
+        : '🤖 Чат с ботом: <a href="$botLink">нажми, чтобы открыть</a>';
     return 'Здесь мы тренируемся, растем и кайфуем от бега вместе 💛\n'
         'Поддержка, дисциплина и движение вперед - наша база.\n\n'
         '✅ Основные принципы\n'
@@ -95,7 +95,10 @@ final class MessageTemplates {
         '💛 Главное\n'
         'Это не просто чат - это команда.\n'
         'Каждая тренировка делает тебя сильнее.\n'
-        '${link == null ? '' : '\n\n🤖 Чат с ботом: $link'}\n\n'
+        '\n'
+        'Ты уже в игре!\n'
+        'Твой первый шаг к победе и подарок за старт ждут в боте.\n'
+        '$botChatLine\n\n'
         'Добро пожаловать 🤝';
   }
 
@@ -354,15 +357,21 @@ final class MessageTemplates {
     required String? firstName,
   }) {
     final mention = _groupMention(username: username, userId: userId, firstName: firstName);
-    final botUsername = _botUsername;
-    final botLink = botUsername == null || botUsername.isEmpty
-        ? 'Напиши боту в личку и нажми Start'
-        : 'Открой: https://t.me/$botUsername?start=start';
+    final botLink = _botDeepLink();
+    final botPrompt = botLink == null ? 'Напиши боту в личку и нажми Start' : 'Открой: $botLink';
     return 'Привет, $mention! 🏃\n'
         'Ты уже в игре!\n'
         'Переходи в бота «Двор» - там твой первый шаг к победе и подарок за старт.\n'
-        '$botLink\n'
+        '$botPrompt\n'
         'Вперёд, чемпион! 🏆';
+  }
+
+  String? _botDeepLink() {
+    final botUsername = _botUsername;
+    if (botUsername == null || botUsername.isEmpty) {
+      return null;
+    }
+    return 'https://t.me/$botUsername?start=start';
   }
 
   String scheduleRefreshDone() {
