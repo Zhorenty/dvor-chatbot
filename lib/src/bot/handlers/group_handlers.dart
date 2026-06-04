@@ -64,6 +64,7 @@ final class GroupHandlers {
             firstName: user['first_name']?.toString(),
           ),
           disableNotification: true,
+          parseMode: 'HTML',
         );
         final joinedAt = _extractJoinedAt(message) ?? _nowProvider();
         await _onboardingRepository.registerGroupWelcome(
