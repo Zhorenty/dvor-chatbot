@@ -845,8 +845,10 @@ final class PrivateHandlers {
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.paymentConfirmation &&
         paymentProof != null) {
+      final currentFlow = flowState!;
       final booking = await _bookingRepository.submitPaymentForLatestPending(
         userId,
+        bookingId: currentFlow.activeBooking?.id,
         note: paymentProof.caption,
         paymentProofChatId: paymentProof.fromChatId,
         paymentProofMessageId: paymentProof.messageId,
@@ -1314,10 +1316,21 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final restored = await _bookingRepository.adminUpdateBooking(
-        bookingId: selectedBooking.id,
-        status: BookingStatus.pendingPayment,
-      );
+      final TrainingBooking? restored;
+      try {
+        restored = await _bookingRepository.adminUpdateBooking(
+          bookingId: selectedBooking.id,
+          status: BookingStatus.pendingPayment,
+        );
+      } on BookingConflictException {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingUpdateConflict(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        _flowByUserId.remove(userId);
+        return true;
+      }
       if (restored == null) {
         await _sender.sendMessage(
           chatId,
@@ -1417,10 +1430,21 @@ final class PrivateHandlers {
         }
         return true;
       }
-      final updated = await _bookingRepository.adminUpdateBooking(
-        bookingId: selectedBooking.id,
-        status: status,
-      );
+      final TrainingBooking? updated;
+      try {
+        updated = await _bookingRepository.adminUpdateBooking(
+          bookingId: selectedBooking.id,
+          status: status,
+        );
+      } on BookingConflictException {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingUpdateConflict(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        _flowByUserId.remove(userId);
+        return true;
+      }
       if (updated == null) {
         _flowByUserId.remove(userId);
         await _sender.sendMessage(
@@ -1465,10 +1489,21 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final updated = await _bookingRepository.adminUpdateBooking(
-        bookingId: selectedBooking.id,
-        userUsername: normalizedUsername,
-      );
+      final TrainingBooking? updated;
+      try {
+        updated = await _bookingRepository.adminUpdateBooking(
+          bookingId: selectedBooking.id,
+          userUsername: normalizedUsername,
+        );
+      } on BookingConflictException {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingUpdateConflict(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        _flowByUserId.remove(userId);
+        return true;
+      }
       if (updated == null) {
         _flowByUserId.remove(userId);
         await _sender.sendMessage(
@@ -1514,10 +1549,21 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final updated = await _bookingRepository.adminUpdateBooking(
-        bookingId: selectedBooking.id,
-        training: items[index - 1],
-      );
+      final TrainingBooking? updated;
+      try {
+        updated = await _bookingRepository.adminUpdateBooking(
+          bookingId: selectedBooking.id,
+          training: items[index - 1],
+        );
+      } on BookingConflictException {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminBookingUpdateConflict(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        _flowByUserId.remove(userId);
+        return true;
+      }
       if (updated == null) {
         _flowByUserId.remove(userId);
         await _sender.sendMessage(
@@ -1720,8 +1766,12 @@ final class PrivateHandlers {
       }
       final status =
           text.startsWith('/approve_payment') ? BookingStatus.paid : BookingStatus.paymentRejected;
-      final booking = await _bookingRepository.updateStatus(bookingId, status);
-      if (booking != null) {
+      final reviewResult = await _bookingRepository.reviewSubmittedPayment(
+        bookingId: bookingId,
+        status: status,
+      );
+      final booking = reviewResult.booking;
+      if (reviewResult.outcome == PaymentReviewOutcome.success && booking != null) {
         await _notifyAboutPaymentReview(
           booking,
           moderatorUserId: userId,
@@ -1730,9 +1780,11 @@ final class PrivateHandlers {
       }
       await _sender.sendMessage(
         chatId,
-        booking == null
-            ? _templates.bookingNotFound(bookingId)
-            : _templates.bookingStatusUpdated(booking),
+        switch (reviewResult.outcome) {
+          PaymentReviewOutcome.success => _templates.bookingStatusUpdated(booking!),
+          PaymentReviewOutcome.notFound => _templates.bookingNotFound(bookingId),
+          PaymentReviewOutcome.invalidStatus => _templates.paymentAlreadyReviewed(bookingId),
+        },
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
       return true;
@@ -1760,8 +1812,31 @@ final class PrivateHandlers {
     required bool isAdmin,
   }) async {
     final trainings = _participantItemsByCategory(category);
-    final keys = trainings.map((item) => item.sessionKey).toSet();
-    final bookings = await _bookingRepository.listByTrainingKeys(keys);
+    final activeBookings = await _bookingRepository.adminListBookings(
+      category: category,
+      archived: false,
+      limit: 500,
+    );
+    final trainingsByKey = <String, TrainingInfo>{
+      for (final training in trainings) training.sessionKey: training,
+    };
+    for (final booking in activeBookings) {
+      trainingsByKey.putIfAbsent(
+        booking.trainingKey,
+        () => TrainingInfo(
+          title: booking.trainingTitle,
+          startsAt: booking.startsAt,
+          location: booking.location,
+          category: category,
+        ),
+      );
+    }
+    final mergedTrainings = trainingsByKey.values.toList(growable: false)
+      ..sort((left, right) => left.startsAt.compareTo(right.startsAt));
+    final keys = trainingsByKey.keys.toSet();
+    final bookings = keys.isEmpty
+        ? const <TrainingBooking>[]
+        : await _bookingRepository.listByTrainingKeys(keys, limit: 1000);
     final byTraining = <String, List<TrainingBooking>>{};
     for (final booking in bookings) {
       byTraining.putIfAbsent(booking.trainingKey, () => <TrainingBooking>[]).add(booking);
@@ -1772,7 +1847,7 @@ final class PrivateHandlers {
     await _sender.sendMessage(
       chatId,
       _templates.trainingParticipants(
-        trainings: trainings,
+        trainings: mergedTrainings,
         bookingsByTrainingKey: byTraining,
         title: copy.title,
         emptyText: copy.emptyText,

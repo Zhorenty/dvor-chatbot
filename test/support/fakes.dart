@@ -39,8 +39,10 @@ final class FakeScheduleRepository implements TrainingScheduleRepository {
 final class FakeBookingRepository implements BookingRepository {
   int createCalls = 0;
   int submitCalls = 0;
+  int reviewCalls = 0;
   int cancelCalls = 0;
   int rescheduleCalls = 0;
+  int? lastSubmittedBookingId;
   List<TrainingBooking> queue = const <TrainingBooking>[];
   List<TrainingBooking> bookingsByTrainingKey = const <TrainingBooking>[];
   List<TrainingBooking> userBookings = const <TrainingBooking>[];
@@ -68,6 +70,8 @@ final class FakeBookingRepository implements BookingRepository {
     qualifiedTrainingsCount: 0,
     usedRewardsCount: 0,
   );
+  PaymentReviewResult? paymentReviewResult;
+  bool throwAdminUpdateConflict = false;
 
   @override
   Future<BookingCreateResult> createPendingBooking({
@@ -160,11 +164,13 @@ final class FakeBookingRepository implements BookingRepository {
   @override
   Future<TrainingBooking?> submitPaymentForLatestPending(
     int userId, {
+    int? bookingId,
     String? note,
     int? paymentProofChatId,
     int? paymentProofMessageId,
   }) async {
     submitCalls += 1;
+    lastSubmittedBookingId = bookingId;
     return submitResult;
   }
 
@@ -175,6 +181,23 @@ final class FakeBookingRepository implements BookingRepository {
     String? paymentNote,
   }) async {
     return fakeBooking(id: bookingId, status: status, paymentNote: paymentNote);
+  }
+
+  @override
+  Future<PaymentReviewResult> reviewSubmittedPayment({
+    required int bookingId,
+    required BookingStatus status,
+  }) async {
+    reviewCalls += 1;
+    final configured = paymentReviewResult;
+    if (configured != null) {
+      return configured;
+    }
+    final booking = fakeBooking(id: bookingId, status: status);
+    return PaymentReviewResult(
+      outcome: PaymentReviewOutcome.success,
+      booking: booking,
+    );
   }
 
   @override
@@ -235,6 +258,9 @@ final class FakeBookingRepository implements BookingRepository {
     TrainingInfo? training,
     BookingStatus? status,
   }) async {
+    if (throwAdminUpdateConflict) {
+      throw const BookingConflictException('conflict');
+    }
     final index = adminBookings.indexWhere((item) => item.id == bookingId);
     if (index < 0) {
       return null;

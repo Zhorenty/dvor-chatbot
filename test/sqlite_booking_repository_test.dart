@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -122,6 +123,54 @@ void main() {
       await repository.close();
     });
 
+    test('submits payment for exact pending booking id only', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final first = await repository.createPendingBooking(
+        userId: 2111,
+        training: TrainingInfo(
+          title: 'First pending',
+          startsAt: DateTime(2030, 6, 11, 18),
+          location: 'Stadium B',
+        ),
+      );
+      final second = await repository.createPendingBooking(
+        userId: 2111,
+        training: TrainingInfo(
+          title: 'Second pending',
+          startsAt: DateTime(2030, 6, 12, 18),
+          location: 'Stadium C',
+        ),
+      );
+
+      final submitted = await repository.submitPaymentForLatestPending(
+        2111,
+        bookingId: second.booking.id,
+        note: 'proof for second',
+      );
+      expect(submitted, isNotNull);
+      expect(submitted!.id, second.booking.id);
+      expect(submitted.status, BookingStatus.paymentSubmitted);
+
+      final rejected = await repository.submitPaymentForLatestPending(
+        2111,
+        bookingId: first.booking.id,
+      );
+      expect(rejected, isNotNull);
+      expect(rejected!.id, first.booking.id);
+
+      final noMatch = await repository.submitPaymentForLatestPending(
+        2111,
+        bookingId: 999999,
+      );
+      expect(noMatch, isNull);
+
+      await repository.close();
+    });
+
     test('returns pending bookings for reminder and marks reminder sent', () async {
       final now = DateTime(2030, 6, 1, 12, 0);
       final repository = SqliteBookingRepository(
@@ -189,6 +238,44 @@ void main() {
       expect(result.booking!.trainingTitle, 'Moved session');
       expect(result.booking!.location, 'Gym B');
       expect(result.booking!.status, BookingStatus.paid);
+
+      await repository.close();
+    });
+
+    test('reviews payment only from submitted status', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final created = await repository.createPendingBooking(
+        userId: 5201,
+        training: TrainingInfo(
+          title: 'Review target',
+          startsAt: DateTime(2030, 6, 18, 19),
+          location: 'Gym',
+        ),
+      );
+      final invalidBefore = await repository.reviewSubmittedPayment(
+        bookingId: created.booking.id,
+        status: BookingStatus.paid,
+      );
+      expect(invalidBefore.outcome, PaymentReviewOutcome.invalidStatus);
+
+      await repository.submitPaymentForLatestPending(5201, bookingId: created.booking.id);
+      final approved = await repository.reviewSubmittedPayment(
+        bookingId: created.booking.id,
+        status: BookingStatus.paid,
+      );
+      expect(approved.outcome, PaymentReviewOutcome.success);
+      expect(approved.booking, isNotNull);
+      expect(approved.booking!.status, BookingStatus.paid);
+
+      final invalidAfter = await repository.reviewSubmittedPayment(
+        bookingId: created.booking.id,
+        status: BookingStatus.paymentRejected,
+      );
+      expect(invalidAfter.outcome, PaymentReviewOutcome.invalidStatus);
 
       await repository.close();
     });
@@ -299,6 +386,42 @@ void main() {
       expect(progress.usedRewardsCount, 1);
       expect(progress.earnedRewardsCount, 1);
       expect(progress.availableRewardsCount, 0);
+
+      await repository.close();
+    });
+
+    test('creates independent admin bookings for different usernames', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Admin shared event',
+        startsAt: DateTime(2030, 6, 30, 19),
+        location: 'Gym A',
+      );
+      final first = await repository.adminCreateBooking(
+        userUsername: 'alpha_user',
+        training: training,
+        status: BookingStatus.pendingPayment,
+      );
+      final second = await repository.adminCreateBooking(
+        userUsername: 'beta_user',
+        training: training,
+        status: BookingStatus.pendingPayment,
+      );
+
+      expect(first.id, isNot(second.id));
+      final bookings = await repository.adminListBookings(
+        category: training.category,
+        archived: false,
+        limit: 50,
+      );
+      expect(
+        bookings.where((item) => item.trainingKey == training.sessionKey).length,
+        2,
+      );
 
       await repository.close();
     });

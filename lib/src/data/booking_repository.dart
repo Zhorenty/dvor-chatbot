@@ -16,6 +16,31 @@ final class EveryFifthRewardProgress {
   int get availableRewardsCount => earnedRewardsCount - usedRewardsCount;
 }
 
+final class BookingConflictException implements Exception {
+  const BookingConflictException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'BookingConflictException: $message';
+}
+
+enum PaymentReviewOutcome {
+  success,
+  notFound,
+  invalidStatus,
+}
+
+final class PaymentReviewResult {
+  const PaymentReviewResult({
+    required this.outcome,
+    this.booking,
+  });
+
+  final PaymentReviewOutcome outcome;
+  final TrainingBooking? booking;
+}
+
 abstract interface class BookingRepository {
   Future<void> init();
 
@@ -42,6 +67,7 @@ abstract interface class BookingRepository {
 
   Future<TrainingBooking?> submitPaymentForLatestPending(
     int userId, {
+    int? bookingId,
     String? note,
     int? paymentProofChatId,
     int? paymentProofMessageId,
@@ -61,6 +87,11 @@ abstract interface class BookingRepository {
     int bookingId,
     BookingStatus status, {
     String? paymentNote,
+  });
+
+  Future<PaymentReviewResult> reviewSubmittedPayment({
+    required int bookingId,
+    required BookingStatus status,
   });
 
   Future<List<TrainingBooking>> listPendingPaymentForReminder({

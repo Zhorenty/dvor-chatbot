@@ -723,6 +723,14 @@ final class MessageTemplates {
     return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)} ✅';
   }
 
+  String paymentAlreadyReviewed(int bookingId) {
+    return 'Запись #$bookingId уже не в статусе «На проверке». Обнови очередь и проверь актуальный статус.';
+  }
+
+  String adminBookingUpdateConflict() {
+    return 'Не удалось сохранить изменения: для этого пользователя уже есть запись на выбранное мероприятие.';
+  }
+
   String paymentInstructions(int bookingId) {
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Родион Одобеско\n'

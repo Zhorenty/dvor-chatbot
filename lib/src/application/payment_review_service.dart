@@ -5,6 +5,8 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 
 final class PaymentReviewService {
+  static const int _queueFetchLimit = 1000;
+
   const PaymentReviewService({
     required BookingRepository bookingRepository,
     required ActivityCatalogService catalogService,
@@ -15,14 +17,20 @@ final class PaymentReviewService {
   final ActivityCatalogService _catalogService;
 
   Future<List<TrainingBooking>> queueByCategory(ActivityCategory category) async {
-    final queue = await _bookingRepository.listByStatus(BookingStatus.paymentSubmitted);
+    final queue = await _bookingRepository.listByStatus(
+      BookingStatus.paymentSubmitted,
+      limit: _queueFetchLimit,
+    );
     return queue
         .where((booking) => _catalogService.categoryForBooking(booking) == category)
         .toList(growable: false);
   }
 
   Future<PaymentQueueCounters> queueCounters() async {
-    final queue = await _bookingRepository.listByStatus(BookingStatus.paymentSubmitted);
+    final queue = await _bookingRepository.listByStatus(
+      BookingStatus.paymentSubmitted,
+      limit: _queueFetchLimit,
+    );
     var trainings = 0;
     var hikes = 0;
     var trails = 0;

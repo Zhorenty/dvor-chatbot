@@ -220,25 +220,39 @@ final class SqliteBookingRepository implements BookingRepository {
   @override
   Future<TrainingBooking?> submitPaymentForLatestPending(
     int userId, {
+    int? bookingId,
     String? note,
     int? paymentProofChatId,
     int? paymentProofMessageId,
   }) async {
     _expireOverduePendingBookings();
     final db = _database;
-    final result = db.select(
-      '''
-      SELECT id FROM bookings
-      WHERE user_id = ? AND status = ?
-      ORDER BY starts_at ASC
-      LIMIT 1;
-      ''',
-      <Object?>[userId, BookingStatus.pendingPayment.dbValue],
-    );
+    final result = bookingId == null
+        ? db.select(
+            '''
+            SELECT id FROM bookings
+            WHERE user_id = ? AND status = ?
+            ORDER BY starts_at ASC
+            LIMIT 1;
+            ''',
+            <Object?>[userId, BookingStatus.pendingPayment.dbValue],
+          )
+        : db.select(
+            '''
+            SELECT id FROM bookings
+            WHERE id = ? AND user_id = ? AND status = ?
+            LIMIT 1;
+            ''',
+            <Object?>[
+              bookingId,
+              userId,
+              BookingStatus.pendingPayment.dbValue,
+            ],
+          );
     if (result.isEmpty) {
       return null;
     }
-    final bookingId = result.first['id'] as int;
+    final selectedBookingId = result.first['id'] as int;
     final nowIso = _nowProvider().toUtc().toIso8601String();
     db.execute(
       '''
@@ -256,10 +270,10 @@ final class SqliteBookingRepository implements BookingRepository {
         paymentProofChatId,
         paymentProofMessageId,
         nowIso,
-        bookingId,
+        selectedBookingId,
       ],
     );
-    return _findBookingById(bookingId);
+    return _findBookingById(selectedBookingId);
   }
 
   @override
@@ -337,6 +351,42 @@ final class SqliteBookingRepository implements BookingRepository {
       );
     }
     return _findBookingById(bookingId);
+  }
+
+  @override
+  Future<PaymentReviewResult> reviewSubmittedPayment({
+    required int bookingId,
+    required BookingStatus status,
+  }) async {
+    final db = _database;
+    final existing = _findBookingById(bookingId);
+    if (existing == null) {
+      return const PaymentReviewResult(outcome: PaymentReviewOutcome.notFound);
+    }
+    if (existing.status != BookingStatus.paymentSubmitted) {
+      return const PaymentReviewResult(outcome: PaymentReviewOutcome.invalidStatus);
+    }
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    db.execute(
+      '''
+      UPDATE bookings
+      SET status = ?, updated_at = ?
+      WHERE id = ? AND status = ?;
+      ''',
+      <Object?>[
+        status.dbValue,
+        nowIso,
+        bookingId,
+        BookingStatus.paymentSubmitted.dbValue,
+      ],
+    );
+    if (db.updatedRows == 0) {
+      return const PaymentReviewResult(outcome: PaymentReviewOutcome.invalidStatus);
+    }
+    return PaymentReviewResult(
+      outcome: PaymentReviewOutcome.success,
+      booking: _findBookingById(bookingId),
+    );
   }
 
   @override
@@ -451,8 +501,19 @@ final class SqliteBookingRepository implements BookingRepository {
     if (normalizedUsername == null) {
       throw ArgumentError.value(userUsername, 'userUsername', 'username must not be empty');
     }
-    final nowIso = _nowProvider().toUtc().toIso8601String();
     final trainingKey = training.sessionKey;
+    final effectiveUserId = userId == 0 ? _syntheticUserIdForUsername(normalizedUsername) : userId;
+    final existingForUsername = _findBookingByUserAndTraining(effectiveUserId, trainingKey);
+    if (existingForUsername != null) {
+      final updated = await adminUpdateBooking(
+        bookingId: existingForUsername.id,
+        userUsername: normalizedUsername,
+        status: status,
+      );
+      return updated ?? existingForUsername;
+    }
+
+    final nowIso = _nowProvider().toUtc().toIso8601String();
     try {
       db.execute(
         '''
@@ -470,7 +531,7 @@ final class SqliteBookingRepository implements BookingRepository {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
-          userId,
+          effectiveUserId,
           normalizedUsername,
           trainingKey,
           training.title,
@@ -482,13 +543,13 @@ final class SqliteBookingRepository implements BookingRepository {
           nowIso,
         ],
       );
-      final created = _findBookingByUserAndTraining(userId, trainingKey);
+      final created = _findBookingByUserAndTraining(effectiveUserId, trainingKey);
       if (created == null) {
         throw StateError('Inserted admin booking is missing in database.');
       }
       return created;
     } on SqliteException {
-      final existing = _findBookingByUserAndTraining(userId, trainingKey);
+      final existing = _findBookingByUserAndTraining(effectiveUserId, trainingKey);
       if (existing == null) {
         rethrow;
       }
@@ -508,6 +569,10 @@ final class SqliteBookingRepository implements BookingRepository {
     TrainingInfo? training,
     BookingStatus? status,
   }) async {
+    final existing = _findBookingById(bookingId);
+    if (existing == null) {
+      return null;
+    }
     final db = _database;
     final nowIso = _nowProvider().toUtc().toIso8601String();
     final columns = <String>[];
@@ -516,9 +581,23 @@ final class SqliteBookingRepository implements BookingRepository {
     if (userUsername != null && normalizedUsername == null) {
       throw ArgumentError.value(userUsername, 'userUsername', 'username must not be empty');
     }
+    final isSyntheticAccount = existing.userId <= 0;
+    final targetUserId = normalizedUsername != null && isSyntheticAccount
+        ? _syntheticUserIdForUsername(normalizedUsername)
+        : existing.userId;
+    final targetTrainingKey = training?.sessionKey ?? existing.trainingKey;
+    final conflicting = _findBookingByUserAndTraining(targetUserId, targetTrainingKey);
+    if (conflicting != null && conflicting.id != bookingId) {
+      throw const BookingConflictException(
+          'Another booking already exists for this user and event.');
+    }
     if (normalizedUsername != null) {
       columns.add('user_username = ?');
       args.add(normalizedUsername);
+      if (isSyntheticAccount) {
+        columns.add('user_id = ?');
+        args.add(targetUserId);
+      }
     }
     if (training != null) {
       columns.add('training_key = ?');
@@ -711,5 +790,14 @@ final class SqliteBookingRepository implements BookingRepository {
       ActivityCategory.trails =>
         "(training_key LIKE 'trails|%' OR training_title LIKE '🏃 Трейл:%')",
     };
+  }
+
+  int _syntheticUserIdForUsername(String username) {
+    var hash = 17;
+    for (var i = 0; i < username.length; i++) {
+      hash = (hash * 31 + username.codeUnitAt(i)) & 0x7fffffff;
+    }
+    final value = hash == 0 ? 1 : hash;
+    return -value;
   }
 }

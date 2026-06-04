@@ -1158,6 +1158,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 1);
+      expect(bookingRepository.lastSubmittedBookingId, 99);
       expect(sender.messages.last.text,
           contains('файл с подтверждением оплаты отправил администратору'));
     });
@@ -2008,6 +2009,77 @@ void main() {
       expect(sender.messages.last.text, contains('восстановлена'));
     });
 
+    test('shows conflict message when admin edit collides with existing booking', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..adminSegmentCounts = (active: 1, archived: 0)
+        ..adminBookings = <TrainingBooking>[
+          _booking(
+            id: 503,
+            userId: -5003,
+            userUsername: 'dup_runner',
+            trainingKey: 'trainings|2026-10-03T10:00:00.000Z|Morning Run|Park',
+            title: 'Morning Run',
+            startsAt: DateTime(2026, 10, 3, 10, 0),
+            location: 'Park',
+            status: BookingStatus.pendingPayment,
+          ),
+        ]
+        ..throwAdminUpdateConflict = true;
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2304},
+        nowProvider: () => DateTime(2026, 9, 30, 10, 0),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2304},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2304},
+        'text': MessageTemplates.buttonBookingsList,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2304},
+        'text': '${MessageTemplates.buttonActiveBookings} (1)',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2304},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2304},
+        'text': '🧾 #503 Morning Run',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2304},
+        'text': MessageTemplates.buttonEditBooking,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2304},
+        'text': MessageTemplates.buttonEditBookingPayment,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2304},
+        'text': MessageTemplates.buttonStatusPaid,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('уже есть запись на выбранное мероприятие'));
+    });
+
     test('creates booking from admin wizard', () async {
       final sender = _FakeSender();
       final training = TrainingInfo(
@@ -2128,6 +2200,32 @@ void main() {
       expect(sender.messages[1].text, contains('Проверил админ: @moderator_anna (1950)'));
       expect(sender.messages[2].chatId, 1950);
       expect(sender.messages[2].text, contains('Статус записи #22 обновлен'));
+    });
+
+    test('shows already reviewed message when payment status is stale', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..paymentReviewResult = const PaymentReviewResult(
+          outcome: PaymentReviewOutcome.invalidStatus,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1990},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1990, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1990},
+        'text': '/approve_payment 22',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.reviewCalls, 1);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('уже не в статусе «На проверке»'));
     });
 
     test('opens payments queue flow from admin notification callback', () async {
