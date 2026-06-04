@@ -535,6 +535,28 @@ void main() {
       expect(sender.messages.single.replyMarkup, isNotNull);
     });
 
+    test('ignores pinned service message in private chat', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'message': <String, dynamic>{
+          'chat': <String, dynamic>{'id': 141, 'type': 'private'},
+          'from': <String, dynamic>{'id': 1410},
+          'pinned_message': <String, dynamic>{'message_id': 1},
+        },
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, isEmpty);
+    });
+
     test('book command starts booking category selection flow', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();

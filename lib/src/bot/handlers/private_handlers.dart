@@ -87,6 +87,9 @@ final class PrivateHandlers {
     final canRunAdminAction = _adminHandler.canRunAdminAction(isAdmin: isAdmin);
     final flowState = userId == null ? null : _flowByUserId[userId];
     final paymentProof = extractPaymentProof(context.message);
+    if (_isIgnorableServiceMessage(context.message)) {
+      return true;
+    }
 
     if (text != null && text.startsWith('/start')) {
       var starterBonusAvailable = false;
@@ -2022,6 +2025,14 @@ final class PrivateHandlers {
         stackTrace,
       );
     }
+  }
+
+  bool _isIgnorableServiceMessage(Map<String, dynamic>? message) {
+    if (message == null) {
+      return false;
+    }
+    // Telegram sends a service update after pinning; it should not trigger fallback.
+    return message['pinned_message'] is Map;
   }
 
   Future<void> _notifyAdminAboutStarterBonusApplied(TrainingBooking booking) async {
