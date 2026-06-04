@@ -64,6 +64,10 @@ final class FakeBookingRepository implements BookingRepository {
   bool? lastAdminListArchived;
   int adminArchiveCalls = 0;
   int? lastAdminArchivedBookingId;
+  EveryFifthRewardProgress everyFifthProgress = const EveryFifthRewardProgress(
+    qualifiedTrainingsCount: 0,
+    usedRewardsCount: 0,
+  );
 
   @override
   Future<BookingCreateResult> createPendingBooking({
@@ -259,6 +263,14 @@ final class FakeBookingRepository implements BookingRepository {
     lastAdminArchivedBookingId = bookingId;
     return adminUpdateBooking(bookingId: bookingId, status: BookingStatus.cancelled);
   }
+
+  @override
+  Future<EveryFifthRewardProgress> getEveryFifthRewardProgress(
+    int userId, {
+    required DateTime now,
+  }) async {
+    return everyFifthProgress;
+  }
 }
 
 final class FakeTrainerDirectoryRepository implements TrainerDirectoryRepository {
@@ -447,6 +459,26 @@ final class FakeOnboardingRepository implements OnboardingRepository {
   }
 
   @override
+  Future<List<StarterBonusReminderTarget>> listStarterBonusExpiringSoon({
+    required DateTime now,
+    Duration leadTime = const Duration(days: 1),
+    int limit = 100,
+  }) async {
+    final targets = <StarterBonusReminderTarget>[];
+    _stateByUserId.forEach((userId, state) {
+      if (state.bonusAvailable && !state.bonusConsumed && !state.bonusExpiryReminderSent) {
+        targets.add(
+          StarterBonusReminderTarget(
+            userId: userId,
+            expiresAt: now.add(const Duration(hours: 12)),
+          ),
+        );
+      }
+    });
+    return targets.take(limit).toList(growable: false);
+  }
+
+  @override
   Future<void> markWelcomeDeleted({
     required int userId,
     required DateTime deletedAt,
@@ -456,6 +488,18 @@ final class FakeOnboardingRepository implements OnboardingRepository {
       return;
     }
     state.pendingWelcome = null;
+  }
+
+  @override
+  Future<void> markStarterBonusReminderSent(
+    int userId, {
+    required DateTime sentAt,
+  }) async {
+    final state = _stateByUserId[userId];
+    if (state == null) {
+      return;
+    }
+    state.bonusExpiryReminderSent = true;
   }
 
   @override
@@ -493,6 +537,27 @@ final class FakeOnboardingRepository implements OnboardingRepository {
       bonusAvailable: bonusAvailable,
     );
   }
+
+  @override
+  Future<int> getEveryFifthLastNotifiedRewards(int userId) async {
+    return _stateByUserId[userId]?.everyFifthLastNotifiedRewards ?? 0;
+  }
+
+  @override
+  Future<void> setEveryFifthLastNotifiedRewards(
+    int userId, {
+    required int rewardsCount,
+    required DateTime updatedAt,
+  }) async {
+    final state = _stateByUserId.putIfAbsent(
+      userId,
+      () => _FakeOnboardingState(
+        pendingWelcome: null,
+        bonusAvailable: false,
+      ),
+    );
+    state.everyFifthLastNotifiedRewards = rewardsCount;
+  }
 }
 
 final class _FakeOnboardingState {
@@ -504,6 +569,8 @@ final class _FakeOnboardingState {
   PendingWelcomeMessage? pendingWelcome;
   bool bonusAvailable;
   bool bonusConsumed = false;
+  bool bonusExpiryReminderSent = false;
+  int everyFifthLastNotifiedRewards = 0;
 }
 
 List<String> keyboardTexts(Map<String, Object?>? replyMarkup) {

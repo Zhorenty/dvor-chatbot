@@ -110,7 +110,7 @@ void main() {
 
     expect(scheduleRepository.refreshCalls, greaterThanOrEqualTo(1));
     expect(sender.messages.single.chatId, 42);
-    expect(sender.messages.single.text, contains('DVOR'));
+    expect(sender.messages.single.text, contains('Здесь мы тренируемся'));
     expect(updatesCalls, greaterThanOrEqualTo(1));
   });
 }

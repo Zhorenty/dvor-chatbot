@@ -8,6 +8,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
+import 'package:dvor_chatbot/src/jobs/starter_bonus_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/welcome_cleanup_job.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
@@ -35,6 +36,11 @@ final class BotRunner {
           sender: sender,
           templates: templates,
         ),
+        _starterBonusReminderJob = StarterBonusReminderJob(
+          onboardingRepository: onboardingRepository,
+          sender: sender,
+          templates: templates,
+        ),
         _welcomeCleanupJob = WelcomeCleanupJob(
           onboardingRepository: onboardingRepository,
           sender: sender,
@@ -47,6 +53,7 @@ final class BotRunner {
   final TrainingScheduleRepository _scheduleRepository;
   final ScheduleSyncJob _scheduleSyncJob;
   final PaymentReminderJob _paymentReminderJob;
+  final StarterBonusReminderJob _starterBonusReminderJob;
   final WelcomeCleanupJob _welcomeCleanupJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
@@ -55,6 +62,7 @@ final class BotRunner {
   int _offset = 0;
   Timer? _scheduleSyncTimer;
   Timer? _paymentReminderTimer;
+  Timer? _starterBonusReminderTimer;
   Timer? _welcomeCleanupTimer;
 
   Future<void> start() async {
@@ -76,6 +84,12 @@ final class BotRunner {
         return;
       }
       unawaited(_paymentReminderJob.run());
+    });
+    _starterBonusReminderTimer = Timer.periodic(const Duration(minutes: 30), (_) {
+      if (_stopping) {
+        return;
+      }
+      unawaited(_starterBonusReminderJob.run());
     });
     _welcomeCleanupTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       if (_stopping) {
@@ -130,6 +144,7 @@ final class BotRunner {
     _stopping = true;
     _scheduleSyncTimer?.cancel();
     _paymentReminderTimer?.cancel();
+    _starterBonusReminderTimer?.cancel();
     _welcomeCleanupTimer?.cancel();
     _client.close();
   }

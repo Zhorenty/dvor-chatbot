@@ -160,6 +160,15 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
   }
 
   @override
+  Future<List<StarterBonusReminderTarget>> listStarterBonusExpiringSoon({
+    required DateTime now,
+    Duration leadTime = const Duration(days: 1),
+    int limit = 100,
+  }) async {
+    return const <StarterBonusReminderTarget>[];
+  }
+
+  @override
   Future<void> init() async {}
 
   @override
@@ -178,12 +187,30 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
   }) async {}
 
   @override
+  Future<void> markStarterBonusReminderSent(
+    int userId, {
+    required DateTime sentAt,
+  }) async {}
+
+  @override
   Future<PendingWelcomeMessage?> markStartedAndGetPendingWelcome(
     int userId, {
     required DateTime startedAt,
   }) async {
     return null;
   }
+
+  @override
+  Future<int> getEveryFifthLastNotifiedRewards(int userId) async {
+    return 0;
+  }
+
+  @override
+  Future<void> setEveryFifthLastNotifiedRewards(
+    int userId, {
+    required int rewardsCount,
+    required DateTime updatedAt,
+  }) async {}
 
   @override
   Future<void> registerGroupWelcome({

@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
+import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
@@ -67,7 +68,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, 11);
-      expect(sender.messages.single.text, contains('DVOR'));
+      expect(sender.messages.single.text, contains('Здесь мы тренируемся'));
       expect(sender.messages.single.replyMarkup, isNotNull);
     });
 
@@ -124,7 +125,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages.first.text, contains('DVOR'));
+      expect(sender.messages.first.text, contains('Здесь мы тренируемся'));
       expect(sender.messages.last.text, contains('бесплатная тренировка'));
       expect(sender.messages.last.text, contains(MessageTemplates.buttonBookTraining));
       expect(sender.messages.last.text, contains(MessageTemplates.buttonUseStarterBonus));
@@ -245,7 +246,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, 111);
-      expect(sender.messages.single.text, contains('DVOR'));
+      expect(sender.messages.single.text, contains('Здесь мы тренируемся'));
     });
 
     test('handles /trainings command with category selection', () async {
@@ -802,6 +803,89 @@ void main() {
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100778).text;
       expect(adminMessage, contains('Стартовая бесплатная запись'));
       expect(adminMessage, contains('Формат: бесплатная тренировка за старт'));
+    });
+
+    test('applies every-fifth bonus when starter bonus unavailable', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..everyFifthProgress = const EveryFifthRewardProgress(
+          qualifiedTrainingsCount: 8,
+          usedRewardsCount: 1,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Fifth reward session',
+              startsAt: DateTime(2026, 7, 14, 19, 0),
+              location: 'Hall',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        onboardingRepository: _FakeOnboardingRepository()..seedUser(userId: 1606),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100889,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 166, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1606, 'username': 'fifth_user'},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 166, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1606, 'username': 'fifth_user'},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 166, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1606, 'username': 'fifth_user'},
+        'text': '🎯 1. Fifth reward session',
+      });
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 166, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1606, 'username': 'fifth_user'},
+        'text': MessageTemplates.buttonUseStarterBonus,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('каждая 5-я бесплатно'));
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100889).text;
+      expect(adminMessage, contains('каждая 5-я'));
+    });
+
+    test('notifies user and admin when every-fifth reward unlocks', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..everyFifthProgress = const EveryFifthRewardProgress(
+          qualifiedTrainingsCount: 4,
+          usedRewardsCount: 0,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        onboardingRepository: _FakeOnboardingRepository()..seedUser(userId: 1607),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100999,
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 167, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1607, 'username': 'unlock_user'},
+        'text': '/my_bookings',
+      });
+
+      expect(handled, isTrue);
+      final userNotify = sender.messages.firstWhere((message) => message.chatId == 167).text;
+      final adminNotify = sender.messages.firstWhere((message) => message.chatId == -100999).text;
+      expect(userNotify, contains('Новая бесплатная тренировка'));
+      expect(adminNotify, contains('@unlock_user'));
     });
 
     test('creates booking after selecting a hike category item', () async {

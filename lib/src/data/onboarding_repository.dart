@@ -10,6 +10,16 @@ final class PendingWelcomeMessage {
   final int welcomeMessageId;
 }
 
+final class StarterBonusReminderTarget {
+  const StarterBonusReminderTarget({
+    required this.userId,
+    required this.expiresAt,
+  });
+
+  final int userId;
+  final DateTime expiresAt;
+}
+
 abstract interface class OnboardingRepository {
   Future<void> init();
 
@@ -43,6 +53,25 @@ abstract interface class OnboardingRepository {
   Future<bool> consumeStarterBonus(
     int userId, {
     required DateTime consumedAt,
+  });
+
+  Future<List<StarterBonusReminderTarget>> listStarterBonusExpiringSoon({
+    required DateTime now,
+    Duration leadTime = const Duration(days: 1),
+    int limit = 100,
+  });
+
+  Future<void> markStarterBonusReminderSent(
+    int userId, {
+    required DateTime sentAt,
+  });
+
+  Future<int> getEveryFifthLastNotifiedRewards(int userId);
+
+  Future<void> setEveryFifthLastNotifiedRewards(
+    int userId, {
+    required int rewardsCount,
+    required DateTime updatedAt,
   });
 }
 
@@ -98,4 +127,31 @@ final class NoopOnboardingRepository implements OnboardingRepository {
   }) async {
     return false;
   }
+
+  @override
+  Future<List<StarterBonusReminderTarget>> listStarterBonusExpiringSoon({
+    required DateTime now,
+    Duration leadTime = const Duration(days: 1),
+    int limit = 100,
+  }) async {
+    return const <StarterBonusReminderTarget>[];
+  }
+
+  @override
+  Future<void> markStarterBonusReminderSent(
+    int userId, {
+    required DateTime sentAt,
+  }) async {}
+
+  @override
+  Future<int> getEveryFifthLastNotifiedRewards(int userId) async {
+    return 0;
+  }
+
+  @override
+  Future<void> setEveryFifthLastNotifiedRewards(
+    int userId, {
+    required int rewardsCount,
+    required DateTime updatedAt,
+  }) async {}
 }

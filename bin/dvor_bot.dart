@@ -22,7 +22,13 @@ Future<void> main(List<String> args) async {
   final config = AppConfig.fromArgs(args);
 
   final client = TelegramClient(token: config.botToken);
-  final templates = MessageTemplates();
+  String? botUsername;
+  try {
+    botUsername = await client.getBotUsername();
+  } on Object catch (error, stackTrace) {
+    l.w('Failed to resolve bot username: $error', stackTrace);
+  }
+  final templates = MessageTemplates(botUsername: botUsername);
   final scheduleRepository = _createScheduleRepository(config);
   final trainerDirectoryRepository = _createTrainerDirectoryRepository(config);
   final bookingRepository = _createBookingRepository(config);

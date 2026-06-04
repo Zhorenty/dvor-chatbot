@@ -556,6 +556,57 @@ final class SqliteBookingRepository implements BookingRepository {
     return updateStatus(bookingId, BookingStatus.cancelled);
   }
 
+  @override
+  Future<EveryFifthRewardProgress> getEveryFifthRewardProgress(
+    int userId, {
+    required DateTime now,
+  }) async {
+    final db = _database;
+    final nowIso = now.toUtc().toIso8601String();
+    final trainingsCondition = _categoryConditionSql(ActivityCategory.trainings);
+    final qualifiedResult = db.select(
+      '''
+      SELECT COUNT(*) AS total
+      FROM bookings
+      WHERE user_id = ?
+        AND status = ?
+        AND starts_at < ?
+        AND ($trainingsCondition)
+        AND (payment_note IS NULL OR payment_note NOT IN (?, ?));
+      ''',
+      <Object?>[
+        userId,
+        BookingStatus.paid.dbValue,
+        nowIso,
+        '__starter_bonus__',
+        '__every_fifth_bonus__',
+      ],
+    );
+    final usedResult = db.select(
+      '''
+      SELECT COUNT(*) AS total
+      FROM bookings
+      WHERE user_id = ?
+        AND status = ?
+        AND starts_at < ?
+        AND ($trainingsCondition)
+        AND payment_note = ?;
+      ''',
+      <Object?>[
+        userId,
+        BookingStatus.paid.dbValue,
+        nowIso,
+        '__every_fifth_bonus__',
+      ],
+    );
+    final qualified = ((qualifiedResult.first['total'] as int?) ?? 0).clamp(0, 1 << 30);
+    final used = ((usedResult.first['total'] as int?) ?? 0).clamp(0, 1 << 30);
+    return EveryFifthRewardProgress(
+      qualifiedTrainingsCount: qualified,
+      usedRewardsCount: used,
+    );
+  }
+
   void _expireOverduePendingBookings() {
     final db = _database;
     final cutoff = _nowProvider().toUtc().subtract(_pendingPaymentTtl).toIso8601String();

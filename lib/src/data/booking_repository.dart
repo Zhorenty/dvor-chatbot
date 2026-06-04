@@ -3,6 +3,19 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 
+final class EveryFifthRewardProgress {
+  const EveryFifthRewardProgress({
+    required this.qualifiedTrainingsCount,
+    required this.usedRewardsCount,
+  });
+
+  final int qualifiedTrainingsCount;
+  final int usedRewardsCount;
+
+  int get earnedRewardsCount => qualifiedTrainingsCount ~/ 4;
+  int get availableRewardsCount => earnedRewardsCount - usedRewardsCount;
+}
+
 abstract interface class BookingRepository {
   Future<void> init();
 
@@ -81,4 +94,9 @@ abstract interface class BookingRepository {
   });
 
   Future<TrainingBooking?> adminArchiveBooking(int bookingId);
+
+  Future<EveryFifthRewardProgress> getEveryFifthRewardProgress(
+    int userId, {
+    required DateTime now,
+  });
 }

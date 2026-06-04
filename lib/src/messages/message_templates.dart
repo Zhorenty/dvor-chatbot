@@ -9,7 +9,11 @@ import 'package:dvor_chatbot/src/messages/keyboards/telegram_keyboards.dart';
 import 'package:intl/intl.dart';
 
 final class MessageTemplates {
-  const MessageTemplates();
+  const MessageTemplates({
+    String? botUsername,
+  }) : _botUsername = botUsername;
+
+  final String? _botUsername;
 
   static const String buttonTrainings = MessageCopy.buttonTrainings;
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
@@ -56,8 +60,43 @@ final class MessageTemplates {
   static const String scheduleDocumentUrl = MessageCopy.scheduleDocumentUrl;
 
   String privateWelcome() {
-    return 'Привет! 👋 Я бот спортивного объединения DVOR.\n\n'
-        'Давай начнем: кнопки внизу помогут быстро открыть расписание, записаться и посмотреть справку 😉';
+    final botUsername = _botUsername;
+    final link = botUsername == null || botUsername.isEmpty
+        ? null
+        : 'https://t.me/$botUsername?start=start';
+    return 'Здесь мы тренируемся, растем и кайфуем от бега вместе 💛\n'
+        'Поддержка, дисциплина и движение вперед - наша база.\n\n'
+        '✅ Основные принципы\n'
+        '• Уважение к каждому\n'
+        '• Поддержка вместо хейта\n'
+        '• Дисциплина = результат\n'
+        '• Становимся сильнее и быстрее\n'
+        '• Новички и опытные - на равных\n\n'
+        '⛔ Внутренние правила\n'
+        '• Без мата (или +15 приседаний 😄)\n'
+        '• Без токсичности и оскорблений\n'
+        '• Без политики и срач-тем\n'
+        '• Не опаздываем и не сливаемся\n'
+        '• Уважаем формат тренировок\n'
+        '• Реклама только через админов\n\n'
+        '🌙 Дополнительно\n'
+        '• После 00:00 не пишем 💤\n'
+        '• Все анонсы через админов\n'
+        '• Важная инфа в закрепе 📌\n\n'
+        '⛰ Активности\n'
+        '• Совместные пробежки\n'
+        '• Интервалы / темп / ОФП\n'
+        '• Походы и трейлы\n\n'
+        '📌 Как пользоваться чатом\n'
+        '💬 # БОЛТАЛКА ДВОР 🤼‍♂️ - общение, пробежки, фото/видео, сборы на тренировки\n'
+        '📋 ВОПРОСЫ ПО КИПЕ - вопросы по экипировке, ответит тренер\n'
+        '📰 АФИШИ ТРЕНЯ - официальная информация\n'
+        '🏕 АФИШИ ПОХОДЫ - официальная информация (анонсы публикует администрация)\n\n'
+        '💛 Главное\n'
+        'Это не просто чат - это команда.\n'
+        'Каждая тренировка делает тебя сильнее.\n'
+        '${link == null ? '' : '\n\n🤖 Чат с ботом: $link'}\n\n'
+        'Добро пожаловать 🤝';
   }
 
   String starterBonusOnboardingOffer() {
@@ -315,9 +354,14 @@ final class MessageTemplates {
     required String? firstName,
   }) {
     final mention = _groupMention(username: username, userId: userId, firstName: firstName);
+    final botUsername = _botUsername;
+    final botLink = botUsername == null || botUsername.isEmpty
+        ? 'Напиши боту в личку и нажми Start'
+        : 'Открой: https://t.me/$botUsername?start=start';
     return 'Привет, $mention! 🏃\n'
         'Ты уже в игре!\n'
-        'Переходи в бота «Двор» — там твой первый шаг к победе и подарок за старт. '
+        'Переходи в бота «Двор» - там твой первый шаг к победе и подарок за старт.\n'
+        '$botLink\n'
         'Вперёд, чемпион! 🏆';
   }
 
@@ -386,6 +430,51 @@ final class MessageTemplates {
 
   String starterBonusUnavailable() {
     return 'Стартовый бонус уже недоступен. Продолжай запись по стандартному сценарию оплаты 💪';
+  }
+
+  String everyFifthBonusApplied(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Готово! Тренировка по бонусу «каждая 5-я бесплатно» активирована 🎉\n'
+        'Запись: #${booking.id}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_statusLabel(booking.status)}';
+  }
+
+  String everyFifthBonusUnlockedUser({
+    required int completedTrainingsCount,
+    required int availableRewardsCount,
+  }) {
+    return '🎁 Отличная работа! Ты завершил(а) $completedTrainingsCount оплаченных тренировок.\n'
+        'Новая бесплатная тренировка по правилу «каждая 5-я» уже доступна.\n'
+        'Сейчас доступно бесплатных: $availableRewardsCount.';
+  }
+
+  String everyFifthBonusUnlockedAdmin({
+    required int userId,
+    required String? username,
+    required int completedTrainingsCount,
+    required int availableRewardsCount,
+  }) {
+    return 'Новая бесплатная тренировка (каждая 5-я) 🎁\n'
+        'Пользователь: ${_userTagById(userId, username: username)} ($userId)\n'
+        'Оплаченных и прошедших тренировок: $completedTrainingsCount\n'
+        'Доступно бесплатных тренировок: $availableRewardsCount';
+  }
+
+  String everyFifthBonusAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Бесплатная запись по правилу «каждая 5-я» 🎁\n'
+        'Запись: #${booking.id}\n'
+        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        'Когда: ${formatter.format(booking.startsAt)}';
+  }
+
+  String starterBonusExpiryReminder({required DateTime expiresAt}) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '⏳ Напоминание: бесплатная стартовая тренировка сгорит через 1 день.\n'
+        'Используй ее до ${formatter.format(expiresAt)}.';
   }
 
   String starterBonusAdminNotification(TrainingBooking booking) {

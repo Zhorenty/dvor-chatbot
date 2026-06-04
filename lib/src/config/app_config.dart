@@ -174,10 +174,22 @@ Map<String, String> _readDotEnv() {
       continue;
     }
     final key = trimmed.substring(0, idx).trim();
-    final value = trimmed.substring(idx + 1).trim();
+    final value = _stripOptionalQuotes(trimmed.substring(idx + 1).trim());
     map[key] = value;
   }
   return map;
+}
+
+String _stripOptionalQuotes(String value) {
+  if (value.length < 2) {
+    return value;
+  }
+  final startsAndEndsWithSingle = value.startsWith("'") && value.endsWith("'");
+  final startsAndEndsWithDouble = value.startsWith('"') && value.endsWith('"');
+  if (startsAndEndsWithSingle || startsAndEndsWithDouble) {
+    return value.substring(1, value.length - 1);
+  }
+  return value;
 }
 
 bool _toBool(String? value, {required bool defaultValue}) {

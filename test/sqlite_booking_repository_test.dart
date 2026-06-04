@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
+import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -257,6 +258,47 @@ void main() {
       );
       expect(success.outcome, BookingActionOutcome.success);
       expect(success.booking?.status, BookingStatus.cancelled);
+
+      await repository.close();
+    });
+
+    test('builds every-fifth reward progress from paid past trainings', () async {
+      final now = DateTime(2030, 6, 20, 12);
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => now,
+      );
+      await repository.init();
+      for (var i = 0; i < 4; i++) {
+        final created = await repository.createPendingBooking(
+          userId: 5101,
+          training: TrainingInfo(
+            title: 'Session $i',
+            startsAt: DateTime(2030, 6, 10 + i, 18),
+            location: 'Gym A',
+          ),
+        );
+        await repository.updateStatus(created.booking.id, BookingStatus.paid);
+      }
+      final freeCreated = await repository.createPendingBooking(
+        userId: 5101,
+        training: TrainingInfo(
+          title: 'Free reward',
+          startsAt: DateTime(2030, 6, 15, 18),
+          location: 'Gym A',
+        ),
+      );
+      await repository.updateStatus(
+        freeCreated.booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.everyFifthBonusPaymentNoteMarker,
+      );
+
+      final progress = await repository.getEveryFifthRewardProgress(5101, now: now);
+      expect(progress.qualifiedTrainingsCount, 4);
+      expect(progress.usedRewardsCount, 1);
+      expect(progress.earnedRewardsCount, 1);
+      expect(progress.availableRewardsCount, 0);
 
       await repository.close();
     });

@@ -22,7 +22,7 @@ void main() {
         dbPath: '${tmpDir.path}/bookings.sqlite',
       );
       await repository.init();
-      final joinedAt = DateTime(2030, 6, 1, 10, 0);
+      final joinedAt = DateTime.now().toUtc().subtract(const Duration(hours: 2));
       await repository.registerGroupWelcome(
         userId: 3001,
         groupChatId: -1001,
@@ -59,7 +59,7 @@ void main() {
         dbPath: '${tmpDir.path}/bookings.sqlite',
       );
       await repository.init();
-      final joinedAt = DateTime(2030, 6, 1, 10, 0);
+      final joinedAt = DateTime.now().toUtc().subtract(const Duration(hours: 26));
       await repository.registerGroupWelcome(
         userId: 4001,
         groupChatId: -1001,
@@ -79,6 +79,74 @@ void main() {
         ),
         isFalse,
       );
+
+      await repository.close();
+    });
+
+    test('expires starter bonus after 7 days from start', () async {
+      final repository = SqliteOnboardingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+      final now = DateTime.now().toUtc();
+      final joinedAt = now.subtract(const Duration(days: 8, hours: 2));
+      await repository.registerGroupWelcome(
+        userId: 4501,
+        groupChatId: -1001,
+        welcomeMessageId: 116,
+        joinedAt: joinedAt,
+      );
+      await repository.markStartedAndGetPendingWelcome(
+        4501,
+        startedAt: joinedAt.add(const Duration(hours: 2)),
+      );
+
+      expect(await repository.hasStarterBonusAvailable(4501), isFalse);
+      expect(
+        await repository.consumeStarterBonus(
+          4501,
+          consumedAt: now,
+        ),
+        isFalse,
+      );
+
+      await repository.close();
+    });
+
+    test('finds expiring starter bonuses and marks reminder sent once', () async {
+      final repository = SqliteOnboardingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+      final now = DateTime.now().toUtc();
+      final joinedAt = now.subtract(const Duration(days: 6, hours: 2));
+      final startedAt = joinedAt.add(const Duration(hours: 2));
+      await repository.registerGroupWelcome(
+        userId: 4601,
+        groupChatId: -1001,
+        welcomeMessageId: 117,
+        joinedAt: joinedAt,
+      );
+      await repository.markStartedAndGetPendingWelcome(
+        4601,
+        startedAt: startedAt,
+      );
+
+      final firstBatch = await repository.listStarterBonusExpiringSoon(
+        now: now,
+        leadTime: const Duration(days: 1),
+      );
+      expect(firstBatch.map((item) => item.userId), contains(4601));
+
+      await repository.markStarterBonusReminderSent(
+        4601,
+        sentAt: now,
+      );
+      final secondBatch = await repository.listStarterBonusExpiringSoon(
+        now: now,
+        leadTime: const Duration(days: 1),
+      );
+      expect(secondBatch.map((item) => item.userId), isNot(contains(4601)));
 
       await repository.close();
     });

@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 final class MessageFormatters {
   const MessageFormatters._();
   static const String starterBonusPaymentNoteMarker = '__starter_bonus__';
+  static const String everyFifthBonusPaymentNoteMarker = '__every_fifth_bonus__';
 
   static String statusLabel(BookingStatus status) {
     return switch (status) {
@@ -20,10 +21,16 @@ final class MessageFormatters {
 
   static String participantStatusLabel(TrainingBooking booking) {
     if (booking.status == BookingStatus.paid &&
-        booking.paymentNote == starterBonusPaymentNoteMarker) {
+        (booking.paymentNote == starterBonusPaymentNoteMarker ||
+            booking.paymentNote == everyFifthBonusPaymentNoteMarker)) {
       return 'Бесплатная тренировка 🎁';
     }
     return statusLabel(booking.status);
+  }
+
+  static bool isBonusPaymentNote(String? paymentNote) {
+    return paymentNote == starterBonusPaymentNoteMarker ||
+        paymentNote == everyFifthBonusPaymentNoteMarker;
   }
 
   static String userTag(TrainingBooking booking) {

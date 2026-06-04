@@ -37,9 +37,19 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
         welcome_sent_at TEXT,
         welcome_deleted_at TEXT,
         started_at TEXT,
-        starter_bonus_consumed_at TEXT
+        starter_bonus_consumed_at TEXT,
+        starter_bonus_reminder_sent_at TEXT,
+        every_fifth_last_notified_rewards INTEGER NOT NULL DEFAULT 0
       );
     ''');
+    _addColumnIfMissing(
+      db,
+      'ALTER TABLE onboarding_users ADD COLUMN starter_bonus_reminder_sent_at TEXT;',
+    );
+    _addColumnIfMissing(
+      db,
+      'ALTER TABLE onboarding_users ADD COLUMN every_fifth_last_notified_rewards INTEGER NOT NULL DEFAULT 0;',
+    );
     db.execute(
       'CREATE INDEX IF NOT EXISTS idx_onboarding_welcome_cleanup '
       'ON onboarding_users(welcome_deleted_at, welcome_sent_at, started_at);',
@@ -185,7 +195,14 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
     if (row == null) {
       return false;
     }
-    return _isStarterBonusEligible(row) && row['starter_bonus_consumed_at'] == null;
+    final expiresAt = _starterBonusExpiresAtUtc(row);
+    if (expiresAt == null) {
+      return false;
+    }
+    if (DateTime.now().toUtc().isAfter(expiresAt)) {
+      return false;
+    }
+    return row['starter_bonus_consumed_at'] == null;
   }
 
   @override
@@ -195,10 +212,14 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
   }) async {
     final db = _database;
     final row = _findOnboardingRow(userId);
-    if (row == null || !_isStarterBonusEligible(row)) {
+    final expiresAt = row == null ? null : _starterBonusExpiresAtUtc(row);
+    if (row == null || expiresAt == null) {
       return false;
     }
     if (row['starter_bonus_consumed_at'] != null) {
+      return false;
+    }
+    if (consumedAt.toUtc().isAfter(expiresAt)) {
       return false;
     }
     db.execute(
@@ -211,6 +232,94 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
       <Object?>[consumedAt.toUtc().toIso8601String(), userId],
     );
     return db.updatedRows > 0;
+  }
+
+  @override
+  Future<List<StarterBonusReminderTarget>> listStarterBonusExpiringSoon({
+    required DateTime now,
+    Duration leadTime = const Duration(days: 1),
+    int limit = 100,
+  }) async {
+    final db = _database;
+    final rows = db.select(
+      '''
+      SELECT user_id, started_at, last_joined_at
+      FROM onboarding_users
+      WHERE started_at IS NOT NULL
+        AND starter_bonus_consumed_at IS NULL
+        AND starter_bonus_reminder_sent_at IS NULL
+      ORDER BY started_at ASC
+      LIMIT ?;
+      ''',
+      <Object?>[limit * 4],
+    );
+    final nowUtc = now.toUtc();
+    final reminderStartsAt = nowUtc;
+    final reminderEndsAt = nowUtc.add(leadTime);
+    final targets = <StarterBonusReminderTarget>[];
+    for (final row in rows) {
+      final expiresAt = _starterBonusExpiresAtUtc(row);
+      if (expiresAt == null) {
+        continue;
+      }
+      if (expiresAt.isBefore(reminderStartsAt) || expiresAt.isAfter(reminderEndsAt)) {
+        continue;
+      }
+      targets.add(
+        StarterBonusReminderTarget(
+          userId: row['user_id'] as int,
+          expiresAt: expiresAt.toLocal(),
+        ),
+      );
+      if (targets.length >= limit) {
+        break;
+      }
+    }
+    return targets;
+  }
+
+  @override
+  Future<void> markStarterBonusReminderSent(
+    int userId, {
+    required DateTime sentAt,
+  }) async {
+    final db = _database;
+    db.execute(
+      '''
+      UPDATE onboarding_users
+      SET starter_bonus_reminder_sent_at = ?
+      WHERE user_id = ?;
+      ''',
+      <Object?>[sentAt.toUtc().toIso8601String(), userId],
+    );
+  }
+
+  @override
+  Future<int> getEveryFifthLastNotifiedRewards(int userId) async {
+    final row = _findOnboardingRow(userId);
+    if (row == null) {
+      return 0;
+    }
+    return (row['every_fifth_last_notified_rewards'] as int?) ?? 0;
+  }
+
+  @override
+  Future<void> setEveryFifthLastNotifiedRewards(
+    int userId, {
+    required int rewardsCount,
+    required DateTime updatedAt,
+  }) async {
+    final db = _database;
+    final nowIso = updatedAt.toUtc().toIso8601String();
+    _ensureUserRow(userId, nowIso: nowIso);
+    db.execute(
+      '''
+      UPDATE onboarding_users
+      SET every_fifth_last_notified_rewards = ?
+      WHERE user_id = ?;
+      ''',
+      <Object?>[rewardsCount, userId],
+    );
   }
 
   Row? _findOnboardingRow(int userId) {
@@ -239,5 +348,42 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
     final joinedAt = DateTime.parse(joinedAtRaw).toUtc();
     final eligibleUntil = joinedAt.add(const Duration(hours: 24));
     return !startedAt.isBefore(joinedAt) && !startedAt.isAfter(eligibleUntil);
+  }
+
+  DateTime? _starterBonusExpiresAtUtc(Row row) {
+    if (!_isStarterBonusEligible(row)) {
+      return null;
+    }
+    final startedAtRaw = row['started_at'] as String?;
+    if (startedAtRaw == null) {
+      return null;
+    }
+    final startedAt = DateTime.parse(startedAtRaw).toUtc();
+    return startedAt.add(const Duration(days: 7));
+  }
+
+  void _addColumnIfMissing(Database db, String sql) {
+    try {
+      db.execute(sql);
+    } on SqliteException catch (error) {
+      if (!error.toString().contains('duplicate column name')) {
+        rethrow;
+      }
+    }
+  }
+
+  void _ensureUserRow(int userId, {required String nowIso}) {
+    final db = _database;
+    db.execute(
+      '''
+      INSERT INTO onboarding_users (
+        user_id,
+        first_joined_at,
+        last_joined_at
+      ) VALUES (?, ?, ?)
+      ON CONFLICT(user_id) DO NOTHING;
+      ''',
+      <Object?>[userId, nowIso, nowIso],
+    );
   }
 }

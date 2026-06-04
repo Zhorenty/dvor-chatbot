@@ -94,6 +94,11 @@ final class PrivateHandlers {
         _flowByUserId.remove(userId);
         await _handleStartCleanup(userId);
         starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
+        await _maybeNotifyEveryFifthRewardUnlocked(
+          userId: userId,
+          chatId: chatId,
+          username: context.from?['username']?.toString(),
+        );
       }
       await _sender.sendMessage(
         chatId,
@@ -430,6 +435,11 @@ final class PrivateHandlers {
       if (userId == null) {
         return false;
       }
+      await _maybeNotifyEveryFifthRewardUnlocked(
+        userId: userId,
+        chatId: chatId,
+        username: context.from?['username']?.toString(),
+      );
       final scheduleCategoryContext = flowState?.step == _PrivateFlowStep.viewingScheduleCategory
           ? flowState?.selectedCategory
           : null;
@@ -573,7 +583,7 @@ final class PrivateHandlers {
       );
       final selectedTraining = flowState.availableTrainings[index - 1];
       final starterBonusOffered = selectedTraining.category == _ActivityCategory.trainings &&
-          await _onboardingRepository.hasStarterBonusAvailable(userId);
+          await _hasAnyFreeTrainingBonusAvailable(userId);
       _flowByUserId[userId] = flowState.copyWith(
         step: _PrivateFlowStep.paymentConfirmation,
         activeBooking: result.booking,
@@ -596,6 +606,11 @@ final class PrivateHandlers {
       if (userId == null) {
         return false;
       }
+      await _maybeNotifyEveryFifthRewardUnlocked(
+        userId: userId,
+        chatId: chatId,
+        username: context.from?['username']?.toString(),
+      );
       final bookings = await _bookingRepository.listUserBookings(userId);
       final activeBookings = bookings
           .where(
@@ -849,11 +864,8 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final consumed = await _onboardingRepository.consumeStarterBonus(
-        userId,
-        consumedAt: _nowProvider(),
-      );
-      if (!consumed) {
+      final bonusType = await _resolveFreeTrainingBonusType(userId);
+      if (bonusType == null) {
         await _sender.sendMessage(
           chatId,
           _templates.starterBonusUnavailable(),
@@ -863,17 +875,32 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final updated = await _bookingRepository.updateStatus(
-        activeBooking.id,
-        BookingStatus.paid,
-        paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
-      );
-      final booking = updated ?? activeBooking;
-      await _notifyAdminAboutStarterBonusApplied(booking);
+      final updated = switch (bonusType) {
+        _FreeTrainingBonusType.starter => await _applyStarterBonus(activeBooking, userId),
+        _FreeTrainingBonusType.everyFifth => await _applyEveryFifthBonus(activeBooking),
+      };
+      if (updated == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.starterBonusUnavailable(),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: flowState.starterBonusOffered,
+          ),
+        );
+        return true;
+      }
+      final booking = updated;
+      if (bonusType == _FreeTrainingBonusType.starter) {
+        await _notifyAdminAboutStarterBonusApplied(booking);
+      } else {
+        await _notifyAdminAboutEveryFifthBonusApplied(booking);
+      }
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
         chatId,
-        _templates.starterBonusApplied(booking),
+        bonusType == _FreeTrainingBonusType.starter
+            ? _templates.starterBonusApplied(booking)
+            : _templates.everyFifthBonusApplied(booking),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
       return true;
@@ -1997,6 +2024,123 @@ final class PrivateHandlers {
     }
   }
 
+  Future<void> _notifyAdminAboutEveryFifthBonusApplied(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sender.sendMessage(
+        adminChatId,
+        _templates.everyFifthBonusAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about every-fifth bonus booking: $error', stackTrace);
+    }
+  }
+
+  Future<bool> _hasAnyFreeTrainingBonusAvailable(int userId) async {
+    final starterAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
+    if (starterAvailable) {
+      return true;
+    }
+    final progress = await _bookingRepository.getEveryFifthRewardProgress(
+      userId,
+      now: _nowProvider(),
+    );
+    return progress.availableRewardsCount > 0;
+  }
+
+  Future<_FreeTrainingBonusType?> _resolveFreeTrainingBonusType(int userId) async {
+    final starterAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
+    if (starterAvailable) {
+      return _FreeTrainingBonusType.starter;
+    }
+    final progress = await _bookingRepository.getEveryFifthRewardProgress(
+      userId,
+      now: _nowProvider(),
+    );
+    if (progress.availableRewardsCount > 0) {
+      return _FreeTrainingBonusType.everyFifth;
+    }
+    return null;
+  }
+
+  Future<TrainingBooking?> _applyStarterBonus(TrainingBooking booking, int userId) async {
+    final consumed = await _onboardingRepository.consumeStarterBonus(
+      userId,
+      consumedAt: _nowProvider(),
+    );
+    if (!consumed) {
+      return null;
+    }
+    return _bookingRepository.updateStatus(
+      booking.id,
+      BookingStatus.paid,
+      paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+    );
+  }
+
+  Future<TrainingBooking?> _applyEveryFifthBonus(TrainingBooking booking) async {
+    return _bookingRepository.updateStatus(
+      booking.id,
+      BookingStatus.paid,
+      paymentNote: MessageFormatters.everyFifthBonusPaymentNoteMarker,
+    );
+  }
+
+  Future<void> _maybeNotifyEveryFifthRewardUnlocked({
+    required int userId,
+    required int chatId,
+    required String? username,
+  }) async {
+    final progress = await _bookingRepository.getEveryFifthRewardProgress(
+      userId,
+      now: _nowProvider(),
+    );
+    final earnedRewards = progress.earnedRewardsCount;
+    if (earnedRewards <= 0 || progress.availableRewardsCount <= 0) {
+      return;
+    }
+    final lastNotified = await _onboardingRepository.getEveryFifthLastNotifiedRewards(userId);
+    if (earnedRewards <= lastNotified) {
+      return;
+    }
+    await _onboardingRepository.setEveryFifthLastNotifiedRewards(
+      userId,
+      rewardsCount: earnedRewards,
+      updatedAt: _nowProvider(),
+    );
+    try {
+      await _sender.sendMessage(
+        chatId,
+        _templates.everyFifthBonusUnlockedUser(
+          completedTrainingsCount: progress.qualifiedTrainingsCount,
+          availableRewardsCount: progress.availableRewardsCount,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify user about every-fifth reward unlock: $error', stackTrace);
+    }
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sender.sendMessage(
+        adminChatId,
+        _templates.everyFifthBonusUnlockedAdmin(
+          userId: userId,
+          username: username,
+          completedTrainingsCount: progress.qualifiedTrainingsCount,
+          availableRewardsCount: progress.availableRewardsCount,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about every-fifth reward unlock: $error', stackTrace);
+    }
+  }
+
   Future<void> _notifyAdminAboutBookingRescheduled({
     required TrainingBooking before,
     required TrainingBooking after,
@@ -2034,3 +2178,5 @@ final class PrivateHandlers {
 typedef _PrivateFlowState = PrivateFlowState;
 typedef _PrivateFlowStep = PrivateFlowStep;
 typedef _ActivityCategory = ActivityCategory;
+
+enum _FreeTrainingBonusType { starter, everyFifth }
