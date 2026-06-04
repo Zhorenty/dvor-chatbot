@@ -401,6 +401,18 @@ final class MessageTemplates {
         '${paymentDetailsSent(booking)}';
   }
 
+  String bookingCreatedWithoutPayment(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Отлично, записал тебя! ✅\n'
+        'Статус: ${_statusLabel(booking.status)}\n'
+        'Номер записи: ${booking.id}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${booking.location}\n\n'
+        'Это бесплатная тренировка, подтверждение оплаты не нужно.';
+  }
+
   String bookingAlreadyExists(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');

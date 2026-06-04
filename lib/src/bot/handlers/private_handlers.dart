@@ -586,6 +586,21 @@ final class PrivateHandlers {
         training: flowState.availableTrainings[index - 1],
       );
       final selectedTraining = flowState.availableTrainings[index - 1];
+      if (_isFreeActivity(selectedTraining)) {
+        final paidBooking =
+            await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
+        final bookingForResponse =
+            _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          result.created
+              ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
+              : _templates.bookingAlreadyExists(bookingForResponse),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
       final starterBonusOffered = selectedTraining.category == _ActivityCategory.trainings &&
           await _hasAnyFreeTrainingBonusAvailable(userId);
       _flowByUserId[userId] = flowState.copyWith(
@@ -2075,6 +2090,36 @@ final class PrivateHandlers {
       now: _nowProvider(),
     );
     return progress.availableRewardsCount > 0;
+  }
+
+  bool _isFreeActivity(TrainingInfo training) {
+    final price = training.price;
+    return price != null && price <= 0;
+  }
+
+  TrainingBooking _bookingWithStatus(
+    TrainingBooking fallback,
+    BookingStatus status,
+    TrainingBooking? candidate,
+  ) {
+    if (candidate != null) {
+      return candidate;
+    }
+    return TrainingBooking(
+      id: fallback.id,
+      userId: fallback.userId,
+      userUsername: fallback.userUsername,
+      trainingKey: fallback.trainingKey,
+      trainingTitle: fallback.trainingTitle,
+      startsAt: fallback.startsAt,
+      location: fallback.location,
+      status: status,
+      paymentNote: fallback.paymentNote,
+      paymentProofChatId: fallback.paymentProofChatId,
+      paymentProofMessageId: fallback.paymentProofMessageId,
+      createdAt: fallback.createdAt,
+      updatedAt: fallback.updatedAt,
+    );
   }
 
   Future<_FreeTrainingBonusType?> _resolveFreeTrainingBonusType(int userId) async {

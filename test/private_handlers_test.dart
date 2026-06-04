@@ -737,6 +737,51 @@ void main() {
       expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
     });
 
+    test('creates free booking without payment confirmation flow', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Free session',
+              startsAt: DateTime(2026, 7, 12, 18, 0),
+              location: 'Open gym',
+              price: 0,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1612},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1612},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1612},
+        'text': '🎯 1. Free session',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.createCalls, 1);
+      expect(sender.messages.last.text, contains('Это бесплатная тренировка'));
+      expect(sender.messages.last.text, isNot(contains('Реквизиты для оплаты')));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
+    });
+
     test('shows starter bonus button and applies free training once', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();
