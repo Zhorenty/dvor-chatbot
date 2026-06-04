@@ -328,6 +328,7 @@ final class FakeSender implements MessageSender {
   final List<SentMessage> messages = <SentMessage>[];
   final List<CopiedMessage> copiedMessages = <CopiedMessage>[];
   final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
+  final List<PinnedMessage> pinnedMessages = <PinnedMessage>[];
 
   @override
   Future<int> sendMessage(
@@ -379,6 +380,21 @@ final class FakeSender implements MessageSender {
       ),
     );
   }
+
+  @override
+  Future<void> pinMessage(
+    int chatId, {
+    required int messageId,
+    bool disableNotification = true,
+  }) async {
+    pinnedMessages.add(
+      PinnedMessage(
+        chatId: chatId,
+        messageId: messageId,
+        disableNotification: disableNotification,
+      ),
+    );
+  }
 }
 
 final class SentMessage {
@@ -419,6 +435,18 @@ final class DeletedMessage {
 
   final int chatId;
   final int messageId;
+}
+
+final class PinnedMessage {
+  const PinnedMessage({
+    required this.chatId,
+    required this.messageId,
+    required this.disableNotification,
+  });
+
+  final int chatId;
+  final int messageId;
+  final bool disableNotification;
 }
 
 final class FakeOnboardingRepository implements OnboardingRepository {

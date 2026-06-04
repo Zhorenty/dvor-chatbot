@@ -18,4 +18,10 @@ abstract interface class MessageSender {
     int chatId, {
     required int messageId,
   });
+
+  Future<void> pinMessage(
+    int chatId, {
+    required int messageId,
+    bool disableNotification = true,
+  });
 }

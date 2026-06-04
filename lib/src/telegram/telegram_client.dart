@@ -173,6 +173,26 @@ final class TelegramClient implements MessageSender {
     }
   }
 
+  @override
+  Future<void> pinMessage(
+    int chatId, {
+    required int messageId,
+    bool disableNotification = true,
+  }) async {
+    final payload = await _post(
+      'pinChatMessage',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'message_id': messageId,
+        'disable_notification': disableNotification,
+      },
+    );
+    final result = payload['result'];
+    if (result != true) {
+      throw const TelegramApiException('Telegram did not confirm message pin');
+    }
+  }
+
   void close() {
     _httpClient.close();
   }

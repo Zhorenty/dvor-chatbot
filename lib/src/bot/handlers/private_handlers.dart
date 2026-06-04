@@ -100,11 +100,12 @@ final class PrivateHandlers {
           username: context.from?['username']?.toString(),
         );
       }
-      await _sender.sendMessage(
+      final welcomeMessageId = await _sender.sendMessage(
         chatId,
         _templates.privateWelcome(),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
+      await _tryPinWelcomeMessage(chatId: chatId, messageId: welcomeMessageId);
       if (starterBonusAvailable) {
         await _sender.sendMessage(
           chatId,
@@ -2006,6 +2007,20 @@ final class PrivateHandlers {
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to cleanup group welcome on /start for user $userId: $error', stackTrace);
+    }
+  }
+
+  Future<void> _tryPinWelcomeMessage({
+    required int chatId,
+    required int messageId,
+  }) async {
+    try {
+      await _sender.pinMessage(chatId, messageId: messageId);
+    } on Object catch (error, stackTrace) {
+      l.w(
+        'Failed to pin welcome message in private chat $chatId (message_id=$messageId): $error',
+        stackTrace,
+      );
     }
   }
 

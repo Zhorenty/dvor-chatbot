@@ -70,6 +70,9 @@ void main() {
       expect(sender.messages.single.chatId, 11);
       expect(sender.messages.single.text, contains('Здесь мы тренируемся'));
       expect(sender.messages.single.replyMarkup, isNotNull);
+      expect(sender.pinnedMessages, hasLength(1));
+      expect(sender.pinnedMessages.single.chatId, 11);
+      expect(sender.pinnedMessages.single.messageId, 1);
     });
 
     test('deletes group welcome message when user sends /start', () async {
@@ -129,6 +132,9 @@ void main() {
       expect(sender.messages.last.text, contains('бесплатная тренировка'));
       expect(sender.messages.last.text, contains(MessageTemplates.buttonBookTraining));
       expect(sender.messages.last.text, contains(MessageTemplates.buttonUseStarterBonus));
+      expect(sender.pinnedMessages, hasLength(1));
+      expect(sender.pinnedMessages.single.chatId, 112);
+      expect(sender.pinnedMessages.single.messageId, 1);
     });
 
     test('shows only admin buttons in private menu for admin users', () async {

@@ -127,6 +127,15 @@ final class _FakeSender implements MessageSender {
   }) async {
     throw UnimplementedError('deleteMessage is not used in group handlers tests');
   }
+
+  @override
+  Future<void> pinMessage(
+    int chatId, {
+    required int messageId,
+    bool disableNotification = true,
+  }) async {
+    throw UnimplementedError('pinMessage is not used in group handlers tests');
+  }
 }
 
 final class _SentMessage {
