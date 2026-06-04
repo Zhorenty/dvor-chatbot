@@ -38,7 +38,6 @@ final class TelegramKeyboards {
         <String, String>{'text': MessageCopy.buttonCoachingStaff},
       ],
       <Map<String, String>>[
-        <String, String>{'text': MessageCopy.buttonBookTraining},
         <String, String>{'text': MessageCopy.buttonMyBookings},
       ],
       <Map<String, String>>[
@@ -82,6 +81,20 @@ final class TelegramKeyboards {
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> scheduleCategoryActionsKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBookTraining},
+          <String, String>{'text': MessageCopy.buttonBack},
+        ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],
       ],

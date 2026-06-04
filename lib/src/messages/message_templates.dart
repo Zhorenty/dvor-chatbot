@@ -839,6 +839,10 @@ final class MessageTemplates {
     return TelegramKeyboards.categorySelectionKeyboard();
   }
 
+  Map<String, Object?> scheduleCategoryActionsKeyboard() {
+    return TelegramKeyboards.scheduleCategoryActionsKeyboard();
+  }
+
   Map<String, Object?> paymentsQueueCategorySelectionKeyboard({
     required int trainings,
     required int hikes,

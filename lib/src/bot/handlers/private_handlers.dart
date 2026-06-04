@@ -215,7 +215,7 @@ final class PrivateHandlers {
             await _sender.sendMessage(
               chatId,
               _scheduleTextByCategory(selectedCategory),
-              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+              replyMarkup: _templates.scheduleCategoryActionsKeyboard(),
             );
             return true;
           }
@@ -490,7 +490,7 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _scheduleTextByCategory(category),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.scheduleCategoryActionsKeyboard(),
       );
       return true;
     }

@@ -185,6 +185,9 @@ void main() {
       expect(handled, isTrue);
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonCoachingStaff));
+      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, contains(MessageTemplates.buttonMyBookings));
+      expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
     });
 
     test('handles coaching staff button and prints trainers list', () async {
@@ -292,6 +295,9 @@ void main() {
       expect(sender.messages.last.text, contains('Ближайшие тренировки'));
       expect(sender.messages.last.text, contains('Тестовая тренировка'));
       expect(sender.messages.last.text, contains('бесплатная'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
     test('handles menu trainings button in private chat', () async {
@@ -680,6 +686,7 @@ void main() {
       expect(sender.messages.last.text, contains('Ближайшие трейлы DVOR'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
     test('creates booking after selecting a training button', () async {
