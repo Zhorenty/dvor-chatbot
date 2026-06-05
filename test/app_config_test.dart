@@ -80,5 +80,16 @@ void main() {
       expect(config.adminChatId, isNull);
       expect(config.logLevel, 'info');
     });
+
+    test('trims first target chat id when csv-like value is passed', () {
+      final config = AppConfig.fromArgs(<String>[
+        '--token',
+        'cli-token',
+        '--target-chat-id',
+        ' -100123456, -100999999',
+      ]);
+
+      expect(config.targetChatId, -100123456);
+    });
   });
 }

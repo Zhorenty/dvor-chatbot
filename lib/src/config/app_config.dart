@@ -113,8 +113,10 @@ final class AppConfig {
       exit(2);
     }
 
-    final targetChatIdRaw =
-        resolve('TARGET_CHAT_ID', 'target-chat-id', fallbackKey: 'CONFIG_CHATS')?.split(',').first;
+    final targetChatIdRaw = resolve('TARGET_CHAT_ID', 'target-chat-id', fallbackKey: 'CONFIG_CHATS')
+        ?.split(',')
+        .first
+        .trim();
     final pollTimeoutRaw = resolve('POLL_TIMEOUT_SECONDS', 'poll-timeout-seconds');
     final fallbackRaw = resolve('SEND_GROUP_FALLBACK', 'send-group-fallback');
     final scheduleSourceRaw = resolve('SCHEDULE_SOURCE', 'schedule-source');
