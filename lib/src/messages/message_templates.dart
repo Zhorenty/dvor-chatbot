@@ -878,16 +878,20 @@ final class MessageTemplates {
       'Шаг 2/3: выбери мероприятие для записи 👇',
       'Подсказка: отправь номер из списка или нажми кнопку с событием.',
     ];
+    final eventLines = <String>[];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       final feeLabel = item.price == null ? '' : ', взнос: ${_trainingPriceLabel(item.price)}';
-      lines.add(
+      eventLines.add(
         '${index + 1}. ${item.title} — '
         '${_trainingDateLabel(item, dateTimeFormatter, dateOnlyFormatter)} '
         '(${item.location}$feeLabel, участники: ${_participantsLimitLabel(item.participantsLimit)})',
       );
     }
-    return lines.join('\n');
+    return <String>[
+      ...lines,
+      eventLines.join('\n\n'),
+    ].join('\n');
   }
 
   String paymentDetailsSent(TrainingBooking booking) {
