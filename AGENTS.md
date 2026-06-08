@@ -1,21 +1,21 @@
 # AGENTS.md
 
-This file documents project-specific guidance for AI/code agents working in this repository.
+Project guidance for AI/code agents in this repository.
 
-## Project Context
+## Project Overview
 
 - Project: `dvor-chatbot`
-- Stack: Dart (CLI app), long polling against Telegram Bot API
-- Current scope (MVP):
+- Stack: Dart CLI app, Telegram Bot API (long polling)
+- MVP scope:
   - Private chat: `/start`, `/trainings`
-  - Group flow: DM new members with club info, fallback message in group if DM is not possible
+  - Group flow: DM new members with club info, post fallback in group if DM is unavailable
 
-## Architecture Snapshot
+## Source of Truth (Key Files)
 
 - Entry point: `bin/dvor_bot.dart`
-- Runtime orchestrator: `lib/src/bot/bot_runner.dart`
-- Config loading: `lib/src/config/app_config.dart`
-- Telegram API adapter: `lib/src/telegram/telegram_client.dart`
+- App runtime: `lib/src/bot/bot_runner.dart`
+- Config: `lib/src/config/app_config.dart`
+- Telegram transport: `lib/src/telegram/telegram_client.dart`
 - Handlers:
   - `lib/src/bot/handlers/private_handlers.dart`
   - `lib/src/bot/handlers/group_handlers.dart`
@@ -23,54 +23,55 @@ This file documents project-specific guidance for AI/code agents working in this
   - `lib/src/domain/training_info.dart`
   - `lib/src/data/training_schedule_repository.dart`
   - `lib/src/data/static_schedule_repository.dart`
-- Message composition: `lib/src/messages/message_templates.dart`
+- Message text/templates: `lib/src/messages/message_templates.dart`
 
-## Coding Rules
+## Architecture and Coding Rules
 
-- Keep business logic out of Telegram transport layer:
-  - API calls in `telegram_client`
-  - behavior in handlers/services
-  - text formatting in `message_templates`
-- Prefer dependency injection via constructors (already used in handlers/runner).
-- Keep repository abstraction (`TrainingScheduleRepository`) intact when adding new data sources.
-- Use package imports only (`analysis_options.yaml` enforces this).
-- Avoid adding experimental APIs unless absolutely necessary.
+- Keep layers clean:
+  - `telegram_client`: raw Telegram API requests/responses only
+  - handlers/services: behavior and orchestration
+  - `message_templates`: text composition and formatting
+- Preserve DI via constructors.
+- Preserve repository abstraction (`TrainingScheduleRepository`) when adding/changing schedule sources.
+- Use package imports only (`analysis_options.yaml`).
+- Avoid experimental APIs unless there is a strong reason.
+
+## Telegram Behavior Contract
+
+- Process only relevant update types (currently `message`).
+- Respect `TARGET_CHAT_ID` filtering in group flows.
+- DM to new members may fail if the user has not started the bot:
+  - keep fallback message logic in group
+  - do not treat this as fatal
+- Any new command must include:
+  - handler update
+  - message template update
+  - tests
 
 ## Config and Secrets
 
-- Never hardcode secrets.
-- Use config priority:
+- Never hardcode secrets or commit real credentials.
+- Config precedence (highest to lowest):
   1. CLI args
   2. Environment variables
   3. `.env`
   4. defaults
-- Main variables:
+- Core env vars:
   - `BOT_TOKEN`
   - `TARGET_CHAT_ID`
   - `SEND_GROUP_FALLBACK`
   - `POLL_TIMEOUT_SECONDS`
   - `LOG_LEVEL`
-- Do not commit real `.env` credentials.
 
-## Telegram-Specific Behavior
+## Reliability Baseline
 
-- Process only relevant update types (`message` currently).
-- Respect `TARGET_CHAT_ID` filter in group handler.
-- DM delivery can fail if user has not started the bot; keep fallback behavior in group.
-- Any new command should be added with:
-  - handler logic in `private_handlers`
-  - text in `message_templates`
-  - tests
+- Keep timeout/retry behavior in Telegram API calls.
+- Handle Telegram failures explicitly via `TelegramApiException`.
+- Keep graceful shutdown behavior (`SIGINT`/`SIGTERM`) intact.
 
-## Reliability Practices
+## Required Validation Before Handoff
 
-- Keep retry + timeout behavior in Telegram API calls.
-- Handle API failures explicitly with `TelegramApiException`.
-- Maintain graceful shutdown handling (`SIGINT`/`SIGTERM` in entry point).
-
-## Tests and Quality Gate
-
-Before finishing any change, run:
+Run and pass all checks:
 
 ```bash
 dart format bin lib test
@@ -78,33 +79,40 @@ dart analyze --fatal-infos --fatal-warnings
 dart test
 ```
 
-Required test files for current MVP behavior:
+## Documentation Update Rules
 
-- `test/private_handlers_test.dart`
-- `test/group_handlers_test.dart`
+Update docs when behavior/config/operations change:
 
-## Documentation and Deployment
+- `README.md` (commands, config, behavior)
+- `.env.example` (if env vars changed)
+- deployment docs where relevant (notably `docs/DAILY_OPS_TIMEWEB.md`)
 
-- Keep `README.md` updated when commands/config/behavior change.
-- Docker image should continue to build with `Dockerfile`.
-- When changing runtime env variables, update both:
-  - `.env.example`
-  - `README.md` config section
+## Production Defaults (Timeweb Cloud)
 
-## Safe Change Checklist
+Use these defaults unless explicitly told otherwise:
 
-When implementing a feature:
+- Path: `/opt/dvor-chatbot-project`
+- Runtime: Docker Compose (`docker compose`)
+- Container: `dvor-chatbot`
+- Persistent SQLite: `/opt/dvor-chatbot-project/data/bookings.sqlite`
+- Production `.env`: `/opt/dvor-chatbot-project/.env`
+- Backup script: `/opt/dvor-chatbot-project/backup.sh`
+- Backup dir: `/opt/backups/dvor-chatbot-project`
 
-1. Add/update domain/data contracts first.
-2. Add/update message templates.
-3. Add/update handlers.
-4. Add/update tests.
-5. Run format + analyze + tests.
-6. Update docs if behavior/config changed.
+Operational assumptions:
 
-## Out of Scope for MVP (unless explicitly requested)
+- Long polling mode (no public webhook endpoint required).
+- Persistent volume for SQLite (`./data:/app/data`).
+- After `.env` changes, restart compose services.
 
-- Webhook mode
-- Database-backed schedule storage
-- Admin panel/API
-- CI/CD pipeline changes
+## Safe Change Flow
+
+For new features and non-trivial changes:
+
+1. Update domain/contracts first.
+2. Update templates/messages.
+3. Update handlers/services.
+4. Add or adjust tests.
+5. Run format, analyze, and tests.
+6. Update docs if needed.
+
