@@ -761,6 +761,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
+        adminChatId: -1001612,
       );
 
       await handlers.handle(<String, dynamic>{
@@ -786,6 +787,9 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonTrainings));
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -1001612).text;
+      expect(adminMessage, contains('новая бесплатная запись'));
+      expect(adminMessage, contains('Статус: Оплачено'));
     });
 
     test('shows starter bonus button and applies free training once', () async {

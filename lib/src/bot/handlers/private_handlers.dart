@@ -603,6 +603,9 @@ final class PrivateHandlers {
             await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
         final bookingForResponse =
             _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+        if (result.created) {
+          await _notifyAdminAboutFreeBookingCreated(bookingForResponse);
+        }
         _flowByUserId.remove(userId);
         await _sender.sendMessage(
           chatId,
@@ -2515,6 +2518,21 @@ final class PrivateHandlers {
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about booking cancellation: $error', stackTrace);
+    }
+  }
+
+  Future<void> _notifyAdminAboutFreeBookingCreated(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sender.sendMessage(
+        adminChatId,
+        _templates.freeBookingCreatedAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about free booking creation: $error', stackTrace);
     }
   }
 

@@ -845,6 +845,17 @@ final class MessageTemplates {
         'Дальше: при необходимости свяжись с участником по возврату/перезаписи.';
   }
 
+  String freeBookingCreatedAdminNotification(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Операционное событие: новая бесплатная запись 🎁\n'
+        'Запись: #${booking.id}\n'
+        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
+        'Событие: ${booking.trainingTitle}\n'
+        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_statusLabel(booking.status)}';
+  }
+
   String pendingPaymentReminder(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
