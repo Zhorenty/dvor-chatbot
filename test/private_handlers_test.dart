@@ -137,7 +137,7 @@ void main() {
       expect(sender.pinnedMessages.single.messageId, 1);
     });
 
-    test('shows combined user and admin buttons in private menu for admin users', () async {
+    test('shows only admin buttons in private menu for admin users', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -161,10 +161,11 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
       expect(buttons, contains(MessageTemplates.buttonNoblesList));
       expect(buttons, contains(MessageTemplates.buttonManageBookings));
-      expect(buttons, contains(MessageTemplates.buttonTrainings));
-      expect(buttons, contains(MessageTemplates.buttonBookTraining));
-      expect(buttons, contains(MessageTemplates.buttonMyBookings));
-      expect(buttons, contains(MessageTemplates.buttonHelp));
+      expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonCoachingStaff)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonMyBookings)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonHelp)));
     });
 
     test('shows coaching staff button for regular users in private menu', () async {

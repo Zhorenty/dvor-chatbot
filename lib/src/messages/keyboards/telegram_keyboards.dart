@@ -18,14 +18,6 @@ final class TelegramKeyboards {
       return _replyKeyboard(
         <List<Map<String, String>>>[
           <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonTrainings},
-            <String, String>{'text': MessageCopy.buttonBookTraining},
-          ],
-          <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonCoachingStaff},
-            <String, String>{'text': MessageCopy.buttonMyBookings},
-          ],
-          <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonRefreshSchedule},
             <String, String>{'text': MessageCopy.buttonPaymentsQueue},
           ],
@@ -36,9 +28,6 @@ final class TelegramKeyboards {
           <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonNoblesList},
             <String, String>{'text': MessageCopy.buttonManageBookings},
-          ],
-          <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonHelp},
           ],
         ],
       );
