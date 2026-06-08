@@ -451,6 +451,7 @@ void main() {
       expect(sender.messages, hasLength(1));
       expect(
           sender.messages.single.text, contains('Показываю ближайшие тренировки, походы и трейлы'));
+      expect(sender.messages.single.text, contains('каждая 5-я тренировка бесплатная'));
       expect(sender.messages.single.text, contains('/trainings, /book, /my_bookings'));
       expect(sender.messages.single.text, isNot(contains('внешнего источника')));
     });

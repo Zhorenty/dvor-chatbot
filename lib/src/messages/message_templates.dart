@@ -87,6 +87,7 @@ final class MessageTemplates {
         '• Показываю ближайшие тренировки, походы и трейлы 📅\n'
         '• Показываю список тренеров и контакты штаба 🧑‍🏫\n'
         '• Помогаю записаться на выбранное мероприятие ✍️\n'
+        '• Напоминаю про систему лояльности: каждая 5-я тренировка бесплатная 🎁\n'
         '• Показываю твои записи и текущие статусы 🗂\n'
         '• Принимаю файл с подтверждением оплаты и передаю его на проверку 💸\n'
         '• Напоминаю об оплате, если она еще не подтверждена ⏰\n\n'
@@ -121,7 +122,7 @@ final class MessageTemplates {
         '   📍 Где: ${item.location}',
         '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',
         if (item.price != null) '   💳 Взнос: ${_trainingPriceLabel(item.price)}',
-        if (coach != null && coach.isNotEmpty) '   🧑‍🏫 Тренер: $coach',
+        if (coach != null && coach.isNotEmpty) '   🧑‍🏫 ${_coachTitle(coach)}: $coach',
         if (notes != null && notes.isNotEmpty) '   📝 Примечание: $notes',
       ]);
 
@@ -1146,6 +1147,16 @@ final class MessageTemplates {
       return 'без ограничений';
     }
     return 'до $participantsLimit';
+  }
+
+  String _coachTitle(String coach) {
+    final normalized = coach.trim().toLowerCase();
+    final hasMultipleCoaches = normalized.contains(',') ||
+        normalized.contains(';') ||
+        normalized.contains('\n') ||
+        normalized.contains(' и ') ||
+        normalized.contains(' & ');
+    return hasMultipleCoaches ? 'Тренеры' : 'Тренер';
   }
 
   String _participantsLimitValueLabel(int? participantsLimit) {
