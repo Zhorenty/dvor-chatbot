@@ -254,6 +254,11 @@ final class MessageTemplates {
         '(можно с @ или без).';
   }
 
+  String invalidUsernameInput() {
+    return 'Не смог распознать username.\n'
+        'Нужен формат @username или username (без пробелов).';
+  }
+
   String adminBookingUsernameUpdated(TrainingBooking booking) {
     return 'Готово. Пользователь для записи #${booking.id}: ${_userTag(booking)}';
   }
@@ -370,7 +375,8 @@ final class MessageTemplates {
   }
 
   String scheduleRefreshDone() {
-    return 'Готово! Расписание обновил ✅';
+    return 'Готово! Расписание обновил ✅\n'
+        'Источник расписания: Google Sheets/кэш.';
   }
 
   String scheduleRefreshFailed() {
@@ -518,7 +524,7 @@ final class MessageTemplates {
     DateTime? now,
   }) {
     if (bookings.isEmpty) {
-      return 'У тебя пока нет записей на тренировки 🙃';
+      return 'У тебя пока нет записей на мероприятия 🙃';
     }
 
     final splitPoint = (now ?? DateTime.now()).toLocal();
@@ -558,8 +564,24 @@ final class MessageTemplates {
     if (bookings.isEmpty) {
       return 'Сейчас нет записей, которыми можно управлять.';
     }
-    return 'Выбери запись для управления 👇\n'
+    return 'Выбери запись для управления (кнопки ниже) 👇\n'
         'Можно перенести, отменить или повторить запись.';
+  }
+
+  String bookingRescheduleNotAvailable(TrainingBooking? booking) {
+    if (booking == null) {
+      return 'Не нашел запись для переноса. Выбери запись заново.';
+    }
+    return 'Перенос доступен только для тренировок.\n'
+        'Для записи #${booking.id} используй другие действия.';
+  }
+
+  String bookingCancelNotAvailable(TrainingBooking? booking) {
+    if (booking == null) {
+      return 'Не нашел запись для отмены. Выбери запись заново.';
+    }
+    return 'Отмена доступна только для походов и трейлов.\n'
+        'Для записи #${booking.id} используй другие действия.';
   }
 
   String bookingActions(TrainingBooking booking) {
@@ -781,7 +803,8 @@ final class MessageTemplates {
   String paymentRejectedForUser(TrainingBooking booking) {
     return 'Оплату по записи #${booking.id} отклонили ❌\n'
         'Статус: ${_statusLabel(booking.status)}.\n'
-        'Проверь детали платежа и отправь подтверждение еще раз.';
+        'Проверь детали платежа и отправь подтверждение еще раз.\n'
+        'Если нужен комментарий по отклонению, напиши администратору клуба.';
   }
 
   String paymentReviewAdminNotification({
@@ -829,7 +852,8 @@ final class MessageTemplates {
         '${booking.trainingTitle} (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)})\n'
         'Текущий статус: ${_statusLabel(booking.status)}\n\n'
         '${paymentInstructions(booking.id)}\n\n'
-        'После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь в этот чат файл с подтверждением (чек/скрин).';
+        'После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь в этот чат файл с подтверждением (чек/скрин).\n'
+        'Если кнопка не сработала, открой «${MessageCopy.buttonMyBookings}» и выбери нужную запись.';
   }
 
   String chooseTrainingForBooking(List<TrainingInfo> items) {
@@ -878,6 +902,11 @@ final class MessageTemplates {
         '1) Нажми «${MessageCopy.buttonSubmitPayment}».\n'
         '2) Пришли файл с подтверждением оплаты (документ или фото чека).\n'
         '3) Дождись ответа о модерации.';
+  }
+
+  String paymentProofUnavailableHint(TrainingBooking booking) {
+    return 'Не удалось подгрузить файл подтверждения для записи #${booking.id}.\n'
+        'Проверь заявку в личке пользователя: ${_userTag(booking)} (${booking.userId}).';
   }
 
   String adminSummary({
@@ -938,6 +967,10 @@ final class MessageTemplates {
     required bool showStarterBonus,
   }) {
     return TelegramKeyboards.paymentConfirmationKeyboard(showStarterBonus: showStarterBonus);
+  }
+
+  Map<String, Object?> simpleNavigationKeyboard() {
+    return TelegramKeyboards.simpleNavigationKeyboard();
   }
 
   Map<String, Object?> bookingManagementSelectionKeyboard(List<TrainingBooking> bookings) {

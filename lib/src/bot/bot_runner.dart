@@ -60,12 +60,16 @@ final class BotRunner {
 
   bool _stopping = false;
   int _offset = 0;
+  bool _clientClosed = false;
+  int _activeOperations = 0;
+  Completer<void>? _idleCompleter;
   Timer? _scheduleSyncTimer;
   Timer? _paymentReminderTimer;
   Timer? _starterBonusReminderTimer;
   Timer? _welcomeCleanupTimer;
 
   Future<void> start() async {
+    await _initializeLongPolling();
     final initialRefreshOk = await _scheduleRepository.refresh(force: true);
     if (!initialRefreshOk) {
       l.w('Initial schedule refresh failed. Continuing with available cache.');
@@ -76,26 +80,26 @@ final class BotRunner {
         if (_stopping) {
           return;
         }
-        unawaited(_scheduleSyncJob.run());
+        _launchBackgroundJob('schedule sync', _scheduleSyncJob.run);
       },
     );
     _paymentReminderTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       if (_stopping) {
         return;
       }
-      unawaited(_paymentReminderJob.run());
+      _launchBackgroundJob('payment reminder', _paymentReminderJob.run);
     });
     _starterBonusReminderTimer = Timer.periodic(const Duration(minutes: 30), (_) {
       if (_stopping) {
         return;
       }
-      unawaited(_starterBonusReminderJob.run());
+      _launchBackgroundJob('starter bonus reminder', _starterBonusReminderJob.run);
     });
     _welcomeCleanupTimer = Timer.periodic(const Duration(seconds: 20), (_) {
       if (_stopping) {
         return;
       }
-      unawaited(_welcomeCleanupJob.run());
+      _launchBackgroundJob('welcome cleanup', _welcomeCleanupJob.run);
     });
 
     while (!_stopping) {
@@ -110,12 +114,24 @@ final class BotRunner {
             break;
           }
           final updateId = update['update_id'];
-          if (updateId is int) {
-            _offset = updateId + 1;
+          try {
+            await _runTracked(() => _handleUpdate(update));
+            if (updateId is int) {
+              _offset = updateId + 1;
+            }
+          } on Object catch (error, stackTrace) {
+            l.e('Failed to handle update (update_id=$updateId): $error', stackTrace);
           }
-          await _handleUpdate(update);
         }
       } on TelegramApiException catch (error, stackTrace) {
+        if (error.statusCode == 409) {
+          l.e(
+            'Polling conflict (409): another bot instance is likely running. Stopping current instance.',
+            stackTrace,
+          );
+          _stopping = true;
+          break;
+        }
         l.w('Telegram API error in polling loop: $error', stackTrace);
         await Future<void>.delayed(const Duration(seconds: 2));
       } on TimeoutException catch (error, stackTrace) {
@@ -125,6 +141,8 @@ final class BotRunner {
         await Future<void>.delayed(const Duration(seconds: 2));
       }
     }
+    await _waitForIdleOperations();
+    _closeClient();
   }
 
   Future<void> _handleUpdate(Map<String, dynamic> update) async {
@@ -140,12 +158,61 @@ final class BotRunner {
     await _groupHandlers.handle(normalized);
   }
 
-  void stop() {
+  Future<void> stop() async {
+    if (_stopping) {
+      return;
+    }
     _stopping = true;
     _scheduleSyncTimer?.cancel();
     _paymentReminderTimer?.cancel();
     _starterBonusReminderTimer?.cancel();
     _welcomeCleanupTimer?.cancel();
+    _closeClient();
+    await _waitForIdleOperations();
+  }
+
+  Future<void> _initializeLongPolling() async {
+    try {
+      await _client.deleteWebhook();
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to reset Telegram webhook before polling: $error', stackTrace);
+    }
+  }
+
+  Future<T> _runTracked<T>(Future<T> Function() action) async {
+    _activeOperations += 1;
+    try {
+      return await action();
+    } finally {
+      _activeOperations -= 1;
+      if (_activeOperations == 0) {
+        _idleCompleter?.complete();
+        _idleCompleter = null;
+      }
+    }
+  }
+
+  void _launchBackgroundJob(String name, Future<void> Function() action) {
+    unawaited(
+      _runTracked(action).onError<Object>((error, stackTrace) {
+        l.w('Background $name job failed: $error', stackTrace);
+      }),
+    );
+  }
+
+  Future<void> _waitForIdleOperations() async {
+    if (_activeOperations == 0) {
+      return;
+    }
+    final completer = _idleCompleter ??= Completer<void>();
+    await completer.future;
+  }
+
+  void _closeClient() {
+    if (_clientClosed) {
+      return;
+    }
+    _clientClosed = true;
     _client.close();
   }
 }

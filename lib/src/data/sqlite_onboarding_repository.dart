@@ -235,6 +235,22 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
   }
 
   @override
+  Future<void> rollbackStarterBonusConsumption(
+    int userId, {
+    required DateTime rollbackAt,
+  }) async {
+    final db = _database;
+    db.execute(
+      '''
+      UPDATE onboarding_users
+      SET starter_bonus_consumed_at = NULL
+      WHERE user_id = ?;
+      ''',
+      <Object?>[userId],
+    );
+  }
+
+  @override
   Future<List<StarterBonusReminderTarget>> listStarterBonusExpiringSoon({
     required DateTime now,
     Duration leadTime = const Duration(days: 1),

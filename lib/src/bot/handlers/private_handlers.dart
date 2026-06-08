@@ -80,6 +80,14 @@ final class PrivateHandlers {
     if (chatId is! int) {
       return false;
     }
+    final callbackQueryId = context.callbackQueryId;
+    if (callbackQueryId != null) {
+      try {
+        await _sender.answerCallbackQuery(callbackQueryId);
+      } on Object catch (error, stackTrace) {
+        l.w('Failed to acknowledge callback query $callbackQueryId: $error', stackTrace);
+      }
+    }
     final text = context.text;
     final rawUserId = context.from?['id'];
     final userId = rawUserId is int ? rawUserId : null;
@@ -655,11 +663,6 @@ final class PrivateHandlers {
           availableTrainings: const <TrainingInfo>[],
           availableBookings: activeBookings,
         );
-        await _sender.sendMessage(
-          chatId,
-          _templates.chooseBookingToManage(activeBookings),
-          replyMarkup: _templates.bookingManagementSelectionKeyboard(activeBookings),
-        );
       }
       return true;
     }
@@ -705,8 +708,13 @@ final class PrivateHandlers {
           _catalogService.categoryForBooking(selectedBooking) != _ActivityCategory.trainings) {
         await _sender.sendMessage(
           chatId,
-          _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          _templates.bookingRescheduleNotAvailable(selectedBooking),
+          replyMarkup: _templates.bookingActionsKeyboard(
+            canReschedule: false,
+            canCancel: selectedBooking != null &&
+                _isOutdoorCategory(_catalogService.categoryForBooking(selectedBooking)),
+            canRepeat: selectedBooking != null,
+          ),
         );
         return true;
       }
@@ -740,8 +748,13 @@ final class PrivateHandlers {
           !_isOutdoorCategory(_catalogService.categoryForBooking(selectedBooking))) {
         await _sender.sendMessage(
           chatId,
-          _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          _templates.bookingCancelNotAvailable(selectedBooking),
+          replyMarkup: _templates.bookingActionsKeyboard(
+            canReschedule: selectedBooking != null &&
+                _catalogService.categoryForBooking(selectedBooking) == _ActivityCategory.trainings,
+            canCancel: false,
+            canRepeat: selectedBooking != null,
+          ),
         );
         return true;
       }
@@ -787,6 +800,24 @@ final class PrivateHandlers {
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (selectedBooking.status == BookingStatus.pendingPayment) {
+        final starterBonusOffered =
+            _catalogService.categoryForBooking(selectedBooking) == _ActivityCategory.trainings &&
+                await _hasAnyFreeTrainingBonusAvailable(userId);
+        _flowByUserId[userId] = flowState!.copyWith(
+          step: _PrivateFlowStep.paymentConfirmation,
+          activeBooking: selectedBooking,
+          starterBonusOffered: starterBonusOffered,
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.paymentDetailsSent(selectedBooking),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: starterBonusOffered,
+          ),
         );
         return true;
       }
@@ -959,11 +990,17 @@ final class PrivateHandlers {
         return false;
       }
       if (flowState?.step != _PrivateFlowStep.paymentConfirmation) {
-        await _sender.sendMessage(
-          chatId,
-          _paymentHandler.chooseBookingFirstText(MessageTemplates.buttonBookTraining),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        final opened = await _openPendingPaymentFlow(
+          chatId: chatId,
+          userId: userId,
         );
+        if (!opened) {
+          await _sender.sendMessage(
+            chatId,
+            _paymentHandler.chooseBookingFirstText(MessageTemplates.buttonBookTraining),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+        }
         return true;
       }
       await _sender.sendMessage(
@@ -1429,7 +1466,7 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.adminBookingAskUsername(selectedBooking),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.simpleNavigationKeyboard(),
         );
         return true;
       }
@@ -1532,8 +1569,8 @@ final class PrivateHandlers {
       if (normalizedUsername == null) {
         await _sender.sendMessage(
           chatId,
-          _templates.adminBookingAskUsername(selectedBooking),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          _templates.invalidUsernameInput(),
+          replyMarkup: _templates.simpleNavigationKeyboard(),
         );
         return true;
       }
@@ -1690,7 +1727,7 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.createBookingAskUsername(),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
       );
       return true;
     }
@@ -1703,8 +1740,8 @@ final class PrivateHandlers {
       if (normalizedUsername == null) {
         await _sender.sendMessage(
           chatId,
-          _templates.createBookingAskUsername(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          _templates.invalidUsernameInput(),
+          replyMarkup: _templates.simpleNavigationKeyboard(),
         );
         return true;
       }
@@ -1941,6 +1978,10 @@ final class PrivateHandlers {
           );
         } on Object catch (error, stackTrace) {
           l.w('Failed to copy payment proof for booking ${booking.id}: $error', stackTrace);
+          await _sender.sendMessage(
+            chatId,
+            _templates.paymentProofUnavailableHint(booking),
+          );
         }
       }
       await _sender.sendMessage(
@@ -2304,11 +2345,21 @@ final class PrivateHandlers {
     if (!consumed) {
       return null;
     }
-    return _bookingRepository.updateStatus(
-      booking.id,
-      BookingStatus.paid,
-      paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
-    );
+    try {
+      return _bookingRepository.updateStatus(
+        booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to apply starter bonus payment status for booking ${booking.id}: $error',
+          stackTrace);
+      await _onboardingRepository.rollbackStarterBonusConsumption(
+        userId,
+        rollbackAt: _nowProvider(),
+      );
+      return null;
+    }
   }
 
   Future<TrainingBooking?> _applyEveryFifthBonus(TrainingBooking booking) async {
@@ -2336,11 +2387,6 @@ final class PrivateHandlers {
     if (earnedRewards <= lastNotified) {
       return;
     }
-    await _onboardingRepository.setEveryFifthLastNotifiedRewards(
-      userId,
-      rewardsCount: earnedRewards,
-      updatedAt: _nowProvider(),
-    );
     try {
       await _sender.sendMessage(
         chatId,
@@ -2348,6 +2394,11 @@ final class PrivateHandlers {
           completedTrainingsCount: progress.qualifiedTrainingsCount,
           availableRewardsCount: progress.availableRewardsCount,
         ),
+      );
+      await _onboardingRepository.setEveryFifthLastNotifiedRewards(
+        userId,
+        rewardsCount: earnedRewards,
+        updatedAt: _nowProvider(),
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify user about every-fifth reward unlock: $error', stackTrace);
@@ -2402,6 +2453,36 @@ final class PrivateHandlers {
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about booking cancellation: $error', stackTrace);
     }
+  }
+
+  Future<bool> _openPendingPaymentFlow({
+    required int chatId,
+    required int userId,
+  }) async {
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 20);
+    final pending = bookings.where((item) => item.status == BookingStatus.pendingPayment).toList();
+    if (pending.isEmpty) {
+      return false;
+    }
+    pending.sort((left, right) => left.startsAt.compareTo(right.startsAt));
+    final target = pending.first;
+    final starterBonusOffered =
+        _catalogService.categoryForBooking(target) == _ActivityCategory.trainings &&
+            await _hasAnyFreeTrainingBonusAvailable(userId);
+    _flowByUserId[userId] = _PrivateFlowState(
+      step: _PrivateFlowStep.paymentConfirmation,
+      availableTrainings: const <TrainingInfo>[],
+      activeBooking: target,
+      starterBonusOffered: starterBonusOffered,
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.paymentDetailsSent(target),
+      replyMarkup: _templates.paymentConfirmationKeyboard(
+        showStarterBonus: starterBonusOffered,
+      ),
+    );
+    return true;
   }
 }
 

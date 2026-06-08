@@ -6,12 +6,14 @@ final class PrivateMessageContext {
     required this.from,
     required this.text,
     required this.message,
+    required this.callbackQueryId,
   });
 
   final Map<String, dynamic> chat;
   final Map<String, dynamic>? from;
   final String? text;
   final Map<String, dynamic>? message;
+  final String? callbackQueryId;
 }
 
 final class PaymentProof {
@@ -46,6 +48,7 @@ PrivateMessageContext? extractPrivateMessageContext(Map<String, dynamic> update)
       from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
       text: text,
       message: null,
+      callbackQueryId: callbackMap['id']?.toString(),
     );
   }
 
@@ -62,6 +65,7 @@ PrivateMessageContext? extractPrivateMessageContext(Map<String, dynamic> update)
       from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
       text: message['text']?.toString().trim(),
       message: message,
+      callbackQueryId: null,
     );
   }
 
@@ -75,6 +79,7 @@ PrivateMessageContext? extractPrivateMessageContext(Map<String, dynamic> update)
     from: fromRaw is Map ? Map<String, dynamic>.from(fromRaw) : null,
     text: update['text']?.toString().trim(),
     message: update,
+    callbackQueryId: null,
   );
 }
 

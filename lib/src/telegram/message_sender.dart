@@ -24,4 +24,10 @@ abstract interface class MessageSender {
     required int messageId,
     bool disableNotification = true,
   });
+
+  Future<void> answerCallbackQuery(
+    String callbackQueryId, {
+    String? text,
+    bool showAlert = false,
+  });
 }

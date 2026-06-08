@@ -136,6 +136,15 @@ final class _FakeSender implements MessageSender {
   }) async {
     throw UnimplementedError('pinMessage is not used in group handlers tests');
   }
+
+  @override
+  Future<void> answerCallbackQuery(
+    String callbackQueryId, {
+    String? text,
+    bool showAlert = false,
+  }) async {
+    throw UnimplementedError('answerCallbackQuery is not used in group handlers tests');
+  }
 }
 
 final class _SentMessage {
@@ -163,6 +172,12 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
   }) async {
     return false;
   }
+
+  @override
+  Future<void> rollbackStarterBonusConsumption(
+    int userId, {
+    required DateTime rollbackAt,
+  }) async {}
 
   @override
   Future<bool> hasStarterBonusAvailable(int userId) async {

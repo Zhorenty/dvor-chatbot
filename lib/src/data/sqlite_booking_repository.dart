@@ -426,9 +426,9 @@ final class SqliteBookingRepository implements BookingRepository {
       SET reminder_count = reminder_count + 1,
           last_reminder_at = ?,
           updated_at = ?
-      WHERE id = ?;
+      WHERE id = ? AND status = ?;
       ''',
-      <Object?>[nowIso, nowIso, bookingId],
+      <Object?>[nowIso, nowIso, bookingId, BookingStatus.pendingPayment.dbValue],
     );
   }
 

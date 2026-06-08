@@ -355,6 +355,7 @@ final class FakeSender implements MessageSender {
   final List<CopiedMessage> copiedMessages = <CopiedMessage>[];
   final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
   final List<PinnedMessage> pinnedMessages = <PinnedMessage>[];
+  final List<AnsweredCallback> answeredCallbacks = <AnsweredCallback>[];
 
   @override
   Future<int> sendMessage(
@@ -421,6 +422,21 @@ final class FakeSender implements MessageSender {
       ),
     );
   }
+
+  @override
+  Future<void> answerCallbackQuery(
+    String callbackQueryId, {
+    String? text,
+    bool showAlert = false,
+  }) async {
+    answeredCallbacks.add(
+      AnsweredCallback(
+        callbackQueryId: callbackQueryId,
+        text: text,
+        showAlert: showAlert,
+      ),
+    );
+  }
 }
 
 final class SentMessage {
@@ -475,6 +491,18 @@ final class PinnedMessage {
   final bool disableNotification;
 }
 
+final class AnsweredCallback {
+  const AnsweredCallback({
+    required this.callbackQueryId,
+    required this.text,
+    required this.showAlert,
+  });
+
+  final String callbackQueryId;
+  final String? text;
+  final bool showAlert;
+}
+
 final class FakeOnboardingRepository implements OnboardingRepository {
   final Map<int, _FakeOnboardingState> _stateByUserId = <int, _FakeOnboardingState>{};
   final List<PendingWelcomeMessage> readyForDelete = <PendingWelcomeMessage>[];
@@ -493,6 +521,18 @@ final class FakeOnboardingRepository implements OnboardingRepository {
     }
     state.bonusConsumed = true;
     return true;
+  }
+
+  @override
+  Future<void> rollbackStarterBonusConsumption(
+    int userId, {
+    required DateTime rollbackAt,
+  }) async {
+    final state = _stateByUserId[userId];
+    if (state == null) {
+      return;
+    }
+    state.bonusConsumed = false;
   }
 
   @override

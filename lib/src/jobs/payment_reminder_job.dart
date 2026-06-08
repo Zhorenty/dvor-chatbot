@@ -33,6 +33,7 @@ final class PaymentReminderJob {
           await _sender.sendMessage(
             booking.userId,
             _templates.pendingPaymentReminder(booking),
+            replyMarkup: _templates.paymentConfirmationKeyboard(showStarterBonus: false),
           );
           await _bookingRepository.markReminderSent(booking.id);
         } on Object catch (error, stackTrace) {

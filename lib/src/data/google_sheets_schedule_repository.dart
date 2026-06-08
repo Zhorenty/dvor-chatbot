@@ -70,6 +70,10 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
       }
 
       final parsedTrainings = _parseCsv(utf8.decode(trainingsResponse.bodyBytes));
+      if (parsedTrainings.isEmpty && _cached.isNotEmpty) {
+        l.w('Google Sheets sync returned empty trainings CSV. Keeping previous cache.');
+        return false;
+      }
       var parsedHikes = _cachedOutdoor
           .where((item) => item.type == OutdoorActivityType.hike)
           .toList(growable: false);

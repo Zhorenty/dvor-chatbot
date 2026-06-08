@@ -119,3 +119,62 @@ docker logs dvor-chatbot
 df -h
 free -h
 ```
+
+## 11) Smoke Test After Deploy
+
+```bash
+cd /opt/dvor-chatbot-project
+docker compose ps
+docker logs --tail=120 dvor-chatbot
+```
+
+Then verify in Telegram:
+
+- Private chat: `/start` returns welcome.
+- Admin chat: `📊 Оперативная сводка` returns metrics.
+- Admin chat: `🔄 Обновить расписание` returns success message.
+
+## 12) Incident: Bot Not Responding
+
+```bash
+cd /opt/dvor-chatbot-project
+docker compose ps -a
+docker logs --tail=300 dvor-chatbot
+docker logs dvor-chatbot | rg "409|Conflict|Telegram API error"
+```
+
+If `409 Conflict` appears:
+
+1. Ensure only one instance of the bot is running.
+2. Restart compose stack.
+3. Re-check logs for stable polling.
+
+## 13) Incident: Schedule Looks Outdated
+
+```bash
+cd /opt/dvor-chatbot-project
+docker logs --tail=200 dvor-chatbot | rg "Google Sheets|schedule"
+```
+
+Then in Telegram:
+
+1. Press `🔄 Обновить расписание`.
+2. Verify that schedule in `📅 Расписание` is refreshed.
+
+## 14) Restore from Backup
+
+```bash
+cd /opt/dvor-chatbot-project
+docker compose down
+cp /opt/backups/dvor-chatbot-project/bookings.sqlite.<timestamp> /opt/dvor-chatbot-project/data/bookings.sqlite
+sqlite3 /opt/dvor-chatbot-project/data/bookings.sqlite "PRAGMA integrity_check;"
+docker compose up -d
+docker logs --tail=100 dvor-chatbot
+```
+
+## 15) Onboarding New Admin
+
+1. Get Telegram user id (for example via @userinfobot).
+2. Add user id to `ADMIN_USER_IDS` in `/opt/dvor-chatbot-project/.env`.
+3. Restart services: `docker compose restart`.
+4. In private chat with bot run `/start` and verify admin buttons are visible.

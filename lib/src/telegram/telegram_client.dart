@@ -97,6 +97,19 @@ final class TelegramClient implements MessageSender {
     return result['username']?.toString();
   }
 
+  Future<void> deleteWebhook({bool dropPendingUpdates = false}) async {
+    final payload = await _post(
+      'deleteWebhook',
+      body: <String, Object?>{
+        'drop_pending_updates': dropPendingUpdates,
+      },
+    );
+    final result = payload['result'];
+    if (result != true) {
+      throw const TelegramApiException('Telegram did not confirm webhook deletion');
+    }
+  }
+
   @override
   Future<int> sendMessage(
     int chatId,
@@ -190,6 +203,26 @@ final class TelegramClient implements MessageSender {
     final result = payload['result'];
     if (result != true) {
       throw const TelegramApiException('Telegram did not confirm message pin');
+    }
+  }
+
+  @override
+  Future<void> answerCallbackQuery(
+    String callbackQueryId, {
+    String? text,
+    bool showAlert = false,
+  }) async {
+    final payload = await _post(
+      'answerCallbackQuery',
+      body: <String, Object?>{
+        'callback_query_id': callbackQueryId,
+        if (text != null && text.trim().isNotEmpty) 'text': text.trim(),
+        'show_alert': showAlert,
+      },
+    );
+    final result = payload['result'];
+    if (result != true) {
+      throw const TelegramApiException('Telegram did not confirm callback answer');
     }
   }
 

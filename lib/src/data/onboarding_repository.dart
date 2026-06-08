@@ -55,6 +55,11 @@ abstract interface class OnboardingRepository {
     required DateTime consumedAt,
   });
 
+  Future<void> rollbackStarterBonusConsumption(
+    int userId, {
+    required DateTime rollbackAt,
+  });
+
   Future<List<StarterBonusReminderTarget>> listStarterBonusExpiringSoon({
     required DateTime now,
     Duration leadTime = const Duration(days: 1),
@@ -127,6 +132,12 @@ final class NoopOnboardingRepository implements OnboardingRepository {
   }) async {
     return false;
   }
+
+  @override
+  Future<void> rollbackStarterBonusConsumption(
+    int userId, {
+    required DateTime rollbackAt,
+  }) async {}
 
   @override
   Future<List<StarterBonusReminderTarget>> listStarterBonusExpiringSoon({

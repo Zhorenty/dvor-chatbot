@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:dvor_chatbot/src/bot/bot_runner.dart';
@@ -63,10 +64,17 @@ Future<void> main(List<String> args) async {
   );
 
   _registerShutdown(runner);
-  l.i('DVOR bot is starting...');
+  l.i(
+    'DVOR bot is starting... '
+    'scheduleSource=${config.scheduleSource.name}, '
+    'targetChatId=${config.targetChatId}, '
+    'admins=${config.adminUserIds.length}, '
+    'logLevel=${config.logLevel}',
+  );
   try {
     await runner.start();
   } finally {
+    await runner.stop();
     await bookingRepository.close();
     await onboardingRepository.close();
   }
@@ -124,12 +132,12 @@ OnboardingRepository _createOnboardingRepository(AppConfig config) {
 void _registerShutdown(BotRunner runner) {
   ProcessSignal.sigint.watch().listen((_) {
     l.i('SIGINT received, stopping bot...');
-    runner.stop();
+    unawaited(runner.stop());
   });
   if (!Platform.isWindows) {
     ProcessSignal.sigterm.watch().listen((_) {
       l.i('SIGTERM received, stopping bot...');
-      runner.stop();
+      unawaited(runner.stop());
     });
   }
 }

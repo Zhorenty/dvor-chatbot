@@ -137,7 +137,7 @@ void main() {
       expect(sender.pinnedMessages.single.messageId, 1);
     });
 
-    test('shows only admin buttons in private menu for admin users', () async {
+    test('shows combined user and admin buttons in private menu for admin users', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -161,10 +161,10 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
       expect(buttons, contains(MessageTemplates.buttonNoblesList));
       expect(buttons, contains(MessageTemplates.buttonManageBookings));
-      expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
-      expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
-      expect(buttons, isNot(contains(MessageTemplates.buttonMyBookings)));
-      expect(buttons, isNot(contains(MessageTemplates.buttonHelp)));
+      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, contains(MessageTemplates.buttonMyBookings));
+      expect(buttons, contains(MessageTemplates.buttonHelp));
     });
 
     test('shows coaching staff button for regular users in private menu', () async {
@@ -2201,6 +2201,8 @@ void main() {
       expect(sender.messages[1].text, contains('Проверил админ: @moderator_anna (1950)'));
       expect(sender.messages[2].chatId, 1950);
       expect(sender.messages[2].text, contains('Статус записи #22 обновлен'));
+      expect(sender.answeredCallbacks, hasLength(1));
+      expect(sender.answeredCallbacks.single.callbackQueryId, 'cbq-1');
     });
 
     test('shows already reviewed message when payment status is stale', () async {
@@ -2254,6 +2256,8 @@ void main() {
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, 1952);
       expect(sender.messages.single.text, contains('Выбери категорию для заявок'));
+      expect(sender.answeredCallbacks, hasLength(1));
+      expect(sender.answeredCallbacks.single.callbackQueryId, 'cbq-open-queue');
     });
 
     test('payment moderation callback is not treated as training selection', () async {

@@ -54,6 +54,12 @@ void main() {
           200,
         );
       }
+      if (method == 'deleteWebhook') {
+        return http.Response(
+          jsonEncode(<String, Object?>{'ok': true, 'result': true}),
+          200,
+        );
+      }
       throw StateError('Unexpected method: $method');
     });
 
@@ -103,9 +109,9 @@ void main() {
     );
 
     final startFuture = runner.start();
-    Future<void>.delayed(const Duration(milliseconds: 120), runner.stop);
+    unawaited(Future<void>.delayed(const Duration(milliseconds: 120), () => runner.stop()));
     await _waitFor(() => sender.messages.isNotEmpty, timeout: const Duration(seconds: 1));
-    runner.stop();
+    await runner.stop();
     await startFuture.timeout(const Duration(seconds: 2));
 
     expect(scheduleRepository.refreshCalls, greaterThanOrEqualTo(1));
