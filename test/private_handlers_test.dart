@@ -229,7 +229,7 @@ void main() {
       expect(sender.messages.single.text, contains('Алексей Петров'));
       expect(sender.messages.single.text, contains('@maria_run'));
       expect(sender.messages.single.text, contains('\n🔗 @alxpetrov'));
-      expect(sender.messages.single.text, contains('\n📝 Беговые тренировки\nи восстановление'));
+      expect(sender.messages.single.text, contains('\n📝 Беговые тренировки\n\nи восстановление'));
       expect(sender.messages.single.text, isNot(contains('\n   🔗')));
       expect(
         _keyboardTexts(sender.messages.single.replyMarkup),

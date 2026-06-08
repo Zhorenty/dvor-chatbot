@@ -1156,15 +1156,31 @@ final class MessageTemplates {
   }
 
   String _normalizeTrainerDescription(String raw) {
-    final lines = raw
-        .replaceAll('\r\n', '\n')
-        .split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList(growable: false);
-    if (lines.isEmpty) {
+    final normalized = raw.replaceAll('\r\n', '\n');
+    final rawLines = normalized.split('\n').map((line) => line.trim()).toList(growable: false);
+    if (rawLines.every((line) => line.isEmpty)) {
       return 'Описание скоро добавим.';
     }
+
+    final lines = <String>[];
+    var previousWasEmpty = false;
+    for (final line in rawLines) {
+      final isEmpty = line.isEmpty;
+      if (isEmpty) {
+        if (!previousWasEmpty && lines.isNotEmpty) {
+          lines.add('');
+        }
+        previousWasEmpty = true;
+        continue;
+      }
+      lines.add(line);
+      previousWasEmpty = false;
+    }
+
+    while (lines.isNotEmpty && lines.last.isEmpty) {
+      lines.removeLast();
+    }
+
     return lines.join('\n');
   }
 }
