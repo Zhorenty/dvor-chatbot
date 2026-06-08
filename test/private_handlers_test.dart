@@ -203,7 +203,7 @@ void main() {
           TrainerInfo(
             name: 'Мария Романова',
             link: '@maria_run',
-            description: 'Беговые тренировки и восстановление',
+            description: '  Беговые тренировки  \n\n и восстановление  ',
           ),
         ],
       );
@@ -228,6 +228,9 @@ void main() {
       expect(sender.messages.single.text, contains('Тренерский штаб DVOR'));
       expect(sender.messages.single.text, contains('Алексей Петров'));
       expect(sender.messages.single.text, contains('@maria_run'));
+      expect(sender.messages.single.text, contains('\n🔗 @alxpetrov'));
+      expect(sender.messages.single.text, contains('\n📝 Беговые тренировки\nи восстановление'));
+      expect(sender.messages.single.text, isNot(contains('\n   🔗')));
       expect(
         _keyboardTexts(sender.messages.single.replyMarkup),
         contains(MessageTemplates.buttonCoachingStaff),

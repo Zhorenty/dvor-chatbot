@@ -164,8 +164,8 @@ final class MessageTemplates {
       lines.addAll(<String>[
         '',
         '${index + 1}. ${trainer.name}',
-        '   🔗 ${trainer.link}',
-        '   📝 ${trainer.description}',
+        '🔗 ${trainer.link}',
+        '📝 ${_normalizeTrainerDescription(trainer.description)}',
       ]);
     }
     return lines.join('\n');
@@ -1153,5 +1153,18 @@ final class MessageTemplates {
       return '∞';
     }
     return '$participantsLimit';
+  }
+
+  String _normalizeTrainerDescription(String raw) {
+    final lines = raw
+        .replaceAll('\r\n', '\n')
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList(growable: false);
+    if (lines.isEmpty) {
+      return 'Описание скоро добавим.';
+    }
+    return lines.join('\n');
   }
 }
