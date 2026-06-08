@@ -8,6 +8,7 @@ final class MessageCopy {
   static const String buttonSubmitPayment = '💸 Я оплатил';
   static const String buttonUseStarterBonus = '🎁 Использовать бесплатную тренировку';
   static const String buttonRescheduleBooking = '🔁 Перенести запись';
+  static const String buttonRepeatBooking = '🔂 Повторить запись';
   static const String buttonCancelBooking = '❌ Отменить запись';
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';
@@ -17,6 +18,7 @@ final class MessageCopy {
   static const String buttonCategoryTrails = '🏃 Трейлы';
   static const String buttonRefreshSchedule = '🔄 Обновить данные из Google Sheets';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
+  static const String buttonAdminSummary = '📊 Оперативная сводка';
   static const String buttonParticipantsList = '👥 Список записавшихся';
   static const String buttonNoblesList = '🏰 Список дворян';
   static const String buttonManageBookings = '🛠 Управление записями';

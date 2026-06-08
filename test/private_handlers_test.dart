@@ -68,7 +68,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, 11);
-      expect(sender.messages.single.text, contains('Здесь мы тренируемся'));
+      expect(sender.messages.single.text, contains('Добро пожаловать в DVOR'));
       expect(sender.messages.single.replyMarkup, isNotNull);
       expect(sender.pinnedMessages, hasLength(1));
       expect(sender.pinnedMessages.single.chatId, 11);
@@ -128,7 +128,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages.first.text, contains('Здесь мы тренируемся'));
+      expect(sender.messages.first.text, contains('Добро пожаловать в DVOR'));
       expect(sender.messages.last.text, contains('бесплатная тренировка'));
       expect(sender.messages.last.text, contains(MessageTemplates.buttonBookTraining));
       expect(sender.messages.last.text, contains(MessageTemplates.buttonUseStarterBonus));
@@ -157,6 +157,7 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonRefreshSchedule));
       expect(buttons, contains(MessageTemplates.buttonPaymentsQueue));
+      expect(buttons, contains(MessageTemplates.buttonAdminSummary));
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
       expect(buttons, contains(MessageTemplates.buttonNoblesList));
       expect(buttons, contains(MessageTemplates.buttonManageBookings));
@@ -187,7 +188,7 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonCoachingStaff));
       expect(buttons, contains(MessageTemplates.buttonTrainings));
       expect(buttons, contains(MessageTemplates.buttonMyBookings));
-      expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
     });
 
     test('handles coaching staff button and prints trainers list', () async {
@@ -255,7 +256,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, 111);
-      expect(sender.messages.single.text, contains('Здесь мы тренируемся'));
+      expect(sender.messages.single.text, contains('Добро пожаловать в DVOR'));
     });
 
     test('handles /trainings command with category selection', () async {
@@ -591,7 +592,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 0);
-      expect(sender.messages.single.text, contains('Выбери категорию для записи'));
+      expect(sender.messages.single.text, contains('выбери категорию для записи'));
     });
 
     test('book button uses viewed schedule category without reselect', () async {
@@ -635,9 +636,9 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages, hasLength(3));
-      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
+      expect(sender.messages.last.text, contains('выбери мероприятие для записи'));
       expect(sender.messages.last.text, contains('🥾 Поход: Поход на Бзерпинский карниз'));
-      expect(sender.messages.last.text, isNot(contains('Выбери категорию для записи')));
+      expect(sender.messages.last.text, isNot(contains('выбери категорию для записи')));
     });
 
     test('back from quick booking returns to viewed schedule category', () async {
@@ -1002,7 +1003,7 @@ void main() {
         'text': MessageTemplates.buttonCategoryHikes,
       });
       final chooseActivityText = sender.messages.last.text;
-      expect(chooseActivityText, contains('Выбери мероприятие для записи'));
+      expect(chooseActivityText, contains('выбери мероприятие для записи'));
       expect(chooseActivityText, contains('🥾 Поход: Поход на хребет — 13.07.2026'));
       expect(chooseActivityText, isNot(contains('13.07.2026 00:00')));
       final handled = await handlers.handle(<String, dynamic>{
@@ -1061,7 +1062,7 @@ void main() {
       });
       expect(submitted, isTrue);
       expect(bookingRepository.submitCalls, 0);
-      expect(sender.messages.last.text, contains('пришли файл'));
+      expect(sender.messages.last.text, contains('Пришли файл'));
     });
 
     test('asks for payment proof file when text is sent at confirmation step', () async {
@@ -1108,7 +1109,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 0);
-      expect(sender.messages.last.text, contains('пришли файл'));
+      expect(sender.messages.last.text, contains('Пришли файл'));
     });
 
     test('submits payment after sending payment proof file', () async {
@@ -1485,7 +1486,7 @@ void main() {
       expect(sender.messages.last.chatId, 2301);
       expect(sender.messages.last.text, contains('перенесена'));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100601);
-      expect(adminMessage.text, contains('Перенос записи пользователем'));
+      expect(adminMessage.text, contains('Операционное событие: перенос записи'));
       expect(adminMessage.text, contains('Было: Old session'));
       expect(adminMessage.text, contains('Стало: New session'));
     });
@@ -1619,7 +1620,7 @@ void main() {
       expect(bookingRepository.lastCancelledBookingId, 401);
       expect(sender.messages.last.text, contains('отменена'));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100602);
-      expect(adminMessage.text, contains('Отмена outdoor-записи пользователем'));
+      expect(adminMessage.text, contains('Операционное событие: отмена записи'));
       expect(adminMessage.text, contains('🥾 Поход: Архыз'));
     });
 
@@ -2295,6 +2296,114 @@ void main() {
       expect(sender.messages.any((message) => message.text.contains('Не понял выбор')), isFalse);
       expect(sender.messages.last.chatId, 1951);
       expect(sender.messages.last.text, contains('Статус записи #23 обновлен'));
+    });
+
+    test('repeat booking action opens booking flow for same category', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 901,
+            userId: 3901,
+            title: '🥾 Поход: Архыз',
+            trainingKey: 'hikes|2026-10-01T10:00:00.000Z|🥾 Поход: Архыз|Маршрут',
+            startsAt: DateTime(2026, 10, 1, 10, 0),
+            location: 'Маршрут',
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Архыз выходные',
+              dateFrom: DateTime(2026, 10, 15),
+              dateTo: DateTime(2026, 10, 16, 23, 59, 59),
+              description: 'Маршрут 2 дня',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3901, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3901},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3901, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3901},
+        'text': '🧾 #901 🥾 Поход: Архыз',
+      });
+
+      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(actionButtons, contains(MessageTemplates.buttonRepeatBooking));
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3901, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3901},
+        'text': MessageTemplates.buttonRepeatBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Шаг 2/3: выбери мероприятие для записи'));
+      expect(sender.messages.last.text, contains('🥾 Поход: Архыз выходные'));
+    });
+
+    test('shows admin operational summary', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          _booking(id: 1001, status: BookingStatus.paymentSubmitted),
+          _booking(
+            id: 1002,
+            status: BookingStatus.paymentSubmitted,
+            title: '🥾 Поход: Псебай',
+          ),
+        ]
+        ..adminSegmentCounts = (active: 7, archived: 3);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Speed',
+              startsAt: DateTime(2026, 11, 1, 19, 0),
+              location: 'Hall',
+            ),
+          ],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Псебай',
+              dateFrom: DateTime(2026, 11, 5),
+              dateTo: DateTime(2026, 11, 6),
+              description: 'Маршрут',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{4901},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4901, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4901},
+        'text': MessageTemplates.buttonAdminSummary,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Оперативная сводка'));
+      expect(sender.messages.single.text, contains('Очередь оплат'));
+      expect(sender.messages.single.text, contains('Активные: 7'));
     });
   });
 }

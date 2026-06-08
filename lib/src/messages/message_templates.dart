@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
@@ -22,6 +23,7 @@ final class MessageTemplates {
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
   static const String buttonUseStarterBonus = MessageCopy.buttonUseStarterBonus;
   static const String buttonRescheduleBooking = MessageCopy.buttonRescheduleBooking;
+  static const String buttonRepeatBooking = MessageCopy.buttonRepeatBooking;
   static const String buttonCancelBooking = MessageCopy.buttonCancelBooking;
   static const String buttonBack = MessageCopy.buttonBack;
   static const String buttonMainMenu = MessageCopy.buttonMainMenu;
@@ -31,6 +33,7 @@ final class MessageTemplates {
   static const String buttonCategoryTrails = MessageCopy.buttonCategoryTrails;
   static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
   static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
+  static const String buttonAdminSummary = MessageCopy.buttonAdminSummary;
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;
@@ -60,39 +63,17 @@ final class MessageTemplates {
   static const String scheduleDocumentUrl = MessageCopy.scheduleDocumentUrl;
 
   String privateWelcome() {
-    return 'Здесь мы тренируемся, растем и кайфуем от бега вместе 💛\n'
-        'Поддержка, дисциплина и движение вперед - наша база.\n\n'
-        '✅ Основные принципы\n'
-        '• Уважение к каждому\n'
-        '• Поддержка вместо хейта\n'
-        '• Дисциплина = результат\n'
-        '• Становимся сильнее и быстрее\n'
-        '• Новички и опытные - на равных\n\n'
-        '⛔ Внутренние правила\n'
-        '• Без мата (или +15 приседаний 😄)\n'
-        '• Без токсичности и оскорблений\n'
-        '• Без политики и срач-тем\n'
-        '• Не опаздываем и не сливаемся\n'
-        '• Уважаем формат тренировок\n'
-        '• Реклама только через админов\n\n'
-        '🌙 Дополнительно\n'
-        '• После 00:00 не пишем 💤\n'
-        '• Все анонсы через админов\n'
-        '• Важная инфа в закрепе 📌\n\n'
-        '⛰ Активности\n'
-        '• Совместные пробежки\n'
-        '• Интервалы / темп / ОФП\n'
-        '• Походы и трейлы\n\n'
-        '📌 Как пользоваться чатом\n'
-        '💬 # БОЛТАЛКА ДВОР 🤼‍♂️ - общение, пробежки, фото/видео, сборы на тренировки\n'
-        '📋 ВОПРОСЫ ПО КИПЕ - вопросы по экипировке, ответит тренер\n'
-        '📰 АФИШИ ТРЕНЯ - официальная информация\n'
-        '🏕 АФИШИ ПОХОДЫ - официальная информация (анонсы публикует администрация)\n\n'
-        '💛 Главное\n'
-        'Это не просто чат - это команда.\n'
-        'Каждая тренировка делает тебя сильнее.\n'
-        '\n'
-        'Добро пожаловать 🤝';
+    return 'Добро пожаловать в DVOR 🤝\n\n'
+        'Здесь ты можешь:\n'
+        '• посмотреть расписание,\n'
+        '• записаться на тренировку/поход/трейл,\n'
+        '• отправить подтверждение оплаты,\n'
+        '• управлять своими записями.\n\n'
+        'С чего начать:\n'
+        '1) Нажми «${MessageCopy.buttonTrainings}» и выбери категорию.\n'
+        '2) Нажми «${MessageCopy.buttonBookTraining}» и выбери событие.\n'
+        '3) После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека.\n\n'
+        'Если нужна подсказка, нажми «${MessageCopy.buttonHelp}».';
   }
 
   String starterBonusOnboardingOffer() {
@@ -116,8 +97,9 @@ final class MessageTemplates {
 
   String privateFallback() {
     return 'Пока не понял сообщение 🤔\n'
-        'Используй кнопки меню ниже или нажми «${MessageCopy.buttonHelp}», '
-        'чтобы посмотреть доступные действия.';
+        'Используй кнопки меню ниже.\n'
+        'Если запутался в шаге записи, нажми «${MessageCopy.buttonMainMenu}» '
+        'или «${MessageCopy.buttonHelp}».';
   }
 
   String trainings(List<TrainingInfo> items) {
@@ -189,11 +171,12 @@ final class MessageTemplates {
   }
 
   String chooseBookingCategory() {
-    return 'Выбери категорию для записи 👇';
+    return 'Шаг 1/3: выбери категорию для записи 👇';
   }
 
   String unknownCategory() {
-    return 'Не понял категорию. Нажми одну из кнопок ниже 👇';
+    return 'Не понял категорию.\n'
+        'Нажми одну из кнопок ниже (Тренировки / Походы / Трейлы) 👇';
   }
 
   String chooseParticipantsCategory() {
@@ -201,7 +184,8 @@ final class MessageTemplates {
   }
 
   String choosePaymentsQueueCategory() {
-    return 'Выбери категорию для заявок на оплату 👇';
+    return 'Выбери категорию для заявок на оплату 👇\n'
+        'После проверки каждой заявки можно сразу перейти к следующей.';
   }
 
   String chooseBookingManagementAction() {
@@ -209,19 +193,34 @@ final class MessageTemplates {
   }
 
   String chooseBookingListSegment() {
-    return 'Какой список открыть? 👇';
+    return 'Какой список открыть? 👇\n'
+        'Подсказка: «Активные» - текущие записи, «Архивные» - завершенные и удаленные.';
   }
 
   String chooseBookingManagementCategory() {
     return 'Выбери категорию мероприятий для управления 👇';
   }
 
-  String chooseAdminBookingFromList(List<TrainingBooking> bookings) {
+  String chooseAdminBookingFromList(
+    List<TrainingBooking> bookings, {
+    required bool archived,
+    ActivityCategory? category,
+  }) {
     if (bookings.isEmpty) {
-      return 'Список пуст для выбранных фильтров.';
+      final segmentLabel = archived ? 'Архивные' : 'Активные';
+      final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
+      return 'Список пуст для выбранных фильтров.\n'
+          'Сегмент: $segmentLabel\n'
+          'Категория: $categoryLabel';
     }
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Выбери запись 👇'];
+    final segmentLabel = archived ? 'Архивные' : 'Активные';
+    final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
+    final lines = <String>[
+      'Выбери запись 👇',
+      'Фильтр: Сегмент - $segmentLabel, Категория - $categoryLabel',
+      'Чтобы сменить фильтры, нажми «${MessageCopy.buttonBack}».',
+    ];
     for (final booking in bookings) {
       final username = _userTag(booking);
       lines.add(
@@ -398,7 +397,11 @@ final class MessageTemplates {
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${booking.location}\n\n'
-        '${paymentDetailsSent(booking)}';
+        '${paymentDetailsSent(booking)}\n\n'
+        'Что дальше:\n'
+        '1) Оплати по реквизитам выше.\n'
+        '2) Нажми «${MessageCopy.buttonSubmitPayment}».\n'
+        '3) Отправь файл чека (документ/фото) в этот чат.';
   }
 
   String bookingCreatedWithoutPayment(TrainingBooking booking) {
@@ -425,7 +428,8 @@ final class MessageTemplates {
   String paymentSubmitted(TrainingBooking booking) {
     return 'Супер, файл с подтверждением оплаты отправил администратору ✅\n'
         'Номер записи: ${booking.id}\n'
-        'Статус: ${_statusLabel(booking.status)}.';
+        'Статус: ${_statusLabel(booking.status)}.\n'
+        'Следующий шаг: дождись результата модерации, бот сообщит автоматически.';
   }
 
   String paymentSubmittedAdminNotification(TrainingBooking booking) {
@@ -504,7 +508,8 @@ final class MessageTemplates {
   }
 
   String noPendingPayment() {
-    return 'Не нашел активной записи со статусом "Ожидает оплату" 🤔';
+    return 'Не нашел активной записи со статусом "Ожидает оплату" 🤔\n'
+        'Проверь «${MessageCopy.buttonMyBookings}» или создай новую запись.';
   }
 
   String myBookings(
@@ -552,7 +557,8 @@ final class MessageTemplates {
     if (bookings.isEmpty) {
       return 'Сейчас нет записей, которыми можно управлять.';
     }
-    return 'Выбери запись для управления 👇';
+    return 'Выбери запись для управления 👇\n'
+        'Можно перенести, отменить или повторить запись.';
   }
 
   String bookingActions(TrainingBooking booking) {
@@ -561,7 +567,8 @@ final class MessageTemplates {
     return 'Запись #${booking.id}\n'
         '${booking.trainingTitle}\n'
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n\n'
-        'Выбери действие 👇';
+        'Выбери действие 👇\n'
+        'Подсказка: «${MessageCopy.buttonRepeatBooking}» откроет похожие события.';
   }
 
   String chooseTrainingForReschedule(List<TrainingInfo> items, {required TrainingBooking booking}) {
@@ -622,8 +629,9 @@ final class MessageTemplates {
 
   String paymentsQueueEmpty() => 'Очередь подтверждения оплат пока пустая ✨';
 
-  String paymentsQueueIntro(int total) {
+  String paymentsQueueIntro(int total, {required ActivityCategory category}) {
     return 'Заявки на подтверждение оплаты 🧾\n'
+        'Категория: ${_categoryLabel(category)}\n'
         'Всего ожидают проверки: $total.\n'
         'Ниже отправил каждую заявку отдельным сообщением.';
   }
@@ -638,7 +646,8 @@ final class MessageTemplates {
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 ${booking.location}'
         '$note\n\n'
-        'Подтверди или отклони оплату кнопками ниже.';
+        'Подтверди или отклони оплату кнопками ниже.\n'
+        'После решения можно сразу открыть следующую заявку.';
   }
 
   String trainingParticipants({
@@ -703,6 +712,17 @@ final class MessageTemplates {
   String paymentActionUsage() {
     return 'Использование:\n/approve_payment <id>\n/reject_payment <id>\n\n'
         'Например: /approve_payment 42';
+  }
+
+  String paymentReviewResultWithNextStep({
+    required TrainingBooking booking,
+    required int remaining,
+  }) {
+    final nextStep = remaining > 0
+        ? 'Осталось на проверке: $remaining. Нажми «${MessageCopy.buttonPaymentsQueue}», чтобы открыть следующую заявку.'
+        : 'Очередь заявок пуста. Можно вернуться в меню.';
+    return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)} ✅\n'
+        '$nextStep';
   }
 
   Map<String, Object?> paymentDecisionInlineKeyboard(int bookingId) {
@@ -770,7 +790,8 @@ final class MessageTemplates {
         'Запись: #${booking.id}\n'
         'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
         'Статус: ${_statusLabel(booking.status)}\n'
-        'Проверил админ: ${_userTagById(moderatorUserId, username: moderatorUsername)} ($moderatorUserId)';
+        'Проверил админ: ${_userTagById(moderatorUserId, username: moderatorUsername)} ($moderatorUserId)\n'
+        'Дальше: при необходимости открой очередь и проверь следующую заявку.';
   }
 
   String bookingRescheduledAdminNotification({
@@ -778,21 +799,23 @@ final class MessageTemplates {
     required TrainingBooking after,
   }) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Перенос записи пользователем 🔁\n'
+    return 'Операционное событие: перенос записи 🔁\n'
         'Запись: #${after.id}\n'
         'Пользователь: ${_userTag(after)} (${after.userId})\n'
         'Было: ${before.trainingTitle} (${formatter.format(before.startsAt)})\n'
-        'Стало: ${after.trainingTitle} (${formatter.format(after.startsAt)})';
+        'Стало: ${after.trainingTitle} (${formatter.format(after.startsAt)})\n'
+        'Дальше: проверь состав участников перед ближайшей тренировкой.';
   }
 
   String bookingCancelledAdminNotification(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Отмена outdoor-записи пользователем ❌\n'
+    return 'Операционное событие: отмена записи ❌\n'
         'Запись: #${booking.id}\n'
         'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
         'Событие: ${booking.trainingTitle}\n'
-        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
+        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Дальше: при необходимости свяжись с участником по возврату/перезаписи.';
   }
 
   String pendingPaymentReminder(TrainingBooking booking) {
@@ -803,7 +826,7 @@ final class MessageTemplates {
         '${booking.trainingTitle} (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)})\n'
         'Текущий статус: ${_statusLabel(booking.status)}\n\n'
         '${paymentInstructions(booking.id)}\n\n'
-        'После оплаты отправь в этот чат файл с подтверждением (чек/скрин).';
+        'После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь в этот чат файл с подтверждением (чек/скрин).';
   }
 
   String chooseTrainingForBooking(List<TrainingInfo> items) {
@@ -812,7 +835,10 @@ final class MessageTemplates {
     }
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    final lines = <String>['Выбери мероприятие для записи 👇'];
+    final lines = <String>[
+      'Шаг 2/3: выбери мероприятие для записи 👇',
+      'Подсказка: отправь номер из списка или нажми кнопку с событием.',
+    ];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       final feeLabel = item.price == null ? '' : ', взнос: ${_trainingPriceLabel(item.price)}';
@@ -828,7 +854,8 @@ final class MessageTemplates {
   String paymentDetailsSent(TrainingBooking booking) {
     if (!MessageFormatters.isOutdoorBooking(booking)) {
       return '${paymentInstructions(booking.id)}\n\n'
-          'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
+          'Когда переведешь оплату, нажми «${MessageCopy.buttonSubmitPayment}» '
+          'и отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
           'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
     }
 
@@ -838,13 +865,42 @@ final class MessageTemplates {
         'Это не штраф, а уважение к общим расходам на логистику, планирование '
         'тренировки и трансфер. Такие мероприятия любят сильных и решительных. Спасибо за понимание. 💚💪\n'
         '\n\n'
-        'Когда переведешь оплату, отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
+        'Когда переведешь оплату, нажми «${MessageCopy.buttonSubmitPayment}» '
+        'и отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
         'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
   }
 
   String paymentProofRequired() {
-    return 'Чтобы отправить заявку администратору, пришли файл с подтверждением оплаты '
-        '(документ или фото чека).';
+    return 'Чтобы отправить заявку администратору:\n'
+        '1) Нажми «${MessageCopy.buttonSubmitPayment}».\n'
+        '2) Пришли файл с подтверждением оплаты (документ или фото чека).\n'
+        '3) Дождись ответа о модерации.';
+  }
+
+  String adminSummary({
+    required int queueTotal,
+    required int queueTrainings,
+    required int queueHikes,
+    required int queueTrails,
+    required int activeBookings,
+    required int archivedBookings,
+    required int upcomingTrainings,
+    required int upcomingHikes,
+    required int upcomingTrails,
+  }) {
+    return 'Оперативная сводка 📊\n\n'
+        'Очередь оплат:\n'
+        '• Всего: $queueTotal\n'
+        '• Тренировки: $queueTrainings\n'
+        '• Походы: $queueHikes\n'
+        '• Трейлы: $queueTrails\n\n'
+        'Записи:\n'
+        '• Активные: $activeBookings\n'
+        '• Архивные: $archivedBookings\n\n'
+        'Ближайшие активности в расписании:\n'
+        '• Тренировки: $upcomingTrainings\n'
+        '• Походы: $upcomingHikes\n'
+        '• Трейлы: $upcomingTrails';
   }
 
   Map<String, Object?> privateMenuKeyboard({required bool isAdmin}) {
@@ -888,10 +944,12 @@ final class MessageTemplates {
   Map<String, Object?> bookingActionsKeyboard({
     required bool canReschedule,
     required bool canCancel,
+    required bool canRepeat,
   }) {
     return TelegramKeyboards.bookingActionsKeyboard(
       canReschedule: canReschedule,
       canCancel: canCancel,
+      canRepeat: canRepeat,
     );
   }
 
@@ -1036,5 +1094,13 @@ final class MessageTemplates {
 
   String _labelWithCount(String label, int count) {
     return '$label ($count)';
+  }
+
+  String _categoryLabel(ActivityCategory category) {
+    return switch (category) {
+      ActivityCategory.trainings => 'Тренировки',
+      ActivityCategory.hikes => 'Походы',
+      ActivityCategory.trails => 'Трейлы',
+    };
   }
 }

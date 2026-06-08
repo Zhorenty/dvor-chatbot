@@ -22,10 +22,11 @@ final class TelegramKeyboards {
             <String, String>{'text': MessageCopy.buttonPaymentsQueue},
           ],
           <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonAdminSummary},
             <String, String>{'text': MessageCopy.buttonParticipantsList},
-            <String, String>{'text': MessageCopy.buttonNoblesList},
           ],
           <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonNoblesList},
             <String, String>{'text': MessageCopy.buttonManageBookings},
           ],
         ],
@@ -35,6 +36,7 @@ final class TelegramKeyboards {
     final rows = <List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonTrainings},
+        <String, String>{'text': MessageCopy.buttonBookTraining},
       ],
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonCoachingStaff},
@@ -114,6 +116,11 @@ final class TelegramKeyboards {
     }
     rows.add(
       <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonSubmitPayment},
+      ],
+    );
+    rows.add(
+      <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonBack},
         <String, String>{'text': MessageCopy.buttonMainMenu},
       ],
@@ -144,6 +151,7 @@ final class TelegramKeyboards {
   static Map<String, Object?> bookingActionsKeyboard({
     required bool canReschedule,
     required bool canCancel,
+    required bool canRepeat,
   }) {
     final rows = <List<Map<String, String>>>[];
     if (canReschedule) {
@@ -157,6 +165,13 @@ final class TelegramKeyboards {
       rows.add(
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonCancelBooking},
+        ],
+      );
+    }
+    if (canRepeat) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonRepeatBooking},
         ],
       );
     }

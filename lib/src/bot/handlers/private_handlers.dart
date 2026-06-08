@@ -312,7 +312,11 @@ final class PrivateHandlers {
           );
           await _sender.sendMessage(
             chatId,
-            _templates.chooseAdminBookingFromList(bookings),
+            _templates.chooseAdminBookingFromList(
+              bookings,
+              archived: flowState.adminViewingArchived,
+              category: flowState.selectedCategory,
+            ),
             replyMarkup: _templates.bookingManagementSelectionKeyboard(bookings),
           );
           return true;
@@ -775,6 +779,28 @@ final class PrivateHandlers {
     }
 
     if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingBookingAction &&
+        text == MessageTemplates.buttonRepeatBooking) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      await _openBookingByCategory(
+        chatId: chatId,
+        userId: userId,
+        isAdmin: isAdmin,
+        category: _catalogService.categoryForBooking(selectedBooking),
+        fromSchedulePreview: false,
+      );
+      return true;
+    }
+
+    if (userId != null &&
         flowState?.step == _PrivateFlowStep.selectingRescheduleTraining &&
         text != null &&
         !text.startsWith('/')) {
@@ -1015,6 +1041,20 @@ final class PrivateHandlers {
     }
 
     if (text != null &&
+        (text == MessageTemplates.buttonAdminSummary || text.startsWith('/admin_summary'))) {
+      if (!canRunAdminAction) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      await _sendAdminSummary(chatId: chatId, isAdmin: isAdmin);
+      return true;
+    }
+
+    if (text != null &&
         (text == MessageTemplates.buttonParticipantsList ||
             text.startsWith('/participants_list'))) {
       if (!canRunAdminAction) {
@@ -1158,7 +1198,11 @@ final class PrivateHandlers {
       );
       await _sender.sendMessage(
         chatId,
-        _templates.chooseAdminBookingFromList(bookings),
+        _templates.chooseAdminBookingFromList(
+          bookings,
+          archived: archived,
+          category: category,
+        ),
         replyMarkup: bookings.isEmpty
             ? _templates.adminBookingManagementKeyboard()
             : _templates.bookingManagementSelectionKeyboard(bookings),
@@ -1182,7 +1226,11 @@ final class PrivateHandlers {
       if (selectedBooking == null) {
         await _sender.sendMessage(
           chatId,
-          _templates.chooseAdminBookingFromList(bookings),
+          _templates.chooseAdminBookingFromList(
+            bookings,
+            archived: flowState?.adminViewingArchived ?? false,
+            category: flowState?.selectedCategory,
+          ),
           replyMarkup: bookings.isEmpty
               ? _templates.adminBookingManagementKeyboard()
               : _templates.bookingManagementSelectionKeyboard(bookings),
@@ -1771,6 +1819,7 @@ final class PrivateHandlers {
         status: status,
       );
       final booking = reviewResult.booking;
+      final queueCounters = await _paymentReviewService.queueCounters();
       if (reviewResult.outcome == PaymentReviewOutcome.success && booking != null) {
         await _notifyAboutPaymentReview(
           booking,
@@ -1781,11 +1830,16 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         switch (reviewResult.outcome) {
-          PaymentReviewOutcome.success => _templates.bookingStatusUpdated(booking!),
+          PaymentReviewOutcome.success => _templates.paymentReviewResultWithNextStep(
+              booking: booking!,
+              remaining: queueCounters.total,
+            ),
           PaymentReviewOutcome.notFound => _templates.bookingNotFound(bookingId),
           PaymentReviewOutcome.invalidStatus => _templates.paymentAlreadyReviewed(bookingId),
         },
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: reviewResult.outcome == PaymentReviewOutcome.success
+            ? _templates.openPaymentsQueueInlineKeyboard(total: queueCounters.total)
+            : _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
       return true;
     }
@@ -1871,7 +1925,10 @@ final class PrivateHandlers {
       return;
     }
 
-    await _sender.sendMessage(chatId, _templates.paymentsQueueIntro(filtered.length));
+    await _sender.sendMessage(
+      chatId,
+      _templates.paymentsQueueIntro(filtered.length, category: category),
+    );
     for (final booking in filtered) {
       final proofChatId = booking.paymentProofChatId;
       final proofMessageId = booking.paymentProofMessageId;
@@ -1902,6 +1959,32 @@ final class PrivateHandlers {
     await _sender.sendMessage(
       chatId,
       _templates.noblesList(result.users, totalTrainings: result.totalTrainings),
+      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+    );
+  }
+
+  Future<void> _sendAdminSummary({
+    required int chatId,
+    required bool isAdmin,
+  }) async {
+    final queue = await _paymentReviewService.queueCounters();
+    final segmentCounts = await _bookingRepository.adminCountBySegment();
+    final trainings = _bookableItemsByCategory(_ActivityCategory.trainings);
+    final hikes = _bookableItemsByCategory(_ActivityCategory.hikes);
+    final trails = _bookableItemsByCategory(_ActivityCategory.trails);
+    await _sender.sendMessage(
+      chatId,
+      _templates.adminSummary(
+        queueTotal: queue.total,
+        queueTrainings: queue.trainings,
+        queueHikes: queue.hikes,
+        queueTrails: queue.trails,
+        activeBookings: segmentCounts.active,
+        archivedBookings: segmentCounts.archived,
+        upcomingTrainings: trainings.length,
+        upcomingHikes: hikes.length,
+        upcomingTrails: trails.length,
+      ),
       replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
     );
   }
@@ -2016,6 +2099,7 @@ final class PrivateHandlers {
     return _templates.bookingActionsKeyboard(
       canReschedule: category == _ActivityCategory.trainings,
       canCancel: _isOutdoorCategory(category),
+      canRepeat: true,
     );
   }
 
