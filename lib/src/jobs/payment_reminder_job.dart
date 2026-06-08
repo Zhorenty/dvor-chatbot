@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
@@ -33,7 +34,10 @@ final class PaymentReminderJob {
           await _sender.sendMessage(
             booking.userId,
             _templates.pendingPaymentReminder(booking),
-            replyMarkup: _templates.paymentConfirmationKeyboard(showStarterBonus: false),
+            replyMarkup: _templates.paymentConfirmationKeyboard(
+              showStarterBonus: false,
+              showCancelBooking: _canCancelBooking(booking, now: now),
+            ),
           );
           await _bookingRepository.markReminderSent(booking.id);
         } on Object catch (error, stackTrace) {
@@ -43,5 +47,16 @@ final class PaymentReminderJob {
     } on Object catch (error, stackTrace) {
       l.w('Payment reminder job failed: $error', stackTrace);
     }
+  }
+
+  bool _canCancelBooking(TrainingBooking booking, {required DateTime now}) {
+    final isOutdoor = booking.trainingKey.startsWith('hikes|') ||
+        booking.trainingKey.startsWith('trails|') ||
+        booking.trainingTitle.startsWith('🥾 Поход:') ||
+        booking.trainingTitle.startsWith('🏃 Трейл:');
+    if (!isOutdoor) {
+      return false;
+    }
+    return booking.startsAt.difference(now) >= const Duration(days: 7);
   }
 }

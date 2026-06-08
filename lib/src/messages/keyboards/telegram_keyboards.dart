@@ -105,6 +105,7 @@ final class TelegramKeyboards {
 
   static Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
+    bool showCancelBooking = false,
   }) {
     final rows = <List<Map<String, String>>>[];
     if (showStarterBonus) {
@@ -119,6 +120,13 @@ final class TelegramKeyboards {
         <String, String>{'text': MessageCopy.buttonSubmitPayment},
       ],
     );
+    if (showCancelBooking) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonCancelBooking},
+        ],
+      );
+    }
     rows.add(
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonBack},

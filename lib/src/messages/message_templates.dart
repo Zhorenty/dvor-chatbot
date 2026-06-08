@@ -966,8 +966,12 @@ final class MessageTemplates {
 
   Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
+    bool showCancelBooking = false,
   }) {
-    return TelegramKeyboards.paymentConfirmationKeyboard(showStarterBonus: showStarterBonus);
+    return TelegramKeyboards.paymentConfirmationKeyboard(
+      showStarterBonus: showStarterBonus,
+      showCancelBooking: showCancelBooking,
+    );
   }
 
   Map<String, Object?> simpleNavigationKeyboard() {

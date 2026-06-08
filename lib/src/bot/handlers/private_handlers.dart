@@ -627,6 +627,7 @@ final class PrivateHandlers {
             : _templates.bookingAlreadyExists(result.booking),
         replyMarkup: _templates.paymentConfirmationKeyboard(
           showStarterBonus: starterBonusOffered,
+          showCancelBooking: _canCancelBookingByPolicy(result.booking),
         ),
       );
       return true;
@@ -817,6 +818,7 @@ final class PrivateHandlers {
           _templates.paymentDetailsSent(selectedBooking),
           replyMarkup: _templates.paymentConfirmationKeyboard(
             showStarterBonus: starterBonusOffered,
+            showCancelBooking: _canCancelBookingByPolicy(selectedBooking),
           ),
         );
         return true;
@@ -938,6 +940,7 @@ final class PrivateHandlers {
           _templates.starterBonusUnavailable(),
           replyMarkup: _templates.paymentConfirmationKeyboard(
             showStarterBonus: flowState.starterBonusOffered,
+            showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
           ),
         );
         return true;
@@ -949,6 +952,7 @@ final class PrivateHandlers {
           _templates.starterBonusUnavailable(),
           replyMarkup: _templates.paymentConfirmationKeyboard(
             showStarterBonus: flowState.starterBonusOffered,
+            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
           ),
         );
         return true;
@@ -963,6 +967,7 @@ final class PrivateHandlers {
           _templates.starterBonusUnavailable(),
           replyMarkup: _templates.paymentConfirmationKeyboard(
             showStarterBonus: flowState.starterBonusOffered,
+            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
           ),
         );
         return true;
@@ -979,6 +984,60 @@ final class PrivateHandlers {
         bonusType == _FreeTrainingBonusType.starter
             ? _templates.starterBonusApplied(booking)
             : _templates.everyFifthBonusApplied(booking),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return true;
+    }
+
+    if (text != null && text == MessageTemplates.buttonCancelBooking) {
+      if (userId == null) {
+        return false;
+      }
+      final targetBooking = flowState?.step == _PrivateFlowStep.paymentConfirmation
+          ? flowState?.activeBooking
+          : await _resolveLatestPendingPaymentBooking(userId);
+      if (targetBooking == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.noPendingPayment(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final category = _catalogService.categoryForBooking(targetBooking);
+      if (!_isOutdoorCategory(category)) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingCancelNotAvailable(targetBooking),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (!_canCancelBookingByPolicy(targetBooking)) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.outdoorCancellationTooLate(targetBooking),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final cancelResult = await _bookingRepository.cancelBooking(
+        userId: userId,
+        bookingId: targetBooking.id,
+      );
+      _flowByUserId.remove(userId);
+      if (cancelResult.outcome == BookingActionOutcome.success && cancelResult.booking != null) {
+        await _notifyAdminAboutBookingCancelled(cancelResult.booking!);
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingCancelled(cancelResult.booking!),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      await _sender.sendMessage(
+        chatId,
+        _templates.bookingNotFound(targetBooking.id),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
       return true;
@@ -1008,6 +1067,8 @@ final class PrivateHandlers {
         _templates.paymentProofRequired(),
         replyMarkup: _templates.paymentConfirmationKeyboard(
           showStarterBonus: flowState?.starterBonusOffered ?? false,
+          showCancelBooking: flowState?.activeBooking != null &&
+              _canCancelBookingByPolicy(flowState!.activeBooking!),
         ),
       );
       return true;
@@ -1022,6 +1083,8 @@ final class PrivateHandlers {
         _templates.paymentProofRequired(),
         replyMarkup: _templates.paymentConfirmationKeyboard(
           showStarterBonus: flowState!.starterBonusOffered,
+          showCancelBooking: flowState.activeBooking != null &&
+              _canCancelBookingByPolicy(flowState.activeBooking!),
         ),
       );
       return true;
@@ -2480,9 +2543,28 @@ final class PrivateHandlers {
       _templates.paymentDetailsSent(target),
       replyMarkup: _templates.paymentConfirmationKeyboard(
         showStarterBonus: starterBonusOffered,
+        showCancelBooking: _canCancelBookingByPolicy(target),
       ),
     );
     return true;
+  }
+
+  Future<TrainingBooking?> _resolveLatestPendingPaymentBooking(int userId) async {
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 20);
+    final pending = bookings.where((item) => item.status == BookingStatus.pendingPayment).toList();
+    if (pending.isEmpty) {
+      return null;
+    }
+    pending.sort((left, right) => left.startsAt.compareTo(right.startsAt));
+    return pending.first;
+  }
+
+  bool _canCancelBookingByPolicy(TrainingBooking booking) {
+    final category = _catalogService.categoryForBooking(booking);
+    if (!_isOutdoorCategory(category)) {
+      return false;
+    }
+    return booking.startsAt.difference(_nowProvider()) >= const Duration(days: 7);
   }
 }
 

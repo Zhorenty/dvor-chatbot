@@ -1117,6 +1117,122 @@ void main() {
       expect(sender.messages.last.text, contains('Пришли файл'));
     });
 
+    test('cancels outdoor pending booking from payment confirmation step', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..cancelResult = BookingActionResult(
+          outcome: BookingActionOutcome.success,
+          booking: _booking(
+            id: 99,
+            userId: 1608,
+            trainingKey: 'hikes|2026-06-10T12:00:00.000Z|🥾 Поход: Архыз|Маршрут',
+            title: '🥾 Поход: Архыз',
+            startsAt: now.add(const Duration(days: 9)),
+            location: 'Маршрут',
+            status: BookingStatus.cancelled,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Архыз',
+              dateFrom: now.add(const Duration(days: 9)),
+              dateTo: now.add(const Duration(days: 9, hours: 8)),
+              description: 'Маршрут',
+              price: 4500,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608},
+        'text': '🎯 1. 🥾 Поход: Архыз',
+      });
+
+      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(keyboard, contains(MessageTemplates.buttonCancelBooking));
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 1);
+      expect(bookingRepository.lastCancelledBookingId, 99);
+      expect(sender.messages.last.text, contains('отменена'));
+    });
+
+    test('cancels latest pending outdoor booking without active flow', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 450,
+            userId: 2601,
+            trainingKey: 'trails|2026-06-12T09:00:00.000Z|🏃 Трейл: Плато|Горы',
+            title: '🏃 Трейл: Плато',
+            startsAt: now.add(const Duration(days: 11)),
+            location: 'Горы',
+            status: BookingStatus.pendingPayment,
+          ),
+        ]
+        ..cancelResult = BookingActionResult(
+          outcome: BookingActionOutcome.success,
+          booking: _booking(
+            id: 450,
+            userId: 2601,
+            trainingKey: 'trails|2026-06-12T09:00:00.000Z|🏃 Трейл: Плато|Горы',
+            title: '🏃 Трейл: Плато',
+            startsAt: now.add(const Duration(days: 11)),
+            location: 'Горы',
+            status: BookingStatus.cancelled,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 269, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2601},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 1);
+      expect(bookingRepository.lastCancelledBookingId, 450);
+      expect(sender.messages.last.text, contains('отменена'));
+    });
+
     test('submits payment after sending payment proof file', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
