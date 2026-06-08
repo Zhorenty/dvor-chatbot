@@ -16,6 +16,7 @@ import 'support/fakes.dart';
 void main() {
   test('start processes private updates and exits on stop', () async {
     var updatesCalls = 0;
+    Set<String> requestedAllowedUpdates = const <String>{};
     late BotRunner runner;
     final httpClient = MockClient((request) async {
       final method = request.url.pathSegments.last;
@@ -29,6 +30,11 @@ void main() {
         );
       }
       if (method == 'getUpdates') {
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        final rawAllowedUpdates = body['allowed_updates'];
+        if (rawAllowedUpdates is List) {
+          requestedAllowedUpdates = rawAllowedUpdates.map((item) => item.toString()).toSet();
+        }
         await Future<void>.delayed(const Duration(milliseconds: 5));
         updatesCalls += 1;
         if (updatesCalls == 1) {
@@ -118,6 +124,7 @@ void main() {
     expect(sender.messages.single.chatId, 42);
     expect(sender.messages.single.text, contains('Добро пожаловать в DVOR'));
     expect(updatesCalls, greaterThanOrEqualTo(1));
+    expect(requestedAllowedUpdates, contains('chat_member'));
   });
 }
 

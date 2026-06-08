@@ -107,7 +107,7 @@ final class BotRunner {
         final updates = await _client.getUpdates(
           offset: _offset,
           timeoutSeconds: _config.pollTimeoutSeconds,
-          allowedUpdates: const {'message', 'callback_query'},
+          allowedUpdates: const {'message', 'callback_query', 'chat_member'},
         );
         for (final update in updates) {
           if (_stopping) {
@@ -150,12 +150,7 @@ final class BotRunner {
     if (privateHandled) {
       return;
     }
-    final message = update['message'];
-    if (message is! Map) {
-      return;
-    }
-    final normalized = Map<String, dynamic>.from(message);
-    await _groupHandlers.handle(normalized);
+    await _groupHandlers.handleUpdate(update);
   }
 
   Future<void> stop() async {

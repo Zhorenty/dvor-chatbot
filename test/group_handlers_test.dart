@@ -86,6 +86,72 @@ void main() {
       expect(sender.messages, isEmpty);
       expect(onboarding.records, isEmpty);
     });
+
+    test('handles join via chat_member update', () async {
+      final sender = _FakeSender();
+      final onboarding = _FakeOnboardingRepository();
+      final handlers = GroupHandlers(
+        sender: sender,
+        onboardingRepository: onboarding,
+        templates: const MessageTemplates(),
+        targetChatId: -100123,
+      );
+
+      final handled = await handlers.handleUpdate(
+        <String, dynamic>{
+          'chat_member': <String, dynamic>{
+            'date': DateTime(2026, 6, 1, 19, 0).millisecondsSinceEpoch ~/ 1000,
+            'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
+            'old_chat_member': <String, dynamic>{
+              'status': 'left',
+              'user': <String, Object?>{'id': 777, 'is_bot': false},
+            },
+            'new_chat_member': <String, dynamic>{
+              'status': 'member',
+              'user': <String, Object?>{'id': 777, 'is_bot': false, 'username': 'joined_via_link'},
+            },
+          },
+        },
+      );
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.chatId, -100123);
+      expect(sender.messages.single.text, contains('Привет, @joined_via_link!'));
+      expect(onboarding.records, hasLength(1));
+      expect(onboarding.records.single.userId, 777);
+    });
+
+    test('ignores non-join chat_member transitions', () async {
+      final sender = _FakeSender();
+      final onboarding = _FakeOnboardingRepository();
+      final handlers = GroupHandlers(
+        sender: sender,
+        onboardingRepository: onboarding,
+        templates: const MessageTemplates(),
+        targetChatId: -100123,
+      );
+
+      final handled = await handlers.handleUpdate(
+        <String, dynamic>{
+          'chat_member': <String, dynamic>{
+            'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
+            'old_chat_member': <String, dynamic>{
+              'status': 'member',
+              'user': <String, Object?>{'id': 778, 'is_bot': false},
+            },
+            'new_chat_member': <String, dynamic>{
+              'status': 'left',
+              'user': <String, Object?>{'id': 778, 'is_bot': false},
+            },
+          },
+        },
+      );
+
+      expect(handled, isFalse);
+      expect(sender.messages, isEmpty);
+      expect(onboarding.records, isEmpty);
+    });
   });
 }
 
