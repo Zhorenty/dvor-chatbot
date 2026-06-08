@@ -1433,6 +1433,7 @@ final class PrivateHandlers {
           _flowByUserId.remove(userId);
           return true;
         }
+        await _notifyUserAboutAdminBookingDeleted(archived);
         _flowByUserId[userId] = const _PrivateFlowState(
           step: _PrivateFlowStep.selectingAdminBookingManagementAction,
           availableTrainings: <TrainingInfo>[],
@@ -2533,6 +2534,20 @@ final class PrivateHandlers {
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about free booking creation: $error', stackTrace);
+    }
+  }
+
+  Future<void> _notifyUserAboutAdminBookingDeleted(TrainingBooking booking) async {
+    if (booking.userId <= 0) {
+      return;
+    }
+    try {
+      await _sender.sendMessage(
+        booking.userId,
+        _templates.adminBookingDeletedForUser(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify user about admin booking deletion: $error', stackTrace);
     }
   }
 

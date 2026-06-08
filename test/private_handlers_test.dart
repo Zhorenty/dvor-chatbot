@@ -1823,6 +1823,16 @@ void main() {
             status: BookingStatus.paid,
             paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
           ),
+          _booking(
+            id: 73,
+            userId: 7003,
+            userUsername: 'runner_rejected',
+            trainingKey: training.sessionKey,
+            title: training.title,
+            startsAt: training.startsAt,
+            location: training.location,
+            status: BookingStatus.paymentRejected,
+          ),
         ];
       final handlers = PrivateHandlers(
         sender: sender,
@@ -1848,8 +1858,10 @@ void main() {
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Выбери категорию для списка записавшихся'));
       expect(sender.messages.last.text, contains('Список записавшихся'));
+      expect(sender.messages.last.text, contains('👥 Участники: 2/∞'));
       expect(sender.messages.last.text, contains('@runner_one'));
       expect(sender.messages.last.text, contains('@runner_bonus (Бесплатная тренировка 🎁)'));
+      expect(sender.messages.last.text, isNot(contains('@runner_rejected')));
     });
 
     test('shows nobles list for admin with training counts', () async {
@@ -2071,6 +2083,9 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.adminArchiveCalls, 1);
       expect(bookingRepository.lastAdminArchivedBookingId, 501);
+      final userNotification = sender.messages.firstWhere((message) => message.chatId == 9001).text;
+      expect(userNotification, contains('запись #501 отменил администратор'));
+      expect(userNotification, contains('@dvor_support'));
       expect(sender.messages.last.text, contains('переведена в архив'));
     });
 

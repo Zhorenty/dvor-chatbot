@@ -136,6 +136,14 @@ final class SqliteBookingRepository implements BookingRepository {
       if (existing == null) {
         rethrow;
       }
+      if (existing.status == BookingStatus.cancelled ||
+          existing.status == BookingStatus.paymentRejected) {
+        final reactivated = await _reactivateBookingAsPendingPayment(
+          bookingId: existing.id,
+          userUsername: normalizedUsername,
+        );
+        return BookingCreateResult(booking: reactivated, created: true);
+      }
       return BookingCreateResult(booking: existing, created: false);
     }
   }
@@ -311,12 +319,14 @@ final class SqliteBookingRepository implements BookingRepository {
       SELECT * FROM bookings
       WHERE training_key IN ($placeholders)
         AND status != ?
+        AND status != ?
       ORDER BY starts_at ASC, created_at ASC
       LIMIT ?;
       ''',
       <Object?>[
         ...trainingKeys,
         BookingStatus.cancelled.dbValue,
+        BookingStatus.paymentRejected.dbValue,
         limit,
       ],
     );
@@ -779,6 +789,43 @@ final class SqliteBookingRepository implements BookingRepository {
       ''',
       <Object?>[userUsername, userId, trainingKey],
     );
+  }
+
+  Future<TrainingBooking> _reactivateBookingAsPendingPayment({
+    required int bookingId,
+    required String? userUsername,
+  }) async {
+    final db = _database;
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    final normalizedUsername = _normalizeUsername(userUsername);
+    final usernameClause = normalizedUsername == null ? '' : ', user_username = ?';
+    final args = <Object?>[
+      BookingStatus.pendingPayment.dbValue,
+      null,
+      null,
+      null,
+      nowIso,
+      if (normalizedUsername != null) normalizedUsername,
+      bookingId,
+    ];
+    db.execute(
+      '''
+      UPDATE bookings
+      SET status = ?,
+          payment_note = ?,
+          payment_proof_chat_id = ?,
+          payment_proof_message_id = ?,
+          updated_at = ?
+          $usernameClause
+      WHERE id = ?;
+      ''',
+      args,
+    );
+    final reactivated = _findBookingById(bookingId);
+    if (reactivated == null) {
+      throw StateError('Reactivated booking is missing in database.');
+    }
+    return reactivated;
   }
 
   String _categoryConditionSql(ActivityCategory category) {

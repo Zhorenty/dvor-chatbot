@@ -53,7 +53,7 @@ void main() {
       await repository.close();
     });
 
-    test('lists bookings by training keys without cancelled records', () async {
+    test('lists bookings by training keys without cancelled and rejected records', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',
       );
@@ -75,20 +75,52 @@ void main() {
         userUsername: 'first_user',
         training: firstTraining,
       );
-      await repository.createPendingBooking(
+      final second = await repository.createPendingBooking(
         userId: 4002,
         userUsername: 'second_user',
         training: secondTraining,
       );
       await repository.updateStatus(first.booking.id, BookingStatus.cancelled);
+      await repository.updateStatus(second.booking.id, BookingStatus.paymentRejected);
 
       final result = await repository.listByTrainingKeys(
         <String>{firstTraining.sessionKey, secondTraining.sessionKey},
       );
 
-      expect(result, hasLength(1));
-      expect(result.single.trainingKey, secondTraining.sessionKey);
-      expect(result.single.userUsername, 'second_user');
+      expect(result, isEmpty);
+
+      await repository.close();
+    });
+
+    test('reactivates cancelled booking on repeat booking attempt', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Free session',
+        startsAt: DateTime(2030, 6, 12, 19),
+        location: 'Gym A',
+        price: 0,
+      );
+
+      final first = await repository.createPendingBooking(
+        userId: 4101,
+        userUsername: 'runner_rebook',
+        training: training,
+      );
+      await repository.updateStatus(first.booking.id, BookingStatus.cancelled);
+
+      final second = await repository.createPendingBooking(
+        userId: 4101,
+        userUsername: 'runner_rebook',
+        training: training,
+      );
+
+      expect(second.created, isTrue);
+      expect(second.booking.id, first.booking.id);
+      expect(second.booking.status, BookingStatus.pendingPayment);
 
       await repository.close();
     });

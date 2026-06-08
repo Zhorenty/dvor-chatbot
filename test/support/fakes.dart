@@ -115,7 +115,12 @@ final class FakeBookingRepository implements BookingRepository {
     int limit = 200,
   }) async {
     return bookingsByTrainingKey
-        .where((booking) => trainingKeys.contains(booking.trainingKey))
+        .where(
+          (booking) =>
+              trainingKeys.contains(booking.trainingKey) &&
+              booking.status != BookingStatus.cancelled &&
+              booking.status != BookingStatus.paymentRejected,
+        )
         .take(limit)
         .toList(growable: false);
   }

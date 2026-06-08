@@ -284,6 +284,15 @@ final class MessageTemplates {
     return 'Запись #${booking.id} переведена в архив ✅';
   }
 
+  String adminBookingDeletedForUser(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Твою запись #${booking.id} отменил администратор ❌\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Если есть вопросы, напиши в поддержку: @dvor_support';
+  }
+
   String adminBookingRestored(TrainingBooking booking) {
     return 'Запись #${booking.id} восстановлена ✅';
   }
