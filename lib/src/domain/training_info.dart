@@ -7,6 +7,7 @@ final class TrainingInfo {
     required this.location,
     this.category = ActivityCategory.trainings,
     this.price,
+    this.participantsLimit,
     this.coach,
     this.notes,
   });
@@ -16,6 +17,7 @@ final class TrainingInfo {
   final String location;
   final ActivityCategory category;
   final int? price;
+  final int? participantsLimit;
   final String? coach;
   final String? notes;
 

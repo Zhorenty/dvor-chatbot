@@ -11,6 +11,7 @@ final class OutdoorActivityInfo {
     required this.dateTo,
     required this.description,
     this.price,
+    this.participantsLimit,
   });
 
   final OutdoorActivityType type;
@@ -19,4 +20,5 @@ final class OutdoorActivityInfo {
   final DateTime dateTo;
   final String description;
   final int? price;
+  final int? participantsLimit;
 }

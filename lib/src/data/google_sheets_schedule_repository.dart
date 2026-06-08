@@ -128,6 +128,15 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     final timeIndex = headers.indexOf('time');
     final locationIndex = headers.indexOf('location');
     final priceIndex = headers.indexOf('price');
+    final participantsLimitIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'participants_limit',
+        'participant_limit',
+        'participants',
+        'limit',
+      ],
+    );
     final coachIndex = headers.indexOf('coach');
     final notesIndex = headers.indexOf('notes');
     final hasStartsAt = startsAtIndex >= 0;
@@ -166,6 +175,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           startsAt: startsAt,
           location: location,
           price: _parsePrice(_optionalCell(row, priceIndex)),
+          participantsLimit: _parseParticipantsLimit(_optionalCell(row, participantsLimitIndex)),
           coach: _optionalCell(row, coachIndex),
           notes: _optionalCell(row, notesIndex),
         ),
@@ -187,6 +197,15 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     final dateToIndex = headers.indexOf('date_to');
     final descriptionIndex = headers.indexOf('description');
     final priceIndex = headers.indexOf('price');
+    final participantsLimitIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'participants_limit',
+        'participant_limit',
+        'participants',
+        'limit',
+      ],
+    );
 
     if (titleIndex < 0 || dateFromIndex < 0 || descriptionIndex < 0) {
       l.w(
@@ -224,6 +243,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           dateTo: dateTo,
           description: description,
           price: _parsePrice(_optionalCell(row, priceIndex)),
+          participantsLimit: _parseParticipantsLimit(_optionalCell(row, participantsLimitIndex)),
         ),
       );
     }
@@ -433,6 +453,24 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
       return null;
     }
     return int.tryParse(digitsOnly);
+  }
+
+  int? _parseParticipantsLimit(String? raw) {
+    final parsed = _parsePrice(raw);
+    if (parsed == null || parsed <= 0) {
+      return null;
+    }
+    return parsed;
+  }
+
+  int _firstHeaderIndex(List<String> headers, List<String> aliases) {
+    for (final alias in aliases) {
+      final index = headers.indexOf(alias);
+      if (index >= 0) {
+        return index;
+      }
+    }
+    return -1;
   }
 
   String _normalizeHeader(String value) {

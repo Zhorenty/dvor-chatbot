@@ -31,6 +31,7 @@ final List<TrainingInfo> _items = <TrainingInfo>[
     startsAt: DateTime(2026, 6, 2, 19, 0),
     location: 'Спортзал DVOR, ул. Центральная, 10',
     price: 500,
+    participantsLimit: 20,
     coach: 'Алексей',
     notes: 'Возьмите воду и удобную сменную обувь',
   ),
@@ -39,6 +40,7 @@ final List<TrainingInfo> _items = <TrainingInfo>[
     startsAt: DateTime(2026, 6, 4, 19, 30),
     location: 'Стадион DVOR, сектор B',
     price: 500,
+    participantsLimit: 0,
     coach: 'Мария',
   ),
   TrainingInfo(
@@ -46,6 +48,7 @@ final List<TrainingInfo> _items = <TrainingInfo>[
     startsAt: DateTime(2026, 6, 7, 11, 0),
     location: 'Спортзал DVOR, ул. Центральная, 10',
     price: 500,
+    participantsLimit: 15,
     coach: 'Алексей',
   ),
 ];
@@ -58,6 +61,7 @@ final List<OutdoorActivityInfo> _outdoorItems = <OutdoorActivityInfo>[
     dateTo: DateTime(2026, 6, 14, 23, 59, 59),
     description: 'Легкий маршрут для всех уровней с привалом у озера.',
     price: 1500,
+    participantsLimit: 30,
   ),
   OutdoorActivityInfo(
     type: OutdoorActivityType.trail,
@@ -66,5 +70,6 @@ final List<OutdoorActivityInfo> _outdoorItems = <OutdoorActivityInfo>[
     dateTo: DateTime(2026, 6, 22, 23, 59, 59),
     description: 'Двухдневный трейл с ночевкой и набором высоты.',
     price: 4200,
+    participantsLimit: 0,
   ),
 ];

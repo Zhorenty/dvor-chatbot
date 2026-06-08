@@ -119,6 +119,7 @@ final class MessageTemplates {
         '• 🏋️ ${item.title}',
         '   🕒 Когда: ${formatter.format(item.startsAt)}',
         '   📍 Где: ${item.location}',
+        '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',
         if (item.price != null) '   💳 Взнос: ${_trainingPriceLabel(item.price)}',
         if (coach != null && coach.isNotEmpty) '   🧑‍🏫 Тренер: $coach',
         if (notes != null && notes.isNotEmpty) '   📝 Примечание: $notes',
@@ -297,8 +298,8 @@ final class MessageTemplates {
     final lines = <String>['Выбери мероприятие для новой записи 👇'];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
-      lines.add(
-          '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} (${item.location})');
+      lines.add('${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} '
+          '(${item.location}, участники: ${_participantsLimitLabel(item.participantsLimit)})');
     }
     return lines.join('\n');
   }
@@ -585,7 +586,8 @@ final class MessageTemplates {
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       lines.add(
-        '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} (${item.location})',
+        '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} '
+        '(${item.location}, участники: ${_participantsLimitLabel(item.participantsLimit)})',
       );
     }
     return lines.join('\n');
@@ -668,7 +670,8 @@ final class MessageTemplates {
       lines.add(
         '\n${index + 1}. ${training.title}\n'
         '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 ${training.location}',
+        '📍 ${training.location}\n'
+        '👥 Участники: ${tags.length}/${_participantsLimitValueLabel(training.participantsLimit)}',
       );
       if (tags.isEmpty) {
         lines.add('   — пока никто не записался');
@@ -845,7 +848,7 @@ final class MessageTemplates {
       lines.add(
         '${index + 1}. ${item.title} — '
         '${_trainingDateLabel(item, dateTimeFormatter, dateOnlyFormatter)} '
-        '(${item.location}$feeLabel)',
+        '(${item.location}$feeLabel, участники: ${_participantsLimitLabel(item.participantsLimit)})',
       );
     }
     return lines.join('\n');
@@ -1083,6 +1086,7 @@ final class MessageTemplates {
         '• $icon ${item.title}',
         '   🗓 Даты: $dateLabel',
         '   📝 Описание: ${item.description}',
+        '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',
         if (item.price != null) '   💳 Стоимость: ${_trainingPriceLabel(item.price)}',
       ]);
       if (index != items.length - 1) {
@@ -1102,5 +1106,19 @@ final class MessageTemplates {
       ActivityCategory.hikes => 'Походы',
       ActivityCategory.trails => 'Трейлы',
     };
+  }
+
+  String _participantsLimitLabel(int? participantsLimit) {
+    if (participantsLimit == null || participantsLimit <= 0) {
+      return 'без ограничений';
+    }
+    return 'до $participantsLimit';
+  }
+
+  String _participantsLimitValueLabel(int? participantsLimit) {
+    if (participantsLimit == null || participantsLimit <= 0) {
+      return '∞';
+    }
+    return '$participantsLimit';
   }
 }

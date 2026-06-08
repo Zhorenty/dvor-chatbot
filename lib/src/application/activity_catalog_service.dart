@@ -103,6 +103,7 @@ final class ActivityCatalogService {
       location: item.description,
       category: category,
       price: item.price,
+      participantsLimit: item.participantsLimit,
       notes: 'Даты: ${dateRangeLabel(item)}',
     );
   }

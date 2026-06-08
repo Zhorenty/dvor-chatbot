@@ -21,8 +21,10 @@ void main() {
       expect(upcoming, hasLength(2));
       expect(upcoming.first.title, 'Cardio');
       expect(upcoming.first.price, 500);
+      expect(upcoming.first.participantsLimit, isNull);
       expect(upcoming.last.title, 'Functional');
       expect(upcoming.last.price, 700);
+      expect(upcoming.last.participantsLimit, 16);
     });
 
     test('loads and returns upcoming trainings from date and time columns', () async {
@@ -32,9 +34,9 @@ void main() {
           final gid = request.url.queryParameters['gid'];
           if (gid == null || gid == '0') {
             return http.Response(
-              'title,date,time,location,price,coach,notes\n'
-              'Functional,2030-06-04,19:00,Gym A,700,Alex,Bring water\n'
-              'Cardio,2030-06-02,18:30,Stadium B,500,,',
+              'title,date,time,location,price,participants_limit,coach,notes\n'
+              'Functional,2030-06-04,19:00,Gym A,700,14,Alex,Bring water\n'
+              'Cardio,2030-06-02,18:30,Stadium B,500,0,,',
               200,
             );
           }
@@ -50,9 +52,11 @@ void main() {
       expect(upcoming.first.title, 'Cardio');
       expect(upcoming.first.startsAt, DateTime(2030, 6, 2, 18, 30));
       expect(upcoming.first.price, 500);
+      expect(upcoming.first.participantsLimit, isNull);
       expect(upcoming.last.title, 'Functional');
       expect(upcoming.last.startsAt, DateTime(2030, 6, 4, 19, 0));
       expect(upcoming.last.price, 700);
+      expect(upcoming.last.participantsLimit, 14);
     });
 
     test('keeps previous cache when refresh fails', () async {
@@ -101,9 +105,11 @@ void main() {
       expect(outdoor.first.title, 'Hike to waterfalls');
       expect(outdoor.first.dateFrom, DateTime(2030, 6, 5));
       expect(outdoor.first.dateTo, DateTime(2030, 6, 5, 23, 59, 59));
+      expect(outdoor.first.participantsLimit, 24);
       expect(outdoor.last.type, OutdoorActivityType.trail);
       expect(outdoor.last.title, 'Mountain trail');
       expect(outdoor.last.price, 4500);
+      expect(outdoor.last.participantsLimit, isNull);
     });
   });
 }
@@ -112,22 +118,22 @@ Future<http.Response> _mockCsvResponse(http.Request request) async {
   final gid = request.url.queryParameters['gid'];
   if (gid == '294119056') {
     return http.Response(
-      'title,date_from,date_to,description,price\n'
-      'Hike to waterfalls,2030-06-05,,One day route,2000',
+      'title,date_from,date_to,description,price,participants_limit\n'
+      'Hike to waterfalls,2030-06-05,,One day route,2000,24',
       200,
     );
   }
   if (gid == '1220729038') {
     return http.Response(
-      'title,date_from,date_to,description,price\n'
-      'Mountain trail,2030-06-12,2030-06-14,Three day route,4500',
+      'title,date_from,date_to,description,price,participants_limit\n'
+      'Mountain trail,2030-06-12,2030-06-14,Three day route,4500,0',
       200,
     );
   }
   return http.Response(
-    'title,starts_at,location,price,coach,notes\n'
-    'Functional,2030-06-04 19:00,Gym A,700,Alex,Bring water\n'
-    'Cardio,2030-06-02 18:30,Stadium B,500,,',
+    'title,starts_at,location,price,participants_limit,coach,notes\n'
+    'Functional,2030-06-04 19:00,Gym A,700,16,Alex,Bring water\n'
+    'Cardio,2030-06-02 18:30,Stadium B,500,0,,',
     200,
   );
 }
