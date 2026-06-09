@@ -217,21 +217,19 @@ final class TelegramKeyboards {
 
   static Map<String, Object?> paymentDecisionInlineKeyboard(
     int bookingId, {
-    bool allowPartialApprove = false,
+    bool approvePartial = false,
   }) {
-    final firstRow = <Map<String, String>>[
-      <String, String>{
-        'text': '✅ Подтвердить',
-        'callback_data': '${MessageCopy.callbackApprovePaymentPrefix}$bookingId',
-      },
-      if (allowPartialApprove)
-        <String, String>{
-          'text': '🟡 Подтвердить предоплату',
-          'callback_data': '${MessageCopy.callbackApprovePartialPaymentPrefix}$bookingId',
-        },
-    ];
+    final approveButton = approvePartial
+        ? <String, String>{
+            'text': '🟡 Подтвердить предоплату',
+            'callback_data': '${MessageCopy.callbackApprovePartialPaymentPrefix}$bookingId',
+          }
+        : <String, String>{
+            'text': '✅ Подтвердить оплату',
+            'callback_data': '${MessageCopy.callbackApprovePaymentPrefix}$bookingId',
+          };
     final rows = <List<Map<String, String>>>[
-      firstRow,
+      <Map<String, String>>[approveButton],
       <Map<String, String>>[
         <String, String>{
           'text': '❌ Отклонить',

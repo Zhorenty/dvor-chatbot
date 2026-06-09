@@ -826,11 +826,11 @@ final class MessageTemplates {
 
   Map<String, Object?> paymentDecisionInlineKeyboard(
     int bookingId, {
-    bool allowPartialApprove = false,
+    bool approvePartial = false,
   }) {
     return TelegramKeyboards.paymentDecisionInlineKeyboard(
       bookingId,
-      allowPartialApprove: allowPartialApprove,
+      approvePartial: approvePartial,
     );
   }
 

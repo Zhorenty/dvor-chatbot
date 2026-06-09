@@ -1594,7 +1594,7 @@ void main() {
 
       final firstRow = (keyboard as List<Object?>).first as List<Object?>;
       final approveButton = firstRow.first as Map<Object?, Object?>;
-      expect(approveButton['text'], '✅ Подтвердить');
+      expect(approveButton['text'], '✅ Подтвердить оплату');
     });
 
     test('splits my bookings into upcoming and past sections', () {

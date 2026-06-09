@@ -24,6 +24,9 @@ import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
 
 final class PrivateHandlers {
+  static const String _paymentChoiceFullMarker = '__payment_choice_full__';
+  static const String _paymentChoicePartialMarker = '__payment_choice_partial__';
+
   PrivateHandlers({
     required MessageSender sender,
     required TrainingScheduleRepository scheduleRepository,
@@ -2202,7 +2205,7 @@ final class PrivateHandlers {
         _templates.paymentsQueueItem(booking),
         replyMarkup: _templates.paymentDecisionInlineKeyboard(
           booking.id,
-          allowPartialApprove: _shouldShowOutdoorPaymentTypeChoice(booking),
+          approvePartial: _hasPartialPaymentChoice(booking.paymentNote),
         ),
       );
     }
@@ -2803,8 +2806,8 @@ final class PrivateHandlers {
   }) {
     final normalizedCaption = caption?.trim();
     final marker = switch (choice) {
-      PaymentChoice.full => '__payment_choice_full__',
-      PaymentChoice.partial => '__payment_choice_partial__',
+      PaymentChoice.full => _paymentChoiceFullMarker,
+      PaymentChoice.partial => _paymentChoicePartialMarker,
       null => null,
     };
     if (marker == null) {
@@ -2814,6 +2817,13 @@ final class PrivateHandlers {
       return marker;
     }
     return '$marker\n$normalizedCaption';
+  }
+
+  bool _hasPartialPaymentChoice(String? paymentNote) {
+    if (paymentNote == null || paymentNote.isEmpty) {
+      return false;
+    }
+    return paymentNote.startsWith(_paymentChoicePartialMarker);
   }
 
   Future<bool> _openPendingPaymentFlow({
