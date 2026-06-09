@@ -10,6 +10,7 @@ final class TrainingBooking {
     required this.startsAt,
     required this.location,
     required this.status,
+    required this.trainingPrice,
     required this.createdAt,
     required this.updatedAt,
     this.paymentNote,
@@ -25,6 +26,7 @@ final class TrainingBooking {
   final DateTime startsAt;
   final String location;
   final BookingStatus status;
+  final int? trainingPrice;
   final String? paymentNote;
   final int? paymentProofChatId;
   final int? paymentProofMessageId;

@@ -26,7 +26,10 @@ final class TelegramKeyboards {
             <String, String>{'text': MessageCopy.buttonParticipantsList},
           ],
           <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonEconomicSummary},
             <String, String>{'text': MessageCopy.buttonNoblesList},
+          ],
+          <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonManageBookings},
           ],
         ],
@@ -361,6 +364,25 @@ final class TelegramKeyboards {
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonStatusPaid},
           <String, String>{'text': MessageCopy.buttonStatusPaymentRejected},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> economicSummaryPeriodKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSummaryCurrentWeek},
+          <String, String>{'text': MessageCopy.buttonSummaryPreviousWeek},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSummaryCurrentMonth},
+          <String, String>{'text': MessageCopy.buttonSummaryPreviousMonth},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},

@@ -19,6 +19,7 @@ final class MessageCopy {
   static const String buttonRefreshSchedule = '🔄 Обновить расписание';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
   static const String buttonAdminSummary = '📊 Оперативная сводка';
+  static const String buttonEconomicSummary = '💰 Экономическая сводка';
   static const String buttonParticipantsList = '👥 Список записавшихся';
   static const String buttonNoblesList = '🏰 Список дворян';
   static const String buttonManageBookings = '🛠 Управление записями';
@@ -42,6 +43,10 @@ final class MessageCopy {
   static const String buttonStatusPaymentSubmitted = '🧾 На проверке';
   static const String buttonStatusPaid = '✅ Оплачено';
   static const String buttonStatusPaymentRejected = '❌ Оплата отклонена';
+  static const String buttonSummaryCurrentWeek = '📅 Текущая неделя';
+  static const String buttonSummaryPreviousWeek = '🗓 Прошлая неделя';
+  static const String buttonSummaryCurrentMonth = '📆 Текущий месяц';
+  static const String buttonSummaryPreviousMonth = '🗓 Прошлый месяц';
 
   static const String callbackApprovePaymentPrefix = 'payment:approve:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';

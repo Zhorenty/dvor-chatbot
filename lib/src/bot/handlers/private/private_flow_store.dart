@@ -11,6 +11,7 @@ enum PrivateFlowStep {
   selectingBookingCategory,
   selectingParticipantsCategory,
   selectingPaymentsQueueCategory,
+  selectingEconomicSummaryPeriod,
   selectingTraining,
   paymentConfirmation,
   selectingBookingToManage,

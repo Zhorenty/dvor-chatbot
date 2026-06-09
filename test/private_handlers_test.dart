@@ -158,6 +158,7 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonRefreshSchedule));
       expect(buttons, contains(MessageTemplates.buttonPaymentsQueue));
       expect(buttons, contains(MessageTemplates.buttonAdminSummary));
+      expect(buttons, contains(MessageTemplates.buttonEconomicSummary));
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
       expect(buttons, contains(MessageTemplates.buttonNoblesList));
       expect(buttons, contains(MessageTemplates.buttonManageBookings));
@@ -2548,6 +2549,88 @@ void main() {
       expect(sender.messages.single.text, contains('Оперативная сводка'));
       expect(sender.messages.single.text, contains('Очередь оплат'));
       expect(sender.messages.single.text, contains('Активные: 7'));
+    });
+
+    test('opens and sends economic summary by selected period', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          TrainingBooking(
+            id: 99,
+            userId: 7001,
+            userUsername: 'admin_econ',
+            trainingKey: 'trainings|summary',
+            trainingTitle: 'Test event',
+            startsAt: DateTime(2026, 11, 2, 19),
+            location: 'Hall',
+            status: BookingStatus.paid,
+            trainingPrice: 1200,
+            createdAt: DateTime(2026, 11, 2, 18),
+            updatedAt: DateTime(2026, 11, 2, 20),
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{4902},
+        nowProvider: () => DateTime(2026, 11, 10, 12),
+      );
+
+      final openHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4902, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4902},
+        'text': MessageTemplates.buttonEconomicSummary,
+      });
+      expect(openHandled, isTrue);
+      expect(sender.messages.single.text, contains('Выбери период'));
+
+      final sendHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4902, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4902},
+        'text': MessageTemplates.buttonSummaryPreviousWeek,
+      });
+      expect(sendHandled, isTrue);
+      expect(sender.messages.last.text, contains('Экономическая сводка'));
+      expect(sender.messages.last.text, contains('Финансы:'));
+    });
+
+    test('supports economic summary command with period argument', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          TrainingBooking(
+            id: 100,
+            userId: 7002,
+            userUsername: 'admin_econ_cmd',
+            trainingKey: 'trainings|summary2',
+            trainingTitle: 'Cmd event',
+            startsAt: DateTime(2026, 11, 3, 19),
+            location: 'Hall',
+            status: BookingStatus.paid,
+            trainingPrice: 1500,
+            createdAt: DateTime(2026, 11, 3, 18),
+            updatedAt: DateTime(2026, 11, 3, 20),
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{4903},
+        nowProvider: () => DateTime(2026, 11, 10, 12),
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4903, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4903},
+        'text': '/economic_summary current_month',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('за текущий месяц'));
     });
   });
 }

@@ -48,6 +48,7 @@ final class SqliteBookingRepository implements BookingRepository {
         training_title TEXT NOT NULL,
         starts_at TEXT NOT NULL,
         location TEXT NOT NULL,
+        training_price INTEGER,
         status TEXT NOT NULL,
         payment_note TEXT,
         payment_proof_chat_id INTEGER,
@@ -65,6 +66,16 @@ final class SqliteBookingRepository implements BookingRepository {
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN user_username TEXT;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN payment_proof_chat_id INTEGER;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN payment_proof_message_id INTEGER;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN training_price INTEGER;');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS economic_report_dispatches (
+        report_type TEXT NOT NULL,
+        period_start TEXT NOT NULL,
+        period_end TEXT NOT NULL,
+        sent_at TEXT NOT NULL,
+        PRIMARY KEY (report_type, period_start, period_end)
+      );
+    ''');
     db.execute(
       'CREATE INDEX IF NOT EXISTS idx_bookings_user_id ON bookings(user_id);',
     );
@@ -100,11 +111,12 @@ final class SqliteBookingRepository implements BookingRepository {
           training_title,
           starts_at,
           location,
+          training_price,
           status,
           payment_note,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           userId,
@@ -113,6 +125,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training.title,
           training.startsAt.toUtc().toIso8601String(),
           training.location,
+          training.price,
           BookingStatus.pendingPayment.dbValue,
           null,
           nowIso,
@@ -202,6 +215,7 @@ final class SqliteBookingRepository implements BookingRepository {
             training_title = ?,
             starts_at = ?,
             location = ?,
+            training_price = ?,
             updated_at = ?
         WHERE id = ? AND user_id = ?;
         ''',
@@ -210,6 +224,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training.title,
           training.startsAt.toUtc().toIso8601String(),
           training.location,
+          training.price,
           nowIso,
           bookingId,
           userId,
@@ -443,6 +458,64 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<TrainingBooking>> listPaidBookingsInRange({
+    required DateTime fromInclusive,
+    required DateTime toExclusive,
+    int limit = 5000,
+  }) async {
+    _expireOverduePendingBookings();
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE status = ?
+        AND updated_at >= ?
+        AND updated_at < ?
+      ORDER BY updated_at ASC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        BookingStatus.paid.dbValue,
+        fromInclusive.toUtc().toIso8601String(),
+        toExclusive.toUtc().toIso8601String(),
+        limit,
+      ],
+    );
+    return result.map(_rowToBooking).toList(growable: false);
+  }
+
+  @override
+  Future<bool> tryMarkEconomicReportSent({
+    required String reportType,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required DateTime sentAt,
+  }) async {
+    final db = _database;
+    try {
+      db.execute(
+        '''
+        INSERT INTO economic_report_dispatches (
+          report_type,
+          period_start,
+          period_end,
+          sent_at
+        ) VALUES (?, ?, ?, ?);
+        ''',
+        <Object?>[
+          reportType,
+          periodStart.toUtc().toIso8601String(),
+          periodEnd.toUtc().toIso8601String(),
+          sentAt.toUtc().toIso8601String(),
+        ],
+      );
+      return true;
+    } on SqliteException {
+      return false;
+    }
+  }
+
+  @override
   Future<({int active, int archived})> adminCountBySegment() async {
     _expireOverduePendingBookings();
     final db = _database;
@@ -534,11 +607,12 @@ final class SqliteBookingRepository implements BookingRepository {
           training_title,
           starts_at,
           location,
+          training_price,
           status,
           payment_note,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           effectiveUserId,
@@ -547,6 +621,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training.title,
           training.startsAt.toUtc().toIso8601String(),
           training.location,
+          training.price,
           status.dbValue,
           null,
           nowIso,
@@ -618,6 +693,8 @@ final class SqliteBookingRepository implements BookingRepository {
       args.add(training.startsAt.toUtc().toIso8601String());
       columns.add('location = ?');
       args.add(training.location);
+      columns.add('training_price = ?');
+      args.add(training.price);
     }
     if (status != null) {
       columns.add('status = ?');
@@ -749,6 +826,7 @@ final class SqliteBookingRepository implements BookingRepository {
       startsAt: DateTime.parse(row['starts_at'] as String).toLocal(),
       location: row['location'] as String,
       status: BookingStatus.fromDbValue(row['status'] as String),
+      trainingPrice: row['training_price'] as int?,
       paymentNote: row['payment_note'] as String?,
       paymentProofChatId: row['payment_proof_chat_id'] as int?,
       paymentProofMessageId: row['payment_proof_message_id'] as int?,

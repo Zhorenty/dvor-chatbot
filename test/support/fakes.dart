@@ -72,6 +72,7 @@ final class FakeBookingRepository implements BookingRepository {
   );
   PaymentReviewResult? paymentReviewResult;
   bool throwAdminUpdateConflict = false;
+  final Set<String> sentEconomicReports = <String>{};
 
   @override
   Future<BookingCreateResult> createPendingBooking({
@@ -220,6 +221,35 @@ final class FakeBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<TrainingBooking>> listPaidBookingsInRange({
+    required DateTime fromInclusive,
+    required DateTime toExclusive,
+    int limit = 5000,
+  }) async {
+    return queue
+        .where(
+          (booking) =>
+              booking.status == BookingStatus.paid &&
+              !booking.updatedAt.isBefore(fromInclusive) &&
+              booking.updatedAt.isBefore(toExclusive),
+        )
+        .take(limit)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<bool> tryMarkEconomicReportSent({
+    required String reportType,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required DateTime sentAt,
+  }) async {
+    final key =
+        '$reportType|${periodStart.toUtc().toIso8601String()}|${periodEnd.toUtc().toIso8601String()}';
+    return sentEconomicReports.add(key);
+  }
+
+  @override
   Future<({int active, int archived})> adminCountBySegment() async {
     return adminSegmentCounts;
   }
@@ -335,7 +365,10 @@ TrainingBooking fakeBooking({
   DateTime? startsAt,
   String location = 'Hall',
   BookingStatus status = BookingStatus.pendingPayment,
+  int? trainingPrice,
   String? paymentNote,
+  DateTime? createdAt,
+  DateTime? updatedAt,
 }) {
   final now = DateTime(2026, 1, 1, 10);
   return TrainingBooking(
@@ -347,11 +380,12 @@ TrainingBooking fakeBooking({
     startsAt: startsAt ?? DateTime(2026, 8, 1, 18),
     location: location,
     status: status,
+    trainingPrice: trainingPrice,
     paymentNote: paymentNote,
     paymentProofChatId: paymentProofChatId,
     paymentProofMessageId: paymentProofMessageId,
-    createdAt: now,
-    updatedAt: now,
+    createdAt: createdAt ?? now,
+    updatedAt: updatedAt ?? now,
   );
 }
 

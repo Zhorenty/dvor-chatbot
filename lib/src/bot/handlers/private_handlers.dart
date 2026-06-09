@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
+import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
 import 'package:dvor_chatbot/src/application/payment_review_service.dart';
 import 'package:dvor_chatbot/src/application/schedule_query_service.dart';
@@ -59,6 +60,8 @@ final class PrivateHandlers {
       ScheduleQueryService(catalogService: _catalogService, templates: _templates);
   late final PaymentReviewService _paymentReviewService =
       PaymentReviewService(bookingRepository: _bookingRepository, catalogService: _catalogService);
+  late final EconomicSummaryService _economicSummaryService = EconomicSummaryService(
+      bookingRepository: _bookingRepository, catalogService: _catalogService);
   late final NoblesListService _noblesListService =
       NoblesListService(bookingRepository: _bookingRepository, catalogService: _catalogService);
   final PrivateUpdateRouter _updateRouter = const PrivateUpdateRouter();
@@ -196,6 +199,7 @@ final class PrivateHandlers {
         case _PrivateFlowStep.selectingBookingCategory:
         case _PrivateFlowStep.selectingParticipantsCategory:
         case _PrivateFlowStep.selectingPaymentsQueueCategory:
+        case _PrivateFlowStep.selectingEconomicSummaryPeriod:
         case _PrivateFlowStep.selectingBookingToManage:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
@@ -1158,6 +1162,54 @@ final class PrivateHandlers {
     }
 
     if (text != null &&
+        (text == MessageTemplates.buttonEconomicSummary || text.startsWith('/economic_summary'))) {
+      if (!canRunAdminAction) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (userId == null) {
+        return false;
+      }
+      final range = _parseEconomicSummaryRangeCommand(text);
+      if (range != null) {
+        await _sendEconomicSummary(chatId: chatId, isAdmin: isAdmin, range: range);
+        return true;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingEconomicSummaryPeriod,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseEconomicSummaryPeriod(),
+        replyMarkup: _templates.economicSummaryPeriodKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingEconomicSummaryPeriod &&
+        text != null &&
+        !text.startsWith('/')) {
+      final range = _parseEconomicSummaryRangeText(text);
+      if (range == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseEconomicSummaryPeriod(),
+          replyMarkup: _templates.economicSummaryPeriodKeyboard(),
+        );
+        return true;
+      }
+      _flowByUserId.remove(userId);
+      await _sendEconomicSummary(chatId: chatId, isAdmin: isAdmin, range: range);
+      return true;
+    }
+
+    if (text != null &&
         (text == MessageTemplates.buttonParticipantsList ||
             text.startsWith('/participants_list'))) {
       if (!canRunAdminAction) {
@@ -2097,6 +2149,28 @@ final class PrivateHandlers {
     );
   }
 
+  Future<void> _sendEconomicSummary({
+    required int chatId,
+    required bool isAdmin,
+    required _EconomicSummaryRange range,
+  }) async {
+    final now = _nowProvider();
+    final period = switch (range) {
+      _EconomicSummaryRange.currentWeek => _economicSummaryService.currentWeeklyPeriod(now),
+      _EconomicSummaryRange.previousWeek =>
+        _economicSummaryService.latestCompletedWeeklyPeriod(now),
+      _EconomicSummaryRange.currentMonth => _economicSummaryService.currentMonthlyPeriod(now),
+      _EconomicSummaryRange.previousMonth =>
+        _economicSummaryService.latestCompletedMonthlyPeriod(now),
+    };
+    final summary = await _economicSummaryService.buildSummary(period);
+    await _sender.sendMessage(
+      chatId,
+      _templates.economicSummary(summary, periodLabel: range.label),
+      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+    );
+  }
+
   Future<void> _openBookingByCategory({
     required int chatId,
     required int userId,
@@ -2381,6 +2455,7 @@ final class PrivateHandlers {
       startsAt: fallback.startsAt,
       location: fallback.location,
       status: status,
+      trainingPrice: fallback.trainingPrice,
       paymentNote: fallback.paymentNote,
       paymentProofChatId: fallback.paymentProofChatId,
       paymentProofMessageId: fallback.paymentProofMessageId,
@@ -2599,6 +2674,50 @@ final class PrivateHandlers {
     }
     return booking.startsAt.difference(_nowProvider()) >= const Duration(days: 7);
   }
+
+  _EconomicSummaryRange? _parseEconomicSummaryRangeCommand(String text) {
+    if (!text.startsWith('/economic_summary')) {
+      return null;
+    }
+    final parts = text.trim().split(RegExp(r'\s+'));
+    if (parts.length < 2) {
+      return null;
+    }
+    return switch (parts[1].toLowerCase()) {
+      'current_week' || 'current-week' || 'cw' => _EconomicSummaryRange.currentWeek,
+      'previous_week' ||
+      'prev_week' ||
+      'previous-week' ||
+      'prev-week' ||
+      'pw' =>
+        _EconomicSummaryRange.previousWeek,
+      'current_month' || 'current-month' || 'cm' => _EconomicSummaryRange.currentMonth,
+      'previous_month' ||
+      'prev_month' ||
+      'previous-month' ||
+      'prev-month' ||
+      'pm' =>
+        _EconomicSummaryRange.previousMonth,
+      _ => null,
+    };
+  }
+
+  _EconomicSummaryRange? _parseEconomicSummaryRangeText(String text) {
+    final normalized = text.toLowerCase();
+    if (normalized.contains('текущ') && normalized.contains('недел')) {
+      return _EconomicSummaryRange.currentWeek;
+    }
+    if (normalized.contains('прошл') && normalized.contains('недел')) {
+      return _EconomicSummaryRange.previousWeek;
+    }
+    if (normalized.contains('текущ') && normalized.contains('месяц')) {
+      return _EconomicSummaryRange.currentMonth;
+    }
+    if (normalized.contains('прошл') && normalized.contains('месяц')) {
+      return _EconomicSummaryRange.previousMonth;
+    }
+    return null;
+  }
 }
 
 typedef _PrivateFlowState = PrivateFlowState;
@@ -2606,3 +2725,14 @@ typedef _PrivateFlowStep = PrivateFlowStep;
 typedef _ActivityCategory = ActivityCategory;
 
 enum _FreeTrainingBonusType { starter, everyFifth }
+
+enum _EconomicSummaryRange {
+  currentWeek('за текущую неделю'),
+  previousWeek('за прошлую неделю'),
+  currentMonth('за текущий месяц'),
+  previousMonth('за прошлый месяц');
+
+  const _EconomicSummaryRange(this.label);
+
+  final String label;
+}

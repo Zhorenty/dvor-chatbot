@@ -25,6 +25,7 @@ void main() {
     test('creates and deduplicates booking by user and training', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => DateTime(2030, 7, 1, 12),
       );
       await repository.init();
 
@@ -454,6 +455,48 @@ void main() {
         bookings.where((item) => item.trainingKey == training.sessionKey).length,
         2,
       );
+
+      await repository.close();
+    });
+
+    test('stores training price and marks economic report as sent once', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => DateTime(2030, 7, 1, 12),
+      );
+      await repository.init();
+      final created = await repository.createPendingBooking(
+        userId: 6001,
+        training: TrainingInfo(
+          title: 'Price check',
+          startsAt: DateTime(2030, 7, 1, 19),
+          location: 'Gym',
+          price: 1700,
+        ),
+      );
+      await repository.updateStatus(created.booking.id, BookingStatus.paid);
+
+      final paid = await repository.listPaidBookingsInRange(
+        fromInclusive: DateTime(2030, 6, 1),
+        toExclusive: DateTime(2030, 8, 1),
+      );
+      expect(paid, hasLength(1));
+      expect(paid.single.trainingPrice, 1700);
+
+      final firstMark = await repository.tryMarkEconomicReportSent(
+        reportType: 'weekly',
+        periodStart: DateTime(2030, 6, 24),
+        periodEnd: DateTime(2030, 7, 1),
+        sentAt: DateTime(2030, 7, 1, 9),
+      );
+      final duplicateMark = await repository.tryMarkEconomicReportSent(
+        reportType: 'weekly',
+        periodStart: DateTime(2030, 6, 24),
+        periodEnd: DateTime(2030, 7, 1),
+        sentAt: DateTime(2030, 7, 1, 10),
+      );
+      expect(firstMark, isTrue);
+      expect(duplicateMark, isFalse);
 
       await repository.close();
     });

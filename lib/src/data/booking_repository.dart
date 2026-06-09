@@ -102,6 +102,19 @@ abstract interface class BookingRepository {
 
   Future<void> markReminderSent(int bookingId);
 
+  Future<List<TrainingBooking>> listPaidBookingsInRange({
+    required DateTime fromInclusive,
+    required DateTime toExclusive,
+    int limit = 5000,
+  });
+
+  Future<bool> tryMarkEconomicReportSent({
+    required String reportType,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required DateTime sentAt,
+  });
+
   Future<({int active, int archived})> adminCountBySegment();
 
   Future<List<TrainingBooking>> adminListBookings({

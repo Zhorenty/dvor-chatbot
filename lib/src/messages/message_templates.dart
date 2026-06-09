@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -34,6 +35,7 @@ final class MessageTemplates {
   static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
   static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
   static const String buttonAdminSummary = MessageCopy.buttonAdminSummary;
+  static const String buttonEconomicSummary = MessageCopy.buttonEconomicSummary;
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;
@@ -57,6 +59,10 @@ final class MessageTemplates {
   static const String buttonStatusPaymentSubmitted = MessageCopy.buttonStatusPaymentSubmitted;
   static const String buttonStatusPaid = MessageCopy.buttonStatusPaid;
   static const String buttonStatusPaymentRejected = MessageCopy.buttonStatusPaymentRejected;
+  static const String buttonSummaryCurrentWeek = MessageCopy.buttonSummaryCurrentWeek;
+  static const String buttonSummaryPreviousWeek = MessageCopy.buttonSummaryPreviousWeek;
+  static const String buttonSummaryCurrentMonth = MessageCopy.buttonSummaryCurrentMonth;
+  static const String buttonSummaryPreviousMonth = MessageCopy.buttonSummaryPreviousMonth;
   static const String callbackApprovePaymentPrefix = MessageCopy.callbackApprovePaymentPrefix;
   static const String callbackRejectPaymentPrefix = MessageCopy.callbackRejectPaymentPrefix;
   static const String callbackOpenPaymentsQueue = MessageCopy.callbackOpenPaymentsQueue;
@@ -960,6 +966,42 @@ final class MessageTemplates {
         '• Трейлы: $upcomingTrails';
   }
 
+  String economicSummary(EconomicSummary summary, {String? periodLabel}) {
+    final dateFormatter = DateFormat('dd.MM.yyyy');
+    final periodRange =
+        '${dateFormatter.format(summary.period.startInclusive)} — ${dateFormatter.format(summary.period.endExclusive.subtract(const Duration(days: 1)))}';
+    final lines = <String>[
+      'Экономическая сводка ${periodLabel ?? 'по периоду'} 📈',
+      'Период: $periodRange',
+      '',
+      'Финансы:',
+      '• Выручка: ${_money(summary.totalRevenue)}',
+      '• Платных бронирований: ${summary.paidBookingsCount}',
+      '• Средний чек: ${_money(summary.averageCheck)}',
+      if (summary.freeBookingsCount > 0) '• Бесплатных бронирований: ${summary.freeBookingsCount}',
+      if (summary.unknownPriceBookingsCount > 0)
+        '• Без цены в данных: ${summary.unknownPriceBookingsCount}',
+      '',
+      'По категориям:',
+      if (summary.byCategory.isEmpty) '• Нет оплаченных бронирований с ценой',
+      ...summary.byCategory.map(
+        (item) =>
+            '• ${_categoryLabel(item.category)}: ${_money(item.revenue)} (${item.bookingsCount})',
+      ),
+      '',
+      'Топ мероприятий по выручке:',
+      if (summary.byEvent.isEmpty) '• Нет данных',
+      ...summary.byEvent.map(
+        (item) => '• ${item.eventTitle}: ${_money(item.revenue)} (${item.bookingsCount})',
+      ),
+    ];
+    return lines.join('\n');
+  }
+
+  String chooseEconomicSummaryPeriod() {
+    return 'Выбери период для экономической сводки 👇';
+  }
+
   Map<String, Object?> privateMenuKeyboard({required bool isAdmin}) {
     return TelegramKeyboards.privateMenuKeyboard(isAdmin: isAdmin);
   }
@@ -1056,6 +1098,10 @@ final class MessageTemplates {
 
   Map<String, Object?> bookingPaymentStatusKeyboard() {
     return TelegramKeyboards.bookingPaymentStatusKeyboard();
+  }
+
+  Map<String, Object?> economicSummaryPeriodKeyboard() {
+    return TelegramKeyboards.economicSummaryPeriodKeyboard();
   }
 
   String _groupMention({
@@ -1192,6 +1238,10 @@ final class MessageTemplates {
       return '∞';
     }
     return '$participantsLimit';
+  }
+
+  String _money(int amount) {
+    return '$amount ₽';
   }
 
   String _normalizeTrainerDescription(String raw) {

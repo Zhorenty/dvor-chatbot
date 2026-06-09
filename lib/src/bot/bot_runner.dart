@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
+import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
 import 'package:dvor_chatbot/src/jobs/starter_bonus_reminder_job.dart';
@@ -45,6 +48,16 @@ final class BotRunner {
           onboardingRepository: onboardingRepository,
           sender: sender,
         ),
+        _economicSummaryJob = EconomicSummaryJob(
+          bookingRepository: bookingRepository,
+          economicSummaryService: EconomicSummaryService(
+            bookingRepository: bookingRepository,
+            catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
+          ),
+          sender: sender,
+          templates: templates,
+          adminChatId: config.adminChatId,
+        ),
         _privateHandlers = privateHandlers,
         _groupHandlers = groupHandlers;
 
@@ -55,6 +68,7 @@ final class BotRunner {
   final PaymentReminderJob _paymentReminderJob;
   final StarterBonusReminderJob _starterBonusReminderJob;
   final WelcomeCleanupJob _welcomeCleanupJob;
+  final EconomicSummaryJob _economicSummaryJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
 
@@ -67,6 +81,7 @@ final class BotRunner {
   Timer? _paymentReminderTimer;
   Timer? _starterBonusReminderTimer;
   Timer? _welcomeCleanupTimer;
+  Timer? _economicSummaryTimer;
 
   Future<void> start() async {
     await _initializeLongPolling();
@@ -101,6 +116,13 @@ final class BotRunner {
       }
       _launchBackgroundJob('welcome cleanup', _welcomeCleanupJob.run);
     });
+    _economicSummaryTimer = Timer.periodic(const Duration(minutes: 30), (_) {
+      if (_stopping) {
+        return;
+      }
+      _launchBackgroundJob('economic summary', _economicSummaryJob.run);
+    });
+    _launchBackgroundJob('economic summary', _economicSummaryJob.run);
 
     while (!_stopping) {
       try {
@@ -162,6 +184,7 @@ final class BotRunner {
     _paymentReminderTimer?.cancel();
     _starterBonusReminderTimer?.cancel();
     _welcomeCleanupTimer?.cancel();
+    _economicSummaryTimer?.cancel();
     _closeClient();
     await _waitForIdleOperations();
   }
