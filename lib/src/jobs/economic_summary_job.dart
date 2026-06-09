@@ -61,6 +61,11 @@ final class EconomicSummaryJob {
     try {
       await _sender.sendMessage(adminChatId, text);
     } on Object catch (error, stackTrace) {
+      await _bookingRepository.rollbackEconomicReportSent(
+        reportType: period.type.name,
+        periodStart: period.startInclusive,
+        periodEnd: period.endExclusive,
+      );
       l.w('Failed to send economic summary report: $error', stackTrace);
     }
   }

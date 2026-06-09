@@ -543,6 +543,19 @@ void main() {
       expect(firstMark, isTrue);
       expect(duplicateMark, isFalse);
 
+      await repository.rollbackEconomicReportSent(
+        reportType: 'weekly',
+        periodStart: DateTime(2030, 6, 24),
+        periodEnd: DateTime(2030, 7, 1),
+      );
+      final markAfterRollback = await repository.tryMarkEconomicReportSent(
+        reportType: 'weekly',
+        periodStart: DateTime(2030, 6, 24),
+        periodEnd: DateTime(2030, 7, 1),
+        sentAt: DateTime(2030, 7, 1, 11),
+      );
+      expect(markAfterRollback, isTrue);
+
       await repository.close();
     });
   });

@@ -124,6 +124,12 @@ abstract interface class BookingRepository {
     required DateTime sentAt,
   });
 
+  Future<void> rollbackEconomicReportSent({
+    required String reportType,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+  });
+
   Future<({int active, int archived})> adminCountBySegment();
 
   Future<List<TrainingBooking>> adminListBookings({

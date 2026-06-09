@@ -266,6 +266,17 @@ final class FakeBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<void> rollbackEconomicReportSent({
+    required String reportType,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+  }) async {
+    final key =
+        '$reportType|${periodStart.toUtc().toIso8601String()}|${periodEnd.toUtc().toIso8601String()}';
+    sentEconomicReports.remove(key);
+  }
+
+  @override
   Future<({int active, int archived})> adminCountBySegment() async {
     return adminSegmentCounts;
   }

@@ -539,6 +539,28 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<void> rollbackEconomicReportSent({
+    required String reportType,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+  }) async {
+    final db = _database;
+    db.execute(
+      '''
+      DELETE FROM economic_report_dispatches
+      WHERE report_type = ?
+        AND period_start = ?
+        AND period_end = ?;
+      ''',
+      <Object?>[
+        reportType,
+        periodStart.toUtc().toIso8601String(),
+        periodEnd.toUtc().toIso8601String(),
+      ],
+    );
+  }
+
+  @override
   Future<({int active, int archived})> adminCountBySegment() async {
     _expireOverduePendingBookings();
     final db = _database;
