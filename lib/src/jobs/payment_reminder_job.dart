@@ -1,5 +1,5 @@
+import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
-import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
@@ -7,15 +7,18 @@ import 'package:l/l.dart';
 final class PaymentReminderJob {
   const PaymentReminderJob({
     required BookingRepository bookingRepository,
+    required BookingPolicyService bookingPolicyService,
     required MessageSender sender,
     required MessageTemplates templates,
     DateTime Function()? nowProvider,
   })  : _bookingRepository = bookingRepository,
+        _bookingPolicyService = bookingPolicyService,
         _sender = sender,
         _templates = templates,
         _nowProvider = nowProvider ?? DateTime.now;
 
   final BookingRepository _bookingRepository;
+  final BookingPolicyService _bookingPolicyService;
   final MessageSender _sender;
   final MessageTemplates _templates;
   final DateTime Function() _nowProvider;
@@ -36,7 +39,7 @@ final class PaymentReminderJob {
             _templates.pendingPaymentReminder(booking),
             replyMarkup: _templates.paymentConfirmationKeyboard(
               showStarterBonus: false,
-              showCancelBooking: _canCancelBooking(booking, now: now),
+              showCancelBooking: _bookingPolicyService.canCancel(booking, now: now),
             ),
           );
           await _bookingRepository.markReminderSent(booking.id);
@@ -47,16 +50,5 @@ final class PaymentReminderJob {
     } on Object catch (error, stackTrace) {
       l.w('Payment reminder job failed: $error', stackTrace);
     }
-  }
-
-  bool _canCancelBooking(TrainingBooking booking, {required DateTime now}) {
-    final isOutdoor = booking.trainingKey.startsWith('hikes|') ||
-        booking.trainingKey.startsWith('trails|') ||
-        booking.trainingTitle.startsWith('🥾 Поход:') ||
-        booking.trainingTitle.startsWith('🏃 Трейл:');
-    if (!isOutdoor) {
-      return false;
-    }
-    return booking.startsAt.difference(now) >= const Duration(days: 7);
   }
 }

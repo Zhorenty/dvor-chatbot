@@ -8,6 +8,9 @@ import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/keyboards/telegram_keyboards.dart';
+import 'package:dvor_chatbot/src/messages/templates/group_templates.dart';
+import 'package:dvor_chatbot/src/messages/templates/private_navigation_templates.dart';
+import 'package:dvor_chatbot/src/messages/templates/schedule_templates.dart';
 import 'package:intl/intl.dart';
 
 final class MessageTemplates {
@@ -16,6 +19,9 @@ final class MessageTemplates {
   }) : _botUsername = botUsername;
 
   final String? _botUsername;
+  final PrivateNavigationTemplates _privateNavigationTemplates = const PrivateNavigationTemplates();
+  final ScheduleTemplates _scheduleTemplates = const ScheduleTemplates();
+  GroupTemplates get _groupTemplates => GroupTemplates(botUsername: _botUsername);
 
   static const String buttonTrainings = MessageCopy.buttonTrainings;
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
@@ -76,114 +82,39 @@ final class MessageTemplates {
   static const String scheduleDocumentUrl = MessageCopy.scheduleDocumentUrl;
 
   String privateWelcome() {
-    return 'Добро пожаловать в DVOR 🤝\n\n'
-        'Здесь ты можешь:\n'
-        '• посмотреть расписание,\n'
-        '• записаться на тренировку/поход/трейл,\n'
-        '• отправить подтверждение оплаты,\n'
-        '• управлять своими записями.\n\n'
-        'С чего начать:\n'
-        '1) Нажми «${MessageCopy.buttonTrainings}» и выбери категорию.\n'
-        '2) Нажми «${MessageCopy.buttonBookTraining}» и выбери событие.\n'
-        '3) После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека.\n\n'
-        'Если нужна подсказка, нажми «${MessageCopy.buttonHelp}».';
+    return _privateNavigationTemplates.privateWelcome();
   }
 
   String starterBonusOnboardingOffer() {
-    return '🎁 Тебе доступна бесплатная тренировка за старт!\n\n'
-        'Нажми «${MessageCopy.buttonBookTraining}», выбери тренировку и в подтверждении записи '
-        'используй кнопку «${MessageCopy.buttonUseStarterBonus}».';
+    return _privateNavigationTemplates.starterBonusOnboardingOffer();
   }
 
   String privateHelp() {
-    return 'Вот чем я могу помочь 👇\n'
-        '• Показываю ближайшие тренировки, походы и трейлы 📅\n'
-        '• Показываю список тренеров и контакты штаба 🧑‍🏫\n'
-        '• Помогаю записаться на выбранное мероприятие ✍️\n'
-        '• Напоминаю про систему лояльности: каждая 5-я тренировка бесплатная 🎁\n'
-        '• Показываю твои записи и текущие статусы 🗂\n'
-        '• Принимаю файл с подтверждением оплаты и передаю его на проверку 💸\n'
-        '• Напоминаю об оплате, если она еще не подтверждена ⏰\n\n'
-        'По остальным вопросам пиши в поддержку: @dvor_support 💬\n\n'
-        'Если кнопки вдруг пропали, используй команды:\n'
-        '/trainings, /book, /my_bookings, /coaches.';
+    return _privateNavigationTemplates.privateHelp();
   }
 
   String privateFallback() {
-    return 'Пока не понял сообщение 🤔\n'
-        'Используй кнопки меню ниже.\n'
-        'Если запутался в шаге записи, нажми «${MessageCopy.buttonMainMenu}» '
-        'или «${MessageCopy.buttonHelp}».';
+    return _privateNavigationTemplates.privateFallback();
   }
 
   String trainings(List<TrainingInfo> items) {
-    if (items.isEmpty) {
-      return 'Пока тренировок в расписании нет 😌 Скоро добавим новые даты!';
-    }
-
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Ближайшие тренировки DVOR 💪'];
-    for (var index = 0; index < items.length; index++) {
-      final item = items[index];
-      final coach = item.coach?.trim();
-      final notes = item.notes?.trim();
-
-      lines.addAll(<String>[
-        '',
-        '• 🏋️ ${_escapeHtml(item.title)}',
-        '   🕒 Когда: ${formatter.format(item.startsAt)}',
-        '   📍 Где: ${_locationLabel(item)}',
-        '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',
-        if (item.price != null) '   💳 Взнос: ${_trainingPriceLabel(item.price)}',
-        if (coach != null && coach.isNotEmpty)
-          '   🧑‍🏫 ${_coachTitle(coach)}: ${_escapeHtml(coach)}',
-        if (notes != null && notes.isNotEmpty) '   📝 Примечание: ${_escapeHtml(notes)}',
-      ]);
-
-      if (index != items.length - 1) {
-        lines.add('\n-----');
-      }
-    }
-    return lines.join('\n');
+    return _scheduleTemplates.trainings(items);
   }
 
   String hikes(List<OutdoorActivityInfo> items) {
-    return _outdoorActivitiesList(
-      title: 'Ближайшие походы DVOR 🥾',
-      icon: '🥾',
-      items: items,
-      emptyText: 'Пока походов в расписании нет 😌',
-    );
+    return _scheduleTemplates.hikes(items);
   }
 
   String trails(List<OutdoorActivityInfo> items) {
-    return _outdoorActivitiesList(
-      title: 'Ближайшие трейлы DVOR 🏃',
-      icon: '🏃',
-      items: items,
-      emptyText: 'Пока трейлов в расписании нет 😌',
-    );
+    return _scheduleTemplates.trails(items);
   }
 
   String chooseScheduleCategory() {
-    return 'Выбери раздел расписания 👇';
+    return _scheduleTemplates.chooseScheduleCategory();
   }
 
   String coachingStaff(List<TrainerInfo> trainers) {
-    if (trainers.isEmpty) {
-      return 'Список тренеров пока пуст. Попробуй чуть позже 🙏';
-    }
-    final lines = <String>['Тренерский штаб DVOR 🧑‍🏫'];
-    for (var index = 0; index < trainers.length; index++) {
-      final trainer = trainers[index];
-      lines.addAll(<String>[
-        '',
-        '${index + 1}. ${trainer.name}',
-        '🔗 ${trainer.link}',
-        '📝 ${_normalizeTrainerDescription(trainer.description)}',
-      ]);
-    }
-    return lines.join('\n');
+    return _scheduleTemplates.coachingStaff(trainers);
   }
 
   String chooseBookingCategory() {
@@ -359,16 +290,11 @@ final class MessageTemplates {
   }
 
   String clubInfoPrivate() {
-    return 'Добро пожаловать в спортивное объединение DVOR! 🎉\n\n'
-        'Мы регулярно проводим тренировки, делимся расписанием и новостями клуба.\n'
-        'Хочешь посмотреть ближайшие занятия? Отправь /trainings 👌';
+    return _groupTemplates.clubInfoPrivate();
   }
 
   String groupFallback({required String? botUsername}) {
-    final botLink = botUsername == null || botUsername.isEmpty
-        ? 'Напишите боту в личку и нажмите Start 🙌'
-        : 'Откройте личку с ботом: https://t.me/$botUsername и нажмите Start 🙌';
-    return 'Не удалось отправить личное сообщение новому участнику 😕 $botLink';
+    return _groupTemplates.groupFallback(botUsername: botUsername);
   }
 
   String groupWelcome({
@@ -376,33 +302,19 @@ final class MessageTemplates {
     required int userId,
     required String? firstName,
   }) {
-    final mention = _groupMention(username: username, userId: userId, firstName: firstName);
-    final botLink = _botDeepLink();
-    final botPrompt = botLink == null
-        ? '🤖 Чат с ботом: напиши боту в личку и нажми Start'
-        : '🤖 Чат с ботом: <a href="$botLink">нажми, чтобы открыть</a>';
-    return 'Привет, $mention! 🏃\n'
-        'Ты уже в игре!\n'
-        'Переходи в бота «Двор» - там твой первый шаг к победе и подарок за старт.\n'
-        '$botPrompt\n'
-        'Вперёд, чемпион! 🏆';
-  }
-
-  String? _botDeepLink() {
-    final botUsername = _botUsername;
-    if (botUsername == null || botUsername.isEmpty) {
-      return null;
-    }
-    return 'https://t.me/$botUsername?start=start';
+    return _groupTemplates.groupWelcome(
+      username: username,
+      userId: userId,
+      firstName: firstName,
+    );
   }
 
   String scheduleRefreshDone() {
-    return 'Готово! Google Docs обновил ✅\n'
-        'Обновил расписание и список тренеров.';
+    return _scheduleTemplates.scheduleRefreshDone();
   }
 
   String scheduleRefreshFailed() {
-    return 'Не получилось обновить Google Docs 😔 Использую последние сохраненные данные.';
+    return _scheduleTemplates.scheduleRefreshFailed();
   }
 
   String scheduleRefreshForbidden() {
@@ -410,11 +322,11 @@ final class MessageTemplates {
   }
 
   String scheduleDocumentLink() {
-    return 'Актуальный Google Docs:\n$scheduleDocumentUrl';
+    return _scheduleTemplates.scheduleDocumentLink();
   }
 
   String noUpcomingForBooking() {
-    return 'Пока нет ближайших мероприятий для записи 😌';
+    return _scheduleTemplates.noUpcomingForBooking();
   }
 
   String bookingCreated(TrainingBooking booking) {
@@ -1170,22 +1082,6 @@ final class MessageTemplates {
     return TelegramKeyboards.economicSummaryPeriodKeyboard();
   }
 
-  String _groupMention({
-    required String? username,
-    required int userId,
-    required String? firstName,
-  }) {
-    final normalizedUsername = username?.trim();
-    if (normalizedUsername != null && normalizedUsername.isNotEmpty) {
-      return normalizedUsername.startsWith('@') ? normalizedUsername : '@$normalizedUsername';
-    }
-    final normalizedFirstName = firstName?.trim();
-    if (normalizedFirstName != null && normalizedFirstName.isNotEmpty) {
-      return normalizedFirstName;
-    }
-    return 'tg://user?id=$userId';
-  }
-
   String _statusLabel(BookingStatus status, {TrainingBooking? booking}) {
     if (booking != null) {
       return MessageFormatters.bookingStatusLabel(booking);
@@ -1245,34 +1141,6 @@ final class MessageTemplates {
     );
   }
 
-  String _outdoorActivitiesList({
-    required String title,
-    required String icon,
-    required List<OutdoorActivityInfo> items,
-    required String emptyText,
-  }) {
-    if (items.isEmpty) {
-      return emptyText;
-    }
-    final lines = <String>[title];
-    for (var index = 0; index < items.length; index++) {
-      final item = items[index];
-      final dateLabel = MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo);
-      lines.addAll(<String>[
-        '',
-        '• $icon ${_escapeHtml(item.title)}',
-        '   🗓 Даты: $dateLabel',
-        '   📝 Описание: ${_escapeHtml(item.description)}',
-        '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',
-        if (item.price != null) '   💳 Стоимость: ${_trainingPriceLabel(item.price)}',
-      ]);
-      if (index != items.length - 1) {
-        lines.add('\n-----');
-      }
-    }
-    return lines.join('\n');
-  }
-
   String _labelWithCount(String label, int count) {
     return '$label ($count)';
   }
@@ -1283,6 +1151,14 @@ final class MessageTemplates {
       return 'Записаться: $deepLink';
     }
     return 'Чтобы записаться, открой бота в личке и нажми /start.';
+  }
+
+  String? _botDeepLink() {
+    final botUsername = _botUsername;
+    if (botUsername == null || botUsername.isEmpty) {
+      return null;
+    }
+    return 'https://t.me/$botUsername?start=start';
   }
 
   String _categoryLabel(ActivityCategory category) {
@@ -1300,16 +1176,6 @@ final class MessageTemplates {
     return 'до $participantsLimit';
   }
 
-  String _coachTitle(String coach) {
-    final normalized = coach.trim().toLowerCase();
-    final hasMultipleCoaches = normalized.contains(',') ||
-        normalized.contains(';') ||
-        normalized.contains('\n') ||
-        normalized.contains(' и ') ||
-        normalized.contains(' & ');
-    return hasMultipleCoaches ? 'Тренеры' : 'Тренер';
-  }
-
   String _participantsLimitValueLabel(int? participantsLimit) {
     if (participantsLimit == null || participantsLimit <= 0) {
       return '∞';
@@ -1319,31 +1185,6 @@ final class MessageTemplates {
 
   String _money(int amount) {
     return '$amount ₽';
-  }
-
-  String _locationLabel(TrainingInfo item) {
-    final location = _escapeHtml(item.location);
-    final url = item.locationUrl?.trim();
-    if (url == null || url.isEmpty || !_isSupportedLink(url)) {
-      return location;
-    }
-    return '<a href="${_escapeHtml(url)}">$location</a>';
-  }
-
-  bool _isSupportedLink(String value) {
-    final uri = Uri.tryParse(value);
-    if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
-      return false;
-    }
-    return uri.scheme == 'http' || uri.scheme == 'https';
-  }
-
-  String _escapeHtml(String value) {
-    return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;');
   }
 
   String? _paymentTypeLabelFromNote(String? paymentNote) {
@@ -1372,34 +1213,5 @@ final class MessageTemplates {
       return text.isEmpty ? null : text;
     }
     return paymentNote;
-  }
-
-  String _normalizeTrainerDescription(String raw) {
-    final normalized = raw.replaceAll('\r\n', '\n');
-    final rawLines = normalized.split('\n').map((line) => line.trim()).toList(growable: false);
-    if (rawLines.every((line) => line.isEmpty)) {
-      return 'Описание скоро добавим.';
-    }
-
-    final lines = <String>[];
-    var previousWasEmpty = false;
-    for (final line in rawLines) {
-      final isEmpty = line.isEmpty;
-      if (isEmpty) {
-        if (!previousWasEmpty && lines.isNotEmpty) {
-          lines.add('');
-        }
-        previousWasEmpty = true;
-        continue;
-      }
-      lines.add(line);
-      previousWasEmpty = false;
-    }
-
-    while (lines.isNotEmpty && lines.last.isEmpty) {
-      lines.removeLast();
-    }
-
-    return lines.join('\n');
   }
 }

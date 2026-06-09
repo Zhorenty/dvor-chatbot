@@ -1,4 +1,4 @@
-import 'package:dvor_chatbot/src/messages/message_templates.dart';
+import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 
 final class PrivateMessageContext {
   const PrivateMessageContext({
@@ -113,23 +113,22 @@ String? callbackToCommandText(String? callbackData) {
   if (callbackData == null) {
     return null;
   }
-  if (callbackData.startsWith(MessageTemplates.callbackApprovePaymentPrefix)) {
-    final rawId = callbackData.substring(MessageTemplates.callbackApprovePaymentPrefix.length);
+  if (callbackData.startsWith(MessageCopy.callbackApprovePaymentPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackApprovePaymentPrefix.length);
     final bookingId = int.tryParse(rawId);
     return bookingId == null ? null : '/approve_payment $bookingId';
   }
-  if (callbackData.startsWith(MessageTemplates.callbackApprovePartialPaymentPrefix)) {
-    final rawId =
-        callbackData.substring(MessageTemplates.callbackApprovePartialPaymentPrefix.length);
+  if (callbackData.startsWith(MessageCopy.callbackApprovePartialPaymentPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackApprovePartialPaymentPrefix.length);
     final bookingId = int.tryParse(rawId);
     return bookingId == null ? null : '/approve_partial_payment $bookingId';
   }
-  if (callbackData.startsWith(MessageTemplates.callbackRejectPaymentPrefix)) {
-    final rawId = callbackData.substring(MessageTemplates.callbackRejectPaymentPrefix.length);
+  if (callbackData.startsWith(MessageCopy.callbackRejectPaymentPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackRejectPaymentPrefix.length);
     final bookingId = int.tryParse(rawId);
     return bookingId == null ? null : '/reject_payment $bookingId';
   }
-  if (callbackData == MessageTemplates.callbackOpenPaymentsQueue) {
+  if (callbackData == MessageCopy.callbackOpenPaymentsQueue) {
     return '/payments_queue';
   }
   return null;

@@ -1,0 +1,46 @@
+import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
+
+final class PrivateNavigationTemplates {
+  const PrivateNavigationTemplates();
+
+  String privateWelcome() {
+    return 'Добро пожаловать в DVOR 🤝\n\n'
+        'Здесь ты можешь:\n'
+        '• посмотреть расписание,\n'
+        '• записаться на тренировку/поход/трейл,\n'
+        '• отправить подтверждение оплаты,\n'
+        '• управлять своими записями.\n\n'
+        'С чего начать:\n'
+        '1) Нажми «${MessageCopy.buttonTrainings}» и выбери категорию.\n'
+        '2) Нажми «${MessageCopy.buttonBookTraining}» и выбери событие.\n'
+        '3) После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека.\n\n'
+        'Если нужна подсказка, нажми «${MessageCopy.buttonHelp}».';
+  }
+
+  String starterBonusOnboardingOffer() {
+    return '🎁 Тебе доступна бесплатная тренировка за старт!\n\n'
+        'Нажми «${MessageCopy.buttonBookTraining}», выбери тренировку и в подтверждении записи '
+        'используй кнопку «${MessageCopy.buttonUseStarterBonus}».';
+  }
+
+  String privateHelp() {
+    return 'Вот чем я могу помочь 👇\n'
+        '• Показываю ближайшие тренировки, походы и трейлы 📅\n'
+        '• Показываю список тренеров и контакты штаба 🧑‍🏫\n'
+        '• Помогаю записаться на выбранное мероприятие ✍️\n'
+        '• Напоминаю про систему лояльности: каждая 5-я тренировка бесплатная 🎁\n'
+        '• Показываю твои записи и текущие статусы 🗂\n'
+        '• Принимаю файл с подтверждением оплаты и передаю его на проверку 💸\n'
+        '• Напоминаю об оплате, если она еще не подтверждена ⏰\n\n'
+        'По остальным вопросам пиши в поддержку: @dvor_support 💬\n\n'
+        'Если кнопки вдруг пропали, используй команды:\n'
+        '/trainings, /book, /my_bookings, /coaches.';
+  }
+
+  String privateFallback() {
+    return 'Пока не понял сообщение 🤔\n'
+        'Используй кнопки меню ниже.\n'
+        'Если запутался в шаге записи, нажми «${MessageCopy.buttonMainMenu}» '
+        'или «${MessageCopy.buttonHelp}».';
+  }
+}

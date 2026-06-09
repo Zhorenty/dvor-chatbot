@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
+import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
 import 'package:dvor_chatbot/src/application/payment_review_service.dart';
@@ -8,6 +9,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private/booking_handler.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/payment_handler.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_context.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_flow_store.dart';
+import 'package:dvor_chatbot/src/bot/handlers/private/private_static_commands.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_update_router.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
@@ -67,6 +69,8 @@ final class PrivateHandlers {
       ActivityCatalogService(scheduleRepository: _scheduleRepository);
   late final ScheduleQueryService _scheduleQueryService =
       ScheduleQueryService(catalogService: _catalogService, templates: _templates);
+  late final BookingPolicyService _bookingPolicyService =
+      BookingPolicyService(catalogService: _catalogService);
   late final PaymentReviewService _paymentReviewService =
       PaymentReviewService(bookingRepository: _bookingRepository, catalogService: _catalogService);
   late final EconomicSummaryService _economicSummaryService = EconomicSummaryService(
@@ -78,6 +82,7 @@ final class PrivateHandlers {
   final BookingHandler _bookingHandler = const BookingHandler();
   final PaymentHandler _paymentHandler = const PaymentHandler();
   final AdminHandler _adminHandler = const AdminHandler();
+  final PrivateStaticCommands _staticCommands = const PrivateStaticCommands();
 
   Future<bool> handle(Map<String, dynamic> update) async {
     final context = extractPrivateMessageContext(update);
@@ -111,91 +116,22 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text != null && text.startsWith('/start')) {
-      var starterBonusAvailable = false;
-      if (userId != null) {
-        _flowByUserId.remove(userId);
-        await _handleStartCleanup(userId);
-        starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
-        await _maybeNotifyEveryFifthRewardUnlocked(
-          userId: userId,
-          chatId: chatId,
-          username: context.from?['username']?.toString(),
-        );
-      }
-      final welcomeMessageId = await _sender.sendMessage(
-        chatId,
-        _templates.privateWelcome(),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-      );
-      await _tryPinWelcomeMessage(chatId: chatId, messageId: welcomeMessageId);
-      if (starterBonusAvailable) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.starterBonusOnboardingOffer(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-        );
-      }
-      return true;
-    }
-
-    if (text != null &&
-        (text.startsWith('/trainings') || text == MessageTemplates.buttonTrainings)) {
-      if (userId == null) {
-        return false;
-      }
-      _flowByUserId[userId] = const _PrivateFlowState(
-        step: _PrivateFlowStep.selectingScheduleCategory,
-        availableTrainings: <TrainingInfo>[],
-      );
-      await _sender.sendMessage(
-        chatId,
-        _templates.chooseScheduleCategory(),
-        replyMarkup: _templates.categorySelectionKeyboard(),
-      );
-      return true;
-    }
-
-    if (text != null &&
-        (text.startsWith('/coaches') || text == MessageTemplates.buttonCoachingStaff)) {
-      if (userId != null) {
-        _flowByUserId.remove(userId);
-      }
-      final refreshOk = await _trainerDirectoryRepository.refresh();
-      if (!refreshOk) {
-        l.w('Trainer directory refresh failed. Using cached trainers list.');
-      }
-      final trainers = _trainerDirectoryRepository.list(limit: 30);
-      await _sender.sendMessage(
-        chatId,
-        _templates.coachingStaff(trainers),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-      );
-      return true;
-    }
-
-    if (text == MessageTemplates.buttonHelp) {
-      if (userId != null) {
-        _flowByUserId.remove(userId);
-      }
-      await _sender.sendMessage(
-        chatId,
-        _templates.privateHelp(),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-      );
-      return true;
-    }
-
-    if (text == MessageTemplates.buttonMainMenu) {
-      if (userId == null) {
-        return false;
-      }
-      _flowByUserId.remove(userId);
-      await _sender.sendMessage(
-        chatId,
-        'Главное меню 👇',
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-      );
+    final handledStaticCommand = await _staticCommands.handle(
+      text: text,
+      chatId: chatId,
+      userId: userId,
+      isAdmin: isAdmin,
+      flowByUserId: _flowByUserId,
+      trainerDirectoryRepository: _trainerDirectoryRepository,
+      onboardingRepository: _onboardingRepository,
+      sender: _sender,
+      templates: _templates,
+      onStartCleanup: _handleStartCleanup,
+      onEveryFifthUnlocked: _maybeNotifyEveryFifthRewardUnlocked,
+      onPinWelcomeMessage: _tryPinWelcomeMessage,
+      username: context.from?['username']?.toString(),
+    );
+    if (handledStaticCommand) {
       return true;
     }
 
@@ -2384,14 +2320,14 @@ final class PrivateHandlers {
   }
 
   bool _isOutdoorCategory(_ActivityCategory category) {
-    return category == _ActivityCategory.hikes || category == _ActivityCategory.trails;
+    return _bookingPolicyService.isOutdoorCategory(category);
   }
 
   Map<String, Object?> _bookingActionsKeyboard(TrainingBooking booking) {
-    final category = _catalogService.categoryForBooking(booking);
+    final category = _bookingPolicyService.categoryForBooking(booking);
     return _templates.bookingActionsKeyboard(
-      canReschedule: category == _ActivityCategory.trainings,
-      canCancel: _isOutdoorCategory(category),
+      canReschedule: _bookingPolicyService.canReschedule(booking),
+      canCancel: _bookingPolicyService.isOutdoorCategory(category),
       canRepeat: true,
     );
   }
@@ -2800,7 +2736,7 @@ final class PrivateHandlers {
   }
 
   bool _shouldShowOutdoorPaymentTypeChoice(TrainingBooking booking) {
-    return _isOutdoorCategory(_catalogService.categoryForBooking(booking));
+    return _bookingPolicyService.shouldShowOutdoorPaymentTypeChoice(booking);
   }
 
   String? _composePaymentNote({
@@ -2873,11 +2809,7 @@ final class PrivateHandlers {
   }
 
   bool _canCancelBookingByPolicy(TrainingBooking booking) {
-    final category = _catalogService.categoryForBooking(booking);
-    if (!_isOutdoorCategory(category)) {
-      return false;
-    }
-    return booking.startsAt.difference(_nowProvider()) >= const Duration(days: 7);
+    return _bookingPolicyService.canCancel(booking, now: _nowProvider());
   }
 
   _EconomicSummaryRange? _parseEconomicSummaryRangeCommand(String text) {
