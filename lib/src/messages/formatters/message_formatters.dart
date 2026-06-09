@@ -34,7 +34,8 @@ final class MessageFormatters {
     if (booking.paymentNote == everyFifthBonusPaymentNoteMarker) {
       return 'Бесплатно: каждая 5-я тренировка 🎁';
     }
-    if ((booking.trainingPrice ?? 0) <= 0) {
+    final price = booking.trainingPrice;
+    if (price != null && price <= 0) {
       return 'Бесплатно';
     }
     return statusLabel(booking.status);

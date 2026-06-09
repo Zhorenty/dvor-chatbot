@@ -34,6 +34,15 @@ void main() {
         'Бесплатно: каждая 5-я тренировка 🎁',
       );
     });
+
+    test('keeps paid label when price is unknown', () {
+      final paidUnknownPrice = fakeBooking(
+        status: BookingStatus.paid,
+        trainingPrice: null,
+      );
+
+      expect(MessageFormatters.bookingStatusLabel(paidUnknownPrice), 'Оплачено ✅');
+    });
   });
 
   test('myBookings uses booking-aware status labels', () {
