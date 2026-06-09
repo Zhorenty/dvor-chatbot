@@ -64,16 +64,30 @@ final class EconomicSummaryService {
     );
     var paidBookingsCount = 0;
     var freeBookingsCount = 0;
+    var regularFreeBookingsCount = 0;
+    var starterFreeBookingsCount = 0;
+    var everyFifthFreeBookingsCount = 0;
     var unknownPriceBookingsCount = 0;
     var totalRevenue = 0;
     final byCategory = <ActivityCategory, _MutableStats>{};
     final byEvent = <String, _MutableStats>{};
 
     for (final booking in paid) {
-      final isBonus = MessageFormatters.isBonusPaymentNote(booking.paymentNote);
+      final paymentNote = booking.paymentNote;
       final price = booking.trainingPrice;
-      if (isBonus || (price != null && price <= 0)) {
+      if (paymentNote == MessageFormatters.starterBonusPaymentNoteMarker) {
         freeBookingsCount++;
+        starterFreeBookingsCount++;
+        continue;
+      }
+      if (paymentNote == MessageFormatters.everyFifthBonusPaymentNoteMarker) {
+        freeBookingsCount++;
+        everyFifthFreeBookingsCount++;
+        continue;
+      }
+      if (price != null && price <= 0) {
+        freeBookingsCount++;
+        regularFreeBookingsCount++;
         continue;
       }
       if (price == null) {
@@ -112,6 +126,9 @@ final class EconomicSummaryService {
       period: period,
       paidBookingsCount: paidBookingsCount,
       freeBookingsCount: freeBookingsCount,
+      regularFreeBookingsCount: regularFreeBookingsCount,
+      starterFreeBookingsCount: starterFreeBookingsCount,
+      everyFifthFreeBookingsCount: everyFifthFreeBookingsCount,
       unknownPriceBookingsCount: unknownPriceBookingsCount,
       totalRevenue: totalRevenue,
       averageCheck: paidBookingsCount == 0 ? 0 : (totalRevenue / paidBookingsCount).round(),

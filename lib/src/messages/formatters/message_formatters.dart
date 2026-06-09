@@ -20,10 +20,22 @@ final class MessageFormatters {
   }
 
   static String participantStatusLabel(TrainingBooking booking) {
-    if (booking.status == BookingStatus.paid &&
-        (booking.paymentNote == starterBonusPaymentNoteMarker ||
-            booking.paymentNote == everyFifthBonusPaymentNoteMarker)) {
-      return 'Бесплатная тренировка 🎁';
+    return bookingStatusLabel(booking);
+  }
+
+  static String bookingStatusLabel(TrainingBooking booking) {
+    if (booking.status != BookingStatus.paid) {
+      return statusLabel(booking.status);
+    }
+
+    if (booking.paymentNote == starterBonusPaymentNoteMarker) {
+      return 'Бесплатно: стартовая тренировка 🎁';
+    }
+    if (booking.paymentNote == everyFifthBonusPaymentNoteMarker) {
+      return 'Бесплатно: каждая 5-я тренировка 🎁';
+    }
+    if ((booking.trainingPrice ?? 0) <= 0) {
+      return 'Бесплатно';
     }
     return statusLabel(booking.status);
   }

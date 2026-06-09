@@ -790,7 +790,7 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -1001612).text;
       expect(adminMessage, contains('новая бесплатная запись'));
-      expect(adminMessage, contains('Статус: Оплачено'));
+      expect(adminMessage, contains('Статус: Бесплатно'));
     });
 
     test('shows starter bonus button and applies free training once', () async {
@@ -842,7 +842,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages.last.text, contains('Бесплатная тренировка активирована'));
-      expect(sender.messages.last.text, contains('Статус: Оплачено'));
+      expect(sender.messages.last.text, contains('Статус: Бесплатно: стартовая тренировка 🎁'));
     });
 
     test('sends admin notification for starter bonus booking', () async {
@@ -1861,7 +1861,10 @@ void main() {
       expect(sender.messages.last.text, contains('Список записавшихся'));
       expect(sender.messages.last.text, contains('👥 Участники: 2/∞'));
       expect(sender.messages.last.text, contains('@runner_one'));
-      expect(sender.messages.last.text, contains('@runner_bonus (Бесплатная тренировка 🎁)'));
+      expect(
+        sender.messages.last.text,
+        contains('@runner_bonus (Бесплатно: стартовая тренировка 🎁)'),
+      );
       expect(sender.messages.last.text, isNot(contains('@runner_rejected')));
     });
 

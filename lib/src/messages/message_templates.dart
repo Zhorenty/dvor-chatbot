@@ -232,7 +232,7 @@ final class MessageTemplates {
     for (final booking in bookings) {
       final username = _userTag(booking);
       lines.add(
-        '#${booking.id} | $username | ${_statusLabel(booking.status)} | ${formatter.format(booking.startsAt)}',
+        '#${booking.id} | $username | ${_statusLabel(booking.status, booking: booking)} | ${formatter.format(booking.startsAt)}',
       );
     }
     return lines.join('\n');
@@ -244,7 +244,7 @@ final class MessageTemplates {
         'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
         'Событие: ${booking.trainingTitle}\n'
         'Дата: ${formatter.format(booking.startsAt)}\n'
-        'Статус: ${_statusLabel(booking.status)}\n\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}\n\n'
         'Выбери действие 👇';
   }
 
@@ -278,7 +278,7 @@ final class MessageTemplates {
   }
 
   String adminBookingPaymentStatusUpdated(TrainingBooking booking) {
-    return 'Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)} ✅';
+    return 'Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status, booking: booking)} ✅';
   }
 
   String adminBookingDeleteConfirm(TrainingBooking booking) {
@@ -415,7 +415,7 @@ final class MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Отлично, записал тебя! ✅\n'
-        'Статус: ${_statusLabel(booking.status)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
         'Номер записи: ${booking.id}\n'
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
@@ -431,7 +431,7 @@ final class MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Отлично, записал тебя! ✅\n'
-        'Статус: ${_statusLabel(booking.status)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
         'Номер записи: ${booking.id}\n'
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
@@ -444,14 +444,14 @@ final class MessageTemplates {
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Ты уже записан(а) на эту тренировку 👌\n'
         'Номер записи: ${booking.id}\n'
-        'Текущий статус: ${_statusLabel(booking.status)}\n'
+        'Текущий статус: ${_statusLabel(booking.status, booking: booking)}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
   }
 
   String paymentSubmitted(TrainingBooking booking) {
     return 'Супер, файл с подтверждением оплаты отправил администратору ✅\n'
         'Номер записи: ${booking.id}\n'
-        'Статус: ${_statusLabel(booking.status)}.\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
         'Следующий шаг: дождись результата модерации, бот сообщит автоматически.';
   }
 
@@ -468,7 +468,7 @@ final class MessageTemplates {
         'Запись: #${booking.id}\n'
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
-        'Статус: ${_statusLabel(booking.status)}';
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
   }
 
   String starterBonusUnavailable() {
@@ -481,7 +481,7 @@ final class MessageTemplates {
         'Запись: #${booking.id}\n'
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
-        'Статус: ${_statusLabel(booking.status)}';
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
   }
 
   String everyFifthBonusUnlockedUser({
@@ -558,7 +558,7 @@ final class MessageTemplates {
         lines.add(
           '\n• #${booking.id} ${booking.trainingTitle}\n'
           '🕒 Когда: ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-          'Статус: ${_statusLabel(booking.status)}',
+          'Статус: ${_statusLabel(booking.status, booking: booking)}',
         );
       }
     }
@@ -569,7 +569,7 @@ final class MessageTemplates {
         lines.add(
           '\n• #${booking.id} ${booking.trainingTitle}\n'
           '🕒 Когда: ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-          'Статус: ${_statusLabel(booking.status)}',
+          'Статус: ${_statusLabel(booking.status, booking: booking)}',
         );
       }
     }
@@ -656,7 +656,7 @@ final class MessageTemplates {
     return 'Запись #${booking.id} отменена ✅\n'
         '${booking.trainingTitle}\n'
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        'Статус: ${_statusLabel(booking.status)}';
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
   }
 
   String outdoorCancellationTooLate(TrainingBooking booking) {
@@ -762,7 +762,7 @@ final class MessageTemplates {
     final nextStep = remaining > 0
         ? 'Осталось на проверке: $remaining. Нажми «${MessageCopy.buttonPaymentsQueue}», чтобы открыть следующую заявку.'
         : 'Очередь заявок пуста. Можно вернуться в меню.';
-    return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)} ✅\n'
+    return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status, booking: booking)} ✅\n'
         '$nextStep';
   }
 
@@ -781,7 +781,7 @@ final class MessageTemplates {
   }
 
   String bookingStatusUpdated(TrainingBooking booking) {
-    return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status)} ✅';
+    return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status, booking: booking)} ✅';
   }
 
   String paymentAlreadyReviewed(int bookingId) {
@@ -803,7 +803,7 @@ final class MessageTemplates {
   String paymentApprovedForUser(TrainingBooking booking) {
     if (!MessageFormatters.isOutdoorBooking(booking)) {
       return 'Оплату по записи #${booking.id} подтвердили ✅\n'
-          'Статус: ${_statusLabel(booking.status)}.\n'
+          'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
           'Спасибо!';
     }
 
@@ -818,7 +818,7 @@ final class MessageTemplates {
 
   String paymentRejectedForUser(TrainingBooking booking) {
     return 'Оплату по записи #${booking.id} отклонили ❌\n'
-        'Статус: ${_statusLabel(booking.status)}.\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
         'Проверь детали платежа и отправь подтверждение еще раз.\n'
         'Если нужен комментарий по отклонению, напиши администратору клуба.';
   }
@@ -831,7 +831,7 @@ final class MessageTemplates {
     return 'Модерация оплаты выполнена 🧾\n'
         'Запись: #${booking.id}\n'
         'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
-        'Статус: ${_statusLabel(booking.status)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
         'Проверил админ: ${_userTagById(moderatorUserId, username: moderatorUsername)} ($moderatorUserId)\n'
         'Дальше: при необходимости открой очередь и проверь следующую заявку.';
   }
@@ -868,7 +868,7 @@ final class MessageTemplates {
         'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
         'Событие: ${booking.trainingTitle}\n'
         'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        'Статус: ${_statusLabel(booking.status)}';
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
   }
 
   String pendingPaymentReminder(TrainingBooking booking) {
@@ -877,7 +877,7 @@ final class MessageTemplates {
     return 'Напоминание об оплате 💸\n'
         'Запись: #${booking.id}\n'
         '${booking.trainingTitle} (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)})\n'
-        'Текущий статус: ${_statusLabel(booking.status)}\n\n'
+        'Текущий статус: ${_statusLabel(booking.status, booking: booking)}\n\n'
         '${paymentInstructions(booking.id)}\n\n'
         'После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь в этот чат файл с подтверждением (чек/скрин).\n'
         'Если кнопка не сработала, открой «${MessageCopy.buttonMyBookings}» и выбери нужную запись.';
@@ -979,6 +979,12 @@ final class MessageTemplates {
       '• Платных бронирований: ${summary.paidBookingsCount}',
       '• Средний чек: ${_money(summary.averageCheck)}',
       if (summary.freeBookingsCount > 0) '• Бесплатных бронирований: ${summary.freeBookingsCount}',
+      if (summary.regularFreeBookingsCount > 0)
+        '• Бесплатные по цене мероприятия: ${summary.regularFreeBookingsCount}',
+      if (summary.starterFreeBookingsCount > 0)
+        '• Бесплатные стартовые: ${summary.starterFreeBookingsCount}',
+      if (summary.everyFifthFreeBookingsCount > 0)
+        '• Бесплатные по правилу «каждая 5-я»: ${summary.everyFifthFreeBookingsCount}',
       if (summary.unknownPriceBookingsCount > 0)
         '• Без цены в данных: ${summary.unknownPriceBookingsCount}',
       '',
@@ -1120,7 +1126,10 @@ final class MessageTemplates {
     return 'tg://user?id=$userId';
   }
 
-  String _statusLabel(BookingStatus status) {
+  String _statusLabel(BookingStatus status, {TrainingBooking? booking}) {
+    if (booking != null) {
+      return MessageFormatters.bookingStatusLabel(booking);
+    }
     return MessageFormatters.statusLabel(status);
   }
 

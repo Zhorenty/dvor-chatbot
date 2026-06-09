@@ -62,6 +62,9 @@ void main() {
     expect(summary.totalRevenue, 3200);
     expect(summary.paidBookingsCount, 2);
     expect(summary.freeBookingsCount, 1);
+    expect(summary.regularFreeBookingsCount, 0);
+    expect(summary.starterFreeBookingsCount, 0);
+    expect(summary.everyFifthFreeBookingsCount, 1);
     expect(summary.unknownPriceBookingsCount, 1);
     expect(summary.averageCheck, 1600);
     expect(summary.byCategory, hasLength(2));

@@ -43,6 +43,9 @@ final class EconomicSummary {
     required this.period,
     required this.paidBookingsCount,
     required this.freeBookingsCount,
+    required this.regularFreeBookingsCount,
+    required this.starterFreeBookingsCount,
+    required this.everyFifthFreeBookingsCount,
     required this.unknownPriceBookingsCount,
     required this.totalRevenue,
     required this.averageCheck,
@@ -53,6 +56,9 @@ final class EconomicSummary {
   final EconomicSummaryPeriod period;
   final int paidBookingsCount;
   final int freeBookingsCount;
+  final int regularFreeBookingsCount;
+  final int starterFreeBookingsCount;
+  final int everyFifthFreeBookingsCount;
   final int unknownPriceBookingsCount;
   final int totalRevenue;
   final int averageCheck;
