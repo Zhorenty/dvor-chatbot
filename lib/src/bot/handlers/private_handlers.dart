@@ -26,6 +26,7 @@ import 'package:l/l.dart';
 final class PrivateHandlers {
   static const String _paymentChoiceFullMarker = '__payment_choice_full__';
   static const String _paymentChoicePartialMarker = '__payment_choice_partial__';
+  static const int _adminBookingsPageSize = 8;
 
   PrivateHandlers({
     required MessageSender sender,
@@ -319,6 +320,7 @@ final class PrivateHandlers {
             step: _PrivateFlowStep.selectingAdminBookingListCategory,
             availableBookings: const <TrainingBooking>[],
             selectedBooking: null,
+            adminBookingsPage: 0,
           );
           await _sender.sendMessage(
             chatId,
@@ -327,20 +329,11 @@ final class PrivateHandlers {
           );
           return true;
         case _PrivateFlowStep.selectingAdminBookingAction:
-          final bookings = flowState!.availableBookings;
-          _flowByUserId[userId] = flowState.copyWith(
+          _flowByUserId[userId] = flowState!.copyWith(
             step: _PrivateFlowStep.selectingAdminBookingFromList,
             selectedBooking: null,
           );
-          await _sender.sendMessage(
-            chatId,
-            _templates.chooseAdminBookingFromList(
-              bookings,
-              archived: flowState.adminViewingArchived,
-              category: flowState.selectedCategory,
-            ),
-            replyMarkup: _templates.bookingManagementSelectionKeyboard(bookings),
-          );
+          await _sendAdminBookingListPage(chatId: chatId, userId: userId);
           return true;
         case _PrivateFlowStep.selectingAdminBookingEditField:
           final selectedBooking = flowState?.selectedBooking;
@@ -1240,20 +1233,6 @@ final class PrivateHandlers {
     }
 
     if (text != null &&
-        (text == MessageTemplates.buttonAdminSummary || text.startsWith('/admin_summary'))) {
-      if (!canRunAdminAction) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-        );
-        return true;
-      }
-      await _sendAdminSummary(chatId: chatId, isAdmin: isAdmin);
-      return true;
-    }
-
-    if (text != null &&
         (text == MessageTemplates.buttonEconomicSummary || text.startsWith('/economic_summary'))) {
       if (!canRunAdminAction) {
         await _sender.sendMessage(
@@ -1442,18 +1421,9 @@ final class PrivateHandlers {
         selectedCategory: category,
         availableBookings: bookings,
         selectedBooking: null,
+        adminBookingsPage: 0,
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.chooseAdminBookingFromList(
-          bookings,
-          archived: archived,
-          category: category,
-        ),
-        replyMarkup: bookings.isEmpty
-            ? _templates.adminBookingManagementKeyboard()
-            : _templates.bookingManagementSelectionKeyboard(bookings),
-      );
+      await _sendAdminBookingListPage(chatId: chatId, userId: userId);
       return true;
     }
 
@@ -1461,6 +1431,20 @@ final class PrivateHandlers {
         flowState?.step == _PrivateFlowStep.selectingAdminBookingFromList &&
         text != null &&
         !text.startsWith('/')) {
+      if (text == MessageTemplates.buttonBookingsNextPage) {
+        _flowByUserId[userId] = flowState!.copyWith(
+          adminBookingsPage: flowState.adminBookingsPage + 1,
+        );
+        await _sendAdminBookingListPage(chatId: chatId, userId: userId);
+        return true;
+      }
+      if (text == MessageTemplates.buttonBookingsPreviousPage) {
+        _flowByUserId[userId] = flowState!.copyWith(
+          adminBookingsPage: flowState.adminBookingsPage - 1,
+        );
+        await _sendAdminBookingListPage(chatId: chatId, userId: userId);
+        return true;
+      }
       final selectedBookingId = _parseBookingSelectionId(text);
       final bookings = flowState?.availableBookings ?? const <TrainingBooking>[];
       TrainingBooking? selectedBooking;
@@ -1471,17 +1455,7 @@ final class PrivateHandlers {
         }
       }
       if (selectedBooking == null) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.chooseAdminBookingFromList(
-            bookings,
-            archived: flowState?.adminViewingArchived ?? false,
-            category: flowState?.selectedCategory,
-          ),
-          replyMarkup: bookings.isEmpty
-              ? _templates.adminBookingManagementKeyboard()
-              : _templates.bookingManagementSelectionKeyboard(bookings),
-        );
+        await _sendAdminBookingListPage(chatId: chatId, userId: userId);
         return true;
       }
       _flowByUserId[userId] = flowState!.copyWith(
@@ -2236,32 +2210,6 @@ final class PrivateHandlers {
     );
   }
 
-  Future<void> _sendAdminSummary({
-    required int chatId,
-    required bool isAdmin,
-  }) async {
-    final queue = await _paymentReviewService.queueCounters();
-    final segmentCounts = await _bookingRepository.adminCountBySegment();
-    final trainings = _bookableItemsByCategory(_ActivityCategory.trainings);
-    final hikes = _bookableItemsByCategory(_ActivityCategory.hikes);
-    final trails = _bookableItemsByCategory(_ActivityCategory.trails);
-    await _sender.sendMessage(
-      chatId,
-      _templates.adminSummary(
-        queueTotal: queue.total,
-        queueTrainings: queue.trainings,
-        queueHikes: queue.hikes,
-        queueTrails: queue.trails,
-        activeBookings: segmentCounts.active,
-        archivedBookings: segmentCounts.archived,
-        upcomingTrainings: trainings.length,
-        upcomingHikes: hikes.length,
-        upcomingTrails: trails.length,
-      ),
-      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-    );
-  }
-
   Future<void> _sendEconomicSummary({
     required int chatId,
     required bool isAdmin,
@@ -2391,6 +2339,48 @@ final class PrivateHandlers {
         archivedCount: counters.archived,
       ),
     );
+  }
+
+  Future<void> _sendAdminBookingListPage({
+    required int chatId,
+    required int userId,
+  }) async {
+    final flowState = _flowByUserId[userId];
+    if (flowState == null || flowState.step != _PrivateFlowStep.selectingAdminBookingFromList) {
+      return;
+    }
+    final allBookings = flowState.availableBookings;
+    final maxPage = _maxAdminBookingsPage(allBookings);
+    final page = flowState.adminBookingsPage.clamp(0, maxPage);
+    final start = page * _adminBookingsPageSize;
+    final end = (start + _adminBookingsPageSize).clamp(0, allBookings.length);
+    final pageBookings = allBookings.sublist(start, end);
+    _flowByUserId[userId] = flowState.copyWith(adminBookingsPage: page);
+    await _sender.sendMessage(
+      chatId,
+      _templates.chooseAdminBookingFromList(
+        pageBookings,
+        archived: flowState.adminViewingArchived,
+        category: flowState.selectedCategory,
+        page: page + 1,
+        totalPages: maxPage + 1,
+        totalCount: allBookings.length,
+      ),
+      replyMarkup: allBookings.isEmpty
+          ? _templates.adminBookingManagementKeyboard()
+          : _templates.adminBookingSelectionKeyboard(
+              pageBookings,
+              hasPreviousPage: page > 0,
+              hasNextPage: page < maxPage,
+            ),
+    );
+  }
+
+  int _maxAdminBookingsPage(List<TrainingBooking> bookings) {
+    if (bookings.isEmpty) {
+      return 0;
+    }
+    return (bookings.length - 1) ~/ _adminBookingsPageSize;
   }
 
   bool _isOutdoorCategory(_ActivityCategory category) {

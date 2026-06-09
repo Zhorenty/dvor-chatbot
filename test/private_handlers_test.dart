@@ -157,7 +157,6 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonRefreshSchedule));
       expect(buttons, contains(MessageTemplates.buttonPaymentsQueue));
-      expect(buttons, contains(MessageTemplates.buttonAdminSummary));
       expect(buttons, contains(MessageTemplates.buttonEconomicSummary));
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
       expect(buttons, contains(MessageTemplates.buttonNoblesList));
@@ -509,7 +508,7 @@ void main() {
       expect(handled, isTrue);
       expect(repository.refreshCalls, 1);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages.first.text, contains('Расписание обновил'));
+      expect(sender.messages.first.text, contains('Google Docs обновил'));
       expect(sender.messages.last.text, contains(MessageTemplates.scheduleDocumentUrl));
     });
 
@@ -2401,6 +2400,71 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonCreateBooking));
     });
 
+    test('paginates admin bookings list in management flow', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..adminSegmentCounts = (active: 9, archived: 0)
+        ..adminBookings = List<TrainingBooking>.generate(
+          9,
+          (index) => _booking(
+            id: 601 + index,
+            userId: 9601 + index,
+            title: 'Morning Run ${index + 1}',
+            startsAt: DateTime(2026, 10, 1 + index, 10, 0),
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2305},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2305},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2305},
+        'text': MessageTemplates.buttonBookingsList,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2305},
+        'text': '${MessageTemplates.buttonActiveBookings} (9)',
+      });
+      final firstPageHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2305},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+
+      expect(firstPageHandled, isTrue);
+      expect(sender.messages.last.text, contains('Страница 1/2'));
+      final firstPageButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(firstPageButtons, contains('🧾 #601 Morning Run 1'));
+      expect(firstPageButtons, contains('🧾 #608 Morning Run 8'));
+      expect(firstPageButtons, isNot(contains('🧾 #609 Morning Run 9')));
+      expect(firstPageButtons, contains(MessageTemplates.buttonBookingsNextPage));
+      expect(firstPageButtons, isNot(contains(MessageTemplates.buttonBookingsPreviousPage)));
+
+      final secondPageHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2305},
+        'text': MessageTemplates.buttonBookingsNextPage,
+      });
+
+      expect(secondPageHandled, isTrue);
+      expect(sender.messages.last.text, contains('Страница 2/2'));
+      final secondPageButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(secondPageButtons, contains('🧾 #609 Morning Run 9'));
+      expect(secondPageButtons, contains(MessageTemplates.buttonBookingsPreviousPage));
+      expect(secondPageButtons, isNot(contains(MessageTemplates.buttonBookingsNextPage)));
+    });
+
     test('archives selected booking from admin management flow', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
@@ -2948,56 +3012,6 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages.last.text, contains('Шаг 2/3: выбери мероприятие для записи'));
       expect(sender.messages.last.text, contains('🥾 Поход: Архыз выходные'));
-    });
-
-    test('shows admin operational summary', () async {
-      final sender = _FakeSender();
-      final bookingRepository = _FakeBookingRepository()
-        ..queue = <TrainingBooking>[
-          _booking(id: 1001, status: BookingStatus.paymentSubmitted),
-          _booking(
-            id: 1002,
-            status: BookingStatus.paymentSubmitted,
-            title: '🥾 Поход: Псебай',
-          ),
-        ]
-        ..adminSegmentCounts = (active: 7, archived: 3);
-      final handlers = PrivateHandlers(
-        sender: sender,
-        scheduleRepository: _FakeScheduleRepository(
-          <TrainingInfo>[
-            TrainingInfo(
-              title: 'Speed',
-              startsAt: DateTime(2026, 11, 1, 19, 0),
-              location: 'Hall',
-            ),
-          ],
-          outdoorItems: <OutdoorActivityInfo>[
-            OutdoorActivityInfo(
-              type: OutdoorActivityType.hike,
-              title: 'Псебай',
-              dateFrom: DateTime(2026, 11, 5),
-              dateTo: DateTime(2026, 11, 6),
-              description: 'Маршрут',
-            ),
-          ],
-        ),
-        bookingRepository: bookingRepository,
-        templates: const MessageTemplates(),
-        adminUserIds: const <int>{4901},
-      );
-
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 4901, 'type': 'private'},
-        'from': <String, dynamic>{'id': 4901},
-        'text': MessageTemplates.buttonAdminSummary,
-      });
-
-      expect(handled, isTrue);
-      expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.text, contains('Оперативная сводка'));
-      expect(sender.messages.single.text, contains('Очередь оплат'));
-      expect(sender.messages.single.text, contains('Активные: 7'));
     });
 
     test('opens and sends economic summary by selected period', () async {

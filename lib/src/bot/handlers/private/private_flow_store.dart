@@ -54,6 +54,7 @@ final class PrivateFlowState {
     this.adminCreateUsername,
     this.adminCreateTraining,
     this.paymentChoice,
+    this.adminBookingsPage = 0,
   });
 
   final PrivateFlowStep step;
@@ -69,6 +70,7 @@ final class PrivateFlowState {
   final String? adminCreateUsername;
   final TrainingInfo? adminCreateTraining;
   final PaymentChoice? paymentChoice;
+  final int adminBookingsPage;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -84,6 +86,7 @@ final class PrivateFlowState {
     Object? adminCreateUsername = _privateFlowUnset,
     Object? adminCreateTraining = _privateFlowUnset,
     Object? paymentChoice = _privateFlowUnset,
+    int? adminBookingsPage,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -113,6 +116,7 @@ final class PrivateFlowState {
       paymentChoice: identical(paymentChoice, _privateFlowUnset)
           ? this.paymentChoice
           : paymentChoice as PaymentChoice?,
+      adminBookingsPage: adminBookingsPage ?? this.adminBookingsPage,
     );
   }
 }

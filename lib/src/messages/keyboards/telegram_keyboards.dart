@@ -22,15 +22,12 @@ final class TelegramKeyboards {
             <String, String>{'text': MessageCopy.buttonPaymentsQueue},
           ],
           <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonAdminSummary},
+            <String, String>{'text': MessageCopy.buttonManageBookings},
             <String, String>{'text': MessageCopy.buttonParticipantsList},
           ],
           <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonEconomicSummary},
             <String, String>{'text': MessageCopy.buttonNoblesList},
-          ],
-          <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonManageBookings},
           ],
         ],
       );
@@ -169,6 +166,38 @@ final class TelegramKeyboards {
           <String, String>{'text': '🧾 #${booking.id} ${booking.trainingTitle}'},
         ],
       );
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonBack},
+        <String, String>{'text': MessageCopy.buttonMainMenu},
+      ],
+    );
+    return _replyKeyboard(rows);
+  }
+
+  static Map<String, Object?> adminBookingSelectionKeyboard(
+    List<TrainingBooking> bookings, {
+    required bool hasPreviousPage,
+    required bool hasNextPage,
+  }) {
+    final rows = <List<Map<String, String>>>[];
+    for (final booking in bookings) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': '🧾 #${booking.id} ${booking.trainingTitle}'},
+        ],
+      );
+    }
+    if (hasPreviousPage || hasNextPage) {
+      final pageButtons = <Map<String, String>>[];
+      if (hasPreviousPage) {
+        pageButtons.add(<String, String>{'text': MessageCopy.buttonBookingsPreviousPage});
+      }
+      if (hasNextPage) {
+        pageButtons.add(<String, String>{'text': MessageCopy.buttonBookingsNextPage});
+      }
+      rows.add(pageButtons);
     }
     rows.add(
       <Map<String, String>>[

@@ -36,7 +36,6 @@ final class MessageTemplates {
   static const String buttonCategoryTrails = MessageCopy.buttonCategoryTrails;
   static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
   static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
-  static const String buttonAdminSummary = MessageCopy.buttonAdminSummary;
   static const String buttonEconomicSummary = MessageCopy.buttonEconomicSummary;
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
@@ -54,6 +53,8 @@ final class MessageTemplates {
   static const String buttonConfirmDeleteBooking = MessageCopy.buttonConfirmDeleteBooking;
   static const String buttonCancelDeleteBooking = MessageCopy.buttonCancelDeleteBooking;
   static const String buttonBackToBookingsList = MessageCopy.buttonBackToBookingsList;
+  static const String buttonBookingsPreviousPage = MessageCopy.buttonBookingsPreviousPage;
+  static const String buttonBookingsNextPage = MessageCopy.buttonBookingsNextPage;
   static const String buttonCreateAnotherBooking = MessageCopy.buttonCreateAnotherBooking;
   static const String buttonConfirmCreateBooking = MessageCopy.buttonConfirmCreateBooking;
   static const String buttonCancelCreateBooking = MessageCopy.buttonCancelCreateBooking;
@@ -220,6 +221,9 @@ final class MessageTemplates {
     List<TrainingBooking> bookings, {
     required bool archived,
     ActivityCategory? category,
+    required int page,
+    required int totalPages,
+    required int totalCount,
   }) {
     if (bookings.isEmpty) {
       final segmentLabel = archived ? 'Архивные' : 'Активные';
@@ -228,20 +232,15 @@ final class MessageTemplates {
           'Сегмент: $segmentLabel\n'
           'Категория: $categoryLabel';
     }
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final segmentLabel = archived ? 'Архивные' : 'Активные';
     final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
     final lines = <String>[
-      'Выбери запись 👇',
-      'Фильтр: Сегмент - $segmentLabel, Категория - $categoryLabel',
+      'Список записей для управления 👇',
+      'Фильтр: $segmentLabel • $categoryLabel',
+      'Страница $page/$totalPages • всего записей: $totalCount',
+      'Выбери запись кнопкой ниже.',
       'Чтобы сменить фильтры, нажми «${MessageCopy.buttonBack}».',
     ];
-    for (final booking in bookings) {
-      final username = _userTag(booking);
-      lines.add(
-        '#${booking.id} | $username | ${_statusLabel(booking.status, booking: booking)} | ${formatter.format(booking.startsAt)}',
-      );
-    }
     return lines.join('\n');
   }
 
@@ -398,12 +397,12 @@ final class MessageTemplates {
   }
 
   String scheduleRefreshDone() {
-    return 'Готово! Расписание обновил ✅\n'
-        'Источник расписания: Google Sheets/кэш.';
+    return 'Готово! Google Docs обновил ✅\n'
+        'Обновил расписание и список тренеров.';
   }
 
   String scheduleRefreshFailed() {
-    return 'Не получилось обновить расписание 😔 Использую последнюю сохраненную версию.';
+    return 'Не получилось обновить Google Docs 😔 Использую последние сохраненные данные.';
   }
 
   String scheduleRefreshForbidden() {
@@ -411,7 +410,7 @@ final class MessageTemplates {
   }
 
   String scheduleDocumentLink() {
-    return 'Актуальное расписание в Google Sheets:\n$scheduleDocumentUrl';
+    return 'Актуальный Google Docs:\n$scheduleDocumentUrl';
   }
 
   String noUpcomingForBooking() {
@@ -860,7 +859,7 @@ final class MessageTemplates {
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
-        '• Номер телефона: +7(995)122-06-15\n';
+        '• Номер телефона: +7(995)122-06-15';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
@@ -1008,32 +1007,6 @@ final class MessageTemplates {
         'Проверь заявку в личке пользователя: ${_userTag(booking)} (${booking.userId}).';
   }
 
-  String adminSummary({
-    required int queueTotal,
-    required int queueTrainings,
-    required int queueHikes,
-    required int queueTrails,
-    required int activeBookings,
-    required int archivedBookings,
-    required int upcomingTrainings,
-    required int upcomingHikes,
-    required int upcomingTrails,
-  }) {
-    return 'Оперативная сводка 📊\n\n'
-        'Очередь оплат:\n'
-        '• Всего: $queueTotal\n'
-        '• Тренировки: $queueTrainings\n'
-        '• Походы: $queueHikes\n'
-        '• Трейлы: $queueTrails\n\n'
-        'Записи:\n'
-        '• Активные: $activeBookings\n'
-        '• Архивные: $archivedBookings\n\n'
-        'Ближайшие активности в расписании:\n'
-        '• Тренировки: $upcomingTrainings\n'
-        '• Походы: $upcomingHikes\n'
-        '• Трейлы: $upcomingTrails';
-  }
-
   String economicSummary(EconomicSummary summary, {String? periodLabel}) {
     final dateFormatter = DateFormat('dd.MM.yyyy');
     final periodRange =
@@ -1122,6 +1095,18 @@ final class MessageTemplates {
 
   Map<String, Object?> bookingManagementSelectionKeyboard(List<TrainingBooking> bookings) {
     return TelegramKeyboards.bookingManagementSelectionKeyboard(bookings);
+  }
+
+  Map<String, Object?> adminBookingSelectionKeyboard(
+    List<TrainingBooking> bookings, {
+    required bool hasPreviousPage,
+    required bool hasNextPage,
+  }) {
+    return TelegramKeyboards.adminBookingSelectionKeyboard(
+      bookings,
+      hasPreviousPage: hasPreviousPage,
+      hasNextPage: hasNextPage,
+    );
   }
 
   Map<String, Object?> bookingActionsKeyboard({

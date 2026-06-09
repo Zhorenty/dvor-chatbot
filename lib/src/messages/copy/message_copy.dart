@@ -18,9 +18,8 @@ final class MessageCopy {
   static const String buttonCategoryTrainings = '🏋️ Тренировки';
   static const String buttonCategoryHikes = '🥾 Походы';
   static const String buttonCategoryTrails = '🏃 Трейлы';
-  static const String buttonRefreshSchedule = '🔄 Обновить расписание';
+  static const String buttonRefreshSchedule = '🔄 Обновить Google Docs';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
-  static const String buttonAdminSummary = '📊 Оперативная сводка';
   static const String buttonEconomicSummary = '💰 Экономическая сводка';
   static const String buttonParticipantsList = '👥 Список записавшихся';
   static const String buttonNoblesList = '🏰 Список дворян';
@@ -38,6 +37,8 @@ final class MessageCopy {
   static const String buttonConfirmDeleteBooking = '✅ Да, удалить';
   static const String buttonCancelDeleteBooking = '↩️ Не удалять';
   static const String buttonBackToBookingsList = '📋 К списку записей';
+  static const String buttonBookingsPreviousPage = '⬅️ Предыдущая страница';
+  static const String buttonBookingsNextPage = '➡️ Следующая страница';
   static const String buttonCreateAnotherBooking = '➕ Создать еще';
   static const String buttonConfirmCreateBooking = '✅ Создать';
   static const String buttonCancelCreateBooking = '↩️ Не создавать';

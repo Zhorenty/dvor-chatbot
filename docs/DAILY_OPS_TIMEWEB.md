@@ -131,8 +131,7 @@ docker logs --tail=120 dvor-chatbot
 Then verify in Telegram:
 
 - Private chat: `/start` returns welcome.
-- Admin chat: `📊 Оперативная сводка` returns metrics.
-- Admin chat: `🔄 Обновить расписание` returns success message.
+- Admin chat: `🔄 Обновить Google Docs` returns success message.
 
 ## 12) Incident: Bot Not Responding
 
@@ -158,7 +157,7 @@ docker logs --tail=200 dvor-chatbot | rg "Google Sheets|schedule"
 
 Then in Telegram:
 
-1. Press `🔄 Обновить расписание`.
+1. Press `🔄 Обновить Google Docs`.
 2. Verify that schedule in `📅 Расписание` is refreshed.
 
 ## 14) Restore from Backup
