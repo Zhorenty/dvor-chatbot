@@ -2232,13 +2232,17 @@ void main() {
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Выбери категорию для списка записавшихся'));
       expect(sender.messages.last.text, contains('Список записавшихся'));
-      expect(sender.messages.last.text, contains('👥 Участники: 3/∞'));
+      expect(sender.messages.last.text, contains('👥 Участники: 2/∞'));
       expect(sender.messages.last.text, contains('@runner_one'));
       expect(
         sender.messages.last.text,
         contains('@runner_bonus (Бесплатно: стартовая тренировка 🎁)'),
       );
-      expect(sender.messages.last.text, contains('@runner_cancelled (Отменено)'));
+      expect(sender.messages.last.text, contains('@runner_cancelled (Отменено ❌)'));
+      expect(
+        sender.messages.last.text.indexOf('@runner_cancelled'),
+        greaterThan(sender.messages.last.text.indexOf('@runner_bonus')),
+      );
       expect(sender.messages.last.text, contains('Old Run'));
       expect(sender.messages.last.text, contains('@runner_archived (Оплачено ✅)'));
       expect(sender.messages.last.text, isNot(contains('@runner_rejected')));

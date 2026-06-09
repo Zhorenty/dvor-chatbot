@@ -759,16 +759,21 @@ final class MessageTemplates {
     for (var index = 0; index < trainings.length; index++) {
       final training = trainings[index];
       final tags = bookingsByTrainingKey[training.sessionKey] ?? const <TrainingBooking>[];
+      final activeTags =
+          tags.where((booking) => booking.status != BookingStatus.cancelled).toList();
+      final cancelledTags =
+          tags.where((booking) => booking.status == BookingStatus.cancelled).toList();
+      final orderedTags = <TrainingBooking>[...activeTags, ...cancelledTags];
       lines.add(
         '\n${index + 1}. ${training.title}\n'
         '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 ${training.location}\n'
-        '👥 Участники: ${tags.length}/${_participantsLimitValueLabel(training.participantsLimit)}',
+        '👥 Участники: ${activeTags.length}/${_participantsLimitValueLabel(training.participantsLimit)}',
       );
-      if (tags.isEmpty) {
+      if (orderedTags.isEmpty) {
         lines.add('   — пока никто не записался');
       } else {
-        for (final booking in tags) {
+        for (final booking in orderedTags) {
           lines.add(
             '   • ${_userTag(booking)} (${_participantStatusLabel(booking)})',
           );

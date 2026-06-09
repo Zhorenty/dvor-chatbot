@@ -22,6 +22,9 @@ final class MessageFormatters {
   }
 
   static String participantStatusLabel(TrainingBooking booking) {
+    if (booking.status == BookingStatus.cancelled) {
+      return 'Отменено ❌';
+    }
     return bookingStatusLabel(booking);
   }
 
@@ -38,7 +41,7 @@ final class MessageFormatters {
     }
     final price = booking.trainingPrice;
     if (price != null && price <= 0) {
-      return 'Бесплатно';
+      return 'Бесплатно 🎁';
     }
     return statusLabel(booking.status);
   }
