@@ -306,6 +306,39 @@ void main() {
       await repository.close();
     });
 
+    test('blocks reschedule from free-priced booking to paid training', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final initial = await repository.createPendingBooking(
+        userId: 5005,
+        training: TrainingInfo(
+          title: 'Open class',
+          startsAt: DateTime(2030, 6, 16, 18),
+          location: 'Gym C',
+          price: 0,
+        ),
+      );
+      await repository.updateStatus(initial.booking.id, BookingStatus.paid);
+
+      final result = await repository.rescheduleBooking(
+        userId: 5005,
+        bookingId: initial.booking.id,
+        training: TrainingInfo(
+          title: 'Paid class',
+          startsAt: DateTime(2030, 6, 20, 18),
+          location: 'Gym D',
+          price: 2200,
+        ),
+      );
+
+      expect(result.outcome, BookingRescheduleOutcome.conflict);
+
+      await repository.close();
+    });
+
     test('reviews payment only from submitted status', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',
@@ -485,6 +518,39 @@ void main() {
       expect(
         bookings.where((item) => item.trainingKey == training.sessionKey).length,
         2,
+      );
+
+      await repository.close();
+    });
+
+    test('admin update rejects free status for paid training', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final created = await repository.adminCreateBooking(
+        userUsername: 'status_guard',
+        training: TrainingInfo(
+          title: 'Admin edit base',
+          startsAt: DateTime(2030, 7, 2, 19),
+          location: 'Gym A',
+          price: 0,
+        ),
+        status: BookingStatus.freeTraining,
+      );
+
+      expect(
+        () => repository.adminUpdateBooking(
+          bookingId: created.id,
+          training: TrainingInfo(
+            title: 'Admin edit paid',
+            startsAt: DateTime(2030, 7, 3, 19),
+            location: 'Gym B',
+            price: 2600,
+          ),
+        ),
+        throwsA(isA<BookingConflictException>()),
       );
 
       await repository.close();

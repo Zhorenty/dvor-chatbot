@@ -899,8 +899,7 @@ final class PrivateHandlers {
         );
         return true;
       }
-      if (selectedBooking.status == BookingStatus.freeTraining &&
-          !_isFreeActivity(targetTraining)) {
+      if (_isFreeBooking(selectedBooking) && !_isFreeActivity(targetTraining)) {
         await _sender.sendMessage(
           chatId,
           _templates.bookingRescheduleFreeToPaidNotAllowed(),
@@ -2543,6 +2542,14 @@ final class PrivateHandlers {
 
   bool _isFreeActivity(TrainingInfo training) {
     final price = training.price;
+    return price != null && price <= 0;
+  }
+
+  bool _isFreeBooking(TrainingBooking booking) {
+    if (booking.status == BookingStatus.freeTraining) {
+      return true;
+    }
+    final price = booking.trainingPrice;
     return price != null && price <= 0;
   }
 

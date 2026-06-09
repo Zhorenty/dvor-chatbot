@@ -227,6 +227,9 @@ final class SqliteBookingRepository implements BookingRepository {
     if (existing == null || existing.userId != userId) {
       return const BookingRescheduleResult(outcome: BookingRescheduleOutcome.notFound);
     }
+    if (_isFreeBooking(existing) && _isPaidActivityPrice(training.price)) {
+      return const BookingRescheduleResult(outcome: BookingRescheduleOutcome.conflict);
+    }
     final db = _database;
     final nowIso = _nowProvider().toUtc().toIso8601String();
     try {
@@ -716,6 +719,11 @@ final class SqliteBookingRepository implements BookingRepository {
         ? _syntheticUserIdForUsername(normalizedUsername)
         : existing.userId;
     final targetTrainingKey = training?.sessionKey ?? existing.trainingKey;
+    final targetTrainingPrice = training?.price ?? existing.trainingPrice;
+    final targetStatus = status ?? existing.status;
+    if (_isFreeStatus(targetStatus) && _isPaidActivityPrice(targetTrainingPrice)) {
+      throw const BookingConflictException('Free status is not allowed for paid activity.');
+    }
     final conflicting = _findBookingByUserAndTraining(targetUserId, targetTrainingKey);
     if (conflicting != null && conflicting.id != bookingId) {
       throw const BookingConflictException(
@@ -997,5 +1005,21 @@ final class SqliteBookingRepository implements BookingRepository {
     }
     final value = hash == 0 ? 1 : hash;
     return -value;
+  }
+
+  bool _isFreeBooking(TrainingBooking booking) {
+    if (booking.status == BookingStatus.freeTraining) {
+      return true;
+    }
+    final price = booking.trainingPrice;
+    return price != null && price <= 0;
+  }
+
+  bool _isFreeStatus(BookingStatus status) {
+    return status == BookingStatus.freeTraining;
+  }
+
+  bool _isPaidActivityPrice(int? price) {
+    return price == null || price > 0;
   }
 }

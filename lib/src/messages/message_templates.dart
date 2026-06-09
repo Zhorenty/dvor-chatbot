@@ -1361,7 +1361,7 @@ final class MessageTemplates {
       return null;
     }
     if (paymentNote.startsWith('__payment_choice_partial__')) {
-      return 'Предоплата/аванс/задаток';
+      return 'Предоплата';
     }
     if (paymentNote.startsWith('__payment_choice_full__')) {
       return 'Полная оплата';
