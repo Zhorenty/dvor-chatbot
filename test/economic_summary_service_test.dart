@@ -50,6 +50,14 @@ void main() {
           trainingPrice: null,
           updatedAt: DateTime(2026, 6, 6, 12),
         ),
+        fakeBooking(
+          id: 5,
+          trainingKey: 'trainings|5',
+          title: 'Админская бесплатная',
+          status: BookingStatus.freeTraining,
+          trainingPrice: 900,
+          updatedAt: DateTime(2026, 6, 6, 13),
+        ),
       ];
     final scheduleRepository = FakeScheduleRepository(const []);
     final service = EconomicSummaryService(
@@ -61,8 +69,8 @@ void main() {
 
     expect(summary.totalRevenue, 3200);
     expect(summary.paidBookingsCount, 2);
-    expect(summary.freeBookingsCount, 1);
-    expect(summary.regularFreeBookingsCount, 0);
+    expect(summary.freeBookingsCount, 2);
+    expect(summary.regularFreeBookingsCount, 1);
     expect(summary.starterFreeBookingsCount, 0);
     expect(summary.everyFifthFreeBookingsCount, 1);
     expect(summary.unknownPriceBookingsCount, 1);

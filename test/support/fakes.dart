@@ -244,7 +244,8 @@ final class FakeBookingRepository implements BookingRepository {
     return queue
         .where(
           (booking) =>
-              booking.status == BookingStatus.paid &&
+              (booking.status == BookingStatus.paid ||
+                  booking.status == BookingStatus.freeTraining) &&
               !booking.updatedAt.isBefore(fromInclusive) &&
               booking.updatedAt.isBefore(toExclusive),
         )

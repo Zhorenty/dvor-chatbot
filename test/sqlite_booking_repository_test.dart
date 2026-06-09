@@ -490,7 +490,9 @@ void main() {
       await repository.close();
     });
 
-    test('stores training price and marks economic report as sent once', () async {
+    test(
+        'stores training price, includes free-training status in summary range and marks report once',
+        () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',
         nowProvider: () => DateTime(2030, 7, 1, 12),
@@ -506,13 +508,25 @@ void main() {
         ),
       );
       await repository.updateStatus(created.booking.id, BookingStatus.paid);
+      final freeCreated = await repository.createPendingBooking(
+        userId: 6002,
+        training: TrainingInfo(
+          title: 'Price check free',
+          startsAt: DateTime(2030, 7, 2, 19),
+          location: 'Gym',
+          price: 1700,
+        ),
+      );
+      await repository.updateStatus(freeCreated.booking.id, BookingStatus.freeTraining);
 
       final paid = await repository.listPaidBookingsInRange(
         fromInclusive: DateTime(2030, 6, 1),
         toExclusive: DateTime(2030, 8, 1),
       );
-      expect(paid, hasLength(1));
-      expect(paid.single.trainingPrice, 1700);
+      expect(paid, hasLength(2));
+      expect(paid.any((item) => item.status == BookingStatus.paid), isTrue);
+      expect(paid.any((item) => item.status == BookingStatus.freeTraining), isTrue);
+      expect(paid.firstWhere((item) => item.status == BookingStatus.paid).trainingPrice, 1700);
 
       final firstMark = await repository.tryMarkEconomicReportSent(
         reportType: 'weekly',

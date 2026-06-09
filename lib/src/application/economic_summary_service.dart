@@ -1,6 +1,7 @@
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 
@@ -58,7 +59,7 @@ final class EconomicSummaryService {
   }
 
   Future<EconomicSummary> buildSummary(EconomicSummaryPeriod period) async {
-    final paid = await _bookingRepository.listPaidBookingsInRange(
+    final bookings = await _bookingRepository.listPaidBookingsInRange(
       fromInclusive: period.startInclusive,
       toExclusive: period.endExclusive,
     );
@@ -72,7 +73,12 @@ final class EconomicSummaryService {
     final byCategory = <ActivityCategory, _MutableStats>{};
     final byEvent = <String, _MutableStats>{};
 
-    for (final booking in paid) {
+    for (final booking in bookings) {
+      if (booking.status == BookingStatus.freeTraining) {
+        freeBookingsCount++;
+        regularFreeBookingsCount++;
+        continue;
+      }
       final paymentNote = booking.paymentNote;
       final price = booking.trainingPrice;
       if (paymentNote == MessageFormatters.starterBonusPaymentNoteMarker) {
