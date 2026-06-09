@@ -54,6 +54,37 @@ void main() {
       await repository.close();
     });
 
+    test('throws when participants limit is reached for another user', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Limited session',
+        startsAt: DateTime(2030, 6, 10, 19),
+        location: 'Gym A',
+        participantsLimit: 1,
+      );
+
+      await repository.createPendingBooking(
+        userId: 1001,
+        userUsername: '@runner_1001',
+        training: training,
+      );
+
+      expect(
+        () => repository.createPendingBooking(
+          userId: 1002,
+          userUsername: '@runner_1002',
+          training: training,
+        ),
+        throwsA(isA<BookingParticipantsLimitExceededException>()),
+      );
+
+      await repository.close();
+    });
+
     test('lists bookings by training keys without cancelled and rejected records', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',

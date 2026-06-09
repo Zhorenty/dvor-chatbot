@@ -448,6 +448,11 @@ final class MessageTemplates {
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
   }
 
+  String bookingParticipantsLimitExceeded() {
+    return 'Не удалось записаться: свободных мест больше нет ⛔️\n'
+        'Выбери другое мероприятие из списка ниже.';
+  }
+
   String paymentSubmitted(TrainingBooking booking) {
     return 'Супер, файл с подтверждением оплаты отправил администратору ✅\n'
         'Номер записи: ${booking.id}\n'

@@ -596,12 +596,22 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final result = await _bookingRepository.createPendingBooking(
-        userId: userId,
-        userUsername: context.from?['username']?.toString(),
-        training: flowState.availableTrainings[index - 1],
-      );
       final selectedTraining = flowState.availableTrainings[index - 1];
+      late final BookingCreateResult result;
+      try {
+        result = await _bookingRepository.createPendingBooking(
+          userId: userId,
+          userUsername: context.from?['username']?.toString(),
+          training: selectedTraining,
+        );
+      } on BookingParticipantsLimitExceededException {
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingParticipantsLimitExceeded(),
+          replyMarkup: _templates.bookingSelectionKeyboard(flowState.availableTrainings),
+        );
+        return true;
+      }
       if (_isFreeActivity(selectedTraining)) {
         final paidBooking =
             await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);

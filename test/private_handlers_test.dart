@@ -744,6 +744,50 @@ void main() {
       expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
     });
 
+    test('shows error when participants limit is reached during booking', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..createException = const BookingParticipantsLimitExceededException('limit reached');
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Limited session',
+              startsAt: DateTime(2026, 7, 11, 18, 0),
+              location: 'Hall 2',
+              participantsLimit: 1,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1613, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1613},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1613, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1613},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1613, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1613},
+        'text': '🎯 1. Limited session',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.createCalls, 1);
+      expect(sender.messages.last.text, contains('свободных мест больше нет'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains('🎯 1. Limited session'));
+    });
+
     test('creates free booking without payment confirmation flow', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();

@@ -101,6 +101,27 @@ final class SqliteBookingRepository implements BookingRepository {
     final nowIso = _nowProvider().toUtc().toIso8601String();
     final key = training.sessionKey;
     final normalizedUsername = _normalizeUsername(userUsername);
+    final existing = _findBookingByUserAndTraining(userId, key);
+    if (existing != null) {
+      if (normalizedUsername != null) {
+        _updateBookingUsernameIfMissing(
+          userId: userId,
+          trainingKey: key,
+          userUsername: normalizedUsername,
+        );
+      }
+      if (existing.status == BookingStatus.cancelled ||
+          existing.status == BookingStatus.paymentRejected) {
+        _assertParticipantsLimitNotExceeded(training);
+        final reactivated = await _reactivateBookingAsPendingPayment(
+          bookingId: existing.id,
+          userUsername: normalizedUsername,
+        );
+        return BookingCreateResult(booking: reactivated, created: true);
+      }
+      return BookingCreateResult(booking: existing, created: false);
+    }
+    _assertParticipantsLimitNotExceeded(training);
     try {
       db.execute(
         '''
@@ -151,6 +172,7 @@ final class SqliteBookingRepository implements BookingRepository {
       }
       if (existing.status == BookingStatus.cancelled ||
           existing.status == BookingStatus.paymentRejected) {
+        _assertParticipantsLimitNotExceeded(training);
         final reactivated = await _reactivateBookingAsPendingPayment(
           bookingId: existing.id,
           userUsername: normalizedUsername,
@@ -904,6 +926,34 @@ final class SqliteBookingRepository implements BookingRepository {
       throw StateError('Reactivated booking is missing in database.');
     }
     return reactivated;
+  }
+
+  void _assertParticipantsLimitNotExceeded(TrainingInfo training) {
+    final participantsLimit = training.participantsLimit;
+    if (participantsLimit == null || participantsLimit <= 0) {
+      return;
+    }
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT COUNT(*) AS total
+      FROM bookings
+      WHERE training_key = ?
+        AND status != ?
+        AND status != ?;
+      ''',
+      <Object?>[
+        training.sessionKey,
+        BookingStatus.cancelled.dbValue,
+        BookingStatus.paymentRejected.dbValue,
+      ],
+    );
+    final total = (result.first['total'] as int?) ?? 0;
+    if (total >= participantsLimit) {
+      throw const BookingParticipantsLimitExceededException(
+        'Participants limit reached for selected training.',
+      );
+    }
   }
 
   String _categoryConditionSql(ActivityCategory category) {

@@ -25,6 +25,15 @@ final class BookingConflictException implements Exception {
   String toString() => 'BookingConflictException: $message';
 }
 
+final class BookingParticipantsLimitExceededException implements Exception {
+  const BookingParticipantsLimitExceededException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'BookingParticipantsLimitExceededException: $message';
+}
+
 enum PaymentReviewOutcome {
   success,
   notFound,

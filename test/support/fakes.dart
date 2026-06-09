@@ -49,6 +49,7 @@ final class FakeBookingRepository implements BookingRepository {
   TrainingBooking? submitResult;
   TrainingInfo? lastCreatedTraining;
   String? lastCreatedUsername;
+  Exception? createException;
   int? lastCancelledBookingId;
   int? lastRescheduledBookingId;
   TrainingInfo? lastRescheduleTraining;
@@ -83,6 +84,10 @@ final class FakeBookingRepository implements BookingRepository {
     createCalls += 1;
     lastCreatedTraining = training;
     lastCreatedUsername = userUsername;
+    final configuredException = createException;
+    if (configuredException != null) {
+      throw configuredException;
+    }
     return BookingCreateResult(
       booking: fakeBooking(
         id: 99,
@@ -91,6 +96,7 @@ final class FakeBookingRepository implements BookingRepository {
         title: training.title,
         startsAt: training.startsAt,
         location: training.location,
+        trainingPrice: training.price,
       ),
       created: true,
     );
@@ -186,7 +192,16 @@ final class FakeBookingRepository implements BookingRepository {
     BookingStatus status, {
     String? paymentNote,
   }) async {
-    return fakeBooking(id: bookingId, status: status, paymentNote: paymentNote);
+    final training = lastCreatedTraining;
+    return fakeBooking(
+      id: bookingId,
+      status: status,
+      paymentNote: paymentNote,
+      title: training?.title ?? 'Training',
+      startsAt: training?.startsAt,
+      location: training?.location ?? 'Hall',
+      trainingPrice: training?.price,
+    );
   }
 
   @override
