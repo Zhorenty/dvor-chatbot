@@ -54,6 +54,7 @@ Future<void> main(List<String> args) async {
       templates: templates,
       adminUserIds: config.adminUserIds,
       adminChatId: config.adminChatId,
+      targetChatId: config.targetChatId,
     ),
     groupHandlers: GroupHandlers(
       sender: client,

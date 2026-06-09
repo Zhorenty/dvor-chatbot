@@ -33,6 +33,7 @@ final class PrivateHandlers {
     required MessageTemplates templates,
     required Set<int> adminUserIds,
     int? adminChatId,
+    int? targetChatId,
     DateTime Function()? nowProvider,
   })  : _sender = sender,
         _scheduleRepository = scheduleRepository,
@@ -42,6 +43,7 @@ final class PrivateHandlers {
         _templates = templates,
         _adminUserIds = adminUserIds,
         _adminChatId = adminChatId,
+        _targetChatId = targetChatId,
         _nowProvider = nowProvider ?? DateTime.now;
 
   final MessageSender _sender;
@@ -52,8 +54,11 @@ final class PrivateHandlers {
   final MessageTemplates _templates;
   final Set<int> _adminUserIds;
   final int? _adminChatId;
+  final int? _targetChatId;
   final DateTime Function() _nowProvider;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
+  final Set<String> _lowCapacityNotifiedTrainingKeys = <String>{};
+  final Set<String> _fullCapacityNotifiedTrainingKeys = <String>{};
   late final ActivityCatalogService _catalogService =
       ActivityCatalogService(scheduleRepository: _scheduleRepository);
   late final ScheduleQueryService _scheduleQueryService =
@@ -615,6 +620,9 @@ final class PrivateHandlers {
           replyMarkup: _templates.bookingSelectionKeyboard(flowState.availableTrainings),
         );
         return true;
+      }
+      if (result.created) {
+        await _maybeNotifyGroupAboutCapacity(selectedTraining);
       }
       if (_isFreeActivity(selectedTraining)) {
         final paidBooking =
@@ -2623,6 +2631,58 @@ final class PrivateHandlers {
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about free booking creation: $error', stackTrace);
+    }
+  }
+
+  Future<void> _maybeNotifyGroupAboutCapacity(TrainingInfo training) async {
+    final targetChatId = _targetChatId;
+    final participantsLimit = training.participantsLimit;
+    if (targetChatId == null || participantsLimit == null || participantsLimit <= 0) {
+      return;
+    }
+
+    final activeBookings = await _bookingRepository.listByTrainingKeys(
+      <String>{training.sessionKey},
+      limit: participantsLimit,
+    );
+    final freeSpots = participantsLimit - activeBookings.length;
+    if (freeSpots <= 0) {
+      if (_fullCapacityNotifiedTrainingKeys.contains(training.sessionKey)) {
+        return;
+      }
+      try {
+        await _sender.sendMessage(
+          targetChatId,
+          _templates.groupTrainingNoSpotsLeft(
+            training: training,
+            participantsLimit: participantsLimit,
+          ),
+        );
+        _fullCapacityNotifiedTrainingKeys.add(training.sessionKey);
+        _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
+      } on Object catch (error, stackTrace) {
+        l.w('Failed to notify group about full training capacity: $error', stackTrace);
+      }
+      return;
+    }
+
+    final freeShare = freeSpots / participantsLimit;
+    if (freeShare >= 0.3 || _lowCapacityNotifiedTrainingKeys.contains(training.sessionKey)) {
+      return;
+    }
+
+    try {
+      await _sender.sendMessage(
+        targetChatId,
+        _templates.groupTrainingLowSpots(
+          training: training,
+          freeSpots: freeSpots,
+          participantsLimit: participantsLimit,
+        ),
+      );
+      _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify group about low training capacity: $error', stackTrace);
     }
   }
 

@@ -454,6 +454,36 @@ final class MessageTemplates {
         'Выбери другое мероприятие из списка ниже.';
   }
 
+  String groupTrainingLowSpots({
+    required TrainingInfo training,
+    required int freeSpots,
+    required int participantsLimit,
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '🔥 На тренировке почти не осталось мест!\n'
+        'Тренировка: ${training.title}\n'
+        '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${training.location}\n'
+        '👥 Свободных мест: $freeSpots из $participantsLimit\n\n'
+        '${_groupBookingCta()}';
+  }
+
+  String groupTrainingNoSpotsLeft({
+    required TrainingInfo training,
+    required int participantsLimit,
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '⛔️ Места на эту тренировку закончились\n'
+        'Тренировка: ${training.title}\n'
+        '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${training.location}\n'
+        '👥 Участников: $participantsLimit/$participantsLimit\n\n'
+        'Следи за расписанием - новые слоты и тренировки появляются регулярно.\n'
+        '${_groupBookingCta()}';
+  }
+
   String paymentSubmitted(TrainingBooking booking) {
     return 'Супер, файл с подтверждением оплаты отправил администратору ✅\n'
         'Номер записи: ${booking.id}\n'
@@ -1220,6 +1250,14 @@ final class MessageTemplates {
 
   String _labelWithCount(String label, int count) {
     return '$label ($count)';
+  }
+
+  String _groupBookingCta() {
+    final deepLink = _botDeepLink();
+    if (deepLink != null) {
+      return 'Записаться: $deepLink';
+    }
+    return 'Чтобы записаться, открой бота в личке и нажми /start.';
   }
 
   String _categoryLabel(ActivityCategory category) {
