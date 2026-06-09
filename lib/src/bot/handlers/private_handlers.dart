@@ -899,6 +899,15 @@ final class PrivateHandlers {
         );
         return true;
       }
+      if (selectedBooking.status == BookingStatus.freeTraining &&
+          !_isFreeActivity(targetTraining)) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.bookingRescheduleFreeToPaidNotAllowed(),
+          replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
+        );
+        return true;
+      }
       final before = selectedBooking;
       final result = await _bookingRepository.rescheduleBooking(
         userId: userId,

@@ -697,6 +697,11 @@ final class MessageTemplates {
     return 'Эта запись уже на выбранной тренировке. Выбери другую дату.';
   }
 
+  String bookingRescheduleFreeToPaidNotAllowed() {
+    return 'Эту запись нельзя перенести на платную тренировку.\n'
+        'Бесплатную запись можно переносить только на бесплатные слоты.';
+  }
+
   String bookingCancelled(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
