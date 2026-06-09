@@ -416,6 +416,7 @@ final class FakeSender implements MessageSender {
     int chatId,
     String text, {
     bool disableNotification = true,
+    bool disableWebPagePreview = false,
     Map<String, Object?>? replyMarkup,
     String? parseMode,
   }) async {
@@ -424,6 +425,7 @@ final class FakeSender implements MessageSender {
         chatId: chatId,
         text: text,
         disableNotification: disableNotification,
+        disableWebPagePreview: disableWebPagePreview,
         replyMarkup: replyMarkup,
         parseMode: parseMode,
       ),
@@ -498,6 +500,7 @@ final class SentMessage {
     required this.chatId,
     required this.text,
     required this.disableNotification,
+    required this.disableWebPagePreview,
     required this.replyMarkup,
     required this.parseMode,
   });
@@ -505,6 +508,7 @@ final class SentMessage {
   final int chatId;
   final String text;
   final bool disableNotification;
+  final bool disableWebPagePreview;
   final Map<String, Object?>? replyMarkup;
   final String? parseMode;
 }

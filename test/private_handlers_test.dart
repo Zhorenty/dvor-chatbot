@@ -307,6 +307,7 @@ void main() {
       );
       expect(sender.messages.last.text, contains('бесплатная'));
       expect(sender.messages.last.parseMode, 'HTML');
+      expect(sender.messages.last.disableWebPagePreview, isTrue);
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
       expect(buttons, contains(MessageTemplates.buttonBack));

@@ -115,6 +115,7 @@ final class TelegramClient implements MessageSender {
     int chatId,
     String text, {
     bool disableNotification = true,
+    bool disableWebPagePreview = false,
     Map<String, Object?>? replyMarkup,
     String? parseMode,
   }) async {
@@ -122,6 +123,7 @@ final class TelegramClient implements MessageSender {
       'chat_id': chatId,
       'text': text,
       'disable_notification': disableNotification,
+      'disable_web_page_preview': disableWebPagePreview,
     };
     if (replyMarkup != null) {
       body['reply_markup'] = replyMarkup;

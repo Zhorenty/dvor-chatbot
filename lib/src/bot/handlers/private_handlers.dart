@@ -229,6 +229,7 @@ final class PrivateHandlers {
               _scheduleTextByCategory(selectedCategory),
               replyMarkup: _templates.scheduleCategoryActionsKeyboard(),
               parseMode: 'HTML',
+              disableWebPagePreview: true,
             );
             return true;
           }
@@ -509,6 +510,7 @@ final class PrivateHandlers {
         _scheduleTextByCategory(category),
         replyMarkup: _templates.scheduleCategoryActionsKeyboard(),
         parseMode: 'HTML',
+        disableWebPagePreview: true,
       );
       return true;
     }
