@@ -42,6 +42,7 @@ final class MessageCopy {
   static const String buttonStatusPendingPayment = '⏳ Ожидает оплату';
   static const String buttonStatusPaymentSubmitted = '🧾 На проверке';
   static const String buttonStatusPaid = '✅ Оплачено';
+  static const String buttonStatusFreeTraining = '🎁 Бесплатная тренировка';
   static const String buttonStatusPaymentRejected = '❌ Оплата отклонена';
   static const String buttonSummaryCurrentWeek = '📅 Текущая неделя';
   static const String buttonSummaryPreviousWeek = '🗓 Прошлая неделя';

@@ -8,6 +8,11 @@ import 'support/fakes.dart';
 
 void main() {
   group('MessageFormatters.bookingStatusLabel', () {
+    test('maps explicit free training status to free label', () {
+      final freeTraining = fakeBooking(status: BookingStatus.freeTraining);
+      expect(MessageFormatters.bookingStatusLabel(freeTraining), 'Бесплатная тренировка 🎁');
+    });
+
     test('maps free booking variants to distinct labels', () {
       final regularFree = fakeBooking(
         status: BookingStatus.paid,

@@ -14,6 +14,7 @@ final class MessageFormatters {
       BookingStatus.pendingPayment => 'Ожидает оплату',
       BookingStatus.paymentSubmitted => 'Оплата на проверке 👀',
       BookingStatus.paid => 'Оплачено ✅',
+      BookingStatus.freeTraining => 'Бесплатная тренировка 🎁',
       BookingStatus.paymentRejected => 'Оплата отклонена ❌',
       BookingStatus.cancelled => 'Отменено',
     };

@@ -58,6 +58,7 @@ final class MessageTemplates {
   static const String buttonStatusPendingPayment = MessageCopy.buttonStatusPendingPayment;
   static const String buttonStatusPaymentSubmitted = MessageCopy.buttonStatusPaymentSubmitted;
   static const String buttonStatusPaid = MessageCopy.buttonStatusPaid;
+  static const String buttonStatusFreeTraining = MessageCopy.buttonStatusFreeTraining;
   static const String buttonStatusPaymentRejected = MessageCopy.buttonStatusPaymentRejected;
   static const String buttonSummaryCurrentWeek = MessageCopy.buttonSummaryCurrentWeek;
   static const String buttonSummaryPreviousWeek = MessageCopy.buttonSummaryPreviousWeek;

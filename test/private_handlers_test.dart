@@ -2373,7 +2373,7 @@ void main() {
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 23, 'type': 'private'},
         'from': <String, dynamic>{'id': 2304},
-        'text': MessageTemplates.buttonStatusPaid,
+        'text': MessageTemplates.buttonStatusFreeTraining,
       });
 
       expect(handled, isTrue);
@@ -2424,7 +2424,7 @@ void main() {
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 23, 'type': 'private'},
         'from': <String, dynamic>{'id': 2302},
-        'text': MessageTemplates.buttonStatusPaid,
+        'text': MessageTemplates.buttonStatusFreeTraining,
       });
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 23, 'type': 'private'},
@@ -2435,7 +2435,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.adminBookings, hasLength(1));
       expect(bookingRepository.adminBookings.single.userUsername, 'new_runner');
-      expect(bookingRepository.adminBookings.single.status, BookingStatus.paid);
+      expect(bookingRepository.adminBookings.single.status, BookingStatus.freeTraining);
       expect(sender.messages.last.text, contains('создана'));
     });
 

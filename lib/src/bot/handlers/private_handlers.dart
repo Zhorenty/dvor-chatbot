@@ -2261,6 +2261,9 @@ final class PrivateHandlers {
     if (normalized.contains('оплачен') || normalized.contains('оплачено')) {
       return BookingStatus.paid;
     }
+    if (normalized.contains('бесплат')) {
+      return BookingStatus.freeTraining;
+    }
     if (normalized.contains('отклон')) {
       return BookingStatus.paymentRejected;
     }

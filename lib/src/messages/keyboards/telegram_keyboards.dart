@@ -366,6 +366,9 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonStatusPaymentRejected},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonStatusFreeTraining},
+        ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],
