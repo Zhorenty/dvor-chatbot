@@ -120,12 +120,13 @@ final class FakeBookingRepository implements BookingRepository {
   Future<List<TrainingBooking>> listByTrainingKeys(
     Set<String> trainingKeys, {
     int limit = 200,
+    bool includeCancelled = false,
   }) async {
     return bookingsByTrainingKey
         .where(
           (booking) =>
               trainingKeys.contains(booking.trainingKey) &&
-              booking.status != BookingStatus.cancelled &&
+              (includeCancelled || booking.status != BookingStatus.cancelled) &&
               booking.status != BookingStatus.paymentRejected,
         )
         .take(limit)

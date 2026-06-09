@@ -366,6 +366,7 @@ final class SqliteBookingRepository implements BookingRepository {
   Future<List<TrainingBooking>> listByTrainingKeys(
     Set<String> trainingKeys, {
     int limit = 200,
+    bool includeCancelled = false,
   }) async {
     _expireOverduePendingBookings();
     if (trainingKeys.isEmpty) {
@@ -373,18 +374,19 @@ final class SqliteBookingRepository implements BookingRepository {
     }
     final db = _database;
     final placeholders = List<String>.filled(trainingKeys.length, '?').join(', ');
+    final cancelledFilterSql = includeCancelled ? '' : 'AND status != ?';
     final result = db.select(
       '''
       SELECT * FROM bookings
       WHERE training_key IN ($placeholders)
-        AND status != ?
+        $cancelledFilterSql
         AND status != ?
       ORDER BY starts_at ASC, created_at ASC
       LIMIT ?;
       ''',
       <Object?>[
         ...trainingKeys,
-        BookingStatus.cancelled.dbValue,
+        if (!includeCancelled) BookingStatus.cancelled.dbValue,
         BookingStatus.paymentRejected.dbValue,
         limit,
       ],

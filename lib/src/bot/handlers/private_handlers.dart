@@ -2124,10 +2124,19 @@ final class PrivateHandlers {
       archived: false,
       limit: 500,
     );
+    final archivedBookings = await _bookingRepository.adminListBookings(
+      category: category,
+      archived: true,
+      limit: 500,
+    );
+    final segmentBookings = <TrainingBooking>[
+      ...activeBookings,
+      ...archivedBookings,
+    ];
     final trainingsByKey = <String, TrainingInfo>{
       for (final training in trainings) training.sessionKey: training,
     };
-    for (final booking in activeBookings) {
+    for (final booking in segmentBookings) {
       trainingsByKey.putIfAbsent(
         booking.trainingKey,
         () => TrainingInfo(
@@ -2143,7 +2152,11 @@ final class PrivateHandlers {
     final keys = trainingsByKey.keys.toSet();
     final bookings = keys.isEmpty
         ? const <TrainingBooking>[]
-        : await _bookingRepository.listByTrainingKeys(keys, limit: 1000);
+        : await _bookingRepository.listByTrainingKeys(
+            keys,
+            limit: 1000,
+            includeCancelled: true,
+          );
     final byTraining = <String, List<TrainingBooking>>{};
     for (final booking in bookings) {
       byTraining.putIfAbsent(booking.trainingKey, () => <TrainingBooking>[]).add(booking);

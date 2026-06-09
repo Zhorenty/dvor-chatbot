@@ -90,6 +90,7 @@ abstract interface class BookingRepository {
   Future<List<TrainingBooking>> listByTrainingKeys(
     Set<String> trainingKeys, {
     int limit = 200,
+    bool includeCancelled = false,
   });
 
   Future<TrainingBooking?> updateStatus(

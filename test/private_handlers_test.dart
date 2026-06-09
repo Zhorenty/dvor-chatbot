@@ -2139,6 +2139,11 @@ void main() {
         startsAt: DateTime(2026, 9, 2, 7, 30),
         location: 'Park',
       );
+      final archivedTraining = TrainingInfo(
+        title: 'Old Run',
+        startsAt: DateTime(2025, 9, 2, 7, 30),
+        location: 'Old Park',
+      );
       final bookingRepository = _FakeBookingRepository()
         ..bookingsByTrainingKey = <TrainingBooking>[
           _booking(
@@ -2171,7 +2176,39 @@ void main() {
             location: training.location,
             status: BookingStatus.paymentRejected,
           ),
+          _booking(
+            id: 74,
+            userId: 7004,
+            userUsername: 'runner_cancelled',
+            trainingKey: training.sessionKey,
+            title: training.title,
+            startsAt: training.startsAt,
+            location: training.location,
+            status: BookingStatus.cancelled,
+          ),
+          _booking(
+            id: 75,
+            userId: 7005,
+            userUsername: 'runner_archived',
+            trainingKey: archivedTraining.sessionKey,
+            title: archivedTraining.title,
+            startsAt: archivedTraining.startsAt,
+            location: archivedTraining.location,
+            status: BookingStatus.paid,
+          ),
         ];
+      bookingRepository.adminBookings = <TrainingBooking>[
+        _booking(
+          id: 75,
+          userId: 7005,
+          userUsername: 'runner_archived',
+          trainingKey: archivedTraining.sessionKey,
+          title: archivedTraining.title,
+          startsAt: archivedTraining.startsAt,
+          location: archivedTraining.location,
+          status: BookingStatus.paid,
+        ),
+      ];
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[training]),
@@ -2196,12 +2233,15 @@ void main() {
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Выбери категорию для списка записавшихся'));
       expect(sender.messages.last.text, contains('Список записавшихся'));
-      expect(sender.messages.last.text, contains('👥 Участники: 2/∞'));
+      expect(sender.messages.last.text, contains('👥 Участники: 3/∞'));
       expect(sender.messages.last.text, contains('@runner_one'));
       expect(
         sender.messages.last.text,
         contains('@runner_bonus (Бесплатно: стартовая тренировка 🎁)'),
       );
+      expect(sender.messages.last.text, contains('@runner_cancelled (Отменено)'));
+      expect(sender.messages.last.text, contains('Old Run'));
+      expect(sender.messages.last.text, contains('@runner_archived (Оплачено ✅)'));
       expect(sender.messages.last.text, isNot(contains('@runner_rejected')));
     });
 
