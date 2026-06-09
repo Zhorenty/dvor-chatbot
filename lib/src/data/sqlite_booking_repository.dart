@@ -187,14 +187,33 @@ final class SqliteBookingRepository implements BookingRepository {
   Future<List<TrainingBooking>> listUserBookings(int userId, {int limit = 10}) async {
     _expireOverduePendingBookings();
     final db = _database;
+    final nowIso = _nowProvider().toUtc().toIso8601String();
     final result = db.select(
       '''
       SELECT * FROM bookings
       WHERE user_id = ?
-      ORDER BY starts_at ASC
+      ORDER BY
+        CASE
+          WHEN status != ? AND starts_at >= ? THEN 0
+          WHEN status != ? THEN 1
+          ELSE 2
+        END ASC,
+        CASE WHEN status != ? AND starts_at >= ? THEN starts_at END ASC,
+        CASE WHEN status != ? AND starts_at < ? THEN starts_at END DESC,
+        updated_at DESC
       LIMIT ?;
       ''',
-      <Object?>[userId, limit],
+      <Object?>[
+        userId,
+        BookingStatus.cancelled.dbValue,
+        nowIso,
+        BookingStatus.cancelled.dbValue,
+        BookingStatus.cancelled.dbValue,
+        nowIso,
+        BookingStatus.cancelled.dbValue,
+        nowIso,
+        limit,
+      ],
     );
     return result.map(_rowToBooking).toList(growable: false);
   }

@@ -145,10 +145,33 @@ final class FakeBookingRepository implements BookingRepository {
         ),
       ];
     }
-    return userBookings
+    final now = DateTime.now();
+    final filtered = userBookings
         .where((booking) => booking.userId == userId)
-        .take(limit)
-        .toList(growable: false);
+        .toList(growable: false)
+      ..sort((left, right) {
+        final leftRank = left.status != BookingStatus.cancelled && !left.startsAt.isBefore(now)
+            ? 0
+            : left.status != BookingStatus.cancelled
+                ? 1
+                : 2;
+        final rightRank = right.status != BookingStatus.cancelled && !right.startsAt.isBefore(now)
+            ? 0
+            : right.status != BookingStatus.cancelled
+                ? 1
+                : 2;
+        if (leftRank != rightRank) {
+          return leftRank.compareTo(rightRank);
+        }
+        if (leftRank == 0) {
+          return left.startsAt.compareTo(right.startsAt);
+        }
+        if (leftRank == 1) {
+          return right.startsAt.compareTo(left.startsAt);
+        }
+        return right.updatedAt.compareTo(left.updatedAt);
+      });
+    return filtered.take(limit).toList(growable: false);
   }
 
   @override

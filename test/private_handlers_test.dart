@@ -1976,6 +1976,51 @@ void main() {
       expect(sender.messages.last.text, contains('уже есть запись на выбранную тренировку'));
     });
 
+    test('keeps active booking manageable when history has many archived items', () async {
+      final sender = _FakeSender();
+      final now = DateTime.now();
+      final archived = List<TrainingBooking>.generate(
+        12,
+        (index) => _booking(
+          id: 3600 + index,
+          userId: 2360,
+          trainingKey: 'hikes|archived-$index',
+          title: 'Архивный поход #$index',
+          startsAt: now.subtract(Duration(days: 40 + index)),
+          location: 'Archive',
+          status: BookingStatus.cancelled,
+        ),
+      );
+      final active = _booking(
+        id: 3699,
+        userId: 2360,
+        trainingKey: 'hikes|active-slot',
+        title: '🥾 Поход: Живой слот',
+        startsAt: now.add(const Duration(days: 10)),
+        location: 'Маршрут',
+        status: BookingStatus.paid,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[...archived, active];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2360, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2360},
+        'text': '/my_bookings',
+      });
+
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains('🧾 #3699 🥾 Поход: Живой слот'));
+      expect(buttons, isNot(contains('🧾 #3600 Архивный поход #0')));
+    });
+
     test('cancels outdoor booking before 7 days and notifies admin chat', () async {
       final now = DateTime(2026, 6, 1, 12, 0);
       final sender = _FakeSender();

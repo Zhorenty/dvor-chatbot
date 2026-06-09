@@ -157,6 +157,45 @@ void main() {
       await repository.close();
     });
 
+    test('prioritizes active bookings over archived records in user list', () async {
+      final now = DateTime(2030, 6, 15, 12, 0);
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => now,
+      );
+      await repository.init();
+
+      for (var i = 0; i < 12; i++) {
+        final archived = await repository.createPendingBooking(
+          userId: 4110,
+          training: TrainingInfo(
+            title: 'Archived #$i',
+            startsAt: now.subtract(Duration(days: 30 - i)),
+            location: 'Old track',
+          ),
+        );
+        await repository.updateStatus(archived.booking.id, BookingStatus.cancelled);
+      }
+
+      final upcoming = await repository.createPendingBooking(
+        userId: 4110,
+        training: TrainingInfo(
+          title: 'Upcoming payment target',
+          startsAt: now.add(const Duration(days: 4)),
+          location: 'New track',
+        ),
+      );
+
+      final listed = await repository.listUserBookings(4110, limit: 10);
+
+      expect(listed, hasLength(10));
+      expect(listed.first.id, upcoming.booking.id);
+      expect(listed.first.status, BookingStatus.pendingPayment);
+      expect(listed.where((item) => item.id == upcoming.booking.id), hasLength(1));
+
+      await repository.close();
+    });
+
     test('submits payment and lists queue by status', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',
