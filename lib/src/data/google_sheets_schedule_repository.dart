@@ -131,6 +131,15 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     final dateIndex = headers.indexOf('date');
     final timeIndex = headers.indexOf('time');
     final locationIndex = headers.indexOf('location');
+    final locationUrlIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'location_url',
+        'location_link',
+        'maps_url',
+        'map_url',
+      ],
+    );
     final priceIndex = headers.indexOf('price');
     final participantsLimitIndex = _firstHeaderIndex(
       headers,
@@ -178,6 +187,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           title: title,
           startsAt: startsAt,
           location: location,
+          locationUrl: _optionalCell(row, locationUrlIndex),
           price: _parsePrice(_optionalCell(row, priceIndex)),
           participantsLimit: _parseParticipantsLimit(_optionalCell(row, participantsLimitIndex)),
           coach: _optionalCell(row, coachIndex),

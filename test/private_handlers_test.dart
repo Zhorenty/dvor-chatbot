@@ -274,6 +274,7 @@ void main() {
               title: 'Тестовая тренировка',
               startsAt: DateTime(2026, 6, 4, 19, 0),
               location: 'Тестовый зал',
+              locationUrl: 'https://maps.example/test-gym',
               price: 0,
             ),
           ],
@@ -300,7 +301,12 @@ void main() {
       expect(sender.messages.first.text, contains('Выбери раздел расписания'));
       expect(sender.messages.last.text, contains('Ближайшие тренировки'));
       expect(sender.messages.last.text, contains('Тестовая тренировка'));
+      expect(
+        sender.messages.last.text,
+        contains('<a href="https://maps.example/test-gym">Тестовый зал</a>'),
+      );
       expect(sender.messages.last.text, contains('бесплатная'));
+      expect(sender.messages.last.parseMode, 'HTML');
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
       expect(buttons, contains(MessageTemplates.buttonBack));

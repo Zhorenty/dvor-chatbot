@@ -123,13 +123,14 @@ final class MessageTemplates {
 
       lines.addAll(<String>[
         '',
-        '• 🏋️ ${item.title}',
+        '• 🏋️ ${_escapeHtml(item.title)}',
         '   🕒 Когда: ${formatter.format(item.startsAt)}',
-        '   📍 Где: ${item.location}',
+        '   📍 Где: ${_locationLabel(item)}',
         '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',
         if (item.price != null) '   💳 Взнос: ${_trainingPriceLabel(item.price)}',
-        if (coach != null && coach.isNotEmpty) '   🧑‍🏫 ${_coachTitle(coach)}: $coach',
-        if (notes != null && notes.isNotEmpty) '   📝 Примечание: $notes',
+        if (coach != null && coach.isNotEmpty)
+          '   🧑‍🏫 ${_coachTitle(coach)}: ${_escapeHtml(coach)}',
+        if (notes != null && notes.isNotEmpty) '   📝 Примечание: ${_escapeHtml(notes)}',
       ]);
 
       if (index != items.length - 1) {
@@ -801,8 +802,7 @@ final class MessageTemplates {
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
-        '• Номер телефона: +7(995)122-06-15\n'
-        '• Комментарий к переводу: "Номер записи: $bookingId"';
+        '• Номер телефона: +7(995)122-06-15\n';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
@@ -1205,9 +1205,9 @@ final class MessageTemplates {
       final dateLabel = MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo);
       lines.addAll(<String>[
         '',
-        '• $icon ${item.title}',
+        '• $icon ${_escapeHtml(item.title)}',
         '   🗓 Даты: $dateLabel',
-        '   📝 Описание: ${item.description}',
+        '   📝 Описание: ${_escapeHtml(item.description)}',
         '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',
         if (item.price != null) '   💳 Стоимость: ${_trainingPriceLabel(item.price)}',
       ]);
@@ -1256,6 +1256,31 @@ final class MessageTemplates {
 
   String _money(int amount) {
     return '$amount ₽';
+  }
+
+  String _locationLabel(TrainingInfo item) {
+    final location = _escapeHtml(item.location);
+    final url = item.locationUrl?.trim();
+    if (url == null || url.isEmpty || !_isSupportedLink(url)) {
+      return location;
+    }
+    return '<a href="${_escapeHtml(url)}">$location</a>';
+  }
+
+  bool _isSupportedLink(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri == null || !uri.hasScheme || !uri.hasAuthority) {
+      return false;
+    }
+    return uri.scheme == 'http' || uri.scheme == 'https';
+  }
+
+  String _escapeHtml(String value) {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
   }
 
   String _normalizeTrainerDescription(String raw) {

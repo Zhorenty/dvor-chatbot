@@ -228,6 +228,7 @@ final class PrivateHandlers {
               chatId,
               _scheduleTextByCategory(selectedCategory),
               replyMarkup: _templates.scheduleCategoryActionsKeyboard(),
+              parseMode: 'HTML',
             );
             return true;
           }
@@ -507,6 +508,7 @@ final class PrivateHandlers {
         chatId,
         _scheduleTextByCategory(category),
         replyMarkup: _templates.scheduleCategoryActionsKeyboard(),
+        parseMode: 'HTML',
       );
       return true;
     }

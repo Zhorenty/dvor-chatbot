@@ -22,9 +22,11 @@ void main() {
       expect(upcoming.first.title, 'Cardio');
       expect(upcoming.first.price, 500);
       expect(upcoming.first.participantsLimit, isNull);
+      expect(upcoming.first.locationUrl, isNull);
       expect(upcoming.last.title, 'Functional');
       expect(upcoming.last.price, 700);
       expect(upcoming.last.participantsLimit, 16);
+      expect(upcoming.last.locationUrl, 'https://maps.example/functional');
     });
 
     test('loads and returns upcoming trainings from date and time columns', () async {
@@ -34,9 +36,9 @@ void main() {
           final gid = request.url.queryParameters['gid'];
           if (gid == null || gid == '0') {
             return http.Response(
-              'title,date,time,location,price,participants_limit,coach,notes\n'
-              'Functional,2030-06-04,19:00,Gym A,700,14,Alex,Bring water\n'
-              'Cardio,2030-06-02,18:30,Stadium B,500,0,,',
+              'title,date,time,location,location_url,price,participants_limit,coach,notes\n'
+              'Functional,2030-06-04,19:00,Gym A,https://maps.example/functional,700,14,Alex,Bring water\n'
+              'Cardio,2030-06-02,18:30,Stadium B,,500,0,,',
               200,
             );
           }
@@ -53,10 +55,12 @@ void main() {
       expect(upcoming.first.startsAt, DateTime(2030, 6, 2, 18, 30));
       expect(upcoming.first.price, 500);
       expect(upcoming.first.participantsLimit, isNull);
+      expect(upcoming.first.locationUrl, isNull);
       expect(upcoming.last.title, 'Functional');
       expect(upcoming.last.startsAt, DateTime(2030, 6, 4, 19, 0));
       expect(upcoming.last.price, 700);
       expect(upcoming.last.participantsLimit, 14);
+      expect(upcoming.last.locationUrl, 'https://maps.example/functional');
     });
 
     test('keeps previous cache when refresh fails', () async {
@@ -131,9 +135,9 @@ Future<http.Response> _mockCsvResponse(http.Request request) async {
     );
   }
   return http.Response(
-    'title,starts_at,location,price,participants_limit,coach,notes\n'
-    'Functional,2030-06-04 19:00,Gym A,700,16,Alex,Bring water\n'
-    'Cardio,2030-06-02 18:30,Stadium B,500,0,,',
+    'title,starts_at,location,location_url,price,participants_limit,coach,notes\n'
+    'Functional,2030-06-04 19:00,Gym A,https://maps.example/functional,700,16,Alex,Bring water\n'
+    'Cardio,2030-06-02 18:30,Stadium B,,500,0,,',
     200,
   );
 }
