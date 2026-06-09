@@ -118,6 +118,12 @@ String? callbackToCommandText(String? callbackData) {
     final bookingId = int.tryParse(rawId);
     return bookingId == null ? null : '/approve_payment $bookingId';
   }
+  if (callbackData.startsWith(MessageTemplates.callbackApprovePartialPaymentPrefix)) {
+    final rawId =
+        callbackData.substring(MessageTemplates.callbackApprovePartialPaymentPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/approve_partial_payment $bookingId';
+  }
   if (callbackData.startsWith(MessageTemplates.callbackRejectPaymentPrefix)) {
     final rawId = callbackData.substring(MessageTemplates.callbackRejectPaymentPrefix.length);
     final bookingId = int.tryParse(rawId);

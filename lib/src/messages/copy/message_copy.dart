@@ -6,6 +6,8 @@ final class MessageCopy {
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonMyBookings = '🗂 Мои записи';
   static const String buttonSubmitPayment = '💸 Я оплатил';
+  static const String buttonPayFully = '💯 Оплатил полностью';
+  static const String buttonPayPartially = '🟡 Внес предоплату';
   static const String buttonUseStarterBonus = '🎁 Использовать бесплатную тренировку';
   static const String buttonRescheduleBooking = '🔁 Перенести запись';
   static const String buttonRepeatBooking = '🔂 Повторить запись';
@@ -41,6 +43,7 @@ final class MessageCopy {
   static const String buttonCancelCreateBooking = '↩️ Не создавать';
   static const String buttonStatusPendingPayment = '⏳ Ожидает оплату';
   static const String buttonStatusPaymentSubmitted = '🧾 На проверке';
+  static const String buttonStatusPartialPaid = '🟡 Предоплата внесена';
   static const String buttonStatusPaid = '✅ Оплачено';
   static const String buttonStatusFreeTraining = '🎁 Бесплатная тренировка';
   static const String buttonStatusPaymentRejected = '❌ Оплата отклонена';
@@ -50,6 +53,7 @@ final class MessageCopy {
   static const String buttonSummaryPreviousMonth = '🗓 Прошлый месяц';
 
   static const String callbackApprovePaymentPrefix = 'payment:approve:';
+  static const String callbackApprovePartialPaymentPrefix = 'payment:approve_partial:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';
   static const String callbackOpenPaymentsQueue = 'payment:open_queue';
 

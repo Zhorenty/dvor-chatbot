@@ -109,12 +109,21 @@ final class TelegramKeyboards {
   static Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
     bool showCancelBooking = false,
+    bool showOutdoorPaymentTypeChoice = false,
   }) {
     final rows = <List<Map<String, String>>>[];
     if (showStarterBonus) {
       rows.add(
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonUseStarterBonus},
+        ],
+      );
+    }
+    if (showOutdoorPaymentTypeChoice) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonPayFully},
+          <String, String>{'text': MessageCopy.buttonPayPartially},
         ],
       );
     }
@@ -206,20 +215,32 @@ final class TelegramKeyboards {
     return _replyKeyboard(rows);
   }
 
-  static Map<String, Object?> paymentDecisionInlineKeyboard(int bookingId) {
-    return <String, Object?>{
-      'inline_keyboard': <List<Map<String, String>>>[
-        <Map<String, String>>[
-          <String, String>{
-            'text': '✅ Подтвердить',
-            'callback_data': '${MessageCopy.callbackApprovePaymentPrefix}$bookingId',
-          },
-          <String, String>{
-            'text': '❌ Отклонить',
-            'callback_data': '${MessageCopy.callbackRejectPaymentPrefix}$bookingId',
-          },
-        ],
+  static Map<String, Object?> paymentDecisionInlineKeyboard(
+    int bookingId, {
+    bool allowPartialApprove = false,
+  }) {
+    final firstRow = <Map<String, String>>[
+      <String, String>{
+        'text': '✅ Подтвердить',
+        'callback_data': '${MessageCopy.callbackApprovePaymentPrefix}$bookingId',
+      },
+      if (allowPartialApprove)
+        <String, String>{
+          'text': '🟡 Подтвердить предоплату',
+          'callback_data': '${MessageCopy.callbackApprovePartialPaymentPrefix}$bookingId',
+        },
+    ];
+    final rows = <List<Map<String, String>>>[
+      firstRow,
+      <Map<String, String>>[
+        <String, String>{
+          'text': '❌ Отклонить',
+          'callback_data': '${MessageCopy.callbackRejectPaymentPrefix}$bookingId',
+        },
       ],
+    ];
+    return <String, Object?>{
+      'inline_keyboard': rows,
     };
   }
 
@@ -362,10 +383,11 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonStatusPaymentSubmitted},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonStatusPartialPaid},
           <String, String>{'text': MessageCopy.buttonStatusPaid},
-          <String, String>{'text': MessageCopy.buttonStatusPaymentRejected},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonStatusPaymentRejected},
           <String, String>{'text': MessageCopy.buttonStatusFreeTraining},
         ],
         <Map<String, String>>[

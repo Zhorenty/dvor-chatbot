@@ -22,6 +22,8 @@ final class MessageTemplates {
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
   static const String buttonMyBookings = MessageCopy.buttonMyBookings;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
+  static const String buttonPayFully = MessageCopy.buttonPayFully;
+  static const String buttonPayPartially = MessageCopy.buttonPayPartially;
   static const String buttonUseStarterBonus = MessageCopy.buttonUseStarterBonus;
   static const String buttonRescheduleBooking = MessageCopy.buttonRescheduleBooking;
   static const String buttonRepeatBooking = MessageCopy.buttonRepeatBooking;
@@ -57,6 +59,7 @@ final class MessageTemplates {
   static const String buttonCancelCreateBooking = MessageCopy.buttonCancelCreateBooking;
   static const String buttonStatusPendingPayment = MessageCopy.buttonStatusPendingPayment;
   static const String buttonStatusPaymentSubmitted = MessageCopy.buttonStatusPaymentSubmitted;
+  static const String buttonStatusPartialPaid = MessageCopy.buttonStatusPartialPaid;
   static const String buttonStatusPaid = MessageCopy.buttonStatusPaid;
   static const String buttonStatusFreeTraining = MessageCopy.buttonStatusFreeTraining;
   static const String buttonStatusPaymentRejected = MessageCopy.buttonStatusPaymentRejected;
@@ -65,6 +68,8 @@ final class MessageTemplates {
   static const String buttonSummaryCurrentMonth = MessageCopy.buttonSummaryCurrentMonth;
   static const String buttonSummaryPreviousMonth = MessageCopy.buttonSummaryPreviousMonth;
   static const String callbackApprovePaymentPrefix = MessageCopy.callbackApprovePaymentPrefix;
+  static const String callbackApprovePartialPaymentPrefix =
+      MessageCopy.callbackApprovePartialPaymentPrefix;
   static const String callbackRejectPaymentPrefix = MessageCopy.callbackRejectPaymentPrefix;
   static const String callbackOpenPaymentsQueue = MessageCopy.callbackOpenPaymentsQueue;
   static const String scheduleDocumentUrl = MessageCopy.scheduleDocumentUrl;
@@ -492,6 +497,11 @@ final class MessageTemplates {
         'Следующий шаг: дождись результата модерации, бот сообщит автоматически.';
   }
 
+  String chooseOutdoorPaymentType() {
+    return 'Какой формат оплаты ты уже сделал(а)? 👇\n'
+        'Выбери вариант и затем отправь чек.';
+  }
+
   String paymentSubmittedAdminNotification(TrainingBooking booking) {
     return 'Новое подтверждение оплаты 💸\n\n'
         'Пришла новая заявка на проверку оплаты.\n'
@@ -716,12 +726,15 @@ final class MessageTemplates {
   String paymentsQueueItem(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    final note = booking.paymentNote == null ? '' : '\nКомментарий: ${booking.paymentNote}';
+    final paymentType = _paymentTypeLabelFromNote(booking.paymentNote);
+    final cleanNote = _cleanPaymentNote(booking.paymentNote);
+    final note = cleanNote == null ? '' : '\nКомментарий: $cleanNote';
     return 'Заявка #${booking.id}\n'
         'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 ${booking.location}'
+        '${paymentType == null ? '' : '\nТип оплаты: $paymentType'}'
         '$note\n\n'
         'Подтверди или отклони оплату кнопками ниже.\n'
         'После решения можно сразу открыть следующую заявку.';
@@ -788,8 +801,11 @@ final class MessageTemplates {
   }
 
   String paymentActionUsage() {
-    return 'Использование:\n/approve_payment <id>\n/reject_payment <id>\n\n'
-        'Например: /approve_payment 42';
+    return 'Использование:\n'
+        '/approve_payment <id>\n'
+        '/approve_partial_payment <id>\n'
+        '/reject_payment <id>\n\n'
+        'Например: /approve_partial_payment 42';
   }
 
   String paymentReviewResultWithNextStep({
@@ -803,8 +819,14 @@ final class MessageTemplates {
         '$nextStep';
   }
 
-  Map<String, Object?> paymentDecisionInlineKeyboard(int bookingId) {
-    return TelegramKeyboards.paymentDecisionInlineKeyboard(bookingId);
+  Map<String, Object?> paymentDecisionInlineKeyboard(
+    int bookingId, {
+    bool allowPartialApprove = false,
+  }) {
+    return TelegramKeyboards.paymentDecisionInlineKeyboard(
+      bookingId,
+      allowPartialApprove: allowPartialApprove,
+    );
   }
 
   Map<String, Object?> openPaymentsQueueInlineKeyboard({required int total}) {
@@ -837,6 +859,11 @@ final class MessageTemplates {
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
+    if (booking.status == BookingStatus.partialPaid) {
+      return 'Предоплату по записи #${booking.id} подтвердили 🟡\n'
+          'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
+          'Оставшуюся сумму можно доплатить ближе к старту.';
+    }
     if (!MessageFormatters.isOutdoorBooking(booking)) {
       return 'Оплату по записи #${booking.id} подтвердили ✅\n'
           'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
@@ -1075,10 +1102,12 @@ final class MessageTemplates {
   Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
     bool showCancelBooking = false,
+    bool showOutdoorPaymentTypeChoice = false,
   }) {
     return TelegramKeyboards.paymentConfirmationKeyboard(
       showStarterBonus: showStarterBonus,
       showCancelBooking: showCancelBooking,
+      showOutdoorPaymentTypeChoice: showOutdoorPaymentTypeChoice,
     );
   }
 
@@ -1320,6 +1349,34 @@ final class MessageTemplates {
         .replaceAll('<', '&lt;')
         .replaceAll('>', '&gt;')
         .replaceAll('"', '&quot;');
+  }
+
+  String? _paymentTypeLabelFromNote(String? paymentNote) {
+    if (paymentNote == null || paymentNote.isEmpty) {
+      return null;
+    }
+    if (paymentNote.startsWith('__payment_choice_partial__')) {
+      return 'Предоплата/аванс/задаток';
+    }
+    if (paymentNote.startsWith('__payment_choice_full__')) {
+      return 'Полная оплата';
+    }
+    return null;
+  }
+
+  String? _cleanPaymentNote(String? paymentNote) {
+    if (paymentNote == null || paymentNote.isEmpty) {
+      return null;
+    }
+    if (paymentNote.startsWith('__payment_choice_partial__')) {
+      final text = paymentNote.substring('__payment_choice_partial__'.length).trim();
+      return text.isEmpty ? null : text;
+    }
+    if (paymentNote.startsWith('__payment_choice_full__')) {
+      final text = paymentNote.substring('__payment_choice_full__'.length).trim();
+      return text.isEmpty ? null : text;
+    }
+    return paymentNote;
   }
 
   String _normalizeTrainerDescription(String raw) {

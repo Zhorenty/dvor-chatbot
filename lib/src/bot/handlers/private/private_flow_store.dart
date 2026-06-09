@@ -34,6 +34,11 @@ enum PrivateFlowStep {
   confirmingAdminCreate,
 }
 
+enum PaymentChoice {
+  full,
+  partial,
+}
+
 final class PrivateFlowState {
   const PrivateFlowState({
     required this.step,
@@ -48,6 +53,7 @@ final class PrivateFlowState {
     this.adminCreateStatus,
     this.adminCreateUsername,
     this.adminCreateTraining,
+    this.paymentChoice,
   });
 
   final PrivateFlowStep step;
@@ -62,6 +68,7 @@ final class PrivateFlowState {
   final BookingStatus? adminCreateStatus;
   final String? adminCreateUsername;
   final TrainingInfo? adminCreateTraining;
+  final PaymentChoice? paymentChoice;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -76,6 +83,7 @@ final class PrivateFlowState {
     Object? adminCreateStatus = _privateFlowUnset,
     Object? adminCreateUsername = _privateFlowUnset,
     Object? adminCreateTraining = _privateFlowUnset,
+    Object? paymentChoice = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -102,6 +110,9 @@ final class PrivateFlowState {
       adminCreateTraining: identical(adminCreateTraining, _privateFlowUnset)
           ? this.adminCreateTraining
           : adminCreateTraining as TrainingInfo?,
+      paymentChoice: identical(paymentChoice, _privateFlowUnset)
+          ? this.paymentChoice
+          : paymentChoice as PaymentChoice?,
     );
   }
 }

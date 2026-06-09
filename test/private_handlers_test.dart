@@ -2504,6 +2504,41 @@ void main() {
       expect(sender.answeredCallbacks.single.callbackQueryId, 'cbq-1');
     });
 
+    test('handles partial payment moderation callback buttons for admin', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1955},
+        adminChatId: -100559,
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'callback_query': <String, dynamic>{
+          'id': 'cbq-partial',
+          'from': <String, dynamic>{'id': 1955, 'username': 'moderator_olga'},
+          'data': '${MessageTemplates.callbackApprovePartialPaymentPrefix}25',
+          'message': <String, dynamic>{
+            'chat': <String, dynamic>{'id': 1955, 'type': 'private'},
+          },
+        },
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(3));
+      expect(sender.messages[0].chatId, 1);
+      expect(sender.messages[0].text, contains('Предоплату по записи #25 подтвердили'));
+      expect(sender.messages[1].chatId, -100559);
+      expect(sender.messages[1].text, contains('Статус: Предоплата внесена 🟡'));
+      expect(sender.messages[2].chatId, 1955);
+      expect(sender.messages[2].text, contains('Предоплата внесена 🟡'));
+      expect(sender.answeredCallbacks, hasLength(1));
+      expect(sender.answeredCallbacks.single.callbackQueryId, 'cbq-partial');
+    });
+
     test('shows already reviewed message when payment status is stale', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
@@ -2599,6 +2634,40 @@ void main() {
       expect(sender.messages.any((message) => message.text.contains('Не понял выбор')), isFalse);
       expect(sender.messages.last.chatId, 1951);
       expect(sender.messages.last.text, contains('Статус записи #23 обновлен'));
+    });
+
+    test('shows outdoor payment choice buttons in payment flow', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 930,
+            userId: 3930,
+            title: '🏃 Трейл: Приэльбрусье',
+            trainingKey: 'trails|2026-10-01T10:00:00.000Z|🏃 Трейл: Приэльбрусье|Маршрут',
+            startsAt: DateTime(2026, 10, 1, 10, 0),
+            location: 'Маршрут',
+            status: BookingStatus.pendingPayment,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3930, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3930},
+        'text': MessageTemplates.buttonSubmitPayment,
+      });
+
+      expect(handled, isTrue);
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonPayFully));
+      expect(buttons, contains(MessageTemplates.buttonPayPartially));
     });
 
     test('repeat booking action opens booking flow for same category', () async {

@@ -648,6 +648,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.paymentConfirmation,
         activeBooking: result.booking,
         starterBonusOffered: starterBonusOffered,
+        paymentChoice: null,
       );
       await _sender.sendMessage(
         chatId,
@@ -657,6 +658,7 @@ final class PrivateHandlers {
         replyMarkup: _templates.paymentConfirmationKeyboard(
           showStarterBonus: starterBonusOffered,
           showCancelBooking: _canCancelBookingByPolicy(result.booking),
+          showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(result.booking),
         ),
       );
       return true;
@@ -841,6 +843,7 @@ final class PrivateHandlers {
           step: _PrivateFlowStep.paymentConfirmation,
           activeBooking: selectedBooking,
           starterBonusOffered: starterBonusOffered,
+          paymentChoice: null,
         );
         await _sender.sendMessage(
           chatId,
@@ -848,6 +851,7 @@ final class PrivateHandlers {
           replyMarkup: _templates.paymentConfirmationKeyboard(
             showStarterBonus: starterBonusOffered,
             showCancelBooking: _canCancelBookingByPolicy(selectedBooking),
+            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(selectedBooking),
           ),
         );
         return true;
@@ -932,12 +936,49 @@ final class PrivateHandlers {
 
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.paymentConfirmation &&
+        text != null &&
+        (text == MessageTemplates.buttonPayFully || text == MessageTemplates.buttonPayPartially)) {
+      final currentFlow = flowState!;
+      final booking = currentFlow.activeBooking;
+      if (booking == null || !_isOutdoorCategory(_catalogService.categoryForBooking(booking))) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.paymentProofRequired(),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: currentFlow.starterBonusOffered,
+            showCancelBooking: booking != null && _canCancelBookingByPolicy(booking),
+            showOutdoorPaymentTypeChoice:
+                booking != null && _shouldShowOutdoorPaymentTypeChoice(booking),
+          ),
+        );
+        return true;
+      }
+      final selectedChoice =
+          text == MessageTemplates.buttonPayPartially ? PaymentChoice.partial : PaymentChoice.full;
+      _flowByUserId[userId] = currentFlow.copyWith(paymentChoice: selectedChoice);
+      await _sender.sendMessage(
+        chatId,
+        _templates.paymentProofRequired(),
+        replyMarkup: _templates.paymentConfirmationKeyboard(
+          showStarterBonus: currentFlow.starterBonusOffered,
+          showCancelBooking: _canCancelBookingByPolicy(booking),
+          showOutdoorPaymentTypeChoice: true,
+        ),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.paymentConfirmation &&
         paymentProof != null) {
       final currentFlow = flowState!;
       final booking = await _bookingRepository.submitPaymentForLatestPending(
         userId,
         bookingId: currentFlow.activeBooking?.id,
-        note: paymentProof.caption,
+        note: _composePaymentNote(
+          caption: paymentProof.caption,
+          choice: currentFlow.paymentChoice,
+        ),
         paymentProofChatId: paymentProof.fromChatId,
         paymentProofMessageId: paymentProof.messageId,
       );
@@ -970,6 +1011,8 @@ final class PrivateHandlers {
           replyMarkup: _templates.paymentConfirmationKeyboard(
             showStarterBonus: flowState.starterBonusOffered,
             showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
+            showOutdoorPaymentTypeChoice:
+                activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
           ),
         );
         return true;
@@ -982,6 +1025,7 @@ final class PrivateHandlers {
           replyMarkup: _templates.paymentConfirmationKeyboard(
             showStarterBonus: flowState.starterBonusOffered,
             showCancelBooking: _canCancelBookingByPolicy(activeBooking),
+            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
           ),
         );
         return true;
@@ -997,6 +1041,7 @@ final class PrivateHandlers {
           replyMarkup: _templates.paymentConfirmationKeyboard(
             showStarterBonus: flowState.starterBonusOffered,
             showCancelBooking: _canCancelBookingByPolicy(activeBooking),
+            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
           ),
         );
         return true;
@@ -1091,13 +1136,20 @@ final class PrivateHandlers {
         }
         return true;
       }
+      final activeBooking = flowState?.activeBooking;
+      final needsPaymentChoice = activeBooking != null &&
+          _shouldShowOutdoorPaymentTypeChoice(activeBooking) &&
+          flowState?.paymentChoice == null;
       await _sender.sendMessage(
         chatId,
-        _templates.paymentProofRequired(),
+        needsPaymentChoice
+            ? _templates.chooseOutdoorPaymentType()
+            : _templates.paymentProofRequired(),
         replyMarkup: _templates.paymentConfirmationKeyboard(
           showStarterBonus: flowState?.starterBonusOffered ?? false,
-          showCancelBooking: flowState?.activeBooking != null &&
-              _canCancelBookingByPolicy(flowState!.activeBooking!),
+          showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
+          showOutdoorPaymentTypeChoice:
+              activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
         ),
       );
       return true;
@@ -1107,13 +1159,20 @@ final class PrivateHandlers {
         flowState?.step == _PrivateFlowStep.paymentConfirmation &&
         text != null &&
         !text.startsWith('/')) {
+      final activeBooking = flowState!.activeBooking;
+      final needsPaymentChoice = activeBooking != null &&
+          _shouldShowOutdoorPaymentTypeChoice(activeBooking) &&
+          flowState.paymentChoice == null;
       await _sender.sendMessage(
         chatId,
-        _templates.paymentProofRequired(),
+        needsPaymentChoice
+            ? _templates.chooseOutdoorPaymentType()
+            : _templates.paymentProofRequired(),
         replyMarkup: _templates.paymentConfirmationKeyboard(
-          showStarterBonus: flowState!.starterBonusOffered,
-          showCancelBooking: flowState.activeBooking != null &&
-              _canCancelBookingByPolicy(flowState.activeBooking!),
+          showStarterBonus: flowState.starterBonusOffered,
+          showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
+          showOutdoorPaymentTypeChoice:
+              activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
         ),
       );
       return true;
@@ -1972,7 +2031,9 @@ final class PrivateHandlers {
     }
 
     if (text != null &&
-        (text.startsWith('/approve_payment') || text.startsWith('/reject_payment'))) {
+        (text.startsWith('/approve_payment') ||
+            text.startsWith('/approve_partial_payment') ||
+            text.startsWith('/reject_payment'))) {
       if (!isAdmin) {
         await _sender.sendMessage(
           chatId,
@@ -1990,8 +2051,11 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final status =
-          text.startsWith('/approve_payment') ? BookingStatus.paid : BookingStatus.paymentRejected;
+      final status = switch (true) {
+        _ when text.startsWith('/approve_partial_payment') => BookingStatus.partialPaid,
+        _ when text.startsWith('/approve_payment') => BookingStatus.paid,
+        _ => BookingStatus.paymentRejected,
+      };
       final reviewResult = await _bookingRepository.reviewSubmittedPayment(
         bookingId: bookingId,
         status: status,
@@ -2128,7 +2192,10 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.paymentsQueueItem(booking),
-        replyMarkup: _templates.paymentDecisionInlineKeyboard(booking.id),
+        replyMarkup: _templates.paymentDecisionInlineKeyboard(
+          booking.id,
+          allowPartialApprove: _shouldShowOutdoorPaymentTypeChoice(booking),
+        ),
       );
     }
   }
@@ -2258,6 +2325,11 @@ final class PrivateHandlers {
     if (normalized.contains('проверке') || normalized.contains('проверк')) {
       return BookingStatus.paymentSubmitted;
     }
+    if (normalized.contains('предоплат') ||
+        normalized.contains('аванс') ||
+        normalized.contains('задат')) {
+      return BookingStatus.partialPaid;
+    }
     if (normalized.contains('оплачен') || normalized.contains('оплачено')) {
       return BookingStatus.paid;
     }
@@ -2344,9 +2416,11 @@ final class PrivateHandlers {
     String? moderatorUsername,
   }) async {
     try {
+      final isApproved =
+          booking.status == BookingStatus.paid || booking.status == BookingStatus.partialPaid;
       await _sender.sendMessage(
         booking.userId,
-        booking.status == BookingStatus.paid
+        isApproved
             ? _templates.paymentApprovedForUser(booking)
             : _templates.paymentRejectedForUser(booking),
       );
@@ -2703,6 +2777,29 @@ final class PrivateHandlers {
     }
   }
 
+  bool _shouldShowOutdoorPaymentTypeChoice(TrainingBooking booking) {
+    return _isOutdoorCategory(_catalogService.categoryForBooking(booking));
+  }
+
+  String? _composePaymentNote({
+    required String? caption,
+    required PaymentChoice? choice,
+  }) {
+    final normalizedCaption = caption?.trim();
+    final marker = switch (choice) {
+      PaymentChoice.full => '__payment_choice_full__',
+      PaymentChoice.partial => '__payment_choice_partial__',
+      null => null,
+    };
+    if (marker == null) {
+      return normalizedCaption;
+    }
+    if (normalizedCaption == null || normalizedCaption.isEmpty) {
+      return marker;
+    }
+    return '$marker\n$normalizedCaption';
+  }
+
   Future<bool> _openPendingPaymentFlow({
     required int chatId,
     required int userId,
@@ -2722,6 +2819,7 @@ final class PrivateHandlers {
       availableTrainings: const <TrainingInfo>[],
       activeBooking: target,
       starterBonusOffered: starterBonusOffered,
+      paymentChoice: null,
     );
     await _sender.sendMessage(
       chatId,
@@ -2729,6 +2827,7 @@ final class PrivateHandlers {
       replyMarkup: _templates.paymentConfirmationKeyboard(
         showStarterBonus: starterBonusOffered,
         showCancelBooking: _canCancelBookingByPolicy(target),
+        showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(target),
       ),
     );
     return true;

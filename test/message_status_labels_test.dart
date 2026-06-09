@@ -48,6 +48,11 @@ void main() {
 
       expect(MessageFormatters.bookingStatusLabel(paidUnknownPrice), 'Оплачено ✅');
     });
+
+    test('maps partial paid status to partial label', () {
+      final partialPaid = fakeBooking(status: BookingStatus.partialPaid);
+      expect(MessageFormatters.bookingStatusLabel(partialPaid), 'Предоплата внесена 🟡');
+    });
   });
 
   test('myBookings uses booking-aware status labels', () {
