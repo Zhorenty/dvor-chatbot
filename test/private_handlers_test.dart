@@ -1839,6 +1839,75 @@ void main() {
       expect(sender.messages.last.text, contains('нельзя перенести на платную тренировку'));
     });
 
+    test('does not allow rescheduling paid booking to free training', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          fakeBooking(
+            id: 353,
+            userId: 2353,
+            trainingKey: TrainingInfo(
+              title: 'Paid session',
+              startsAt: DateTime(2026, 7, 7, 19, 0),
+              location: 'Hall A',
+              price: 2500,
+            ).sessionKey,
+            title: 'Paid session',
+            startsAt: DateTime(2026, 7, 7, 19, 0),
+            location: 'Hall A',
+            status: BookingStatus.paid,
+            trainingPrice: 2500,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Paid session',
+              startsAt: DateTime(2026, 7, 7, 19, 0),
+              location: 'Hall A',
+              price: 2500,
+            ),
+            TrainingInfo(
+              title: 'Free session',
+              startsAt: DateTime(2026, 7, 10, 19, 0),
+              location: 'Hall B',
+              price: 0,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2353, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2353},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2353, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2353},
+        'text': '🧾 #353 Paid session',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2353, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2353},
+        'text': MessageTemplates.buttonRescheduleBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2353, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2353},
+        'text': '🎯 2. Free session',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.rescheduleCalls, 0);
+      expect(sender.messages.last.text, contains('нельзя перенести на бесплатную тренировку'));
+    });
+
     test('does not allow rescheduling zero-price booking to paid training', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()

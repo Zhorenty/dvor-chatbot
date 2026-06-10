@@ -831,10 +831,21 @@ final class PrivateHandlers {
         );
         return true;
       }
-      if (_isFreeBooking(selectedBooking) && !_isFreeActivity(targetTraining)) {
+      try {
+        _bookingPolicyService.ensureReschedulePaymentTypeAllowed(
+          booking: selectedBooking,
+          targetTraining: targetTraining,
+        );
+      } on ReschedulePaymentTypeViolationException catch (error) {
+        final message = switch (error.violation) {
+          ReschedulePaymentTypeViolation.freeToPaid =>
+            _templates.bookingRescheduleFreeToPaidNotAllowed(),
+          ReschedulePaymentTypeViolation.paidToFree =>
+            _templates.bookingReschedulePaidToFreeNotAllowed(),
+        };
         await _sender.sendMessage(
           chatId,
-          _templates.bookingRescheduleFreeToPaidNotAllowed(),
+          message,
           replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
         );
         return true;
@@ -2484,14 +2495,6 @@ final class PrivateHandlers {
 
   bool _isFreeActivity(TrainingInfo training) {
     final price = training.price;
-    return price != null && price <= 0;
-  }
-
-  bool _isFreeBooking(TrainingBooking booking) {
-    if (booking.status == BookingStatus.freeTraining) {
-      return true;
-    }
-    final price = booking.trainingPrice;
     return price != null && price <= 0;
   }
 

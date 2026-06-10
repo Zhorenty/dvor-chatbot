@@ -613,6 +613,11 @@ final class MessageTemplates {
         'Бесплатную запись можно переносить только на бесплатные слоты.';
   }
 
+  String bookingReschedulePaidToFreeNotAllowed() {
+    return 'Эту запись нельзя перенести на бесплатную тренировку.\n'
+        'Платную запись можно переносить только на платные слоты.';
+  }
+
   String bookingCancelled(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
