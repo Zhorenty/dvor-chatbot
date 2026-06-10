@@ -842,6 +842,8 @@ final class PrivateHandlers {
             _templates.bookingRescheduleFreeToPaidNotAllowed(),
           ReschedulePaymentTypeViolation.paidToFree =>
             _templates.bookingReschedulePaidToFreeNotAllowed(),
+          ReschedulePaymentTypeViolation.priceMismatch =>
+            _templates.bookingReschedulePriceMismatchNotAllowed(),
         };
         await _sender.sendMessage(
           chatId,
@@ -2057,7 +2059,25 @@ final class PrivateHandlers {
     final trainingsByKey = <String, TrainingInfo>{
       for (final training in trainings) training.sessionKey: training,
     };
+    final scheduleBySignature = <String, List<TrainingInfo>>{};
+    for (final training in trainings) {
+      scheduleBySignature
+          .putIfAbsent(_trainingSignature(training), () => <TrainingInfo>[])
+          .add(training);
+    }
+    for (final candidates in scheduleBySignature.values) {
+      candidates.sort((left, right) => left.startsAt.compareTo(right.startsAt));
+    }
     for (final booking in segmentBookings) {
+      final targetTrainingKey = _resolveParticipantsTrainingKey(
+        booking: booking,
+        trainingsByKey: trainingsByKey,
+        trainingsBySignature: scheduleBySignature,
+      );
+      if (targetTrainingKey != booking.trainingKey ||
+          trainingsByKey.containsKey(booking.trainingKey)) {
+        continue;
+      }
       trainingsByKey.putIfAbsent(
         booking.trainingKey,
         () => TrainingInfo(
@@ -2070,17 +2090,29 @@ final class PrivateHandlers {
     }
     final mergedTrainings = trainingsByKey.values.toList(growable: false)
       ..sort((left, right) => left.startsAt.compareTo(right.startsAt));
-    final keys = trainingsByKey.keys.toSet();
-    final bookings = keys.isEmpty
+    final queryKeys = <String>{
+      ...trainingsByKey.keys,
+      ...segmentBookings.map((booking) => booking.trainingKey),
+    };
+    final bookings = queryKeys.isEmpty
         ? const <TrainingBooking>[]
         : await _bookingRepository.listByTrainingKeys(
-            keys,
+            queryKeys,
             limit: 1000,
             includeCancelled: true,
           );
     final byTraining = <String, List<TrainingBooking>>{};
     for (final booking in bookings) {
-      byTraining.putIfAbsent(booking.trainingKey, () => <TrainingBooking>[]).add(booking);
+      final targetTrainingKey = _resolveParticipantsTrainingKey(
+        booking: booking,
+        trainingsByKey: trainingsByKey,
+        trainingsBySignature: scheduleBySignature,
+      );
+      byTraining.putIfAbsent(targetTrainingKey, () => <TrainingBooking>[]).add(booking);
+    }
+    final normalizedByTraining = <String, List<TrainingBooking>>{};
+    for (final entry in byTraining.entries) {
+      normalizedByTraining[entry.key] = _deduplicateParticipantBookings(entry.value);
     }
 
     final copy = _scheduleHandler.participantsCopy(category);
@@ -2089,12 +2121,104 @@ final class PrivateHandlers {
       chatId,
       _templates.trainingParticipants(
         trainings: mergedTrainings,
-        bookingsByTrainingKey: byTraining,
+        bookingsByTrainingKey: normalizedByTraining,
         title: copy.title,
         emptyText: copy.emptyText,
       ),
       replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
     );
+  }
+
+  String _resolveParticipantsTrainingKey({
+    required TrainingBooking booking,
+    required Map<String, TrainingInfo> trainingsByKey,
+    required Map<String, List<TrainingInfo>> trainingsBySignature,
+  }) {
+    if (trainingsByKey.containsKey(booking.trainingKey)) {
+      return booking.trainingKey;
+    }
+    final candidates = trainingsBySignature[_bookingSignature(booking)];
+    if (candidates == null || candidates.isEmpty) {
+      return booking.trainingKey;
+    }
+    final candidate = _nearestTrainingByStartsAt(candidates, booking.startsAt);
+    final dayDistance = (candidate.startsAt.difference(booking.startsAt).inHours).abs();
+    if (dayDistance > 24 * 21) {
+      return booking.trainingKey;
+    }
+    return candidate.sessionKey;
+  }
+
+  TrainingInfo _nearestTrainingByStartsAt(
+    List<TrainingInfo> candidates,
+    DateTime target,
+  ) {
+    var best = candidates.first;
+    var bestDistance = (best.startsAt.difference(target).inMinutes).abs();
+    for (var index = 1; index < candidates.length; index++) {
+      final candidate = candidates[index];
+      final distance = (candidate.startsAt.difference(target).inMinutes).abs();
+      if (distance < bestDistance) {
+        best = candidate;
+        bestDistance = distance;
+      }
+    }
+    return best;
+  }
+
+  List<TrainingBooking> _deduplicateParticipantBookings(List<TrainingBooking> bookings) {
+    if (bookings.length < 2) {
+      return bookings;
+    }
+    final bestByIdentity = <String, TrainingBooking>{};
+    for (final booking in bookings) {
+      final identity = _participantIdentity(booking);
+      final existing = bestByIdentity[identity];
+      if (existing == null) {
+        bestByIdentity[identity] = booking;
+        continue;
+      }
+      if (_shouldReplaceParticipant(existing: existing, candidate: booking)) {
+        bestByIdentity[identity] = booking;
+      }
+    }
+    final deduplicated = bestByIdentity.values.toList(growable: false)
+      ..sort((left, right) => left.updatedAt.compareTo(right.updatedAt));
+    return deduplicated;
+  }
+
+  bool _shouldReplaceParticipant({
+    required TrainingBooking existing,
+    required TrainingBooking candidate,
+  }) {
+    final existingCancelled = existing.status == BookingStatus.cancelled;
+    final candidateCancelled = candidate.status == BookingStatus.cancelled;
+    if (existingCancelled && !candidateCancelled) {
+      return true;
+    }
+    if (!existingCancelled && candidateCancelled) {
+      return false;
+    }
+    return candidate.updatedAt.isAfter(existing.updatedAt);
+  }
+
+  String _participantIdentity(TrainingBooking booking) {
+    if (booking.userId > 0) {
+      return 'id:${booking.userId}';
+    }
+    final username = booking.userUsername?.trim().toLowerCase();
+    if (username != null && username.isNotEmpty) {
+      return 'username:$username';
+    }
+    return 'id:${booking.userId}';
+  }
+
+  String _trainingSignature(TrainingInfo training) {
+    return '${training.title.trim().toLowerCase()}|${training.location.trim().toLowerCase()}';
+  }
+
+  String _bookingSignature(TrainingBooking booking) {
+    return '${booking.trainingTitle.trim().toLowerCase()}|${booking.location.trim().toLowerCase()}';
   }
 
   Future<void> _sendPaymentsQueueByCategory({

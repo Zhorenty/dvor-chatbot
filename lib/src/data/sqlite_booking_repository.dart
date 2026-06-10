@@ -252,6 +252,9 @@ final class SqliteBookingRepository implements BookingRepository {
     if (!_isFreeBooking(existing) && _isFreeActivityPrice(training.price)) {
       return const BookingRescheduleResult(outcome: BookingRescheduleOutcome.conflict);
     }
+    if (_normalizedBookingPrice(existing) != training.price) {
+      return const BookingRescheduleResult(outcome: BookingRescheduleOutcome.conflict);
+    }
     final db = _database;
     final nowIso = _nowProvider().toUtc().toIso8601String();
     try {
@@ -1037,6 +1040,13 @@ final class SqliteBookingRepository implements BookingRepository {
     }
     final price = booking.trainingPrice;
     return price != null && price <= 0;
+  }
+
+  int? _normalizedBookingPrice(TrainingBooking booking) {
+    if (booking.status == BookingStatus.freeTraining) {
+      return 0;
+    }
+    return booking.trainingPrice;
   }
 
   bool _isFreeStatus(BookingStatus status) {

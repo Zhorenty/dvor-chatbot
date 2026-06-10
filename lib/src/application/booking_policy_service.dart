@@ -7,6 +7,7 @@ import 'package:dvor_chatbot/src/domain/training_info.dart';
 enum ReschedulePaymentTypeViolation {
   freeToPaid,
   paidToFree,
+  priceMismatch,
 }
 
 final class ReschedulePaymentTypeViolationException implements Exception {
@@ -55,6 +56,13 @@ final class BookingPolicyService {
         ReschedulePaymentTypeViolation.paidToFree,
       );
     }
+    final bookingPrice = _normalizedBookingPrice(booking);
+    final targetPrice = targetTraining.price;
+    if (bookingPrice != targetPrice) {
+      throw const ReschedulePaymentTypeViolationException(
+        ReschedulePaymentTypeViolation.priceMismatch,
+      );
+    }
   }
 
   bool canCancel(TrainingBooking booking, {required DateTime now}) {
@@ -80,5 +88,12 @@ final class BookingPolicyService {
     }
     final price = booking.trainingPrice;
     return price != null && price <= 0;
+  }
+
+  int? _normalizedBookingPrice(TrainingBooking booking) {
+    if (booking.status == BookingStatus.freeTraining) {
+      return 0;
+    }
+    return booking.trainingPrice;
   }
 }

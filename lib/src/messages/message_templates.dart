@@ -396,7 +396,7 @@ final class MessageTemplates {
   }) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return '🔥 На тренировке почти не осталось мест!\n'
+    return '🔥 ${_groupLowSpotsTitle(training.category)}\n'
         'Тренировка: ${training.title}\n'
         '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${training.location}\n'
@@ -410,7 +410,7 @@ final class MessageTemplates {
   }) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return '⛔️ Места на эту тренировку закончились\n'
+    return '⛔️ ${_groupNoSpotsTitle(training.category)}\n'
         'Тренировка: ${training.title}\n'
         '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${training.location}\n'
@@ -634,6 +634,11 @@ final class MessageTemplates {
   String bookingReschedulePaidToFreeNotAllowed() {
     return 'Эту запись нельзя перенести на бесплатную тренировку.\n'
         'Платную запись можно переносить только на платные слоты.';
+  }
+
+  String bookingReschedulePriceMismatchNotAllowed() {
+    return 'Эту запись нельзя перенести на тренировку с другой стоимостью.\n'
+        'Перенос доступен только между тренировками с одинаковой ценой.';
   }
 
   String bookingCancelled(TrainingBooking booking) {
@@ -1174,6 +1179,22 @@ final class MessageTemplates {
       return 'Записаться: $deepLink';
     }
     return 'Чтобы записаться, открой бота в личке и нажми /start.';
+  }
+
+  String _groupLowSpotsTitle(ActivityCategory category) {
+    return switch (category) {
+      ActivityCategory.trainings => 'На тренировке почти не осталось мест!',
+      ActivityCategory.hikes => 'В походе почти не осталось мест!',
+      ActivityCategory.trails => 'На трейле почти не осталось мест!',
+    };
+  }
+
+  String _groupNoSpotsTitle(ActivityCategory category) {
+    return switch (category) {
+      ActivityCategory.trainings => 'Места на эту тренировку закончились',
+      ActivityCategory.hikes => 'В походе не осталось мест',
+      ActivityCategory.trails => 'На трейле не осталось мест',
+    };
   }
 
   String? _botDeepLink() {

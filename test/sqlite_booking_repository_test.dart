@@ -411,6 +411,39 @@ void main() {
       await repository.close();
     });
 
+    test('blocks reschedule between paid trainings with different price', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final initial = await repository.createPendingBooking(
+        userId: 5007,
+        training: TrainingInfo(
+          title: 'Paid class',
+          startsAt: DateTime(2030, 6, 16, 18),
+          location: 'Gym E',
+          price: 2200,
+        ),
+      );
+      await repository.updateStatus(initial.booking.id, BookingStatus.paid);
+
+      final result = await repository.rescheduleBooking(
+        userId: 5007,
+        bookingId: initial.booking.id,
+        training: TrainingInfo(
+          title: 'Another paid class',
+          startsAt: DateTime(2030, 6, 20, 18),
+          location: 'Gym F',
+          price: 2800,
+        ),
+      );
+
+      expect(result.outcome, BookingRescheduleOutcome.conflict);
+
+      await repository.close();
+    });
+
     test('reviews payment only from submitted status', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',

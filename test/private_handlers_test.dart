@@ -1,6 +1,7 @@
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
@@ -1908,6 +1909,75 @@ void main() {
       expect(sender.messages.last.text, contains('нельзя перенести на бесплатную тренировку'));
     });
 
+    test('does not allow rescheduling paid booking to training with different price', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          fakeBooking(
+            id: 354,
+            userId: 2354,
+            trainingKey: TrainingInfo(
+              title: 'Paid session',
+              startsAt: DateTime(2026, 7, 7, 19, 0),
+              location: 'Hall A',
+              price: 2500,
+            ).sessionKey,
+            title: 'Paid session',
+            startsAt: DateTime(2026, 7, 7, 19, 0),
+            location: 'Hall A',
+            status: BookingStatus.paid,
+            trainingPrice: 2500,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Paid session',
+              startsAt: DateTime(2026, 7, 7, 19, 0),
+              location: 'Hall A',
+              price: 2500,
+            ),
+            TrainingInfo(
+              title: 'Premium session',
+              startsAt: DateTime(2026, 7, 10, 19, 0),
+              location: 'Hall B',
+              price: 3000,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2354, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2354},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2354, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2354},
+        'text': '🧾 #354 Paid session',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2354, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2354},
+        'text': MessageTemplates.buttonRescheduleBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2354, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2354},
+        'text': '🎯 2. Premium session',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.rescheduleCalls, 0);
+      expect(sender.messages.last.text, contains('с другой стоимостью'));
+    });
+
     test('does not allow rescheduling zero-price booking to paid training', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
@@ -2315,6 +2385,287 @@ void main() {
       expect(sender.messages.last.text, contains('Old Run'));
       expect(sender.messages.last.text, contains('@runner_archived (Оплачено ✅)'));
       expect(sender.messages.last.text, isNot(contains('@runner_rejected')));
+    });
+
+    test('merges outdoor participants when activity date changes', () async {
+      final sender = _FakeSender();
+      final oldHike = TrainingInfo(
+        title: '🥾 Поход: DVORCAMP',
+        startsAt: DateTime(2026, 7, 2),
+        location: 'Тренировки, тропы и теплые вечера.',
+        category: ActivityCategory.hikes,
+      );
+      final newHike = TrainingInfo(
+        title: '🥾 Поход: DVORCAMP',
+        startsAt: DateTime(2026, 7, 3),
+        location: 'Тренировки, тропы и теплые вечера.',
+        category: ActivityCategory.hikes,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          _booking(
+            id: 901,
+            userId: 9001,
+            userUsername: 'mi_harkevich',
+            trainingKey: oldHike.sessionKey,
+            title: oldHike.title,
+            startsAt: oldHike.startsAt,
+            location: oldHike.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 902,
+            userId: 9001,
+            userUsername: 'mi_harkevich',
+            trainingKey: newHike.sessionKey,
+            title: newHike.title,
+            startsAt: newHike.startsAt,
+            location: newHike.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 903,
+            userId: 9002,
+            userUsername: 'whatshapped',
+            trainingKey: oldHike.sessionKey,
+            title: oldHike.title,
+            startsAt: oldHike.startsAt,
+            location: oldHike.location,
+            status: BookingStatus.cancelled,
+          ),
+        ]
+        ..adminBookings = <TrainingBooking>[
+          _booking(
+            id: 901,
+            userId: 9001,
+            userUsername: 'mi_harkevich',
+            trainingKey: oldHike.sessionKey,
+            title: oldHike.title,
+            startsAt: oldHike.startsAt,
+            location: oldHike.location,
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'DVORCAMP',
+              dateFrom: newHike.startsAt,
+              dateTo: newHike.startsAt,
+              description: newHike.location,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2001},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2001},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2001},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+
+      expect(categoryHandled, isTrue);
+      final messageText = sender.messages.last.text;
+      expect(RegExp('🥾 Поход: DVORCAMP').allMatches(messageText).length, 1);
+      expect(messageText, contains('🕒 03.07.2026'));
+      expect(messageText, isNot(contains('🕒 02.07.2026')));
+      expect(RegExp('@mi_harkevich').allMatches(messageText).length, 1);
+      expect(messageText, contains('@whatshapped (Отменено ❌)'));
+    });
+
+    test('merges trail participants when activity date changes', () async {
+      final sender = _FakeSender();
+      final oldTrail = TrainingInfo(
+        title: '🏃 Трейл: Лаго-Наки',
+        startsAt: DateTime(2026, 8, 10),
+        location: 'Горный маршрут',
+        category: ActivityCategory.trails,
+      );
+      final newTrail = TrainingInfo(
+        title: '🏃 Трейл: Лаго-Наки',
+        startsAt: DateTime(2026, 8, 12),
+        location: 'Горный маршрут',
+        category: ActivityCategory.trails,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          _booking(
+            id: 910,
+            userId: 9101,
+            userUsername: 'trail_runner',
+            trainingKey: oldTrail.sessionKey,
+            title: oldTrail.title,
+            startsAt: oldTrail.startsAt,
+            location: oldTrail.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 911,
+            userId: 9101,
+            userUsername: 'trail_runner',
+            trainingKey: newTrail.sessionKey,
+            title: newTrail.title,
+            startsAt: newTrail.startsAt,
+            location: newTrail.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 912,
+            userId: 9102,
+            userUsername: 'trail_cancelled',
+            trainingKey: oldTrail.sessionKey,
+            title: oldTrail.title,
+            startsAt: oldTrail.startsAt,
+            location: oldTrail.location,
+            status: BookingStatus.cancelled,
+          ),
+        ]
+        ..adminBookings = <TrainingBooking>[
+          _booking(
+            id: 910,
+            userId: 9101,
+            userUsername: 'trail_runner',
+            trainingKey: oldTrail.sessionKey,
+            title: oldTrail.title,
+            startsAt: oldTrail.startsAt,
+            location: oldTrail.location,
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.trail,
+              title: 'Лаго-Наки',
+              dateFrom: newTrail.startsAt,
+              dateTo: newTrail.startsAt,
+              description: newTrail.location,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2002},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2002},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2002},
+        'text': MessageTemplates.buttonCategoryTrails,
+      });
+
+      expect(categoryHandled, isTrue);
+      final messageText = sender.messages.last.text;
+      expect(RegExp('🏃 Трейл: Лаго-Наки').allMatches(messageText).length, 1);
+      expect(messageText, contains('🕒 12.08.2026'));
+      expect(messageText, isNot(contains('🕒 10.08.2026')));
+      expect(RegExp('@trail_runner').allMatches(messageText).length, 1);
+      expect(messageText, contains('@trail_cancelled (Отменено ❌)'));
+    });
+
+    test('merges training participants when session date changes', () async {
+      final sender = _FakeSender();
+      final oldTraining = TrainingInfo(
+        title: 'Функционалка',
+        startsAt: DateTime(2026, 9, 1, 19, 0),
+        location: 'Зал А',
+      );
+      final newTraining = TrainingInfo(
+        title: 'Функционалка',
+        startsAt: DateTime(2026, 9, 2, 19, 0),
+        location: 'Зал А',
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          _booking(
+            id: 920,
+            userId: 9201,
+            userUsername: 'fit_user',
+            trainingKey: oldTraining.sessionKey,
+            title: oldTraining.title,
+            startsAt: oldTraining.startsAt,
+            location: oldTraining.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 921,
+            userId: 9201,
+            userUsername: 'fit_user',
+            trainingKey: newTraining.sessionKey,
+            title: newTraining.title,
+            startsAt: newTraining.startsAt,
+            location: newTraining.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 922,
+            userId: 9202,
+            userUsername: 'fit_cancelled',
+            trainingKey: oldTraining.sessionKey,
+            title: oldTraining.title,
+            startsAt: oldTraining.startsAt,
+            location: oldTraining.location,
+            status: BookingStatus.cancelled,
+          ),
+        ]
+        ..adminBookings = <TrainingBooking>[
+          _booking(
+            id: 920,
+            userId: 9201,
+            userUsername: 'fit_user',
+            trainingKey: oldTraining.sessionKey,
+            title: oldTraining.title,
+            startsAt: oldTraining.startsAt,
+            location: oldTraining.location,
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[newTraining]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2003},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2003},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2003},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+
+      expect(categoryHandled, isTrue);
+      final messageText = sender.messages.last.text;
+      expect(RegExp('Функционалка').allMatches(messageText).length, 1);
+      expect(messageText, contains('🕒 02.09.2026 19:00'));
+      expect(messageText, isNot(contains('🕒 01.09.2026 19:00')));
+      expect(RegExp('@fit_user').allMatches(messageText).length, 1);
+      expect(messageText, contains('@fit_cancelled (Отменено ❌)'));
     });
 
     test('shows nobles list for admin with training counts', () async {

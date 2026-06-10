@@ -29,7 +29,7 @@ void main() {
         trainingPrice: 700,
       );
 
-      expect(MessageFormatters.bookingStatusLabel(regularFree), 'Бесплатно');
+      expect(MessageFormatters.bookingStatusLabel(regularFree), 'Бесплатно 🎁');
       expect(
         MessageFormatters.bookingStatusLabel(starterFree),
         'Бесплатно: стартовая тренировка 🎁',
@@ -80,6 +80,6 @@ void main() {
 
     expect(text, contains('Бесплатно: стартовая тренировка 🎁'));
     expect(text, contains('Бесплатно: каждая 5-я тренировка 🎁'));
-    expect(text, contains('Статус: Бесплатно'));
+    expect(text, contains('Статус: Бесплатно 🎁'));
   });
 }
