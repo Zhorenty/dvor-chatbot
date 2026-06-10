@@ -165,13 +165,28 @@ final class MessageTemplates {
     }
     final segmentLabel = archived ? 'Архивные' : 'Активные';
     final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
+    final dateFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final lines = <String>[
       'Список записей для управления 👇',
       'Фильтр: $segmentLabel • $categoryLabel',
       'Страница $page/$totalPages • всего записей: $totalCount',
+      '',
+      'Записи на текущей странице:',
+    ];
+    for (var index = 0; index < bookings.length; index++) {
+      final booking = bookings[index];
+      lines.add(
+        '${index + 1}. #${booking.id} ${booking.trainingTitle}\n'
+        '   👤 ${_userTag(booking)} (${booking.userId})\n'
+        '   🕒 ${dateFormatter.format(booking.startsAt)}\n'
+        '   Статус: ${_statusLabel(booking.status, booking: booking)}',
+      );
+    }
+    lines.addAll(<String>[
+      '',
       'Выбери запись кнопкой ниже.',
       'Чтобы сменить фильтры, нажми «${MessageCopy.buttonBack}».',
-    ];
+    ]);
     return lines.join('\n');
   }
 

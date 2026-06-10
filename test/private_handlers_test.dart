@@ -2517,6 +2517,10 @@ void main() {
 
       expect(firstPageHandled, isTrue);
       expect(sender.messages.last.text, contains('Страница 1/2'));
+      expect(sender.messages.last.text, contains('Записи на текущей странице'));
+      expect(sender.messages.last.text, contains('1. #601 Morning Run 1'));
+      expect(sender.messages.last.text, contains('8. #608 Morning Run 8'));
+      expect(sender.messages.last.text, isNot(contains('#609 Morning Run 9')));
       final firstPageButtons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(firstPageButtons, contains('🧾 #601 Morning Run 1'));
       expect(firstPageButtons, contains('🧾 #608 Morning Run 8'));
@@ -2532,6 +2536,8 @@ void main() {
 
       expect(secondPageHandled, isTrue);
       expect(sender.messages.last.text, contains('Страница 2/2'));
+      expect(sender.messages.last.text, contains('1. #609 Morning Run 9'));
+      expect(sender.messages.last.text, isNot(contains('#608 Morning Run 8')));
       final secondPageButtons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(secondPageButtons, contains('🧾 #609 Morning Run 9'));
       expect(secondPageButtons, contains(MessageTemplates.buttonBookingsPreviousPage));
