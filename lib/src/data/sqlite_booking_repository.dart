@@ -620,7 +620,7 @@ final class SqliteBookingRepository implements BookingRepository {
   Future<List<TrainingBooking>> adminListBookings({
     required ActivityCategory category,
     required bool archived,
-    int limit = 30,
+    int? limit,
   }) async {
     _expireOverduePendingBookings();
     final db = _database;
@@ -629,19 +629,22 @@ final class SqliteBookingRepository implements BookingRepository {
     final whereSegment =
         archived ? '(starts_at < ? OR status = ?)' : '(starts_at >= ? AND status != ?)';
     final orderBy = archived ? 'starts_at DESC, updated_at DESC' : 'starts_at ASC, updated_at DESC';
+    final whereArgs = <Object?>[
+      nowIso,
+      BookingStatus.cancelled.dbValue,
+    ];
+    final limitClause = limit == null ? '' : '\n      LIMIT ?';
+    if (limit != null) {
+      whereArgs.add(limit);
+    }
     final result = db.select(
       '''
       SELECT * FROM bookings
       WHERE ($whereCategory)
         AND $whereSegment
-      ORDER BY $orderBy
-      LIMIT ?;
+      ORDER BY $orderBy$limitClause;
       ''',
-      <Object?>[
-        nowIso,
-        BookingStatus.cancelled.dbValue,
-        limit,
-      ],
+      whereArgs,
     );
     return result.map(_rowToBooking).toList(growable: false);
   }

@@ -136,7 +136,7 @@ abstract interface class BookingRepository {
   Future<List<TrainingBooking>> adminListBookings({
     required ActivityCategory category,
     required bool archived,
-    int limit = 30,
+    int? limit,
   });
 
   Future<TrainingBooking> adminCreateBooking({

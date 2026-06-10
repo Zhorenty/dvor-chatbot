@@ -309,10 +309,13 @@ final class FakeBookingRepository implements BookingRepository {
   Future<List<TrainingBooking>> adminListBookings({
     required ActivityCategory category,
     required bool archived,
-    int limit = 30,
+    int? limit,
   }) async {
     lastAdminListCategory = category;
     lastAdminListArchived = archived;
+    if (limit == null) {
+      return adminBookings.toList(growable: false);
+    }
     return adminBookings.take(limit).toList(growable: false);
   }
 
