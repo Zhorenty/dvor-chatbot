@@ -70,6 +70,8 @@ void main() {
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, 11);
       expect(sender.messages.single.text, contains('Добро пожаловать в DVOR'));
+      expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
+      expect(sender.messages.single.text, contains('публикуем афиши всех мероприятий'));
       expect(sender.messages.single.replyMarkup, isNotNull);
       expect(sender.pinnedMessages, hasLength(1));
       expect(sender.pinnedMessages.single.chatId, 11);
@@ -130,6 +132,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Добро пожаловать в DVOR'));
+      expect(sender.messages.first.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
       expect(sender.messages.last.text, contains('бесплатная тренировка'));
       expect(sender.messages.last.text, contains(MessageTemplates.buttonBookTraining));
       expect(sender.messages.last.text, contains(MessageTemplates.buttonUseStarterBonus));
@@ -460,6 +463,8 @@ void main() {
       expect(
           sender.messages.single.text, contains('Показываю ближайшие тренировки, походы и трейлы'));
       expect(sender.messages.single.text, contains('каждая 5-я тренировка бесплатная'));
+      expect(sender.messages.single.text, contains('публикуем афиши всех мероприятий'));
+      expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
       expect(sender.messages.single.text, contains('/trainings, /book, /my_bookings'));
       expect(sender.messages.single.text, isNot(contains('внешнего источника')));
     });
