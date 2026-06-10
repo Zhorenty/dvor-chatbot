@@ -181,6 +181,9 @@ final class MessageTemplates {
         '   🕒 ${dateFormatter.format(booking.startsAt)}\n'
         '   Статус: ${_statusLabel(booking.status, booking: booking)}',
       );
+      if (index < bookings.length - 1) {
+        lines.add('──────────');
+      }
     }
     lines.addAll(<String>[
       '',

@@ -41,7 +41,7 @@ final class MessageFormatters {
     }
     final price = booking.trainingPrice;
     if (price != null && price <= 0) {
-      return 'Бесплатно';
+      return 'Бесплатно 🎁';
     }
     return statusLabel(booking.status);
   }
