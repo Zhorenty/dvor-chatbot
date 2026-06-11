@@ -663,7 +663,7 @@ final class SqliteBookingRepository implements BookingRepository {
       throw ArgumentError.value(userUsername, 'userUsername', 'username must not be empty');
     }
     final trainingKey = training.sessionKey;
-    final effectiveUserId = userId == 0 ? _syntheticUserIdForUsername(normalizedUsername) : userId;
+    final effectiveUserId = userId == 0 ? _resolveUserIdByUsername(normalizedUsername) : userId;
     final existingForUsername = _findBookingByUserAndTraining(effectiveUserId, trainingKey);
     if (existingForUsername != null) {
       final updated = await adminUpdateBooking(
@@ -744,9 +744,11 @@ final class SqliteBookingRepository implements BookingRepository {
     if (userUsername != null && normalizedUsername == null) {
       throw ArgumentError.value(userUsername, 'userUsername', 'username must not be empty');
     }
-    final isSyntheticAccount = existing.userId <= 0;
-    final targetUserId = normalizedUsername != null && isSyntheticAccount
-        ? _syntheticUserIdForUsername(normalizedUsername)
+    final targetUserId = normalizedUsername != null
+        ? _resolveAdminUpdateTargetUserId(
+            existing: existing,
+            normalizedUsername: normalizedUsername,
+          )
         : existing.userId;
     final targetTrainingKey = training?.sessionKey ?? existing.trainingKey;
     final targetTrainingPrice = training?.price ?? existing.trainingPrice;
@@ -762,7 +764,7 @@ final class SqliteBookingRepository implements BookingRepository {
     if (normalizedUsername != null) {
       columns.add('user_username = ?');
       args.add(normalizedUsername);
-      if (isSyntheticAccount) {
+      if (targetUserId != existing.userId) {
         columns.add('user_id = ?');
         args.add(targetUserId);
       }
@@ -1038,6 +1040,45 @@ final class SqliteBookingRepository implements BookingRepository {
     }
     final value = hash == 0 ? 1 : hash;
     return -value;
+  }
+
+  int _resolveAdminUpdateTargetUserId({
+    required TrainingBooking existing,
+    required String normalizedUsername,
+  }) {
+    final existingUsername = _normalizeUsername(existing.userUsername)?.toLowerCase();
+    final targetUsername = normalizedUsername.toLowerCase();
+    if (existingUsername == targetUsername) {
+      return existing.userId;
+    }
+    return _resolveUserIdByUsername(normalizedUsername);
+  }
+
+  int _resolveUserIdByUsername(String normalizedUsername) {
+    final knownUserId = _findKnownPositiveUserIdByUsername(normalizedUsername);
+    if (knownUserId != null) {
+      return knownUserId;
+    }
+    return _syntheticUserIdForUsername(normalizedUsername);
+  }
+
+  int? _findKnownPositiveUserIdByUsername(String normalizedUsername) {
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT user_id
+      FROM bookings
+      WHERE user_id > 0
+        AND user_username = ? COLLATE NOCASE
+      ORDER BY updated_at DESC, id DESC
+      LIMIT 1;
+      ''',
+      <Object?>[normalizedUsername],
+    );
+    if (result.isEmpty) {
+      return null;
+    }
+    return result.first['user_id'] as int?;
   }
 
   bool _isFreeBooking(TrainingBooking booking) {

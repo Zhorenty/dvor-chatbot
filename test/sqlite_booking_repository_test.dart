@@ -628,6 +628,104 @@ void main() {
       await repository.close();
     });
 
+    test('admin username edit reassigns booking owner and frees old user slot', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final targetTraining = TrainingInfo(
+        title: 'Shared event',
+        startsAt: DateTime(2030, 7, 1, 19),
+        location: 'Gym A',
+      );
+      final warmupTraining = TrainingInfo(
+        title: 'Warmup',
+        startsAt: DateTime(2030, 7, 2, 19),
+        location: 'Gym A',
+      );
+      final source = await repository.createPendingBooking(
+        userId: 7101,
+        userUsername: 'user_a',
+        training: targetTraining,
+      );
+      await repository.createPendingBooking(
+        userId: 7102,
+        userUsername: 'user_b',
+        training: warmupTraining,
+      );
+
+      final updated = await repository.adminUpdateBooking(
+        bookingId: source.booking.id,
+        userUsername: 'user_b',
+      );
+
+      expect(updated, isNotNull);
+      expect(updated!.userId, 7102);
+      expect(updated.userUsername, 'user_b');
+
+      final retryBySource = await repository.createPendingBooking(
+        userId: 7101,
+        userUsername: 'user_a',
+        training: targetTraining,
+      );
+      expect(retryBySource.created, isTrue);
+      expect(retryBySource.booking.id, isNot(source.booking.id));
+
+      final retryByTarget = await repository.createPendingBooking(
+        userId: 7102,
+        userUsername: 'user_b',
+        training: targetTraining,
+      );
+      expect(retryByTarget.created, isFalse);
+      expect(retryByTarget.booking.id, updated.id);
+
+      await repository.close();
+    });
+
+    test('admin create by username links booking to known real user', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final knownUserWarmup = TrainingInfo(
+        title: 'Known user warmup',
+        startsAt: DateTime(2030, 7, 5, 19),
+        location: 'Gym B',
+      );
+      final adminTargetTraining = TrainingInfo(
+        title: 'Known user target',
+        startsAt: DateTime(2030, 7, 6, 19),
+        location: 'Gym B',
+      );
+      await repository.createPendingBooking(
+        userId: 7201,
+        userUsername: 'known_runner',
+        training: knownUserWarmup,
+      );
+
+      final created = await repository.adminCreateBooking(
+        userUsername: 'known_runner',
+        training: adminTargetTraining,
+        status: BookingStatus.pendingPayment,
+      );
+
+      expect(created.userId, 7201);
+      final byKnownUser = await repository.listUserBookings(7201, limit: 20);
+      expect(byKnownUser.any((item) => item.id == created.id), isTrue);
+
+      final duplicate = await repository.createPendingBooking(
+        userId: 7201,
+        userUsername: 'known_runner',
+        training: adminTargetTraining,
+      );
+      expect(duplicate.created, isFalse);
+      expect(duplicate.booking.id, created.id);
+
+      await repository.close();
+    });
+
     test('admin update rejects free status for paid training', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',

@@ -1695,9 +1695,9 @@ void main() {
 
       final detailsText = templates.paymentDetailsSent(yogaBooking);
 
-      expect(detailsText, contains('Елена Константиновна Панькова'));
-      expect(detailsText, contains('Т-Банк'));
-      expect(detailsText, contains('89613131144'));
+      expect(detailsText, contains('Елена П.'));
+      expect(detailsText, contains('Т-БАНК'));
+      expect(detailsText, contains('+7(961)313-11-44'));
       expect(detailsText, contains('По вопросам теории и практики'));
       expect(detailsText, contains('@dvor_support'));
     });
