@@ -103,23 +103,51 @@ final class SqliteBookingRepository implements BookingRepository {
     final normalizedUsername = _normalizeUsername(userUsername);
     final existing = _findBookingByUserAndTraining(userId, key);
     if (existing != null) {
+      var bookingForResponse = existing;
       if (normalizedUsername != null) {
-        _updateBookingUsernameIfMissing(
+        _updateBookingUsername(
           userId: userId,
           trainingKey: key,
           userUsername: normalizedUsername,
         );
+        final refreshed = _findBookingByUserAndTraining(userId, key);
+        if (refreshed != null) {
+          bookingForResponse = refreshed;
+        }
       }
-      if (existing.status == BookingStatus.cancelled ||
-          existing.status == BookingStatus.paymentRejected) {
+      if (bookingForResponse.status == BookingStatus.cancelled ||
+          bookingForResponse.status == BookingStatus.paymentRejected) {
         _assertParticipantsLimitNotExceeded(training);
         final reactivated = await _reactivateBookingAsPendingPayment(
-          bookingId: existing.id,
+          bookingId: bookingForResponse.id,
           userUsername: normalizedUsername,
         );
         return BookingCreateResult(booking: reactivated, created: true);
       }
-      return BookingCreateResult(booking: existing, created: false);
+      return BookingCreateResult(booking: bookingForResponse, created: false);
+    }
+    if (normalizedUsername != null) {
+      final syntheticByUsername = _findSyntheticBookingByUsernameAndTraining(
+        username: normalizedUsername,
+        trainingKey: key,
+      );
+      if (syntheticByUsername != null) {
+        final rebound = await _rebindSyntheticBookingToRealUser(
+          bookingId: syntheticByUsername.id,
+          userId: userId,
+          userUsername: normalizedUsername,
+        );
+        if (rebound.status == BookingStatus.cancelled ||
+            rebound.status == BookingStatus.paymentRejected) {
+          _assertParticipantsLimitNotExceeded(training);
+          final reactivated = await _reactivateBookingAsPendingPayment(
+            bookingId: rebound.id,
+            userUsername: normalizedUsername,
+          );
+          return BookingCreateResult(booking: reactivated, created: true);
+        }
+        return BookingCreateResult(booking: rebound, created: false);
+      }
     }
     _assertParticipantsLimitNotExceeded(training);
     try {
@@ -160,7 +188,7 @@ final class SqliteBookingRepository implements BookingRepository {
       return BookingCreateResult(booking: booking, created: true);
     } on SqliteException {
       if (normalizedUsername != null) {
-        _updateBookingUsernameIfMissing(
+        _updateBookingUsername(
           userId: userId,
           trainingKey: key,
           userUsername: normalizedUsername,
@@ -885,6 +913,57 @@ final class SqliteBookingRepository implements BookingRepository {
     return _rowToBooking(result.first);
   }
 
+  TrainingBooking? _findSyntheticBookingByUsernameAndTraining({
+    required String username,
+    required String trainingKey,
+  }) {
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE user_id <= 0
+        AND user_username = ? COLLATE NOCASE
+        AND training_key = ?
+      ORDER BY updated_at DESC, id DESC
+      LIMIT 1;
+      ''',
+      <Object?>[username, trainingKey],
+    );
+    if (result.isEmpty) {
+      return null;
+    }
+    return _rowToBooking(result.first);
+  }
+
+  Future<TrainingBooking> _rebindSyntheticBookingToRealUser({
+    required int bookingId,
+    required int userId,
+    required String userUsername,
+  }) async {
+    final db = _database;
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    db.execute(
+      '''
+      UPDATE bookings
+      SET user_id = ?,
+          user_username = ?,
+          updated_at = ?
+      WHERE id = ? AND user_id <= 0;
+      ''',
+      <Object?>[
+        userId,
+        userUsername,
+        nowIso,
+        bookingId,
+      ],
+    );
+    final rebound = _findBookingById(bookingId);
+    if (rebound == null) {
+      throw StateError('Rebound booking is missing in database.');
+    }
+    return rebound;
+  }
+
   TrainingBooking? _findBookingById(int id) {
     final db = _database;
     final result = db.select(
@@ -938,7 +1017,7 @@ final class SqliteBookingRepository implements BookingRepository {
     return trimmed.startsWith('@') ? trimmed.substring(1) : trimmed;
   }
 
-  void _updateBookingUsernameIfMissing({
+  void _updateBookingUsername({
     required int userId,
     required String trainingKey,
     required String userUsername,
@@ -948,9 +1027,11 @@ final class SqliteBookingRepository implements BookingRepository {
       '''
       UPDATE bookings
       SET user_username = ?
-      WHERE user_id = ? AND training_key = ? AND user_username IS NULL;
+      WHERE user_id = ?
+        AND training_key = ?
+        AND (user_username IS NULL OR user_username != ? COLLATE NOCASE);
       ''',
-      <Object?>[userUsername, userId, trainingKey],
+      <Object?>[userUsername, userId, trainingKey, userUsername],
     );
   }
 

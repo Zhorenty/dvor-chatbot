@@ -54,6 +54,36 @@ void main() {
       await repository.close();
     });
 
+    test('refreshes username on repeated booking for same user and training', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Username refresh',
+        startsAt: DateTime(2030, 6, 10, 20),
+        location: 'Gym A',
+      );
+
+      final first = await repository.createPendingBooking(
+        userId: 1009,
+        userUsername: '@old_name',
+        training: training,
+      );
+      final second = await repository.createPendingBooking(
+        userId: 1009,
+        userUsername: '@new_name',
+        training: training,
+      );
+
+      expect(first.booking.id, second.booking.id);
+      expect(second.created, isFalse);
+      expect(second.booking.userUsername, 'new_name');
+
+      await repository.close();
+    });
+
     test('throws when participants limit is reached for another user', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',
@@ -722,6 +752,40 @@ void main() {
       );
       expect(duplicate.created, isFalse);
       expect(duplicate.booking.id, created.id);
+
+      await repository.close();
+    });
+
+    test('adopts synthetic admin booking when real user books same training', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Synthetic prebooking',
+        startsAt: DateTime(2030, 7, 7, 19),
+        location: 'Gym C',
+      );
+      final adminCreated = await repository.adminCreateBooking(
+        userUsername: 'legacy_user',
+        training: training,
+        status: BookingStatus.pendingPayment,
+      );
+      expect(adminCreated.userId, lessThan(0));
+
+      final userAttempt = await repository.createPendingBooking(
+        userId: 7301,
+        userUsername: 'legacy_user',
+        training: training,
+      );
+      expect(userAttempt.created, isFalse);
+      expect(userAttempt.booking.id, adminCreated.id);
+      expect(userAttempt.booking.userId, 7301);
+      expect(userAttempt.booking.userUsername, 'legacy_user');
+
+      final userBookings = await repository.listUserBookings(7301, limit: 20);
+      expect(userBookings.any((item) => item.id == adminCreated.id), isTrue);
 
       await repository.close();
     });
