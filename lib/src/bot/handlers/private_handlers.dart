@@ -501,6 +501,7 @@ final class PrivateHandlers {
         chatId: chatId,
         category: category,
         isAdmin: isAdmin,
+        canViewParticipantsList: canRunParticipantsAction,
       );
       return true;
     }
@@ -1265,6 +1266,7 @@ final class PrivateHandlers {
           chatId: chatId,
           category: _ActivityCategory.yoga,
           isAdmin: isAdmin,
+          canViewParticipantsList: canRunParticipantsAction,
         );
         return true;
       }
@@ -2065,6 +2067,7 @@ final class PrivateHandlers {
     required int chatId,
     required _ActivityCategory category,
     required bool isAdmin,
+    required bool canViewParticipantsList,
   }) async {
     final trainings = _participantItemsByCategory(category);
     final activeBookings = await _bookingRepository.adminListBookings(
@@ -2150,7 +2153,10 @@ final class PrivateHandlers {
         title: copy.title,
         emptyText: copy.emptyText,
       ),
-      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      replyMarkup: _templates.privateMenuKeyboard(
+        isAdmin: isAdmin,
+        canViewParticipantsList: canViewParticipantsList,
+      ),
     );
   }
 

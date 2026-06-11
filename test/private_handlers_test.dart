@@ -2662,6 +2662,8 @@ void main() {
       expect(sender.messages.single.text, contains('@yogi'));
       expect(sender.messages.single.text, isNot(contains('@runner')));
       expect(sender.messages.single.text, isNot(contains('Выбери категорию')));
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonParticipantsList));
     });
 
     test('merges outdoor participants when activity date changes', () async {
