@@ -133,6 +133,7 @@ void main() {
       expect(yoga.single.startsAt, DateTime(2030, 6, 3, 8, 30));
       expect(yoga.single.location, 'Studio C');
       expect(yoga.single.participantsLimit, 12);
+      expect(yoga.single.coach, 'Mia');
     });
   });
 }
@@ -155,7 +156,7 @@ Future<http.Response> _mockCsvResponse(http.Request request) async {
   }
   if (gid == '469715453') {
     return http.Response(
-      'title,starts_at,location,price,participants_limit,coach\n'
+      'title,starts_at,location,price,participants_limit,coaches\n'
       'Morning flow,2030-06-03 08:30,Studio C,600,12,Mia',
       200,
     );

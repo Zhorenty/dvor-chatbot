@@ -178,7 +178,17 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'limit',
       ],
     );
-    final coachIndex = headers.indexOf('coach');
+    final coachIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'coach',
+        'coaches',
+        'trainer',
+        'trainers',
+        'тренер',
+        'тренеры',
+      ],
+    );
     final notesIndex = headers.indexOf('notes');
     final hasStartsAt = startsAtIndex >= 0;
     final hasDateAndTime = dateIndex >= 0 && timeIndex >= 0;
