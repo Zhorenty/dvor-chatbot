@@ -360,7 +360,7 @@ final class MessageTemplates {
         'Номер записи: ${booking.id}\n'
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 Где: ${booking.location}\n\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
         '${paymentDetailsSent(booking)}\n\n'
         'Что дальше:\n'
         '1) Оплати по реквизитам выше.\n'
@@ -376,7 +376,7 @@ final class MessageTemplates {
         'Номер записи: ${booking.id}\n'
         'Тренировка: ${booking.trainingTitle}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 Где: ${booking.location}\n\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
         'Это бесплатная тренировка, подтверждение оплаты не нужно.';
   }
 
@@ -404,7 +404,7 @@ final class MessageTemplates {
     return '🔥 ${_groupLowSpotsTitle(training.category)}\n'
         '${training.title}\n'
         '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 Где: ${training.location}\n'
+        '📍 Где: ${_trainingLocationLabel(training)}\n'
         '👥 Свободных мест: $freeSpots из $participantsLimit\n\n'
         '${_groupBookingCta()}';
   }
@@ -418,7 +418,7 @@ final class MessageTemplates {
     return '⛔️ ${_groupNoSpotsTitle(training.category)}\n'
         'Тренировка: ${training.title}\n'
         '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 Где: ${training.location}\n'
+        '📍 Где: ${_trainingLocationLabel(training)}\n'
         '👥 Участников: $participantsLimit/$participantsLimit\n\n'
         'Следи за расписанием - новые слоты и тренировки появляются регулярно.\n'
         '${_groupBookingCta()}';
@@ -1198,6 +1198,34 @@ final class MessageTemplates {
     );
   }
 
+  String _trainingLocationLabel(TrainingInfo training) {
+    final location = training.location.trim();
+    final locationUrl = training.locationUrl?.trim();
+    if (locationUrl != null && locationUrl.isNotEmpty) {
+      return _locationAnchor(label: location, url: locationUrl);
+    }
+    return _locationAnchor(label: location, url: _mapsSearchUrl(location));
+  }
+
+  String _bookingLocationLabel(TrainingBooking booking) {
+    final location = booking.location.trim();
+    return _locationAnchor(label: location, url: _mapsSearchUrl(location));
+  }
+
+  String _locationAnchor({
+    required String label,
+    required String url,
+  }) {
+    final escapedUrl = _escapeHtml(url);
+    final escapedLabel = _escapeHtml(label);
+    return '<a href="$escapedUrl">$escapedLabel</a>';
+  }
+
+  String _mapsSearchUrl(String location) {
+    final query = Uri.encodeComponent(location);
+    return 'https://www.google.com/maps/search/?api=1&query=$query';
+  }
+
   String _labelWithCount(String label, int count) {
     return '$label ($count)';
   }
@@ -1289,5 +1317,14 @@ final class MessageTemplates {
       return text.isEmpty ? null : text;
     }
     return paymentNote;
+  }
+
+  String _escapeHtml(String value) {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
   }
 }

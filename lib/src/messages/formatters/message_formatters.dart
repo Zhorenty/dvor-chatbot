@@ -11,13 +11,13 @@ final class MessageFormatters {
 
   static String statusLabel(BookingStatus status) {
     return switch (status) {
-      BookingStatus.pendingPayment => 'Ожидает оплату',
+      BookingStatus.pendingPayment => 'Ожидает оплату ⏳',
       BookingStatus.paymentSubmitted => 'Оплата на проверке 🔵',
       BookingStatus.partialPaid => 'Предоплата внесена 🟡',
       BookingStatus.paid => 'Оплачено ✅',
       BookingStatus.freeTraining => 'Бесплатная тренировка 🎁',
       BookingStatus.paymentRejected => 'Оплата отклонена ❌',
-      BookingStatus.cancelled => 'Отменено',
+      BookingStatus.cancelled => 'Отменено ❌',
     };
   }
 
