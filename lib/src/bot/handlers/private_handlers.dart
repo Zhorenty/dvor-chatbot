@@ -29,7 +29,7 @@ final class PrivateHandlers {
   static const String _paymentChoiceFullMarker = '__payment_choice_full__';
   static const String _paymentChoicePartialMarker = '__payment_choice_partial__';
   static const int _adminBookingsPageSize = 8;
-  static const int _yogaTrainerUserId = 1363267745;
+  static const int _yogaTrainerUserId = 857655217;
 
   PrivateHandlers({
     required MessageSender sender,
