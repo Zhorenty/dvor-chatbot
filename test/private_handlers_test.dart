@@ -316,6 +316,67 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
+    test('links coaches in schedule when username is available', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Функциональная тренировка',
+              startsAt: DateTime(2026, 6, 6, 19, 0),
+              location: 'Зал DVOR',
+              coach: 'Алексей Петров, Мария Романова и гость',
+            ),
+          ],
+        ),
+        bookingRepository: _FakeBookingRepository(),
+        trainerDirectoryRepository: _FakeTrainerDirectoryRepository(
+          const <TrainerInfo>[
+            TrainerInfo(name: 'Алексей Петров', link: '@alxpetrov', description: 'Head coach'),
+            TrainerInfo(
+              name: 'Мария Романова',
+              link: 'https://t.me/maria_run',
+              description: 'Running coach',
+            ),
+            TrainerInfo(
+              name: 'Гость',
+              link: 'https://example.com/guest',
+              description: 'Guest coach',
+            ),
+          ],
+        ),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 125, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1250},
+        'text': '/trainings',
+      });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 125, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1250},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+
+      expect(handled, isTrue);
+      expect(categoryHandled, isTrue);
+      final text = sender.messages.last.text;
+      expect(
+        text,
+        contains('<a href="https://t.me/alxpetrov">Алексей Петров</a>'),
+      );
+      expect(
+        text,
+        contains('<a href="https://t.me/maria_run">Мария Романова</a>'),
+      );
+      expect(text, contains('гость'));
+      expect(text, contains('🧑‍🏫 Тренер:'));
+      expect(sender.messages.last.parseMode, 'HTML');
+    });
+
     test('handles menu trainings button in private chat', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(

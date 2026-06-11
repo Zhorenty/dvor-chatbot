@@ -98,16 +98,22 @@ final class MessageTemplates {
     return _privateNavigationTemplates.privateFallback();
   }
 
-  String trainings(List<TrainingInfo> items) {
-    return _scheduleTemplates.trainings(items);
+  String trainings(
+    List<TrainingInfo> items, {
+    List<TrainerInfo> trainers = const <TrainerInfo>[],
+  }) {
+    return _scheduleTemplates.trainings(items, trainers: trainers);
   }
 
   String hikes(List<OutdoorActivityInfo> items) {
     return _scheduleTemplates.hikes(items);
   }
 
-  String yoga(List<TrainingInfo> items) {
-    return _scheduleTemplates.yoga(items);
+  String yoga(
+    List<TrainingInfo> items, {
+    List<TrainerInfo> trainers = const <TrainerInfo>[],
+  }) {
+    return _scheduleTemplates.yoga(items, trainers: trainers);
   }
 
   String trails(List<OutdoorActivityInfo> items) {

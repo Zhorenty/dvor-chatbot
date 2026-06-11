@@ -67,8 +67,11 @@ final class PrivateHandlers {
   final Set<String> _fullCapacityNotifiedTrainingKeys = <String>{};
   late final ActivityCatalogService _catalogService =
       ActivityCatalogService(scheduleRepository: _scheduleRepository);
-  late final ScheduleQueryService _scheduleQueryService =
-      ScheduleQueryService(catalogService: _catalogService, templates: _templates);
+  late final ScheduleQueryService _scheduleQueryService = ScheduleQueryService(
+    catalogService: _catalogService,
+    trainerDirectoryRepository: _trainerDirectoryRepository,
+    templates: _templates,
+  );
   late final BookingPolicyService _bookingPolicyService =
       BookingPolicyService(catalogService: _catalogService);
   late final PaymentReviewService _paymentReviewService =
@@ -1143,7 +1146,12 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final refreshOk = await _scheduleRepository.refresh(force: true);
+      final scheduleRefreshOk = await _scheduleRepository.refresh(force: true);
+      final trainersRefreshOk = await _trainerDirectoryRepository.refresh(force: true);
+      if (!trainersRefreshOk) {
+        l.w('Trainer directory refresh failed during /refresh_schedule.');
+      }
+      final refreshOk = scheduleRefreshOk && trainersRefreshOk;
       await _sender.sendMessage(
         chatId,
         refreshOk ? _templates.scheduleRefreshDone() : _templates.scheduleRefreshFailed(),

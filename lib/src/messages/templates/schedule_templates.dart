@@ -7,20 +7,28 @@ import 'package:intl/intl.dart';
 final class ScheduleTemplates {
   const ScheduleTemplates();
 
-  String trainings(List<TrainingInfo> items) {
+  String trainings(
+    List<TrainingInfo> items, {
+    List<TrainerInfo> trainers = const <TrainerInfo>[],
+  }) {
     return _indoorActivitiesList(
       title: 'Ближайшие тренировки DVOR 💪',
       icon: '🏋️',
       items: items,
+      trainers: trainers,
       emptyText: 'Пока тренировок в расписании нет 😌 Скоро добавим новые даты!',
     );
   }
 
-  String yoga(List<TrainingInfo> items) {
+  String yoga(
+    List<TrainingInfo> items, {
+    List<TrainerInfo> trainers = const <TrainerInfo>[],
+  }) {
     final list = _indoorActivitiesList(
       title: 'Ближайшая йога DVOR 🧘',
       icon: '🧘',
       items: items,
+      trainers: trainers,
       emptyText: 'Пока йоги в расписании нет 😌 Скоро добавим новые даты!',
     );
     return '$list\n\n'
@@ -32,6 +40,7 @@ final class ScheduleTemplates {
     required String title,
     required String icon,
     required List<TrainingInfo> items,
+    required List<TrainerInfo> trainers,
     required String emptyText,
   }) {
     if (items.isEmpty) {
@@ -39,6 +48,7 @@ final class ScheduleTemplates {
     }
 
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final trainerUsernamesByName = _trainerUsernamesByName(trainers);
     final lines = <String>[title];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
@@ -53,7 +63,7 @@ final class ScheduleTemplates {
         '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',
         if (item.price != null) '   💳 Взнос: ${MessageFormatters.trainingPriceLabel(item.price)}',
         if (coach != null && coach.isNotEmpty)
-          '   🧑‍🏫 ${_coachTitle(coach)}: ${_escapeHtml(coach)}',
+          '   🧑‍🏫 ${_coachTitle(coach)}: ${_coachLabel(coach, trainerUsernamesByName)}',
         if (notes != null && notes.isNotEmpty) '   📝 Примечание: ${_escapeHtml(notes)}',
       ]);
 
@@ -164,6 +174,101 @@ final class ScheduleTemplates {
       return 'Тренеры';
     }
     return 'Тренер';
+  }
+
+  String _coachLabel(String coach, Map<String, String> trainerUsernamesByName) {
+    if (trainerUsernamesByName.isEmpty) {
+      return _escapeHtml(coach);
+    }
+
+    final names = trainerUsernamesByName.keys.toList(growable: false)
+      ..sort((a, b) => b.length.compareTo(a.length));
+    if (names.isEmpty) {
+      return _escapeHtml(coach);
+    }
+
+    final escapedNames = names.map(RegExp.escape).join('|');
+    final pattern = RegExp(
+      r'(^|[^A-Za-zА-Яа-яЁё0-9])(' + escapedNames + r')(?=$|[^A-Za-zА-Яа-яЁё0-9])',
+      caseSensitive: false,
+    );
+
+    final buffer = StringBuffer();
+    var lastIndex = 0;
+    for (final match in pattern.allMatches(coach)) {
+      final boundary = match.group(1) ?? '';
+      final matchedName = match.group(2);
+      if (matchedName == null) {
+        continue;
+      }
+      final normalized = _normalizeName(matchedName);
+      final username = trainerUsernamesByName[normalized];
+      if (username == null) {
+        continue;
+      }
+
+      buffer.write(_escapeHtml(coach.substring(lastIndex, match.start)));
+      buffer.write(_escapeHtml(boundary));
+      final escapedUsername = _escapeHtml(username);
+      final escapedName = _escapeHtml(matchedName);
+      buffer.write('<a href="https://t.me/$escapedUsername">$escapedName</a>');
+      lastIndex = match.end;
+    }
+
+    if (lastIndex == 0) {
+      return _escapeHtml(coach);
+    }
+    buffer.write(_escapeHtml(coach.substring(lastIndex)));
+    return buffer.toString();
+  }
+
+  Map<String, String> _trainerUsernamesByName(List<TrainerInfo> trainers) {
+    final result = <String, String>{};
+    for (final trainer in trainers) {
+      final normalizedName = _normalizeName(trainer.name);
+      if (normalizedName.isEmpty || result.containsKey(normalizedName)) {
+        continue;
+      }
+      final username = _extractTelegramUsername(trainer.link);
+      if (username == null || username.isEmpty) {
+        continue;
+      }
+      result[normalizedName] = username;
+    }
+    return result;
+  }
+
+  String _normalizeName(String value) {
+    return value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  }
+
+  String? _extractTelegramUsername(String rawLink) {
+    final trimmed = rawLink.trim();
+    if (trimmed.isEmpty) {
+      return null;
+    }
+    if (trimmed.startsWith('@')) {
+      final value = trimmed.substring(1).trim();
+      return value.isEmpty ? null : value;
+    }
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      final value = trimmed.replaceFirst('@', '').trim();
+      return value.isEmpty ? null : value;
+    }
+
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null) {
+      return null;
+    }
+    final host = uri.host.toLowerCase();
+    if (host != 't.me' &&
+        host != 'www.t.me' &&
+        host != 'telegram.me' &&
+        host != 'www.telegram.me') {
+      return null;
+    }
+    final segment = uri.pathSegments.isEmpty ? '' : uri.pathSegments.first.trim();
+    return segment.isEmpty ? null : segment;
   }
 
   String _escapeHtml(String value) {
