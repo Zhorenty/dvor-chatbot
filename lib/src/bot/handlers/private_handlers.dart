@@ -113,8 +113,8 @@ final class PrivateHandlers {
     final rawUserId = context.from?['id'];
     final userId = rawUserId is int ? rawUserId : null;
     final isConfiguredAdmin = userId != null && _adminUserIds.contains(userId);
+    final isAdmin = isConfiguredAdmin;
     final isYogaTrainer = userId == _yogaTrainerUserId;
-    final isAdmin = isConfiguredAdmin || isYogaTrainer;
     final canRunAdminAction = _adminHandler.canRunAdminAction(isAdmin: isConfiguredAdmin);
     final canRunParticipantsAction = canRunAdminAction || isYogaTrainer;
     final flowState = userId == null ? null : _flowByUserId[userId];
@@ -133,6 +133,7 @@ final class PrivateHandlers {
       onboardingRepository: _onboardingRepository,
       sender: _sender,
       templates: _templates,
+      canViewParticipantsList: canRunParticipantsAction,
       onStartCleanup: _handleStartCleanup,
       onEveryFifthUnlocked: _maybeNotifyEveryFifthRewardUnlocked,
       onPinWelcomeMessage: _tryPinWelcomeMessage,

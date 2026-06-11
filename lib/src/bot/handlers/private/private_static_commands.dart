@@ -30,6 +30,7 @@ final class PrivateStaticCommands {
     required OnboardingRepository onboardingRepository,
     required MessageSender sender,
     required MessageTemplates templates,
+    required bool canViewParticipantsList,
     required StartCleanup onStartCleanup,
     required EveryFifthNotifier onEveryFifthUnlocked,
     required WelcomePinner onPinWelcomeMessage,
@@ -49,14 +50,20 @@ final class PrivateStaticCommands {
       final welcomeMessageId = await sender.sendMessage(
         chatId,
         templates.privateWelcome(),
-        replyMarkup: templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          canViewParticipantsList: canViewParticipantsList,
+        ),
       );
       await onPinWelcomeMessage(chatId: chatId, messageId: welcomeMessageId);
       if (starterBonusAvailable) {
         await sender.sendMessage(
           chatId,
           templates.starterBonusOnboardingOffer(),
-          replyMarkup: templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: templates.privateMenuKeyboard(
+            isAdmin: isAdmin,
+            canViewParticipantsList: canViewParticipantsList,
+          ),
         );
       }
       return true;
@@ -90,7 +97,10 @@ final class PrivateStaticCommands {
       await sender.sendMessage(
         chatId,
         templates.coachingStaff(trainers),
-        replyMarkup: templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          canViewParticipantsList: canViewParticipantsList,
+        ),
       );
       return true;
     }
@@ -102,7 +112,10 @@ final class PrivateStaticCommands {
       await sender.sendMessage(
         chatId,
         templates.privateHelp(),
-        replyMarkup: templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          canViewParticipantsList: canViewParticipantsList,
+        ),
       );
       return true;
     }
@@ -115,7 +128,10 @@ final class PrivateStaticCommands {
       await sender.sendMessage(
         chatId,
         'Главное меню 👇',
-        replyMarkup: templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          canViewParticipantsList: canViewParticipantsList,
+        ),
       );
       return true;
     }

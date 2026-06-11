@@ -215,6 +215,13 @@ void main() {
       expect(handled, isTrue);
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
+      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, isNot(contains(MessageTemplates.buttonRefreshSchedule)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonEconomicSummary)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonNoblesList)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonManageBookings)));
     });
 
     test('handles coaching staff button and prints trainers list', () async {
