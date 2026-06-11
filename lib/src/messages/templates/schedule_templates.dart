@@ -76,7 +76,7 @@ final class ScheduleTemplates {
 
   String hikes(List<OutdoorActivityInfo> items) {
     return _outdoorActivitiesList(
-      title: 'Ближайшие походы DVOR 🥾',
+      title: 'Ближайшие походы OUTDVOR 🥾',
       icon: '🥾',
       items: items,
       emptyText: 'Пока походов в расписании нет 😌',
@@ -85,7 +85,7 @@ final class ScheduleTemplates {
 
   String trails(List<OutdoorActivityInfo> items) {
     return _outdoorActivitiesList(
-      title: 'Ближайшие трейлы DVOR 🏃',
+      title: 'Ближайшие трейлы OUTDVOR 🏃',
       icon: '🏃',
       items: items,
       emptyText: 'Пока трейлов в расписании нет 😌',

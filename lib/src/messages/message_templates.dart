@@ -1206,6 +1206,9 @@ final class MessageTemplates {
 
   String _trainingLocationLabel(TrainingInfo training) {
     final location = training.location.trim();
+    if (_isOutdoorCategory(training.category)) {
+      return _escapeHtml(location);
+    }
     final locationUrl = training.locationUrl?.trim();
     if (locationUrl != null && locationUrl.isNotEmpty) {
       return _locationAnchor(label: location, url: locationUrl);
@@ -1215,6 +1218,9 @@ final class MessageTemplates {
 
   String _bookingLocationLabel(TrainingBooking booking) {
     final location = booking.location.trim();
+    if (MessageFormatters.isOutdoorBooking(booking)) {
+      return _escapeHtml(location);
+    }
     return _locationAnchor(label: location, url: _mapsSearchUrl(location));
   }
 
@@ -1260,6 +1266,10 @@ final class MessageTemplates {
       ActivityCategory.hikes => 'В походе не осталось мест',
       ActivityCategory.trails => 'На трейле не осталось мест',
     };
+  }
+
+  bool _isOutdoorCategory(ActivityCategory category) {
+    return category == ActivityCategory.hikes || category == ActivityCategory.trails;
   }
 
   String? _botDeepLink() {
