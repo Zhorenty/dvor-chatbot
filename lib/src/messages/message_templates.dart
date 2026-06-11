@@ -402,7 +402,7 @@ final class MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return '🔥 ${_groupLowSpotsTitle(training.category)}\n'
-        'Тренировка: ${training.title}\n'
+        '${training.title}\n'
         '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${training.location}\n'
         '👥 Свободных мест: $freeSpots из $participantsLimit\n\n'
