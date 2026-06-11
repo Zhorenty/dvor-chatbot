@@ -114,6 +114,14 @@ final class MessageFormatters {
     return _isOutdoorBookingTitle(booking.trainingTitle);
   }
 
+  static bool isYogaBooking(TrainingBooking booking) {
+    final trainingKey = booking.trainingKey.toLowerCase();
+    if (trainingKey.startsWith('yoga|')) {
+      return true;
+    }
+    return booking.trainingTitle.startsWith('🧘 Йога:');
+  }
+
   static bool _isOutdoorCategory(ActivityCategory category) {
     return category == ActivityCategory.hikes || category == ActivityCategory.trails;
   }

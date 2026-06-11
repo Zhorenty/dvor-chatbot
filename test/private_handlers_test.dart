@@ -1684,6 +1684,24 @@ void main() {
       expect(reminderText, isNot(contains('07.06.2026 14:30')));
     });
 
+    test('uses dedicated payment details and contacts for yoga booking', () {
+      final templates = const MessageTemplates();
+      final yogaBooking = _booking(
+        id: 196,
+        trainingKey: 'yoga|2026-07-12T17:00:00.000Z|Йога баланс|Студия',
+        title: 'Йога баланс',
+        startsAt: DateTime(2026, 7, 12, 17, 0),
+      );
+
+      final detailsText = templates.paymentDetailsSent(yogaBooking);
+
+      expect(detailsText, contains('Елена Константиновна Панькова'));
+      expect(detailsText, contains('Т-Банк'));
+      expect(detailsText, contains('89613131144'));
+      expect(detailsText, contains('По вопросам теории и практики'));
+      expect(detailsText, contains('@dvor_support'));
+    });
+
     test('reschedules training booking from my bookings and notifies admin chat', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
@@ -2276,6 +2294,110 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 0);
       expect(sender.messages.last.text, contains('меньше 7 дней'));
+    });
+
+    test('cancels yoga booking when at least 24 hours left', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 403,
+            userId: 2403,
+            trainingKey: 'yoga|2026-06-03T12:30:00.000Z|Утренняя йога|Студия',
+            title: 'Утренняя йога',
+            startsAt: now.add(const Duration(days: 2)),
+            location: 'Студия',
+            status: BookingStatus.paid,
+          ),
+        ]
+        ..cancelResult = BookingActionResult(
+          outcome: BookingActionOutcome.success,
+          booking: _booking(
+            id: 403,
+            userId: 2403,
+            trainingKey: 'yoga|2026-06-03T12:30:00.000Z|Утренняя йога|Студия',
+            title: 'Утренняя йога',
+            startsAt: now.add(const Duration(days: 2)),
+            location: 'Студия',
+            status: BookingStatus.cancelled,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2403, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2403},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2403, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2403},
+        'text': '🧾 #403 Утренняя йога',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2403, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2403},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 1);
+      expect(bookingRepository.lastCancelledBookingId, 403);
+      expect(sender.messages.last.text, contains('отменена'));
+    });
+
+    test('does not cancel yoga booking when less than 24 hours left', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 404,
+            userId: 2404,
+            trainingKey: 'yoga|2026-06-02T10:30:00.000Z|Вечерняя йога|Студия',
+            title: 'Вечерняя йога',
+            startsAt: now.add(const Duration(hours: 23)),
+            location: 'Студия',
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2404, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2404},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2404, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2404},
+        'text': '🧾 #404 Вечерняя йога',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2404, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2404},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 0);
+      expect(sender.messages.last.text, contains('меньше 24 часов'));
+      expect(sender.messages.last.text, contains('@dvor_support'));
     });
 
     test('shows participants list for selected admin category', () async {

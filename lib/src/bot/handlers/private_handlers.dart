@@ -709,8 +709,11 @@ final class PrivateHandlers {
         flowState?.step == _PrivateFlowStep.selectingBookingAction &&
         text == MessageTemplates.buttonCancelBooking) {
       final selectedBooking = flowState?.selectedBooking;
+      final category =
+          selectedBooking == null ? null : _catalogService.categoryForBooking(selectedBooking);
       if (selectedBooking == null ||
-          !_isOutdoorCategory(_catalogService.categoryForBooking(selectedBooking))) {
+          category == null ||
+          !_bookingPolicyService.supportsCancellation(category)) {
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelNotAvailable(selectedBooking),
@@ -723,12 +726,10 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final canCancel =
-          selectedBooking.startsAt.difference(_nowProvider()) >= const Duration(days: 7);
-      if (!canCancel) {
+      if (!_canCancelBookingByPolicy(selectedBooking)) {
         await _sender.sendMessage(
           chatId,
-          _templates.outdoorCancellationTooLate(selectedBooking),
+          _cancellationTooLateText(selectedBooking, category: category),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
         );
         _flowByUserId.remove(userId);
@@ -1033,7 +1034,7 @@ final class PrivateHandlers {
         return true;
       }
       final category = _catalogService.categoryForBooking(targetBooking);
-      if (!_isOutdoorCategory(category)) {
+      if (!_bookingPolicyService.supportsCancellation(category)) {
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelNotAvailable(targetBooking),
@@ -1044,7 +1045,7 @@ final class PrivateHandlers {
       if (!_canCancelBookingByPolicy(targetBooking)) {
         await _sender.sendMessage(
           chatId,
-          _templates.outdoorCancellationTooLate(targetBooking),
+          _cancellationTooLateText(targetBooking, category: category),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
         );
         return true;
@@ -2461,10 +2462,9 @@ final class PrivateHandlers {
   }
 
   Map<String, Object?> _bookingActionsKeyboard(TrainingBooking booking) {
-    final category = _bookingPolicyService.categoryForBooking(booking);
     return _templates.bookingActionsKeyboard(
       canReschedule: _bookingPolicyService.canReschedule(booking),
-      canCancel: _bookingPolicyService.isOutdoorCategory(category),
+      canCancel: _canCancelBookingByPolicy(booking),
       canRepeat: true,
     );
   }
@@ -2939,6 +2939,16 @@ final class PrivateHandlers {
 
   bool _canCancelBookingByPolicy(TrainingBooking booking) {
     return _bookingPolicyService.canCancel(booking, now: _nowProvider());
+  }
+
+  String _cancellationTooLateText(
+    TrainingBooking booking, {
+    required _ActivityCategory category,
+  }) {
+    if (category == _ActivityCategory.yoga) {
+      return _templates.yogaCancellationTooLate(booking);
+    }
+    return _templates.outdoorCancellationTooLate(booking);
   }
 
   _EconomicSummaryRange? _parseEconomicSummaryRangeCommand(String text) {

@@ -569,7 +569,7 @@ final class MessageTemplates {
     if (booking == null) {
       return 'Не нашел запись для переноса. Выбери запись заново.';
     }
-    return 'Перенос доступен только для тренировок.\n'
+    return 'Перенос доступен только для тренировок и йоги.\n'
         'Для записи #${booking.id} используй другие действия.';
   }
 
@@ -577,7 +577,7 @@ final class MessageTemplates {
     if (booking == null) {
       return 'Не нашел запись для отмены. Выбери запись заново.';
     }
-    return 'Отмена доступна только для походов и трейлов.\n'
+    return 'Отмена доступна только для йоги, походов и трейлов.\n'
         'Для записи #${booking.id} используй другие действия.';
   }
 
@@ -593,14 +593,14 @@ final class MessageTemplates {
 
   String chooseTrainingForReschedule(List<TrainingInfo> items, {required TrainingBooking booking}) {
     if (items.isEmpty) {
-      return 'Сейчас нет ближайших тренировок для переноса.';
+      return 'Сейчас нет ближайших мероприятий для переноса.';
     }
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final lines = <String>[
       'Куда перенести запись #${booking.id}?',
-      'Текущая тренировка: ${booking.trainingTitle}',
+      'Текущее мероприятие: ${booking.trainingTitle}',
       '',
-      'Выбери новую тренировку 👇',
+      'Выбери новое мероприятие 👇',
     ];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
@@ -661,6 +661,15 @@ final class MessageTemplates {
     return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
         'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
         'осталось меньше 7 дней.';
+  }
+
+  String yogaCancellationTooLate(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
+        'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
+        'осталось меньше 24 часов.\n\n'
+        '${_yogaContactsHint()}';
   }
 
   String paymentsQueueEmpty() => 'Очередь подтверждения оплат пока пустая ✨';
@@ -805,7 +814,13 @@ final class MessageTemplates {
     return 'Не удалось сохранить изменения: для этого пользователя уже есть запись на выбранное мероприятие.';
   }
 
-  String paymentInstructions(int bookingId) {
+  String paymentInstructions(TrainingBooking booking) {
+    if (MessageFormatters.isYogaBooking(booking)) {
+      return 'Реквизиты для оплаты:\n'
+          '• Получатель: Елена П.\n'
+          '• Банк: 🟨 Т-БАНК 🟨\n'
+          '• Номер телефона: 89613131144';
+    }
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
@@ -895,7 +910,7 @@ final class MessageTemplates {
         'Запись: #${booking.id}\n'
         '${booking.trainingTitle} (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)})\n'
         'Текущий статус: ${_statusLabel(booking.status, booking: booking)}\n\n'
-        '${paymentInstructions(booking.id)}\n\n'
+        '${paymentInstructions(booking)}\n\n'
         'После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь в этот чат файл с подтверждением (чек/скрин).\n'
         'Если кнопка не сработала, открой «${MessageCopy.buttonMyBookings}» и выбери нужную запись.';
   }
@@ -928,13 +943,15 @@ final class MessageTemplates {
 
   String paymentDetailsSent(TrainingBooking booking) {
     if (!MessageFormatters.isOutdoorBooking(booking)) {
-      return '${paymentInstructions(booking.id)}\n\n'
+      final yogaHint = MessageFormatters.isYogaBooking(booking) ? '\n\n${_yogaContactsHint()}' : '';
+      return '${paymentInstructions(booking)}\n\n'
           'Когда переведешь оплату, нажми «${MessageCopy.buttonSubmitPayment}» '
           'и отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
-          'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
+          'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.'
+          '$yogaHint';
     }
 
-    return '${paymentInstructions(booking.id)}\n\n'
+    return '${paymentInstructions(booking)}\n\n'
         'Правило Outdvor 🚸\n\n'
         '• Предоплата невозвратна при отмене за 7 дней и менее до трейла/похода🦥\n\n'
         'Это не штраф, а уважение к общим расходам на логистику, планирование '
@@ -943,6 +960,11 @@ final class MessageTemplates {
         'Когда переведешь оплату, нажми «${MessageCopy.buttonSubmitPayment}» '
         'и отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
         'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
+  }
+
+  String _yogaContactsHint() {
+    return 'По вопросам теории и практики можно написать тренеру-йоги.\n'
+        'По организационным вопросам: @dvor_support.';
   }
 
   String paymentProofRequired() {
