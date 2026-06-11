@@ -38,6 +38,7 @@ final class MessageTemplates {
   static const String buttonMainMenu = MessageCopy.buttonMainMenu;
   static const String buttonHelp = MessageCopy.buttonHelp;
   static const String buttonCategoryTrainings = MessageCopy.buttonCategoryTrainings;
+  static const String buttonCategoryYoga = MessageCopy.buttonCategoryYoga;
   static const String buttonCategoryHikes = MessageCopy.buttonCategoryHikes;
   static const String buttonCategoryTrails = MessageCopy.buttonCategoryTrails;
   static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
@@ -105,6 +106,10 @@ final class MessageTemplates {
     return _scheduleTemplates.hikes(items);
   }
 
+  String yoga(List<TrainingInfo> items) {
+    return _scheduleTemplates.yoga(items);
+  }
+
   String trails(List<OutdoorActivityInfo> items) {
     return _scheduleTemplates.trails(items);
   }
@@ -123,7 +128,7 @@ final class MessageTemplates {
 
   String unknownCategory() {
     return 'Не понял категорию.\n'
-        'Нажми одну из кнопок ниже (Тренировки / Походы / Трейлы) 👇';
+        'Нажми одну из кнопок ниже (Тренировки / Йога / Походы / Трейлы) 👇';
   }
 
   String chooseParticipantsCategory() {
@@ -1012,11 +1017,13 @@ final class MessageTemplates {
 
   Map<String, Object?> paymentsQueueCategorySelectionKeyboard({
     required int trainings,
+    required int yoga,
     required int hikes,
     required int trails,
   }) {
     return TelegramKeyboards.categorySelectionKeyboard(
       trainingsLabel: _labelWithCount(MessageCopy.buttonCategoryTrainings, trainings),
+      yogaLabel: _labelWithCount(MessageCopy.buttonCategoryYoga, yoga),
       hikesLabel: _labelWithCount(MessageCopy.buttonCategoryHikes, hikes),
       trailsLabel: _labelWithCount(MessageCopy.buttonCategoryTrails, trails),
     );
@@ -1184,6 +1191,7 @@ final class MessageTemplates {
   String _groupLowSpotsTitle(ActivityCategory category) {
     return switch (category) {
       ActivityCategory.trainings => 'На тренировке почти не осталось мест!',
+      ActivityCategory.yoga => 'На йоге почти не осталось мест!',
       ActivityCategory.hikes => 'В походе почти не осталось мест!',
       ActivityCategory.trails => 'На трейле почти не осталось мест!',
     };
@@ -1192,6 +1200,7 @@ final class MessageTemplates {
   String _groupNoSpotsTitle(ActivityCategory category) {
     return switch (category) {
       ActivityCategory.trainings => 'Места на эту тренировку закончились',
+      ActivityCategory.yoga => 'Места на эту йогу закончились',
       ActivityCategory.hikes => 'В походе не осталось мест',
       ActivityCategory.trails => 'На трейле не осталось мест',
     };
@@ -1208,6 +1217,7 @@ final class MessageTemplates {
   String _categoryLabel(ActivityCategory category) {
     return switch (category) {
       ActivityCategory.trainings => 'Тренировки',
+      ActivityCategory.yoga => 'Йога',
       ActivityCategory.hikes => 'Походы',
       ActivityCategory.trails => 'Трейлы',
     };

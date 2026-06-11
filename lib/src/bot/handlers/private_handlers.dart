@@ -509,6 +509,7 @@ final class PrivateHandlers {
           _templates.unknownCategory(),
           replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
             trainings: counters.trainings,
+            yoga: counters.yoga,
             hikes: counters.hikes,
             trails: counters.trails,
           ),
@@ -668,8 +669,7 @@ final class PrivateHandlers {
         flowState?.step == _PrivateFlowStep.selectingBookingAction &&
         text == MessageTemplates.buttonRescheduleBooking) {
       final selectedBooking = flowState?.selectedBooking;
-      if (selectedBooking == null ||
-          _catalogService.categoryForBooking(selectedBooking) != _ActivityCategory.trainings) {
+      if (selectedBooking == null || !_bookingPolicyService.canReschedule(selectedBooking)) {
         await _sender.sendMessage(
           chatId,
           _templates.bookingRescheduleNotAvailable(selectedBooking),
@@ -682,7 +682,8 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final trainings = _bookableItemsByCategory(_ActivityCategory.trainings);
+      final trainings =
+          _bookableItemsByCategory(_catalogService.categoryForBooking(selectedBooking));
       if (trainings.isEmpty) {
         await _sender.sendMessage(
           chatId,
@@ -714,8 +715,8 @@ final class PrivateHandlers {
           chatId,
           _templates.bookingCancelNotAvailable(selectedBooking),
           replyMarkup: _templates.bookingActionsKeyboard(
-            canReschedule: selectedBooking != null &&
-                _catalogService.categoryForBooking(selectedBooking) == _ActivityCategory.trainings,
+            canReschedule:
+                selectedBooking != null && _bookingPolicyService.canReschedule(selectedBooking),
             canCancel: false,
             canRepeat: selectedBooking != null,
           ),
@@ -1174,6 +1175,7 @@ final class PrivateHandlers {
         _templates.choosePaymentsQueueCategory(),
         replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
           trainings: counters.trainings,
+          yoga: counters.yoga,
           hikes: counters.hikes,
           trails: counters.trails,
         ),

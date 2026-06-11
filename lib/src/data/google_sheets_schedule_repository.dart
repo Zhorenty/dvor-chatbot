@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:http/http.dart' as http;
@@ -11,6 +12,7 @@ import 'package:l/l.dart';
 final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository {
   GoogleSheetsScheduleRepository({
     required Uri csvUrl,
+    int yogaSheetId = 469715453,
     int hikesSheetId = 294119056,
     int trailsSheetId = 1220729038,
     Duration requestTimeout = const Duration(seconds: 10),
@@ -18,6 +20,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     http.Client? httpClient,
     DateTime Function()? nowProvider,
   })  : _csvUrl = csvUrl,
+        _yogaCsvUrl = _replaceGid(csvUrl, yogaSheetId),
         _hikesCsvUrl = _replaceGid(csvUrl, hikesSheetId),
         _trailsCsvUrl = _replaceGid(csvUrl, trailsSheetId),
         _requestTimeout = requestTimeout,
@@ -26,6 +29,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         _nowProvider = nowProvider ?? DateTime.now;
 
   final Uri _csvUrl;
+  final Uri _yogaCsvUrl;
   final Uri _hikesCsvUrl;
   final Uri _trailsCsvUrl;
   final Duration _requestTimeout;
@@ -35,6 +39,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
 
   DateTime? _lastRefreshAt;
   List<TrainingInfo> _cached = const <TrainingInfo>[];
+  List<TrainingInfo> _cachedYoga = const <TrainingInfo>[];
   List<OutdoorActivityInfo> _cachedOutdoor = const <OutdoorActivityInfo>[];
 
   @override
@@ -50,6 +55,14 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     final current = now ?? _nowProvider();
     final items = _cachedOutdoor.where((item) => !item.dateTo.isBefore(current)).toList()
       ..sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
+    return items.take(limit).toList(growable: false);
+  }
+
+  @override
+  List<TrainingInfo> upcomingYoga({DateTime? now, int limit = 5}) {
+    final current = now ?? _nowProvider();
+    final items = _cachedYoga.where((item) => item.startsAt.isAfter(current)).toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     return items.take(limit).toList(growable: false);
   }
 
@@ -73,6 +86,16 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
       if (parsedTrainings.isEmpty && _cached.isNotEmpty) {
         l.w('Google Sheets sync returned empty trainings CSV. Keeping previous cache.');
         return false;
+      }
+      var parsedYoga = _cachedYoga;
+      final yogaResponse = await _httpClient.get(_yogaCsvUrl).timeout(_requestTimeout);
+      if (yogaResponse.statusCode == 200) {
+        parsedYoga = _parseCsv(
+          utf8.decode(yogaResponse.bodyBytes),
+          category: ActivityCategory.yoga,
+        );
+      } else {
+        l.w('Google Sheets sync skipped yoga: HTTP ${yogaResponse.statusCode}');
       }
       var parsedHikes = _cachedOutdoor
           .where((item) => item.type == OutdoorActivityType.hike)
@@ -102,11 +125,13 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
       }
 
       _cached = parsedTrainings;
+      _cachedYoga = parsedYoga;
       _cachedOutdoor = <OutdoorActivityInfo>[...parsedHikes, ...parsedTrails];
       _lastRefreshAt = current;
       l.i(
         'Google Sheets sync completed. '
-        'Loaded ${parsedTrainings.length} trainings and ${_cachedOutdoor.length} outdoor rows.',
+        'Loaded ${parsedTrainings.length} trainings, ${parsedYoga.length} yoga rows '
+        'and ${_cachedOutdoor.length} outdoor rows.',
       );
       return true;
     } on TimeoutException catch (error) {
@@ -118,7 +143,10 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     }
   }
 
-  List<TrainingInfo> _parseCsv(String body) {
+  List<TrainingInfo> _parseCsv(
+    String body, {
+    ActivityCategory category = ActivityCategory.trainings,
+  }) {
     final rows = _parseCsvRows(body);
     if (rows.isEmpty) {
       return const <TrainingInfo>[];
@@ -188,6 +216,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           startsAt: startsAt,
           location: location,
           locationUrl: _optionalCell(row, locationUrlIndex),
+          category: category,
           price: _parsePrice(_optionalCell(row, priceIndex)),
           participantsLimit: _parseParticipantsLimit(_optionalCell(row, participantsLimitIndex)),
           coach: _optionalCell(row, coachIndex),

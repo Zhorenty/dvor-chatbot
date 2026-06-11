@@ -15,6 +15,7 @@ final class ScheduleQueryService {
   String scheduleText(ActivityCategory category) {
     return switch (category) {
       ActivityCategory.trainings => _templates.trainings(_catalogService.bookableItems(category)),
+      ActivityCategory.yoga => _templates.yoga(_catalogService.bookableItems(category)),
       ActivityCategory.hikes => _templates.hikes(_catalogService.outdoorItems(category)),
       ActivityCategory.trails => _templates.trails(_catalogService.outdoorItems(category)),
     };

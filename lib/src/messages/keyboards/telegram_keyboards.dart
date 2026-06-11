@@ -69,6 +69,7 @@ final class TelegramKeyboards {
 
   static Map<String, Object?> categorySelectionKeyboard({
     String trainingsLabel = MessageCopy.buttonCategoryTrainings,
+    String yogaLabel = MessageCopy.buttonCategoryYoga,
     String hikesLabel = MessageCopy.buttonCategoryHikes,
     String trailsLabel = MessageCopy.buttonCategoryTrails,
   }) {
@@ -76,9 +77,10 @@ final class TelegramKeyboards {
       <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{'text': trainingsLabel},
-          <String, String>{'text': hikesLabel},
+          <String, String>{'text': yogaLabel},
         ],
         <Map<String, String>>[
+          <String, String>{'text': hikesLabel},
           <String, String>{'text': trailsLabel},
         ],
         <Map<String, String>>[

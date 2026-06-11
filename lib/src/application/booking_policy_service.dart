@@ -37,7 +37,8 @@ final class BookingPolicyService {
   }
 
   bool canReschedule(TrainingBooking booking) {
-    return categoryForBooking(booking) == ActivityCategory.trainings;
+    final category = categoryForBooking(booking);
+    return category == ActivityCategory.trainings || category == ActivityCategory.yoga;
   }
 
   void ensureReschedulePaymentTypeAllowed({

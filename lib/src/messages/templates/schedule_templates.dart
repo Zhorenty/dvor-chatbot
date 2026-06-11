@@ -8,12 +8,35 @@ final class ScheduleTemplates {
   const ScheduleTemplates();
 
   String trainings(List<TrainingInfo> items) {
+    return _indoorActivitiesList(
+      title: 'Ближайшие тренировки DVOR 💪',
+      icon: '🏋️',
+      items: items,
+      emptyText: 'Пока тренировок в расписании нет 😌 Скоро добавим новые даты!',
+    );
+  }
+
+  String yoga(List<TrainingInfo> items) {
+    return _indoorActivitiesList(
+      title: 'Ближайшая йога DVOR 🧘',
+      icon: '🧘',
+      items: items,
+      emptyText: 'Пока йоги в расписании нет 😌 Скоро добавим новые даты!',
+    );
+  }
+
+  String _indoorActivitiesList({
+    required String title,
+    required String icon,
+    required List<TrainingInfo> items,
+    required String emptyText,
+  }) {
     if (items.isEmpty) {
-      return 'Пока тренировок в расписании нет 😌 Скоро добавим новые даты!';
+      return emptyText;
     }
 
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Ближайшие тренировки DVOR 💪'];
+    final lines = <String>[title];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       final coach = item.coach?.trim();
@@ -21,7 +44,7 @@ final class ScheduleTemplates {
 
       lines.addAll(<String>[
         '',
-        '• 🏋️ ${_escapeHtml(item.title)}',
+        '• $icon ${_escapeHtml(item.title)}',
         '   🕒 Когда: ${formatter.format(item.startsAt)}',
         '   📍 Где: ${_locationLabel(item)}',
         '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',

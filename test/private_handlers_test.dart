@@ -461,7 +461,9 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(
-          sender.messages.single.text, contains('Показываю ближайшие тренировки, походы и трейлы'));
+        sender.messages.single.text,
+        contains('Показываю ближайшие тренировки, йогу, походы и трейлы'),
+      );
       expect(sender.messages.single.text, contains('каждая 5-я тренировка бесплатная'));
       expect(sender.messages.single.text, contains('публикуем афиши всех мероприятий'));
       expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
@@ -1573,9 +1575,10 @@ void main() {
         <List<Map<String, String>>>[
           <Map<String, String>>[
             <String, String>{'text': '${MessageTemplates.buttonCategoryTrainings} (1)'},
-            <String, String>{'text': '${MessageTemplates.buttonCategoryHikes} (1)'},
+            <String, String>{'text': '${MessageTemplates.buttonCategoryYoga} (0)'},
           ],
           <Map<String, String>>[
+            <String, String>{'text': '${MessageTemplates.buttonCategoryHikes} (1)'},
             <String, String>{'text': '${MessageTemplates.buttonCategoryTrails} (0)'},
           ],
           <Map<String, String>>[

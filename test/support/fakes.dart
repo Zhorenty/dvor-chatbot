@@ -13,17 +13,27 @@ import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 final class FakeScheduleRepository implements TrainingScheduleRepository {
   FakeScheduleRepository(
     this._items, {
+    this.yogaItems = const <TrainingInfo>[],
     this.outdoorItems = const <OutdoorActivityInfo>[],
     this.refreshResult = true,
   });
 
   final List<TrainingInfo> _items;
+  final List<TrainingInfo> yogaItems;
   final List<OutdoorActivityInfo> outdoorItems;
   final bool refreshResult;
   int refreshCalls = 0;
 
   @override
   List<TrainingInfo> upcoming({DateTime? now, int limit = 5}) => _items.take(limit).toList();
+
+  @override
+  List<TrainingInfo> upcomingYoga({DateTime? now, int limit = 5}) {
+    if (yogaItems.isNotEmpty) {
+      return yogaItems.take(limit).toList();
+    }
+    return _items.where((item) => item.category == ActivityCategory.yoga).take(limit).toList();
+  }
 
   @override
   List<OutdoorActivityInfo> upcomingOutdoorActivities({DateTime? now, int limit = 8}) =>

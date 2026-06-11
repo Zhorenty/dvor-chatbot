@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 
@@ -9,6 +10,14 @@ final class StaticScheduleRepository implements TrainingScheduleRepository {
   List<TrainingInfo> upcoming({DateTime? now, int limit = 5}) {
     final current = now ?? DateTime.now();
     final upcomingItems = _items.where((item) => item.startsAt.isAfter(current)).toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+    return upcomingItems.take(limit).toList(growable: false);
+  }
+
+  @override
+  List<TrainingInfo> upcomingYoga({DateTime? now, int limit = 5}) {
+    final current = now ?? DateTime.now();
+    final upcomingItems = _yogaItems.where((item) => item.startsAt.isAfter(current)).toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     return upcomingItems.take(limit).toList(growable: false);
   }
@@ -50,6 +59,27 @@ final List<TrainingInfo> _items = <TrainingInfo>[
     price: 500,
     participantsLimit: 15,
     coach: 'Алексей',
+  ),
+];
+
+final List<TrainingInfo> _yogaItems = <TrainingInfo>[
+  TrainingInfo(
+    title: 'Йога баланс',
+    startsAt: DateTime(2026, 6, 3, 20, 0),
+    location: 'Студия DVOR, зал 2',
+    category: ActivityCategory.yoga,
+    price: 500,
+    participantsLimit: 18,
+    coach: 'Анна',
+  ),
+  TrainingInfo(
+    title: 'Йога + мобильность',
+    startsAt: DateTime(2026, 6, 6, 10, 30),
+    location: 'Студия DVOR, зал 1',
+    category: ActivityCategory.yoga,
+    price: 500,
+    participantsLimit: 16,
+    coach: 'Анна',
   ),
 ];
 
