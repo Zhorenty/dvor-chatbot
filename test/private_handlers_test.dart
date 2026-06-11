@@ -196,6 +196,27 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
     });
 
+    test('shows participants button in private menu for yoga trainer role', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1363267745, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1363267745},
+        'text': '/start',
+      });
+
+      expect(handled, isTrue);
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonParticipantsList));
+    });
+
     test('handles coaching staff button and prints trainers list', () async {
       final sender = _FakeSender();
       final trainerDirectoryRepository = _FakeTrainerDirectoryRepository(
@@ -2576,6 +2597,64 @@ void main() {
       expect(sender.messages.last.text, contains('Old Run'));
       expect(sender.messages.last.text, contains('@runner_archived (Оплачено ✅)'));
       expect(sender.messages.last.text, isNot(contains('@runner_rejected')));
+    });
+
+    test('shows yoga participants list directly for yoga trainer role', () async {
+      final sender = _FakeSender();
+      final yoga = TrainingInfo(
+        title: 'Sunrise Yoga',
+        startsAt: DateTime(2026, 9, 3, 8, 0),
+        location: 'Yoga Hall',
+        category: ActivityCategory.yoga,
+      );
+      final run = TrainingInfo(
+        title: 'Morning Run',
+        startsAt: DateTime(2026, 9, 3, 7, 0),
+        location: 'Park',
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          _booking(
+            id: 801,
+            userId: 8101,
+            userUsername: 'yogi',
+            trainingKey: yoga.sessionKey,
+            title: yoga.title,
+            startsAt: yoga.startsAt,
+            location: yoga.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 802,
+            userId: 8102,
+            userUsername: 'runner',
+            trainingKey: run.sessionKey,
+            title: run.title,
+            startsAt: run.startsAt,
+            location: run.location,
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[yoga, run]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1363267745, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1363267745},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Список записавшихся'));
+      expect(sender.messages.single.text, contains('@yogi'));
+      expect(sender.messages.single.text, isNot(contains('@runner')));
+      expect(sender.messages.single.text, isNot(contains('Выбери категорию')));
     });
 
     test('merges outdoor participants when activity date changes', () async {

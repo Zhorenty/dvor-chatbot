@@ -13,7 +13,10 @@ final class TelegramKeyboards {
     };
   }
 
-  static Map<String, Object?> privateMenuKeyboard({required bool isAdmin}) {
+  static Map<String, Object?> privateMenuKeyboard({
+    required bool isAdmin,
+    bool canViewParticipantsList = false,
+  }) {
     if (isAdmin) {
       return _replyKeyboard(
         <List<Map<String, String>>>[
@@ -46,6 +49,13 @@ final class TelegramKeyboards {
         <String, String>{'text': MessageCopy.buttonHelp},
       ],
     ];
+    if (canViewParticipantsList) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonParticipantsList},
+        ],
+      );
+    }
     return _replyKeyboard(rows);
   }
 

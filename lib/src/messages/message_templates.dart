@@ -1027,8 +1027,14 @@ final class MessageTemplates {
     return 'Выбери период для экономической сводки 👇';
   }
 
-  Map<String, Object?> privateMenuKeyboard({required bool isAdmin}) {
-    return TelegramKeyboards.privateMenuKeyboard(isAdmin: isAdmin);
+  Map<String, Object?> privateMenuKeyboard({
+    required bool isAdmin,
+    bool canViewParticipantsList = false,
+  }) {
+    return TelegramKeyboards.privateMenuKeyboard(
+      isAdmin: isAdmin,
+      canViewParticipantsList: canViewParticipantsList,
+    );
   }
 
   Map<String, Object?> bookingSelectionKeyboard(List<TrainingInfo> items) {

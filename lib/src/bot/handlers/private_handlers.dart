@@ -29,6 +29,7 @@ final class PrivateHandlers {
   static const String _paymentChoiceFullMarker = '__payment_choice_full__';
   static const String _paymentChoicePartialMarker = '__payment_choice_partial__';
   static const int _adminBookingsPageSize = 8;
+  static const int _yogaTrainerUserId = 1363267745;
 
   PrivateHandlers({
     required MessageSender sender,
@@ -111,8 +112,11 @@ final class PrivateHandlers {
     final text = context.text;
     final rawUserId = context.from?['id'];
     final userId = rawUserId is int ? rawUserId : null;
-    final isAdmin = userId != null && _adminUserIds.contains(userId);
-    final canRunAdminAction = _adminHandler.canRunAdminAction(isAdmin: isAdmin);
+    final isConfiguredAdmin = userId != null && _adminUserIds.contains(userId);
+    final isYogaTrainer = userId == _yogaTrainerUserId;
+    final isAdmin = isConfiguredAdmin || isYogaTrainer;
+    final canRunAdminAction = _adminHandler.canRunAdminAction(isAdmin: isConfiguredAdmin);
+    final canRunParticipantsAction = canRunAdminAction || isYogaTrainer;
     final flowState = userId == null ? null : _flowByUserId[userId];
     final paymentProof = extractPaymentProof(context.message);
     if (_isIgnorableServiceMessage(context.message)) {
@@ -1243,7 +1247,7 @@ final class PrivateHandlers {
     if (text != null &&
         (text == MessageTemplates.buttonParticipantsList ||
             text.startsWith('/participants_list'))) {
-      if (!canRunAdminAction) {
+      if (!canRunParticipantsAction) {
         await _sender.sendMessage(
           chatId,
           _templates.adminOnlyAction(),
@@ -1253,6 +1257,15 @@ final class PrivateHandlers {
       }
       if (userId == null) {
         return false;
+      }
+      if (isYogaTrainer && !canRunAdminAction) {
+        _flowByUserId.remove(userId);
+        await _sendParticipantsByCategory(
+          chatId: chatId,
+          category: _ActivityCategory.yoga,
+          isAdmin: isAdmin,
+        );
+        return true;
       }
       _flowByUserId[userId] = const _PrivateFlowState(
         step: _PrivateFlowStep.selectingParticipantsCategory,
