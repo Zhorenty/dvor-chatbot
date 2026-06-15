@@ -138,25 +138,29 @@ final class MessageTemplates {
   }
 
   String chooseParticipantsCategory() {
-    return 'Выбери категорию для списка записавшихся 👇';
+    return '👥 <b>Список записавшихся</b>\n'
+        'Выбери категорию ниже.';
   }
 
   String choosePaymentsQueueCategory() {
-    return 'Выбери категорию для заявок на оплату 👇\n'
+    return '🧾 <b>Очередь заявок на оплату</b>\n'
+        'Выбери категорию ниже.\n'
         'После проверки каждой заявки можно сразу перейти к следующей.';
   }
 
   String chooseBookingManagementAction() {
-    return 'Управление записями: выбери действие 👇';
+    return '🛠 <b>Управление записями</b>\n'
+        'Выбери действие 👇';
   }
 
   String chooseBookingListSegment() {
-    return 'Какой список открыть? 👇\n'
+    return '📚 <b>Какой список открыть?</b>\n'
         'Подсказка: «Активные» - текущие записи, «Архивные» - завершенные и удаленные.';
   }
 
   String chooseBookingManagementCategory() {
-    return 'Выбери категорию мероприятий для управления 👇';
+    return '🗂 <b>Категория мероприятий</b>\n'
+        'Выбери категорию для управления 👇';
   }
 
   String chooseAdminBookingFromList(
@@ -170,27 +174,27 @@ final class MessageTemplates {
     if (bookings.isEmpty) {
       final segmentLabel = archived ? 'Архивные' : 'Активные';
       final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
-      return 'Список пуст для выбранных фильтров.\n'
-          'Сегмент: $segmentLabel\n'
-          'Категория: $categoryLabel';
+      return '📭 <b>Список пуст для выбранных фильтров</b>\n'
+          'Сегмент: <b>${_escapeHtml(segmentLabel)}</b>\n'
+          'Категория: <b>${_escapeHtml(categoryLabel)}</b>';
     }
     final segmentLabel = archived ? 'Архивные' : 'Активные';
     final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
     final dateFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final lines = <String>[
-      'Список записей для управления 👇',
-      'Фильтр: $segmentLabel • $categoryLabel',
-      'Страница $page/$totalPages • всего записей: $totalCount',
+      '🧾 <b>Список записей для управления</b>',
+      'Фильтр: <b>${_escapeHtml(segmentLabel)} • ${_escapeHtml(categoryLabel)}</b>',
+      'Страница <b>$page/$totalPages</b> • всего записей: <b>$totalCount</b>',
       '',
-      'Записи на текущей странице:',
+      '<b>Записи на текущей странице:</b>',
     ];
     for (var index = 0; index < bookings.length; index++) {
       final booking = bookings[index];
       lines.add(
-        '${index + 1}. #${booking.id} ${booking.trainingTitle}\n'
-        '   👤 ${_userTag(booking)} (${booking.userId})\n'
-        '   🕒 ${dateFormatter.format(booking.startsAt)}\n'
-        '   Статус: ${_statusLabel(booking.status, booking: booking)}',
+        '<b>${index + 1}. #${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>\n'
+        '👤 ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        '🕒 ${dateFormatter.format(booking.startsAt)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
       );
       if (index < bookings.length - 1) {
         lines.add('──────────');
@@ -206,24 +210,26 @@ final class MessageTemplates {
 
   String adminBookingActions(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Запись #${booking.id}\n'
-        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
-        'Событие: ${booking.trainingTitle}\n'
+    return '🧩 <b>Запись #${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
         'Дата: ${formatter.format(booking.startsAt)}\n'
-        'Статус: ${_statusLabel(booking.status, booking: booking)}\n\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n\n'
         'Выбери действие 👇';
   }
 
   String chooseAdminBookingEditField(TrainingBooking booking) {
-    return 'Что изменить в записи #${booking.id}?';
+    return '✏️ <b>Что изменить в записи #${booking.id}?</b>';
   }
 
   String chooseAdminBookingPaymentStatus(TrainingBooking booking) {
-    return 'Выбери новый статус оплаты для записи #${booking.id} 👇';
+    return '💳 <b>Новый статус оплаты</b>\n'
+        'Запись #${booking.id}';
   }
 
   String adminBookingAskUsername(TrainingBooking booking) {
-    return 'Отправь username пользователя для записи #${booking.id} '
+    return '👤 <b>Username пользователя</b>\n'
+        'Отправь username для записи #${booking.id} '
         '(можно с @ или без).';
   }
 
@@ -233,27 +239,29 @@ final class MessageTemplates {
   }
 
   String adminBookingUsernameUpdated(TrainingBooking booking) {
-    return 'Готово. Пользователь для записи #${booking.id}: ${_userTag(booking)}';
+    return '✅ <b>Готово</b>\n'
+        'Пользователь для записи #${booking.id}: ${_escapeHtml(_userTag(booking))}';
   }
 
   String adminBookingEventUpdated(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Событие для записи #${booking.id} обновлено ✅\n'
-        '${booking.trainingTitle}\n'
+    return '✅ <b>Событие для записи #${booking.id} обновлено</b>\n'
+        '${_escapeHtml(booking.trainingTitle)}\n'
         '${formatter.format(booking.startsAt)}';
   }
 
   String adminBookingPaymentStatusUpdated(TrainingBooking booking) {
-    return 'Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status, booking: booking)} ✅';
+    return '✅ <b>Статус записи #${booking.id} обновлен</b>\n'
+        '${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
   }
 
   String adminBookingDeleteConfirm(TrainingBooking booking) {
-    return 'Удалить запись #${booking.id}? '
+    return '⚠️ <b>Удалить запись #${booking.id}?</b>\n'
         'Запись перейдет в архив со статусом «Отменена».';
   }
 
   String adminBookingDeleted(TrainingBooking booking) {
-    return 'Запись #${booking.id} переведена в архив ✅';
+    return '✅ <b>Запись #${booking.id} переведена в архив</b>';
   }
 
   String adminBookingDeletedForUser(TrainingBooking booking) {
@@ -266,15 +274,17 @@ final class MessageTemplates {
   }
 
   String adminBookingRestored(TrainingBooking booking) {
-    return 'Запись #${booking.id} восстановлена ✅';
+    return '✅ <b>Запись #${booking.id} восстановлена</b>';
   }
 
   String adminBookingRestoreNotAllowed(TrainingBooking booking) {
-    return 'Запись #${booking.id} нельзя восстановить: мероприятие уже прошло.';
+    return '⛔️ <b>Запись #${booking.id} нельзя восстановить</b>\n'
+        'Мероприятие уже прошло.';
   }
 
   String chooseCreateBookingCategory() {
-    return 'Создание записи: выбери категорию 👇';
+    return '➕ <b>Создание записи</b>\n'
+        'Выбери категорию 👇';
   }
 
   String chooseCreateBookingEvent(List<TrainingInfo> items) {
@@ -282,22 +292,25 @@ final class MessageTemplates {
       return 'В выбранной категории нет доступных мероприятий для записи.';
     }
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>['Выбери мероприятие для новой записи 👇'];
+    final lines = <String>['📌 <b>Выбери мероприятие для новой записи</b>'];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
-      lines.add('${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} '
-          '(${item.location}, участники: ${_participantsLimitLabel(item.participantsLimit)})');
+      lines.add(
+          '${index + 1}. <b>${_escapeHtml(item.title)}</b> — ${formatter.format(item.startsAt)} '
+          '(${_escapeHtml(item.location)}, участники: ${_participantsLimitLabel(item.participantsLimit)})');
     }
     return lines.join('\n');
   }
 
   String createBookingAskUsername() {
-    return 'Введи username пользователя для новой записи '
+    return '👤 <b>Username для новой записи</b>\n'
+        'Введи username пользователя '
         '(можно с @ или без).';
   }
 
   String chooseCreateBookingPaymentStatus() {
-    return 'Выбери стартовый статус оплаты 👇';
+    return '💳 <b>Стартовый статус оплаты</b>\n'
+        'Выбери вариант 👇';
   }
 
   String createBookingPreview({
@@ -306,16 +319,16 @@ final class MessageTemplates {
     required BookingStatus status,
   }) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Проверь данные новой записи:\n'
-        'Пользователь: @$username\n'
-        'Событие: ${training.title}\n'
+    return '🔍 <b>Проверь данные новой записи</b>\n'
+        'Пользователь: @${_escapeHtml(username)}\n'
+        'Событие: ${_escapeHtml(training.title)}\n'
         'Дата: ${formatter.format(training.startsAt)}\n'
-        'Локация: ${training.location}\n'
-        'Статус: ${_statusLabel(status)}';
+        'Локация: ${_escapeHtml(training.location)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(status))}';
   }
 
   String adminBookingCreated(TrainingBooking booking) {
-    return 'Запись #${booking.id} создана ✅';
+    return '✅ <b>Запись #${booking.id} создана</b>';
   }
 
   String clubInfoPrivate() {
@@ -443,9 +456,9 @@ final class MessageTemplates {
   }
 
   String paymentSubmittedAdminNotification(TrainingBooking booking) {
-    return 'Новое подтверждение оплаты 💸\n\n'
+    return '💸 <b>Новое подтверждение оплаты</b>\n\n'
         'Пришла новая заявка на проверку оплаты.\n'
-        'Мероприятие: ${booking.trainingTitle}\n'
+        'Мероприятие: ${_escapeHtml(booking.trainingTitle)}\n'
         'Нажми кнопку ниже, чтобы открыть очередь заявок 👇';
   }
 
@@ -486,18 +499,18 @@ final class MessageTemplates {
     required int completedTrainingsCount,
     required int availableRewardsCount,
   }) {
-    return 'Новая бесплатная тренировка (каждая 5-я) 🎁\n'
-        'Пользователь: ${_userTagById(userId, username: username)} ($userId)\n'
-        'Оплаченных и прошедших тренировок: $completedTrainingsCount\n'
-        'Доступно бесплатных тренировок: $availableRewardsCount';
+    return '🎁 <b>Новая бесплатная тренировка (каждая 5-я)</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(userId, username: username))} ($userId)\n'
+        'Оплаченных и прошедших тренировок: <b>$completedTrainingsCount</b>\n'
+        'Доступно бесплатных тренировок: <b>$availableRewardsCount</b>';
   }
 
   String everyFifthBonusAdminNotification(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Бесплатная запись по правилу «каждая 5-я» 🎁\n'
-        'Запись: #${booking.id}\n'
-        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
-        'Тренировка: ${booking.trainingTitle}\n'
+    return '🎁 <b>Бесплатная запись по правилу «каждая 5-я»</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
         'Когда: ${formatter.format(booking.startsAt)}';
   }
 
@@ -509,10 +522,10 @@ final class MessageTemplates {
 
   String starterBonusAdminNotification(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Стартовая бесплатная запись 🎁\n'
-        'Запись: #${booking.id}\n'
-        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
-        'Тренировка: ${booking.trainingTitle}\n'
+    return '🎁 <b>Стартовая бесплатная запись</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
         'Когда: ${formatter.format(booking.startsAt)}\n'
         'Формат: бесплатная тренировка за старт';
   }
@@ -681,9 +694,9 @@ final class MessageTemplates {
   String paymentsQueueEmpty() => 'Очередь подтверждения оплат пока пустая ✨';
 
   String paymentsQueueIntro(int total, {required ActivityCategory category}) {
-    return 'Заявки на подтверждение оплаты 🧾\n'
-        'Категория: ${_categoryLabel(category)}\n'
-        'Всего ожидают проверки: $total.\n'
+    return '🧾 <b>Заявки на подтверждение оплаты</b>\n'
+        'Категория: <b>${_escapeHtml(_categoryLabel(category))}</b>\n'
+        'Всего ожидают проверки: <b>$total</b>.\n'
         'Ниже отправил каждую заявку отдельным сообщением.';
   }
 
@@ -692,13 +705,13 @@ final class MessageTemplates {
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final paymentType = _paymentTypeLabelFromNote(booking.paymentNote);
     final cleanNote = _cleanPaymentNote(booking.paymentNote);
-    final note = cleanNote == null ? '' : '\nКомментарий: $cleanNote';
-    return 'Заявка #${booking.id}\n'
-        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
-        'Тренировка: ${booking.trainingTitle}\n'
+    final note = cleanNote == null ? '' : '\nКомментарий: ${_escapeHtml(cleanNote)}';
+    return '🧾 <b>Заявка #${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 ${booking.location}'
-        '${paymentType == null ? '' : '\nТип оплаты: $paymentType'}'
+        '📍 ${_escapeHtml(booking.location)}'
+        '${paymentType == null ? '' : '\nТип оплаты: ${_escapeHtml(paymentType)}'}'
         '$note\n\n'
         'Подтверди или отклони оплату кнопками ниже.\n'
         'После решения можно сразу открыть следующую заявку.';
@@ -715,7 +728,7 @@ final class MessageTemplates {
     }
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    final lines = <String>[title];
+    final lines = <String>['<b>${_escapeHtml(title)}</b>'];
     for (var index = 0; index < trainings.length; index++) {
       final training = trainings[index];
       final tags = bookingsByTrainingKey[training.sessionKey] ?? const <TrainingBooking>[];
@@ -725,9 +738,9 @@ final class MessageTemplates {
           tags.where((booking) => booking.status == BookingStatus.cancelled).toList();
       final orderedTags = <TrainingBooking>[...activeTags, ...cancelledTags];
       lines.add(
-        '\n${index + 1}. ${training.title}\n'
+        '\n${index + 1}. <b>${_escapeHtml(training.title)}</b>\n'
         '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 ${training.location}\n'
+        '📍 ${_escapeHtml(training.location)}\n'
         '👥 Участники: ${activeTags.length}/${_participantsLimitValueLabel(training.participantsLimit)}',
       );
       if (orderedTags.isEmpty) {
@@ -735,7 +748,7 @@ final class MessageTemplates {
       } else {
         for (final booking in orderedTags) {
           lines.add(
-            '   • ${_userTag(booking)} (${_participantStatusLabel(booking)})',
+            '   • ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
         }
       }
@@ -751,15 +764,15 @@ final class MessageTemplates {
       return 'Пока нет данных по записям, список дворян пуст.';
     }
     final lines = <String>[
-      'Список дворян 🏰',
-      'Всего записей на тренировки: $totalTrainings',
+      '🏰 <b>Список дворян</b>',
+      'Всего записей на тренировки: <b>$totalTrainings</b>',
       '',
     ];
     for (var index = 0; index < users.length; index++) {
       final user = users[index];
       lines.add(
-        '${index + 1}. ${_userTagById(user.userId, username: user.username)} (${user.userId}) — '
-        '${user.trainingsCount}',
+        '${index + 1}. ${_escapeHtml(_userTagById(user.userId, username: user.username))} (${user.userId}) — '
+        '<b>${user.trainingsCount}</b>',
       );
     }
     return lines.join('\n');
@@ -770,11 +783,11 @@ final class MessageTemplates {
   }
 
   String paymentActionUsage() {
-    return 'Использование:\n'
-        '/approve_payment <id>\n'
-        '/approve_partial_payment <id>\n'
-        '/reject_payment <id>\n\n'
-        'Например: /approve_partial_payment 42';
+    return '📘 <b>Использование команд модерации:</b>\n'
+        '<code>/approve_payment &lt;id&gt;</code>\n'
+        '<code>/approve_partial_payment &lt;id&gt;</code>\n'
+        '<code>/reject_payment &lt;id&gt;</code>\n\n'
+        'Например: <code>/approve_partial_payment 42</code>';
   }
 
   String paymentReviewResultWithNextStep({
@@ -784,7 +797,8 @@ final class MessageTemplates {
     final nextStep = remaining > 0
         ? 'Осталось на проверке: $remaining. Нажми «${MessageCopy.buttonPaymentsQueue}», чтобы открыть следующую заявку.'
         : 'Очередь заявок пуста. Можно вернуться в меню.';
-    return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status, booking: booking)} ✅\n'
+    return '✅ <b>Готово! Статус записи #${booking.id} обновлен</b>\n'
+        '${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
         '$nextStep';
   }
 
@@ -805,7 +819,7 @@ final class MessageTemplates {
   }
 
   String bookingNotFound(int id) {
-    return 'Запись #$id не найдена 😕';
+    return '😕 <b>Запись #$id не найдена</b>';
   }
 
   String bookingStatusUpdated(TrainingBooking booking) {
@@ -813,7 +827,8 @@ final class MessageTemplates {
   }
 
   String paymentAlreadyReviewed(int bookingId) {
-    return 'Запись #$bookingId уже не в статусе «На проверке». Обнови очередь и проверь актуальный статус.';
+    return 'ℹ️ <b>Запись #$bookingId уже не в статусе «На проверке»</b>\n'
+        'Обнови очередь и проверь актуальный статус.';
   }
 
   String adminBookingUpdateConflict() {
@@ -866,11 +881,11 @@ final class MessageTemplates {
     required int moderatorUserId,
     String? moderatorUsername,
   }) {
-    return 'Модерация оплаты выполнена 🧾\n'
-        'Запись: #${booking.id}\n'
-        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
-        'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
-        'Проверил админ: ${_userTagById(moderatorUserId, username: moderatorUsername)} ($moderatorUserId)\n'
+    return '🧾 <b>Модерация оплаты выполнена</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
+        'Проверил админ: ${_escapeHtml(_userTagById(moderatorUserId, username: moderatorUsername))} ($moderatorUserId)\n'
         'Дальше: при необходимости открой очередь и проверь следующую заявку.';
   }
 
@@ -879,21 +894,21 @@ final class MessageTemplates {
     required TrainingBooking after,
   }) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Операционное событие: перенос записи 🔁\n'
-        'Запись: #${after.id}\n'
-        'Пользователь: ${_userTag(after)} (${after.userId})\n'
-        'Было: ${before.trainingTitle} (${formatter.format(before.startsAt)})\n'
-        'Стало: ${after.trainingTitle} (${formatter.format(after.startsAt)})\n'
+    return '🔁 <b>Операционное событие: перенос записи</b>\n'
+        'Запись: <b>#${after.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(after))} (${after.userId})\n'
+        'Было: ${_escapeHtml(before.trainingTitle)} (${formatter.format(before.startsAt)})\n'
+        'Стало: ${_escapeHtml(after.trainingTitle)} (${formatter.format(after.startsAt)})\n'
         'Дальше: проверь состав участников перед ближайшей тренировкой.';
   }
 
   String bookingCancelledAdminNotification(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Операционное событие: отмена записи ❌\n'
-        'Запись: #${booking.id}\n'
-        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
-        'Событие: ${booking.trainingTitle}\n'
+    return '❌ <b>Операционное событие: отмена записи</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
         'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         'Дальше: при необходимости свяжись с участником по возврату/перезаписи.';
   }
@@ -901,12 +916,12 @@ final class MessageTemplates {
   String freeBookingCreatedAdminNotification(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Операционное событие: новая бесплатная запись 🎁\n'
-        'Запись: #${booking.id}\n'
-        'Пользователь: ${_userTag(booking)} (${booking.userId})\n'
-        'Событие: ${booking.trainingTitle}\n'
+    return '🎁 <b>Операционное событие: новая бесплатная запись</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
         'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        'Статус: ${_statusLabel(booking.status, booking: booking)}';
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
   }
 
   String pendingPaymentReminder(TrainingBooking booking) {
@@ -990,41 +1005,43 @@ final class MessageTemplates {
     final periodRange =
         '${dateFormatter.format(summary.period.startInclusive)} — ${dateFormatter.format(summary.period.endExclusive.subtract(const Duration(days: 1)))}';
     final lines = <String>[
-      'Экономическая сводка ${periodLabel ?? 'по периоду'} 📈',
-      'Период: $periodRange',
+      '📈 <b>Экономическая сводка ${_escapeHtml(periodLabel ?? 'по периоду')}</b>',
+      'Период: <b>$periodRange</b>',
       '',
-      'Финансы:',
-      '• Выручка: ${_money(summary.totalRevenue)}',
-      '• Платных бронирований: ${summary.paidBookingsCount}',
-      '• Средний чек: ${_money(summary.averageCheck)}',
-      if (summary.freeBookingsCount > 0) '• Бесплатных бронирований: ${summary.freeBookingsCount}',
+      '<b>Финансы:</b>',
+      '• Выручка: <b>${_money(summary.totalRevenue)}</b>',
+      '• Платных бронирований: <b>${summary.paidBookingsCount}</b>',
+      '• Средний чек: <b>${_money(summary.averageCheck)}</b>',
+      if (summary.freeBookingsCount > 0)
+        '• Бесплатных бронирований: <b>${summary.freeBookingsCount}</b>',
       if (summary.regularFreeBookingsCount > 0)
-        '• Бесплатные по цене мероприятия: ${summary.regularFreeBookingsCount}',
+        '• Бесплатные по цене мероприятия: <b>${summary.regularFreeBookingsCount}</b>',
       if (summary.starterFreeBookingsCount > 0)
-        '• Бесплатные стартовые: ${summary.starterFreeBookingsCount}',
+        '• Бесплатные стартовые: <b>${summary.starterFreeBookingsCount}</b>',
       if (summary.everyFifthFreeBookingsCount > 0)
-        '• Бесплатные по правилу «каждая 5-я»: ${summary.everyFifthFreeBookingsCount}',
+        '• Бесплатные по правилу «каждая 5-я»: <b>${summary.everyFifthFreeBookingsCount}</b>',
       if (summary.unknownPriceBookingsCount > 0)
-        '• Без цены в данных: ${summary.unknownPriceBookingsCount}',
+        '• Без цены в данных: <b>${summary.unknownPriceBookingsCount}</b>',
       '',
-      'По категориям:',
+      '<b>По категориям:</b>',
       if (summary.byCategory.isEmpty) '• Нет оплаченных бронирований с ценой',
       ...summary.byCategory.map(
-        (item) =>
-            '• ${_categoryLabel(item.category)}: ${_money(item.revenue)} (${item.bookingsCount})',
+        (item) => '• ${_escapeHtml(_categoryLabel(item.category))}: '
+            '<b>${_money(item.revenue)}</b> (${item.bookingsCount})',
       ),
       '',
-      'Топ мероприятий по выручке:',
+      '<b>Топ мероприятий по выручке:</b>',
       if (summary.byEvent.isEmpty) '• Нет данных',
       ...summary.byEvent.map(
-        (item) => '• ${item.eventTitle}: ${_money(item.revenue)} (${item.bookingsCount})',
+        (item) => '• ${_escapeHtml(item.eventTitle)}: '
+            '<b>${_money(item.revenue)}</b> (${item.bookingsCount})',
       ),
     ];
     return lines.join('\n');
   }
 
   String chooseEconomicSummaryPeriod() {
-    return 'Выбери период для экономической сводки 👇';
+    return '📅 <b>Выбери период для экономической сводки</b>';
   }
 
   Map<String, Object?> privateMenuKeyboard({

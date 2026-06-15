@@ -40,6 +40,7 @@ Project guidance for AI/code agents in this repository.
 
 - Process only relevant update types (currently `message`).
 - Respect `TARGET_CHAT_ID` filtering in group flows.
+- For new bot-facing message UX, prefer Telegram rich formatting first (`sendRichMessage`/rich entities when available; otherwise `HTML` parse mode with safe escaping).
 - DM to new members may fail if the user has not started the bot:
   - keep fallback message logic in group
   - do not treat this as fatal

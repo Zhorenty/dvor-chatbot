@@ -1145,7 +1145,7 @@ final class PrivateHandlers {
     if (text != null &&
         (text == MessageTemplates.buttonRefreshSchedule || text.startsWith('/refresh_schedule'))) {
       if (!canRunAdminAction) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.scheduleRefreshForbidden(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1158,19 +1158,19 @@ final class PrivateHandlers {
         l.w('Trainer directory refresh failed during /refresh_schedule.');
       }
       final refreshOk = scheduleRefreshOk && trainersRefreshOk;
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         refreshOk ? _templates.scheduleRefreshDone() : _templates.scheduleRefreshFailed(),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
-      await _sender.sendMessage(chatId, _templates.scheduleDocumentLink());
+      await _sendAdminMessage(chatId, _templates.scheduleDocumentLink());
       return true;
     }
 
     if (text != null &&
         (text == MessageTemplates.buttonPaymentsQueue || text.startsWith('/payments_queue'))) {
       if (!canRunAdminAction) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1185,7 +1185,7 @@ final class PrivateHandlers {
         availableTrainings: <TrainingInfo>[],
       );
       final counters = await _paymentReviewService.queueCounters();
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.choosePaymentsQueueCategory(),
         replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
@@ -1201,7 +1201,7 @@ final class PrivateHandlers {
     if (text != null &&
         (text == MessageTemplates.buttonEconomicSummary || text.startsWith('/economic_summary'))) {
       if (!canRunAdminAction) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1220,7 +1220,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingEconomicSummaryPeriod,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.chooseEconomicSummaryPeriod(),
         replyMarkup: _templates.economicSummaryPeriodKeyboard(),
@@ -1234,7 +1234,7 @@ final class PrivateHandlers {
         !text.startsWith('/')) {
       final range = _parseEconomicSummaryRangeText(text);
       if (range == null) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.chooseEconomicSummaryPeriod(),
           replyMarkup: _templates.economicSummaryPeriodKeyboard(),
@@ -1250,7 +1250,7 @@ final class PrivateHandlers {
         (text == MessageTemplates.buttonParticipantsList ||
             text.startsWith('/participants_list'))) {
       if (!canRunParticipantsAction) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1274,7 +1274,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingParticipantsCategory,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.chooseParticipantsCategory(),
         replyMarkup: _templates.categorySelectionKeyboard(),
@@ -1285,7 +1285,7 @@ final class PrivateHandlers {
     if (text != null &&
         (text == MessageTemplates.buttonNoblesList || text.startsWith('/nobles_list'))) {
       if (!canRunAdminAction) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1298,7 +1298,7 @@ final class PrivateHandlers {
 
     if (text != null && text == MessageTemplates.buttonManageBookings) {
       if (!canRunAdminAction) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1312,7 +1312,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingAdminBookingManagementAction,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.chooseBookingManagementAction(),
         replyMarkup: _templates.adminBookingManagementKeyboard(),
@@ -1334,7 +1334,7 @@ final class PrivateHandlers {
           step: _PrivateFlowStep.selectingAdminCreateCategory,
           availableTrainings: <TrainingInfo>[],
         );
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.chooseCreateBookingCategory(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -1350,7 +1350,7 @@ final class PrivateHandlers {
       final archived = _parseBookingSegmentSelection(text);
       if (archived == null) {
         final counters = await _bookingRepository.adminCountBySegment();
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.chooseBookingListSegment(),
           replyMarkup: _templates.bookingSegmentKeyboard(
@@ -1366,7 +1366,7 @@ final class PrivateHandlers {
         selectedCategory: null,
         availableBookings: const <TrainingBooking>[],
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.chooseBookingManagementCategory(),
         replyMarkup: _templates.categorySelectionKeyboard(),
@@ -1444,7 +1444,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingAdminBookingAction,
         selectedBooking: selectedBooking,
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.adminBookingActions(selectedBooking),
         replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
@@ -1467,7 +1467,7 @@ final class PrivateHandlers {
       }
       _flowByUserId[userId] =
           flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingEditField);
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.chooseAdminBookingEditField(selectedBooking),
         replyMarkup: _templates.adminBookingEditFieldsKeyboard(),
@@ -1490,7 +1490,7 @@ final class PrivateHandlers {
       }
       _flowByUserId[userId] =
           flowState!.copyWith(step: _PrivateFlowStep.confirmingAdminBookingDelete);
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.adminBookingDeleteConfirm(selectedBooking),
         replyMarkup: _templates.adminBookingDeleteConfirmKeyboard(),
@@ -1514,7 +1514,7 @@ final class PrivateHandlers {
       if (text == MessageTemplates.buttonCancelDeleteBooking) {
         _flowByUserId[userId] =
             flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingAction);
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminBookingActions(selectedBooking),
           replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
@@ -1525,7 +1525,7 @@ final class PrivateHandlers {
       if (text == MessageTemplates.buttonConfirmDeleteBooking) {
         final archived = await _bookingRepository.adminArchiveBooking(selectedBooking.id);
         if (archived == null) {
-          await _sender.sendMessage(
+          await _sendAdminMessage(
             chatId,
             _templates.bookingNotFound(selectedBooking.id),
             replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1538,7 +1538,7 @@ final class PrivateHandlers {
           step: _PrivateFlowStep.selectingAdminBookingManagementAction,
           availableTrainings: <TrainingInfo>[],
         );
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminBookingDeleted(archived),
           replyMarkup: _templates.adminBookingAfterActionKeyboard(),
@@ -1561,7 +1561,7 @@ final class PrivateHandlers {
         return true;
       }
       if (!_canRestoreBooking(selectedBooking)) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminBookingRestoreNotAllowed(selectedBooking),
           replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
@@ -1575,7 +1575,7 @@ final class PrivateHandlers {
           status: BookingStatus.pendingPayment,
         );
       } on BookingConflictException {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminBookingUpdateConflict(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1584,7 +1584,7 @@ final class PrivateHandlers {
         return true;
       }
       if (restored == null) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.bookingNotFound(selectedBooking.id),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1596,7 +1596,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingAdminBookingManagementAction,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.adminBookingRestored(restored),
         replyMarkup: _templates.adminBookingAfterActionKeyboard(),
@@ -1620,7 +1620,7 @@ final class PrivateHandlers {
       if (text == MessageTemplates.buttonEditBookingPayment) {
         _flowByUserId[userId] =
             flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingEditStatus);
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.chooseAdminBookingPaymentStatus(selectedBooking),
           replyMarkup: _templates.bookingPaymentStatusKeyboard(),
@@ -1630,7 +1630,7 @@ final class PrivateHandlers {
       if (text == MessageTemplates.buttonEditBookingUsername) {
         _flowByUserId[userId] =
             flowState!.copyWith(step: _PrivateFlowStep.enteringAdminBookingUsername);
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminBookingAskUsername(selectedBooking),
           replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -1652,7 +1652,7 @@ final class PrivateHandlers {
           step: _PrivateFlowStep.selectingAdminBookingEditEvent,
           availableTrainings: items,
         );
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.chooseCreateBookingEvent(items),
           replyMarkup: _templates.bookingSelectionKeyboard(items),
@@ -1668,7 +1668,7 @@ final class PrivateHandlers {
       final selectedBooking = flowState?.selectedBooking;
       final status = _parsePaymentStatusSelection(text);
       if (selectedBooking == null || status == null) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           selectedBooking == null
               ? _templates.privateFallback()
@@ -1689,7 +1689,7 @@ final class PrivateHandlers {
           status: status,
         );
       } on BookingConflictException {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminBookingUpdateConflict(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1699,7 +1699,7 @@ final class PrivateHandlers {
       }
       if (updated == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.bookingNotFound(selectedBooking.id),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1710,7 +1710,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingAdminBookingManagementAction,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.adminBookingPaymentStatusUpdated(updated),
         replyMarkup: _templates.adminBookingAfterActionKeyboard(),
@@ -1734,7 +1734,7 @@ final class PrivateHandlers {
       }
       final normalizedUsername = _normalizeUsernameInput(text);
       if (normalizedUsername == null) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.invalidUsernameInput(),
           replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -1748,7 +1748,7 @@ final class PrivateHandlers {
           userUsername: normalizedUsername,
         );
       } on BookingConflictException {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminBookingUpdateConflict(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1758,7 +1758,7 @@ final class PrivateHandlers {
       }
       if (updated == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.bookingNotFound(selectedBooking.id),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1769,7 +1769,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingAdminBookingManagementAction,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.adminBookingUsernameUpdated(updated),
         replyMarkup: _templates.adminBookingAfterActionKeyboard(),
@@ -1794,7 +1794,7 @@ final class PrivateHandlers {
       final index = _parseTrainingSelectionIndex(text);
       final items = flowState?.availableTrainings ?? const <TrainingInfo>[];
       if (index == null || index < 1 || index > items.length) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.chooseCreateBookingEvent(items),
           replyMarkup: _templates.bookingSelectionKeyboard(items),
@@ -1808,7 +1808,7 @@ final class PrivateHandlers {
           training: items[index - 1],
         );
       } on BookingConflictException {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminBookingUpdateConflict(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1818,7 +1818,7 @@ final class PrivateHandlers {
       }
       if (updated == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.bookingNotFound(selectedBooking.id),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -1829,7 +1829,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingAdminBookingManagementAction,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.adminBookingEventUpdated(updated),
         replyMarkup: _templates.adminBookingAfterActionKeyboard(),
@@ -1843,7 +1843,7 @@ final class PrivateHandlers {
         !text.startsWith('/')) {
       final category = _parseCategory(text);
       if (category == null) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.unknownCategory(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -1852,7 +1852,7 @@ final class PrivateHandlers {
       }
       final items = _bookableItemsByCategory(category);
       if (items.isEmpty) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.noUpcomingForBooking(),
           replyMarkup: _templates.adminBookingManagementKeyboard(),
@@ -1864,7 +1864,7 @@ final class PrivateHandlers {
         availableTrainings: items,
         selectedCategory: category,
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.chooseCreateBookingEvent(items),
         replyMarkup: _templates.bookingSelectionKeyboard(items),
@@ -1879,7 +1879,7 @@ final class PrivateHandlers {
       final index = _parseTrainingSelectionIndex(text);
       final items = flowState?.availableTrainings ?? const <TrainingInfo>[];
       if (index == null || index < 1 || index > items.length) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.chooseCreateBookingEvent(items),
           replyMarkup: _templates.bookingSelectionKeyboard(items),
@@ -1891,7 +1891,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.enteringAdminCreateUsername,
         adminCreateTraining: selectedTraining,
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.createBookingAskUsername(),
         replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -1905,7 +1905,7 @@ final class PrivateHandlers {
         !text.startsWith('/')) {
       final normalizedUsername = _normalizeUsernameInput(text);
       if (normalizedUsername == null) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.invalidUsernameInput(),
           replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -1916,7 +1916,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.selectingAdminCreateStatus,
         adminCreateUsername: normalizedUsername,
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.chooseCreateBookingPaymentStatus(),
         replyMarkup: _templates.bookingPaymentStatusKeyboard(),
@@ -1932,7 +1932,7 @@ final class PrivateHandlers {
       final training = flowState?.adminCreateTraining;
       final username = flowState?.adminCreateUsername;
       if (status == null || training == null || username == null) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.chooseCreateBookingPaymentStatus(),
           replyMarkup: _templates.bookingPaymentStatusKeyboard(),
@@ -1943,7 +1943,7 @@ final class PrivateHandlers {
         step: _PrivateFlowStep.confirmingAdminCreate,
         adminCreateStatus: status,
       );
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.createBookingPreview(training: training, username: username, status: status),
         replyMarkup: _templates.adminCreateBookingConfirmationKeyboard(),
@@ -1959,7 +1959,7 @@ final class PrivateHandlers {
           step: _PrivateFlowStep.selectingAdminBookingManagementAction,
           availableTrainings: <TrainingInfo>[],
         );
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.chooseBookingManagementAction(),
           replyMarkup: _templates.adminBookingManagementKeyboard(),
@@ -1988,7 +1988,7 @@ final class PrivateHandlers {
           step: _PrivateFlowStep.selectingAdminBookingManagementAction,
           availableTrainings: <TrainingInfo>[],
         );
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminBookingCreated(created),
           replyMarkup: _templates.adminBookingAfterActionKeyboard(),
@@ -2002,7 +2002,7 @@ final class PrivateHandlers {
             text.startsWith('/approve_partial_payment') ||
             text.startsWith('/reject_payment'))) {
       if (!isAdmin) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -2011,7 +2011,7 @@ final class PrivateHandlers {
       }
       final bookingId = _updateRouter.parseCommandId(text);
       if (bookingId == null) {
-        await _sender.sendMessage(
+        await _sendAdminMessage(
           chatId,
           _templates.paymentActionUsage(),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -2036,7 +2036,7 @@ final class PrivateHandlers {
           moderatorUsername: context.from?['username']?.toString(),
         );
       }
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         switch (reviewResult.outcome) {
           PaymentReviewOutcome.success => _templates.paymentReviewResultWithNextStep(
@@ -2155,7 +2155,7 @@ final class PrivateHandlers {
 
     final copy = _scheduleHandler.participantsCopy(category);
 
-    await _sender.sendMessage(
+    await _sendAdminMessage(
       chatId,
       _templates.trainingParticipants(
         trainings: visibleTrainings,
@@ -2277,7 +2277,7 @@ final class PrivateHandlers {
       return;
     }
 
-    await _sender.sendMessage(
+    await _sendAdminMessage(
       chatId,
       _templates.paymentsQueueIntro(filtered.length, category: category),
     );
@@ -2293,13 +2293,13 @@ final class PrivateHandlers {
           );
         } on Object catch (error, stackTrace) {
           l.w('Failed to copy payment proof for booking ${booking.id}: $error', stackTrace);
-          await _sender.sendMessage(
+          await _sendAdminMessage(
             chatId,
             _templates.paymentProofUnavailableHint(booking),
           );
         }
       }
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         chatId,
         _templates.paymentsQueueItem(booking),
         replyMarkup: _templates.paymentDecisionInlineKeyboard(
@@ -2315,7 +2315,7 @@ final class PrivateHandlers {
     required bool isAdmin,
   }) async {
     final result = await _noblesListService.buildStats();
-    await _sender.sendMessage(
+    await _sendAdminMessage(
       chatId,
       _templates.noblesList(result.users, totalTrainings: result.totalTrainings),
       replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -2337,7 +2337,7 @@ final class PrivateHandlers {
         _economicSummaryService.latestCompletedMonthlyPeriod(now),
     };
     final summary = await _economicSummaryService.buildSummary(period);
-    await _sender.sendMessage(
+    await _sendAdminMessage(
       chatId,
       _templates.economicSummary(summary, periodLabel: range.label),
       replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
@@ -2443,7 +2443,7 @@ final class PrivateHandlers {
       step: _PrivateFlowStep.selectingAdminBookingListSegment,
       availableTrainings: <TrainingInfo>[],
     );
-    await _sender.sendMessage(
+    await _sendAdminMessage(
       chatId,
       _templates.chooseBookingListSegment(),
       replyMarkup: _templates.bookingSegmentKeyboard(
@@ -2474,7 +2474,7 @@ final class PrivateHandlers {
     final pageBookings = allBookings.sublist(start, end);
     _flowByUserId[userId] =
         flowState.copyWith(adminBookingsPage: page, availableBookings: allBookings);
-    await _sender.sendMessage(
+    await _sendAdminMessage(
       chatId,
       _templates.chooseAdminBookingFromList(
         pageBookings,
@@ -2544,6 +2544,23 @@ final class PrivateHandlers {
     return booking.startsAt.isAfter(_nowProvider());
   }
 
+  Future<int> _sendAdminMessage(
+    int chatId,
+    String text, {
+    bool disableNotification = true,
+    bool disableWebPagePreview = false,
+    Map<String, Object?>? replyMarkup,
+  }) {
+    return _sender.sendMessage(
+      chatId,
+      text,
+      disableNotification: disableNotification,
+      disableWebPagePreview: disableWebPagePreview,
+      replyMarkup: replyMarkup,
+      parseMode: 'HTML',
+    );
+  }
+
   Future<void> _notifyAdminAboutPaymentSubmitted(TrainingBooking booking) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
@@ -2551,7 +2568,7 @@ final class PrivateHandlers {
     }
     try {
       final counters = await _paymentReviewService.queueCounters();
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         adminChatId,
         _templates.paymentSubmittedAdminNotification(booking),
         replyMarkup: _templates.openPaymentsQueueInlineKeyboard(total: counters.total),
@@ -2584,7 +2601,7 @@ final class PrivateHandlers {
       return;
     }
     try {
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         adminChatId,
         _templates.paymentReviewAdminNotification(
           booking: booking,
@@ -2647,7 +2664,7 @@ final class PrivateHandlers {
       return;
     }
     try {
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         adminChatId,
         _templates.starterBonusAdminNotification(booking),
       );
@@ -2662,7 +2679,7 @@ final class PrivateHandlers {
       return;
     }
     try {
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         adminChatId,
         _templates.everyFifthBonusAdminNotification(booking),
       );
@@ -2800,7 +2817,7 @@ final class PrivateHandlers {
       return;
     }
     try {
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         adminChatId,
         _templates.everyFifthBonusUnlockedAdmin(
           userId: userId,
@@ -2823,7 +2840,7 @@ final class PrivateHandlers {
       return;
     }
     try {
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         adminChatId,
         _templates.bookingRescheduledAdminNotification(before: before, after: after),
       );
@@ -2838,7 +2855,7 @@ final class PrivateHandlers {
       return;
     }
     try {
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         adminChatId,
         _templates.bookingCancelledAdminNotification(booking),
       );
@@ -2853,7 +2870,7 @@ final class PrivateHandlers {
       return;
     }
     try {
-      await _sender.sendMessage(
+      await _sendAdminMessage(
         adminChatId,
         _templates.freeBookingCreatedAdminNotification(booking),
       );

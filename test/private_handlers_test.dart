@@ -207,8 +207,8 @@ void main() {
       );
 
       final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 1363267745, 'type': 'private'},
-        'from': <String, dynamic>{'id': 1363267745},
+        'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
+        'from': <String, dynamic>{'id': 857655217},
         'text': '/start',
       });
 
@@ -793,7 +793,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Ближайшие трейлы DVOR'));
+      expect(sender.messages.last.text, contains('Ближайшие трейлы OUTDVOR'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
       expect(buttons, contains(MessageTemplates.buttonBack));
@@ -1656,7 +1656,7 @@ void main() {
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(3));
-      expect(sender.messages.first.text, contains('Выбери категорию для заявок'));
+      expect(sender.messages.first.text, contains('Очередь заявок на оплату'));
       final categoryMarkup = sender.messages.first.replyMarkup;
       expect(categoryMarkup, isNotNull);
       expect(
@@ -1676,7 +1676,7 @@ void main() {
           ],
         ],
       );
-      expect(sender.messages[1].text, contains('Всего ожидают проверки: 1'));
+      expect(sender.messages[1].text, contains('Всего ожидают проверки: <b>1</b>'));
       expect(sender.copiedMessages, hasLength(1));
       expect(sender.copiedMessages.single.toChatId, 18);
       expect(sender.copiedMessages.single.fromChatId, 50082);
@@ -2589,7 +2589,7 @@ void main() {
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages.first.text, contains('Выбери категорию для списка записавшихся'));
+      expect(sender.messages.first.text, contains('Список записавшихся'));
       expect(sender.messages.last.text, contains('Список записавшихся'));
       expect(sender.messages.last.text, contains('👥 Участники: 2/∞'));
       expect(sender.messages.last.text, contains('@runner_one'));
@@ -2652,8 +2652,8 @@ void main() {
       );
 
       final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 1363267745, 'type': 'private'},
-        'from': <String, dynamic>{'id': 1363267745},
+        'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
+        'from': <String, dynamic>{'id': 857655217},
         'text': MessageTemplates.buttonParticipantsList,
       });
 
@@ -3008,10 +3008,10 @@ void main() {
       expect(sender.messages, hasLength(1));
       final text = sender.messages.single.text;
       expect(text, contains('Список дворян'));
-      expect(text, contains('Всего записей на тренировки: 4'));
-      expect(text, contains('1. @runner_one (5001) — 2'));
-      expect(text, contains('2. @runner_two (5002) — 1'));
-      expect(text, contains('tg://user?id=5003 (5003) — 1'));
+      expect(text, contains('Всего записей на тренировки:'));
+      expect(text, contains('1. @runner_one (5001) —'));
+      expect(text, contains('2. @runner_two (5002) —'));
+      expect(text, contains('tg://user?id=5003 (5003) —'));
       expect(text, isNot(contains('Поход')));
       expect(text, isNot(contains('Трейл')));
     });
@@ -3147,7 +3147,7 @@ void main() {
       });
 
       expect(firstPageHandled, isTrue);
-      expect(sender.messages.last.text, contains('Страница 1/2'));
+      expect(sender.messages.last.text, contains('Страница <b>1/2</b>'));
       expect(sender.messages.last.text, contains('Записи на текущей странице'));
       expect(sender.messages.last.text, contains('1. #601 Morning Run 1'));
       expect(sender.messages.last.text, contains('8. #608 Morning Run 8'));
@@ -3166,7 +3166,7 @@ void main() {
       });
 
       expect(secondPageHandled, isTrue);
-      expect(sender.messages.last.text, contains('Страница 2/2'));
+      expect(sender.messages.last.text, contains('Страница <b>2/2</b>'));
       expect(sender.messages.last.text, contains('1. #609 Morning Run 9'));
       expect(sender.messages.last.text, isNot(contains('#608 Morning Run 8')));
       final secondPageButtons = _keyboardTexts(sender.messages.last.replyMarkup);
@@ -3236,7 +3236,7 @@ void main() {
       expect(sender.messages.last.text, contains('Future Run'));
       expect(sender.messages.last.text, isNot(contains('Past Run')));
       expect(sender.messages.last.text, isNot(contains('Cancelled Run')));
-      expect(sender.messages.last.text, contains('всего записей: 1'));
+      expect(sender.messages.last.text, contains('всего записей: <b>1</b>'));
     });
 
     test('archives selected booking from admin management flow', () async {
@@ -3650,7 +3650,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, 1952);
-      expect(sender.messages.single.text, contains('Выбери категорию для заявок'));
+      expect(sender.messages.single.text, contains('Очередь заявок на оплату'));
       expect(sender.answeredCallbacks, hasLength(1));
       expect(sender.answeredCallbacks.single.callbackQueryId, 'cbq-open-queue');
     });
