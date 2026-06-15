@@ -581,6 +581,7 @@ final class PrivateHandlers {
               ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
               : _templates.bookingAlreadyExists(bookingForResponse),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          parseMode: 'HTML',
         );
         return true;
       }
@@ -602,6 +603,7 @@ final class PrivateHandlers {
           showCancelBooking: _canCancelBookingByPolicy(result.booking),
           showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(result.booking),
         ),
+        parseMode: 'HTML',
       );
       return true;
     }
@@ -2954,6 +2956,7 @@ final class PrivateHandlers {
             training: training,
             participantsLimit: participantsLimit,
           ),
+          parseMode: 'HTML',
         );
         _fullCapacityNotifiedTrainingKeys.add(training.sessionKey);
         _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
@@ -2976,6 +2979,7 @@ final class PrivateHandlers {
           freeSpots: freeSpots,
           participantsLimit: participantsLimit,
         ),
+        parseMode: 'HTML',
       );
       _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
     } on Object catch (error, stackTrace) {
