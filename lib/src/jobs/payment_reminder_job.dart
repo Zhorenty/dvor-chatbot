@@ -10,25 +10,50 @@ final class PaymentReminderJob {
     required BookingPolicyService bookingPolicyService,
     required MessageSender sender,
     required MessageTemplates templates,
+    Duration pendingPaymentTtl = const Duration(minutes: 120),
     DateTime Function()? nowProvider,
   })  : _bookingRepository = bookingRepository,
         _bookingPolicyService = bookingPolicyService,
         _sender = sender,
         _templates = templates,
+        _pendingPaymentTtl = pendingPaymentTtl,
         _nowProvider = nowProvider ?? DateTime.now;
 
   final BookingRepository _bookingRepository;
   final BookingPolicyService _bookingPolicyService;
   final MessageSender _sender;
   final MessageTemplates _templates;
+  final Duration _pendingPaymentTtl;
   final DateTime Function() _nowProvider;
 
   Future<void> run() async {
     try {
       final now = _nowProvider();
+      final reminderOffset = _pendingPaymentTtl > const Duration(minutes: 5)
+          ? const Duration(minutes: 5)
+          : Duration(minutes: _pendingPaymentTtl.inMinutes.clamp(1, 5));
+      final expiredBookings = await _bookingRepository.expirePendingPaymentBookings(
+        createdBefore: now.subtract(_pendingPaymentTtl),
+        limit: 50,
+      );
+      for (final booking in expiredBookings) {
+        try {
+          await _sender.sendMessage(
+            booking.userId,
+            _templates.pendingPaymentExpired(booking),
+            replyMarkup: _templates.simpleNavigationKeyboard(),
+          );
+        } on Object catch (error, stackTrace) {
+          l.w(
+            'Failed to send pending payment expiry notification for booking ${booking.id}: $error',
+            stackTrace,
+          );
+        }
+      }
+
       final bookings = await _bookingRepository.listPendingPaymentForReminder(
-        createdBefore: now.subtract(const Duration(minutes: 30)),
-        remindedBefore: now.subtract(const Duration(minutes: 60)),
+        createdBefore: now.subtract(reminderOffset),
+        remindedBefore: now.subtract(reminderOffset),
         limit: 50,
       );
 

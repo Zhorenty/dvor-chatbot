@@ -70,6 +70,7 @@ final class FakeBookingRepository implements BookingRepository {
     outcome: BookingRescheduleOutcome.success,
   );
   List<TrainingBooking> pendingForReminder = const <TrainingBooking>[];
+  List<TrainingBooking> expiredPending = const <TrainingBooking>[];
   int remindersMarked = 0;
   ({int active, int archived}) adminSegmentCounts = (active: 0, archived: 0);
   List<TrainingBooking> adminBookings = const <TrainingBooking>[];
@@ -267,6 +268,14 @@ final class FakeBookingRepository implements BookingRepository {
   @override
   Future<void> markReminderSent(int bookingId) async {
     remindersMarked += 1;
+  }
+
+  @override
+  Future<List<TrainingBooking>> expirePendingPaymentBookings({
+    required DateTime createdBefore,
+    int limit = 50,
+  }) async {
+    return expiredPending.take(limit).toList(growable: false);
   }
 
   @override

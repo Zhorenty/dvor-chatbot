@@ -104,6 +104,23 @@ void main() {
       expect(text, contains('📍 Где: <a href='));
     });
   });
+
+  group('MessageTemplates payment lifecycle copy', () {
+    const templates = MessageTemplates();
+
+    test('includes 120-minute payment ttl in requisites', () {
+      final text = templates.paymentInstructions(
+        _booking(
+          trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
+          trainingTitle: '🏋️ Кроссфит',
+          location: 'Зал DVOR',
+        ),
+      );
+
+      expect(text, contains('в течение 120 минут'));
+      expect(text, contains('записаться заново'));
+    });
+  });
 }
 
 TrainingBooking _booking({

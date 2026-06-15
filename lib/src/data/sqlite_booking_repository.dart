@@ -538,6 +538,51 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<TrainingBooking>> expirePendingPaymentBookings({
+    required DateTime createdBefore,
+    int limit = 50,
+  }) async {
+    final db = _database;
+    final overdueRows = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE status = ?
+        AND created_at <= ?
+      ORDER BY created_at ASC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        BookingStatus.pendingPayment.dbValue,
+        createdBefore.toUtc().toIso8601String(),
+        limit,
+      ],
+    );
+    if (overdueRows.isEmpty) {
+      return const <TrainingBooking>[];
+    }
+
+    final bookings = overdueRows.map(_rowToBooking).toList(growable: false);
+    final ids = bookings.map((booking) => booking.id).toList(growable: false);
+    final placeholders = List<String>.filled(ids.length, '?').join(', ');
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    db.execute(
+      '''
+      UPDATE bookings
+      SET status = ?, updated_at = ?
+      WHERE status = ?
+        AND id IN ($placeholders);
+      ''',
+      <Object?>[
+        BookingStatus.cancelled.dbValue,
+        nowIso,
+        BookingStatus.pendingPayment.dbValue,
+        ...ids,
+      ],
+    );
+    return bookings;
+  }
+
+  @override
   Future<List<TrainingBooking>> listPaidBookingsInRange({
     required DateTime fromInclusive,
     required DateTime toExclusive,

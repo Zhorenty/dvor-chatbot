@@ -842,12 +842,16 @@ final class MessageTemplates {
       return 'Реквизиты для оплаты:\n'
           '• Получатель: Елена П.\n'
           '• Банк: 🟨 Т-БАНК 🟨\n'
-          '• Номер телефона: +7(961)313-11-44';
+          '• Номер телефона: +7(961)313-11-44'
+          '\n\n'
+          '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.';
     }
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
-        '• Номер телефона: +7(995)122-06-15';
+        '• Номер телефона: +7(995)122-06-15'
+        '\n\n'
+        '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
@@ -936,6 +940,12 @@ final class MessageTemplates {
         '${paymentInstructions(booking)}\n\n'
         'После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь в этот чат файл с подтверждением (чек/скрин).\n'
         'Если кнопка не сработала, открой «${MessageCopy.buttonMyBookings}» и выбери нужную запись.';
+  }
+
+  String pendingPaymentExpired(TrainingBooking booking) {
+    return '⏰ Время на оплату истекло.\n'
+        'Запись #${booking.id} автоматически отменена.\n'
+        'Чтобы попасть на мероприятие, оформи новую запись через «${MessageCopy.buttonBookTraining}».';
   }
 
   String chooseTrainingForBooking(List<TrainingInfo> items) {

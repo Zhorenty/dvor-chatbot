@@ -112,6 +112,11 @@ abstract interface class BookingRepository {
 
   Future<void> markReminderSent(int bookingId);
 
+  Future<List<TrainingBooking>> expirePendingPaymentBookings({
+    required DateTime createdBefore,
+    int limit = 50,
+  });
+
   Future<List<TrainingBooking>> listPaidBookingsInRange({
     required DateTime fromInclusive,
     required DateTime toExclusive,

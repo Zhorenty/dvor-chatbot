@@ -42,6 +42,7 @@ final class BotRunner {
           ),
           sender: sender,
           templates: templates,
+          pendingPaymentTtl: Duration(minutes: config.pendingPaymentTtlMinutes),
         ),
         _starterBonusReminderJob = StarterBonusReminderJob(
           onboardingRepository: onboardingRepository,
