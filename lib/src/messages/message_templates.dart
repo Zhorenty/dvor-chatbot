@@ -185,20 +185,17 @@ final class MessageTemplates {
       '🧾 <b>Список записей для управления</b>',
       'Фильтр: <b>${_escapeHtml(segmentLabel)} • ${_escapeHtml(categoryLabel)}</b>',
       'Страница <b>$page/$totalPages</b> • всего записей: <b>$totalCount</b>',
-      '',
       '<b>Записи на текущей странице:</b>',
     ];
     for (var index = 0; index < bookings.length; index++) {
       final booking = bookings[index];
-      lines.add(
-        '<b>${index + 1}. #${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>\n'
-        '👤 ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
-        '🕒 ${dateFormatter.format(booking.startsAt)}\n'
-        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
-      );
-      if (index < bookings.length - 1) {
-        lines.add('──────────');
-      }
+      lines.addAll(<String>[
+        '',
+        '🧩 <b>${index + 1}. #${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>',
+        '👤 ${_escapeHtml(_userTag(booking))} (${booking.userId})',
+        '🕒 ${dateFormatter.format(booking.startsAt)}',
+        '💳 ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
+      ]);
     }
     lines.addAll(<String>[
       '',
@@ -736,19 +733,24 @@ final class MessageTemplates {
           tags.where((booking) => booking.status != BookingStatus.cancelled).toList();
       final cancelledTags =
           tags.where((booking) => booking.status == BookingStatus.cancelled).toList();
-      final orderedTags = <TrainingBooking>[...activeTags, ...cancelledTags];
-      lines.add(
-        '\n${index + 1}. <b>${_escapeHtml(training.title)}</b>\n'
-        '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 ${_escapeHtml(training.location)}\n'
+      lines.addAll(<String>[
+        '',
+        '🏷 <b>${index + 1}. ${_escapeHtml(training.title)}</b>',
+        '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}',
+        '📍 ${_escapeHtml(training.location)}',
         '👥 Участники: ${activeTags.length}/${_participantsLimitValueLabel(training.participantsLimit)}',
-      );
-      if (orderedTags.isEmpty) {
-        lines.add('   — пока никто не записался');
+      ]);
+      if (activeTags.isEmpty && cancelledTags.isEmpty) {
+        lines.add('• Пока никто не записался');
       } else {
-        for (final booking in orderedTags) {
+        for (final booking in activeTags) {
           lines.add(
-            '   • ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+          );
+        }
+        for (final booking in cancelledTags) {
+          lines.add(
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
         }
       }
