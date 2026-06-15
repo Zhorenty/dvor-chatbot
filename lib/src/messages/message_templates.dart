@@ -550,23 +550,23 @@ final class MessageTemplates {
     final lines = <String>['Твои записи 🗂'];
 
     if (upcoming.isNotEmpty) {
-      lines.add('\nАктуальные:');
+      lines.add('\n📌 Актуальные:');
       for (final booking in upcoming) {
         lines.add(
-          '\n• #${booking.id} ${booking.trainingTitle}\n'
-          '🕒 Когда: ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-          'Статус: ${_statusLabel(booking.status, booking: booking)}',
+          '\n🧩 #${booking.id} ${booking.trainingTitle}\n'
+          '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+          '💳 ${_statusLabel(booking.status, booking: booking)}',
         );
       }
     }
 
     if (past.isNotEmpty) {
-      lines.add('\nПрошедшие:');
+      lines.add('\n🗃 Прошедшие:');
       for (final booking in past) {
         lines.add(
-          '\n• #${booking.id} ${booking.trainingTitle}\n'
-          '🕒 Когда: ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-          'Статус: ${_statusLabel(booking.status, booking: booking)}',
+          '\n🧩 #${booking.id} ${booking.trainingTitle}\n'
+          '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+          '💳 ${_statusLabel(booking.status, booking: booking)}',
         );
       }
     }
@@ -613,16 +613,17 @@ final class MessageTemplates {
     }
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final lines = <String>[
-      'Куда перенести запись #${booking.id}?',
-      'Текущее мероприятие: ${booking.trainingTitle}',
+      '🔁 Куда перенести запись #${booking.id}?',
+      'Сейчас: ${booking.trainingTitle}',
       '',
       'Выбери новое мероприятие 👇',
     ];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       lines.add(
-        '${index + 1}. ${item.title} — ${formatter.format(item.startsAt)} '
-        '(${item.location}, участники: ${_participantsLimitLabel(item.participantsLimit)})',
+        '${index + 1}. ${item.title}\n'
+        '🕒 ${formatter.format(item.startsAt)}\n'
+        '📍 ${item.location} • 👥 ${_participantsLimitLabel(item.participantsLimit)}',
       );
     }
     return lines.join('\n');
@@ -961,9 +962,10 @@ final class MessageTemplates {
       final item = items[index];
       final feeLabel = item.price == null ? '' : ', взнос: ${_trainingPriceLabel(item.price)}';
       eventLines.add(
-        '${index + 1}. ${item.title} — '
-        '${_trainingDateLabel(item, dateTimeFormatter, dateOnlyFormatter)} '
-        '(${item.location}$feeLabel, участники: ${_participantsLimitLabel(item.participantsLimit)})',
+        '${index + 1}. ${item.title}\n'
+        '🕒 ${_trainingDateLabel(item, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 ${item.location}$feeLabel\n'
+        '👥 ${_participantsLimitLabel(item.participantsLimit)}',
       );
     }
     return <String>[

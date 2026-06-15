@@ -101,6 +101,7 @@ final class PrivateStaticCommands {
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
         ),
+        parseMode: 'HTML',
       );
       return true;
     }

@@ -261,7 +261,10 @@ void main() {
       expect(sender.messages.single.text, contains('Тренерский штаб DVOR'));
       expect(sender.messages.single.text, contains('Алексей Петров'));
       expect(sender.messages.single.text, contains('@maria_run'));
-      expect(sender.messages.single.text, contains('\n🔗 @alxpetrov'));
+      expect(
+        sender.messages.single.text,
+        contains('\n🔗 <a href="https://t.me/alxpetrov">@alxpetrov</a>'),
+      );
       expect(sender.messages.single.text, contains('\n📝 Беговые тренировки\n\nи восстановление'));
       expect(sender.messages.single.text, isNot(contains('\n   🔗')));
       expect(
@@ -1265,7 +1268,8 @@ void main() {
       });
       final chooseActivityText = sender.messages.last.text;
       expect(chooseActivityText, contains('выбери мероприятие для записи'));
-      expect(chooseActivityText, contains('🥾 Поход: Поход на хребет — 13.07.2026'));
+      expect(chooseActivityText, contains('🥾 Поход: Поход на хребет'));
+      expect(chooseActivityText, contains('🕒 13.07.2026'));
       expect(chooseActivityText, isNot(contains('13.07.2026 00:00')));
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 162, 'type': 'private'},
@@ -1744,9 +1748,9 @@ void main() {
         now: DateTime(2026, 6, 1, 12, 0),
       );
 
-      expect(text, contains('🏃 Трейл: TRAIL двора — Адыгея\n🕒 Когда: 06.06.2026\n'));
-      expect(text, contains('🥾 Поход: Лаго-Наки\n🕒 Когда: 07.06.2026\n'));
-      expect(text, contains('Тренировка: Функциональная\n🕒 Когда: 08.06.2026 19:15\n'));
+      expect(text, contains('🏃 Трейл: TRAIL двора — Адыгея\n🕒 06.06.2026\n'));
+      expect(text, contains('🥾 Поход: Лаго-Наки\n🕒 07.06.2026\n'));
+      expect(text, contains('Тренировка: Функциональная\n🕒 08.06.2026 19:15\n'));
       expect(text, isNot(contains('06.06.2026 00:00')));
       expect(text, isNot(contains('07.06.2026 14:30')));
     });

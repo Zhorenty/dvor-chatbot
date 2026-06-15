@@ -5,7 +5,7 @@ final class PrivateNavigationTemplates {
 
   String privateWelcome() {
     return 'Добро пожаловать в DVOR 🤝\n\n'
-        'Здесь ты можешь:\n'
+        'Что можно сделать в боте:\n'
         '• посмотреть расписание,\n'
         '• записаться на тренировку/йогу/поход/трейл,\n'
         '• отправить подтверждение оплаты,\n'
@@ -13,7 +13,7 @@ final class PrivateNavigationTemplates {
         '🔥 Хочешь быть в движухе DVOR каждый день?\n'
         'В нашей группе публикуем афиши всех мероприятий, общаемся, делимся новостями и анонсами:\n'
         'https://t.me/+n4ksCb3kFRQ5MTcy\n\n'
-        'С чего начать:\n'
+        'Быстрый старт:\n'
         '1) Нажми «${MessageCopy.buttonTrainings}» и выбери категорию.\n'
         '2) Нажми «${MessageCopy.buttonBookTraining}» и выбери событие.\n'
         '3) После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека.\n\n'

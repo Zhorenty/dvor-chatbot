@@ -49,7 +49,7 @@ final class ScheduleTemplates {
 
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final trainerUsernamesByName = _trainerUsernamesByName(trainers);
-    final lines = <String>[title];
+    final lines = <String>['<b>${_escapeHtml(title)}</b>'];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       final coach = item.coach?.trim();
@@ -57,19 +57,15 @@ final class ScheduleTemplates {
 
       lines.addAll(<String>[
         '',
-        '• $icon ${_escapeHtml(item.title)}',
-        '   🕒 Когда: ${formatter.format(item.startsAt)}',
-        '   📍 Где: ${_locationLabel(item)}',
-        '   👥 Участники: ${_participantsLimitLabel(item.participantsLimit)}',
-        if (item.price != null) '   💳 Взнос: ${MessageFormatters.trainingPriceLabel(item.price)}',
+        '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
+        '🕒 ${formatter.format(item.startsAt)}',
+        '📍 ${_locationLabel(item)}',
+        '👥 ${_participantsLimitLabel(item.participantsLimit)}',
+        if (item.price != null) '💳 ${MessageFormatters.trainingPriceLabel(item.price)}',
         if (coach != null && coach.isNotEmpty)
-          '   🧑‍🏫 ${_coachTitle(coach)}: ${_coachLabel(coach, trainerUsernamesByName)}',
-        if (notes != null && notes.isNotEmpty) '   📝 Примечание: ${_escapeHtml(notes)}',
+          '🧑‍🏫 ${_coachTitle(coach)}: ${_coachLabel(coach, trainerUsernamesByName)}',
+        if (notes != null && notes.isNotEmpty) '📝 ${_escapeHtml(notes)}',
       ]);
-
-      if (index != items.length - 1) {
-        lines.add('\n-----');
-      }
     }
     return lines.join('\n');
   }
@@ -100,14 +96,16 @@ final class ScheduleTemplates {
     if (trainers.isEmpty) {
       return 'Список тренеров пока пуст. Попробуй чуть позже 🙏';
     }
-    final lines = <String>['Тренерский штаб DVOR 🧑‍🏫'];
+    final lines = <String>['🧑‍🏫 <b>Тренерский штаб DVOR</b>'];
     for (var index = 0; index < trainers.length; index++) {
       final trainer = trainers[index];
+      final description =
+          _normalizeTrainerDescription(trainer.description).split('\n').map(_escapeHtml).join('\n');
       lines.addAll(<String>[
         '',
-        '${index + 1}. ${trainer.name}',
-        '🔗 ${trainer.link}',
-        '📝 ${_normalizeTrainerDescription(trainer.description)}',
+        '👤 <b>${index + 1}. ${_escapeHtml(trainer.name)}</b>',
+        '🔗 ${_trainerLinkLabel(trainer.link)}',
+        '📝 $description',
       ]);
     }
     return lines.join('\n');
@@ -131,22 +129,27 @@ final class ScheduleTemplates {
     if (items.isEmpty) {
       return emptyText;
     }
-    final lines = <String>[title];
+    final lines = <String>['<b>${_escapeHtml(title)}</b>'];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       lines.addAll(<String>[
         '',
-        '• $icon ${_escapeHtml(item.title)}',
-        '   🕒 Когда: ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
-        if (item.price != null) '   💳 Взнос: ${MessageFormatters.trainingPriceLabel(item.price)}',
-        if (item.description.trim().isNotEmpty)
-          '   📝 Описание: ${_escapeHtml(item.description.trim())}',
+        '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
+        '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+        if (item.price != null) '💳 ${MessageFormatters.trainingPriceLabel(item.price)}',
+        if (item.description.trim().isNotEmpty) '📝 ${_escapeHtml(item.description.trim())}',
       ]);
-      if (index != items.length - 1) {
-        lines.add('\n-----');
-      }
     }
     return lines.join('\n');
+  }
+
+  String _trainerLinkLabel(String rawLink) {
+    final username = _extractTelegramUsername(rawLink);
+    if (username != null && username.isNotEmpty) {
+      final escapedUsername = _escapeHtml(username);
+      return '<a href="https://t.me/$escapedUsername">@$escapedUsername</a>';
+    }
+    return _escapeHtml(rawLink.trim());
   }
 
   String _locationLabel(TrainingInfo item) {
