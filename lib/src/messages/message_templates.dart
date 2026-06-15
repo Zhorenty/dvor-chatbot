@@ -2,6 +2,7 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -26,6 +27,7 @@ final class MessageTemplates {
   static const String buttonTrainings = MessageCopy.buttonTrainings;
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
+  static const String buttonSubscription = MessageCopy.buttonSubscription;
   static const String buttonProfile = MessageCopy.buttonProfile;
   static const String buttonProfileBookings = MessageCopy.buttonProfileBookings;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
@@ -45,6 +47,10 @@ final class MessageTemplates {
   static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
   static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
   static const String buttonEconomicSummary = MessageCopy.buttonEconomicSummary;
+  static const String buttonSubscriptionsAdmin = MessageCopy.buttonSubscriptionsAdmin;
+  static const String buttonSubscriptionsList = MessageCopy.buttonSubscriptionsList;
+  static const String buttonSubscribersManagement = MessageCopy.buttonSubscribersManagement;
+  static const String buttonSubscribeApply = MessageCopy.buttonSubscribeApply;
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;
@@ -81,6 +87,10 @@ final class MessageTemplates {
       MessageCopy.callbackApprovePartialPaymentPrefix;
   static const String callbackRejectPaymentPrefix = MessageCopy.callbackRejectPaymentPrefix;
   static const String callbackOpenPaymentsQueue = MessageCopy.callbackOpenPaymentsQueue;
+  static const String callbackApproveSubscriptionPrefix =
+      MessageCopy.callbackApproveSubscriptionPrefix;
+  static const String callbackRejectSubscriptionPrefix =
+      MessageCopy.callbackRejectSubscriptionPrefix;
   static const String scheduleDocumentUrl = MessageCopy.scheduleDocumentUrl;
 
   String privateWelcome() {
@@ -541,6 +551,8 @@ final class MessageTemplates {
     required int completedTrainingsCount,
     required int availableEveryFifthRewards,
     required bool starterBonusAvailable,
+    required MembershipLevel membershipLevel,
+    DateTime? subscriptionActiveUntil,
   }) {
     final progressToNextFree = completedTrainingsCount % 4;
     final trainingsLeftForNextFree = progressToNextFree == 0 ? 4 : 4 - progressToNextFree;
@@ -551,7 +563,13 @@ final class MessageTemplates {
     final starterHint = starterBonusAvailable
         ? '⚡️ <b>Стартовая бесплатная:</b> доступна'
         : '⚡️ <b>Стартовая бесплатная:</b> недоступна';
+    final subscriptionHint = membershipLevel == MembershipLevel.pro
+        ? '💎 <b>Абонемент:</b> PRO'
+            '${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
+        : '💎 <b>Абонемент:</b> Normal';
     return '👤 <b>Профиль спортсмена DVOR</b>\n\n'
+        '🔐 <b>Текущий статус</b>\n'
+        '• $subscriptionHint\n\n'
         '📊 <b>Твоя статистика</b>\n'
         '• Всего записей: <b>$totalBookings</b>\n'
         '• Активные: <b>$activeBookings</b>\n'
@@ -562,6 +580,138 @@ final class MessageTemplates {
         '• $rewardsHint\n'
         '• $starterHint\n\n'
         'Нажми «${MessageCopy.buttonProfileBookings}», чтобы открыть список записей и управление ими.';
+  }
+
+  String subscriptionOverview({
+    required MembershipLevel membershipLevel,
+    DateTime? activeUntil,
+  }) {
+    final untilLabel =
+        activeUntil == null ? null : DateFormat('dd.MM.yyyy').format(activeUntil.toLocal());
+    final statusLabel = membershipLevel == MembershipLevel.pro
+        ? '<b>PRO</b>${untilLabel == null ? '' : ' до <b>$untilLabel</b>'}'
+        : '<b>Normal</b>';
+    final lines = <String>[
+      '💎 <b>Абонемент DVOR</b>',
+      'Текущий статус: $statusLabel',
+      '',
+      '<b>Что входит в PRO на 1 месяц:</b>',
+      '1. 8 бесплатных тренировок',
+      '2. DVOR PRO группа',
+      '3. Разбор меданализов',
+      '4. Скидка 10-25% на мероприятия',
+      '5. Одна индивидуальная тренировка двора с тренером',
+      '6. Кабинет в TrainingPeaks',
+    ];
+    if (membershipLevel == MembershipLevel.pro) {
+      lines.addAll(<String>[
+        '',
+        '✅ У тебя активный абонемент. Для продления напиши администратору: @dvor_support',
+      ]);
+    } else {
+      lines.addAll(<String>[
+        '',
+        'Нажми «${MessageCopy.buttonSubscribeApply}», чтобы оформить абонемент.',
+      ]);
+    }
+    return lines.join('\n');
+  }
+
+  String subscriptionPaymentInstructions() {
+    return '💳 <b>Оформление абонемента PRO</b>\n'
+        'Срок: 1 месяц.\n\n'
+        'Реквизиты для оплаты:\n'
+        '• Получатель: Денис Р.\n'
+        '• Банк: 🟦 OZON БАНК 🟦\n'
+        '• Номер телефона: +7(995)122-06-15\n\n'
+        'После оплаты отправь в этот чат файл с подтверждением (документ/фото чека).';
+  }
+
+  String subscriptionPaymentProofRequired() {
+    return 'Чтобы отправить заявку на абонемент:\n'
+        '1) Нажми «${MessageCopy.buttonSubscribeApply}».\n'
+        '2) Пришли файл с подтверждением оплаты (документ/фото).\n'
+        '3) Дождись проверки администратором.';
+  }
+
+  String subscriptionPaymentSubmitted() {
+    return '✅ Заявка на абонемент отправлена на проверку.\n'
+        'Как только админ подтвердит оплату, статус в профиле обновится на PRO.';
+  }
+
+  String subscriptionAlreadyPending() {
+    return 'ℹ️ Заявка на абонемент уже на проверке.\n'
+        'Ожидай подтверждения от администратора.';
+  }
+
+  String subscriptionAlreadyActive({DateTime? activeUntil}) {
+    final until = activeUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(activeUntil)}';
+    return '✅ У тебя уже активен абонемент PRO$until.';
+  }
+
+  String chooseAdminSubscriptionsAction() {
+    return '💎 <b>Управление абонементами</b>\n'
+        'Выбери раздел ниже.';
+  }
+
+  String subscriptionsList(List<SubscriptionRequest> items, {required DateTime now}) {
+    if (items.isEmpty) {
+      return '📋 <b>Список абонементов</b>\n'
+          'Сейчас нет активных абонементов.';
+    }
+    final formatter = DateFormat('dd.MM.yyyy');
+    final lines = <String>[
+      '📋 <b>Активные абонементы PRO</b>',
+      'Всего: <b>${items.length}</b>',
+    ];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final until = item.activeUntil;
+      if (until == null || !until.isAfter(now)) {
+        continue;
+      }
+      lines.add(
+        '${index + 1}. ${_escapeHtml(_userTagById(item.userId, username: item.userUsername))} '
+        '(${item.userId}) — до <b>${formatter.format(until)}</b>',
+      );
+    }
+    return lines.join('\n');
+  }
+
+  String subscriptionPendingQueueIntro(int total) {
+    return '🧾 <b>Заявки на абонемент</b>\n'
+        'Ожидают проверки: <b>$total</b>.\n'
+        'Ниже отправил каждую заявку отдельным сообщением.';
+  }
+
+  String subscriptionPendingQueueEmpty() {
+    return '✨ <b>Заявки на абонемент</b>\n'
+        'Очередь пуста.';
+  }
+
+  String subscriptionPendingQueueItem(SubscriptionRequest request) {
+    final created = DateFormat('dd.MM.yyyy HH:mm').format(request.createdAt);
+    final note = request.paymentNote?.trim();
+    return '🧾 <b>Заявка #${request.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
+        '(${request.userId})\n'
+        'Отправлена: $created'
+        '${note == null || note.isEmpty ? '' : '\nКомментарий: ${_escapeHtml(note)}'}\n\n'
+        'Подтверди или отклони заявку кнопками ниже.';
+  }
+
+  String subscriptionReviewResultWithNextStep({
+    required SubscriptionRequest request,
+    required int remaining,
+  }) {
+    final status =
+        request.status == SubscriptionRequestStatus.active ? 'PRO активирован' : 'Отклонено';
+    final nextStep = remaining > 0
+        ? 'Осталось заявок: $remaining. Открой «${MessageCopy.buttonSubscribersManagement}», чтобы проверить следующую.'
+        : 'Очередь пустая.';
+    return '✅ <b>Заявка #${request.id} обработана</b>\n'
+        '$status\n'
+        '$nextStep';
   }
 
   String myBookings(
@@ -857,6 +1007,10 @@ final class MessageTemplates {
     );
   }
 
+  Map<String, Object?> subscriptionDecisionInlineKeyboard(int requestId) {
+    return TelegramKeyboards.subscriptionDecisionInlineKeyboard(requestId);
+  }
+
   String bookingNotFound(int id) {
     return '😕 <b>Запись #$id не найдена</b>';
   }
@@ -880,13 +1034,15 @@ final class MessageTemplates {
           '• Получатель: Елена П.\n'
           '• Банк: 🟨 Т-БАНК 🟨\n'
           '• Номер телефона: +7(961)313-11-44\n'
-          '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.';
+          '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
+          '• После отмены нужно записаться заново.';
     }
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
         '• Номер телефона: +7(995)122-06-15\n'
-        '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.';
+        '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
+        '• После отмены нужно записаться заново.';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
@@ -1148,6 +1304,12 @@ final class MessageTemplates {
     return TelegramKeyboards.profileActionsKeyboard();
   }
 
+  Map<String, Object?> subscriptionOverviewKeyboard({
+    required bool canApply,
+  }) {
+    return TelegramKeyboards.subscriptionOverviewKeyboard(canApply: canApply);
+  }
+
   Map<String, Object?> bookingManagementSelectionKeyboard(List<TrainingBooking> bookings) {
     return TelegramKeyboards.bookingManagementSelectionKeyboard(bookings);
   }
@@ -1178,6 +1340,10 @@ final class MessageTemplates {
 
   Map<String, Object?> adminBookingManagementKeyboard() {
     return TelegramKeyboards.adminBookingManagementKeyboard();
+  }
+
+  Map<String, Object?> adminSubscriptionsMenuKeyboard() {
+    return TelegramKeyboards.adminSubscriptionsMenuKeyboard();
   }
 
   Map<String, Object?> bookingSegmentKeyboard({

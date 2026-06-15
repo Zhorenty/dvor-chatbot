@@ -14,10 +14,12 @@ import 'package:dvor_chatbot/src/bot/handlers/private/private_update_router.dart
 import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
@@ -35,6 +37,7 @@ final class PrivateHandlers {
     required MessageSender sender,
     required TrainingScheduleRepository scheduleRepository,
     required BookingRepository bookingRepository,
+    SubscriptionRepository subscriptionRepository = const NoopSubscriptionRepository(),
     OnboardingRepository onboardingRepository = const NoopOnboardingRepository(),
     TrainerDirectoryRepository trainerDirectoryRepository = const NoopTrainerDirectoryRepository(),
     required MessageTemplates templates,
@@ -45,6 +48,7 @@ final class PrivateHandlers {
   })  : _sender = sender,
         _scheduleRepository = scheduleRepository,
         _bookingRepository = bookingRepository,
+        _subscriptionRepository = subscriptionRepository,
         _onboardingRepository = onboardingRepository,
         _trainerDirectoryRepository = trainerDirectoryRepository,
         _templates = templates,
@@ -56,6 +60,7 @@ final class PrivateHandlers {
   final MessageSender _sender;
   final TrainingScheduleRepository _scheduleRepository;
   final BookingRepository _bookingRepository;
+  final SubscriptionRepository _subscriptionRepository;
   final OnboardingRepository _onboardingRepository;
   final TrainerDirectoryRepository _trainerDirectoryRepository;
   final MessageTemplates _templates;
@@ -153,6 +158,7 @@ final class PrivateHandlers {
         case _PrivateFlowStep.selectingParticipantsCategory:
         case _PrivateFlowStep.selectingPaymentsQueueCategory:
         case _PrivateFlowStep.selectingEconomicSummaryPeriod:
+        case _PrivateFlowStep.viewingSubscriptionOverview:
         case _PrivateFlowStep.selectingBookingToManage:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
@@ -205,6 +211,20 @@ final class PrivateHandlers {
             replyMarkup: _templates.bookingSelectionKeyboard(items),
           );
           return true;
+        case _PrivateFlowStep.confirmingSubscriptionPayment:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.viewingSubscriptionOverview,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.subscriptionOverview(
+              membershipLevel: MembershipLevel.normal,
+            ),
+            replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: true),
+            parseMode: 'HTML',
+          );
+          return true;
         case _PrivateFlowStep.selectingBookingAction:
           final bookings = flowState!.availableBookings;
           _flowByUserId[userId] =
@@ -235,6 +255,7 @@ final class PrivateHandlers {
           );
           return true;
         case _PrivateFlowStep.selectingAdminBookingManagementAction:
+        case _PrivateFlowStep.selectingAdminSubscriptionsAction:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
             chatId,
@@ -432,6 +453,32 @@ final class PrivateHandlers {
       return true;
     }
 
+    if (text == MessageTemplates.buttonSubscription) {
+      if (userId == null) {
+        return false;
+      }
+      final membership = await _subscriptionRepository.getMembership(
+        userId,
+        now: _nowProvider(),
+      );
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.viewingSubscriptionOverview,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.subscriptionOverview(
+          membershipLevel: membership.level,
+          activeUntil: membership.activeUntil,
+        ),
+        replyMarkup: _templates.subscriptionOverviewKeyboard(
+          canApply: membership.level == MembershipLevel.normal,
+        ),
+        parseMode: 'HTML',
+      );
+      return true;
+    }
+
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.selectingScheduleCategory &&
         text != null &&
@@ -622,6 +669,10 @@ final class PrivateHandlers {
         now: now,
       );
       final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
+      final membership = await _subscriptionRepository.getMembership(
+        userId,
+        now: now,
+      );
       final activeBookings = bookings
           .where(
             (booking) =>
@@ -646,6 +697,8 @@ final class PrivateHandlers {
           completedTrainingsCount: everyFifthProgress.qualifiedTrainingsCount,
           availableEveryFifthRewards: everyFifthProgress.availableRewardsCount,
           starterBonusAvailable: starterBonusAvailable,
+          membershipLevel: membership.level,
+          subscriptionActiveUntil: membership.activeUntil,
         ),
         replyMarkup: _templates.profileActionsKeyboard(),
         parseMode: 'HTML',
@@ -980,6 +1033,95 @@ final class PrivateHandlers {
           showCancelBooking: _canCancelBookingByPolicy(booking),
           showOutdoorPaymentTypeChoice: true,
         ),
+      );
+      return true;
+    }
+
+    if (text == MessageTemplates.buttonSubscribeApply) {
+      if (userId == null) {
+        return false;
+      }
+      final membership = await _subscriptionRepository.getMembership(
+        userId,
+        now: _nowProvider(),
+      );
+      if (membership.level == MembershipLevel.pro) {
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.viewingSubscriptionOverview,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.subscriptionAlreadyActive(activeUntil: membership.activeUntil),
+          replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: false),
+          parseMode: 'HTML',
+        );
+        return true;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.confirmingSubscriptionPayment,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.subscriptionPaymentInstructions(),
+        replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: true),
+        parseMode: 'HTML',
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.confirmingSubscriptionPayment &&
+        paymentProof != null) {
+      final submitResult = await _subscriptionRepository.submitPaymentRequest(
+        userId: userId,
+        userUsername: context.from?['username']?.toString(),
+        note: paymentProof.caption,
+        paymentProofChatId: paymentProof.fromChatId,
+        paymentProofMessageId: paymentProof.messageId,
+        requestedAt: _nowProvider(),
+      );
+      _flowByUserId.remove(userId);
+      switch (submitResult.outcome) {
+        case SubmitSubscriptionRequestOutcome.created:
+          final request = submitResult.request;
+          if (request != null) {
+            await _notifyAdminAboutSubscriptionSubmitted(request);
+          }
+          await _sender.sendMessage(
+            chatId,
+            _templates.subscriptionPaymentSubmitted(),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+        case SubmitSubscriptionRequestOutcome.alreadyPending:
+          await _sender.sendMessage(
+            chatId,
+            _templates.subscriptionAlreadyPending(),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+        case SubmitSubscriptionRequestOutcome.alreadyActive:
+          await _sender.sendMessage(
+            chatId,
+            _templates.subscriptionAlreadyActive(
+              activeUntil: submitResult.request?.activeUntil,
+            ),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+      }
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.confirmingSubscriptionPayment &&
+        text != null &&
+        !text.startsWith('/')) {
+      await _sender.sendMessage(
+        chatId,
+        _templates.subscriptionPaymentProofRequired(),
+        replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: true),
       );
       return true;
     }
@@ -1370,6 +1512,44 @@ final class PrivateHandlers {
         replyMarkup: _templates.adminBookingManagementKeyboard(),
       );
       return true;
+    }
+
+    if (text != null &&
+        (text == MessageTemplates.buttonSubscriptionsAdmin || text.startsWith('/subscriptions'))) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (userId == null) {
+        return false;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminSubscriptionsAction,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.chooseAdminSubscriptionsAction(),
+        replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminSubscriptionsAction &&
+        text != null) {
+      if (text == MessageTemplates.buttonSubscriptionsList) {
+        await _sendAdminSubscriptionsList(chatId: chatId);
+        return true;
+      }
+      if (text == MessageTemplates.buttonSubscribersManagement) {
+        await _sendAdminSubscriptionPendingQueue(chatId: chatId);
+        return true;
+      }
     }
 
     if (userId != null &&
@@ -2105,6 +2285,48 @@ final class PrivateHandlers {
       return true;
     }
 
+    if (text != null &&
+        (text.startsWith('/approve_subscription') || text.startsWith('/reject_subscription'))) {
+      if (!isAdmin) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final requestId = _updateRouter.parseCommandId(text);
+      if (requestId == null) {
+        await _sendAdminMessage(
+          chatId,
+          'Используй команды:\n<code>/approve_subscription &lt;id&gt;</code>\n<code>/reject_subscription &lt;id&gt;</code>',
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      final review = await _subscriptionRepository.reviewPendingRequest(
+        requestId: requestId,
+        approve: text.startsWith('/approve_subscription'),
+        reviewedAt: _nowProvider(),
+      );
+      final remaining = (await _subscriptionRepository.listPendingRequests(limit: 500)).length;
+      await _sendAdminMessage(
+        chatId,
+        switch (review.outcome) {
+          ReviewSubscriptionRequestOutcome.success =>
+            _templates.subscriptionReviewResultWithNextStep(
+              request: review.request!,
+              remaining: remaining,
+            ),
+          ReviewSubscriptionRequestOutcome.notFound => '😕 <b>Заявка #$requestId не найдена</b>',
+          ReviewSubscriptionRequestOutcome.invalidStatus =>
+            'ℹ️ <b>Заявка #$requestId уже обработана</b>',
+        },
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return true;
+    }
+
     await _sender.sendMessage(
       chatId,
       _templates.privateFallback(),
@@ -2613,6 +2835,61 @@ final class PrivateHandlers {
     );
   }
 
+  Future<void> _sendAdminSubscriptionsList({
+    required int chatId,
+  }) async {
+    final now = _nowProvider();
+    final active = await _subscriptionRepository.listActiveSubscriptions(
+      now: now,
+      limit: 200,
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.subscriptionsList(active, now: now),
+      replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
+    );
+  }
+
+  Future<void> _sendAdminSubscriptionPendingQueue({
+    required int chatId,
+  }) async {
+    final queue = await _subscriptionRepository.listPendingRequests(limit: 200);
+    if (queue.isEmpty) {
+      await _sendAdminMessage(
+        chatId,
+        _templates.subscriptionPendingQueueEmpty(),
+        replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
+      );
+      return;
+    }
+    await _sendAdminMessage(
+      chatId,
+      _templates.subscriptionPendingQueueIntro(queue.length),
+      replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
+    );
+    for (final request in queue) {
+      await _sendAdminMessage(
+        chatId,
+        _templates.subscriptionPendingQueueItem(request),
+        replyMarkup: _templates.subscriptionDecisionInlineKeyboard(request.id),
+      );
+      final proofChatId = request.paymentProofChatId;
+      final proofMessageId = request.paymentProofMessageId;
+      if (proofChatId == null || proofMessageId == null) {
+        continue;
+      }
+      try {
+        await _sender.copyMessage(
+          chatId,
+          fromChatId: proofChatId,
+          messageId: proofMessageId,
+        );
+      } on Object catch (error, stackTrace) {
+        l.w('Failed to copy subscription proof for request #${request.id}: $error', stackTrace);
+      }
+    }
+  }
+
   Future<void> _notifyAdminAboutPaymentSubmitted(TrainingBooking booking) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
@@ -2627,6 +2904,31 @@ final class PrivateHandlers {
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about payment submission: $error', stackTrace);
+    }
+  }
+
+  Future<void> _notifyAdminAboutSubscriptionSubmitted(SubscriptionRequest request) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.subscriptionPendingQueueItem(request),
+        replyMarkup: _templates.subscriptionDecisionInlineKeyboard(request.id),
+      );
+      final proofChatId = request.paymentProofChatId;
+      final proofMessageId = request.paymentProofMessageId;
+      if (proofChatId != null && proofMessageId != null) {
+        await _sender.copyMessage(
+          adminChatId,
+          fromChatId: proofChatId,
+          messageId: proofMessageId,
+        );
+      }
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about subscription request: $error', stackTrace);
     }
   }
 

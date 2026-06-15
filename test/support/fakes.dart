@@ -1,10 +1,12 @@
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -404,6 +406,74 @@ final class FakeBookingRepository implements BookingRepository {
     required DateTime now,
   }) async {
     return everyFifthProgress;
+  }
+}
+
+final class FakeSubscriptionRepository implements SubscriptionRepository {
+  MembershipLevel membershipLevel = MembershipLevel.normal;
+  DateTime? membershipActiveUntil;
+  List<SubscriptionRequest> pendingRequests = const <SubscriptionRequest>[];
+  List<SubscriptionRequest> activeSubscriptions = const <SubscriptionRequest>[];
+  SubmitSubscriptionRequestResult submitResult = const SubmitSubscriptionRequestResult(
+    outcome: SubmitSubscriptionRequestOutcome.created,
+  );
+  ReviewSubscriptionRequestResult reviewResult = const ReviewSubscriptionRequestResult(
+    outcome: ReviewSubscriptionRequestOutcome.notFound,
+  );
+  int submitCalls = 0;
+  int reviewCalls = 0;
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<SubscriptionMembership> getMembership(
+    int userId, {
+    required DateTime now,
+  }) async {
+    return SubscriptionMembership(
+      level: membershipLevel,
+      activeUntil: membershipActiveUntil,
+    );
+  }
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<List<SubscriptionRequest>> listActiveSubscriptions({
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    return activeSubscriptions.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<List<SubscriptionRequest>> listPendingRequests({int limit = 50}) async {
+    return pendingRequests.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<ReviewSubscriptionRequestResult> reviewPendingRequest({
+    required int requestId,
+    required bool approve,
+    required DateTime reviewedAt,
+  }) async {
+    reviewCalls += 1;
+    return reviewResult;
+  }
+
+  @override
+  Future<SubmitSubscriptionRequestResult> submitPaymentRequest({
+    required int userId,
+    String? userUsername,
+    String? note,
+    required int paymentProofChatId,
+    required int paymentProofMessageId,
+    required DateTime requestedAt,
+  }) async {
+    submitCalls += 1;
+    return submitResult;
   }
 }
 

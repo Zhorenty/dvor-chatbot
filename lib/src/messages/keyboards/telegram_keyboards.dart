@@ -32,6 +32,9 @@ final class TelegramKeyboards {
             <String, String>{'text': MessageCopy.buttonEconomicSummary},
             <String, String>{'text': MessageCopy.buttonNoblesList},
           ],
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonSubscriptionsAdmin},
+          ],
         ],
       );
     }
@@ -39,7 +42,7 @@ final class TelegramKeyboards {
     final rows = <List<Map<String, String>>>[
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonTrainings},
-        <String, String>{'text': MessageCopy.buttonBookTraining},
+        <String, String>{'text': MessageCopy.buttonSubscription},
       ],
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonCoachingStaff},
@@ -181,6 +184,22 @@ final class TelegramKeyboards {
     );
   }
 
+  static Map<String, Object?> subscriptionOverviewKeyboard({
+    required bool canApply,
+  }) {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        if (canApply)
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonSubscribeApply},
+          ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
   static Map<String, Object?> bookingManagementSelectionKeyboard(
     List<TrainingBooking> bookings,
   ) {
@@ -309,6 +328,41 @@ final class TelegramKeyboards {
         ],
       ],
     };
+  }
+
+  static Map<String, Object?> subscriptionDecisionInlineKeyboard(int requestId) {
+    final rows = <List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': '✅ Подтвердить абонемент',
+          'callback_data': '${MessageCopy.callbackApproveSubscriptionPrefix}$requestId',
+        },
+      ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': '❌ Отклонить',
+          'callback_data': '${MessageCopy.callbackRejectSubscriptionPrefix}$requestId',
+        },
+      ],
+    ];
+    return <String, Object?>{
+      'inline_keyboard': rows,
+    };
+  }
+
+  static Map<String, Object?> adminSubscriptionsMenuKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSubscriptionsList},
+          <String, String>{'text': MessageCopy.buttonSubscribersManagement},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
   }
 
   static Map<String, Object?> adminBookingManagementKeyboard() {
