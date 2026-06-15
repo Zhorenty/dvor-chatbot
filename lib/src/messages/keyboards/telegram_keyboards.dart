@@ -168,6 +168,19 @@ final class TelegramKeyboards {
     );
   }
 
+  static Map<String, Object?> profileActionsKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonProfileBookings},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
   static Map<String, Object?> bookingManagementSelectionKeyboard(
     List<TrainingBooking> bookings,
   ) {

@@ -606,10 +606,7 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text != null &&
-        (text == MessageTemplates.buttonProfile ||
-            text.startsWith('/profile') ||
-            text.startsWith('/my_bookings'))) {
+    if (text != null && (text == MessageTemplates.buttonProfile || text.startsWith('/profile'))) {
       if (userId == null) {
         return false;
       }
@@ -631,17 +628,58 @@ final class PrivateHandlers {
                 booking.status != BookingStatus.cancelled && !booking.startsAt.isBefore(now),
           )
           .toList(growable: false);
+      final visitedBookings = bookings
+          .where(
+            (booking) =>
+                booking.status != BookingStatus.cancelled && booking.startsAt.isBefore(now),
+          )
+          .toList(growable: false);
+      final cancelledBookings =
+          bookings.where((booking) => booking.status == BookingStatus.cancelled).length;
+      await _sender.sendMessage(
+        chatId,
+        _templates.profileOverview(
+          totalBookings: bookings.length,
+          activeBookings: activeBookings.length,
+          visitedBookings: visitedBookings.length,
+          cancelledBookings: cancelledBookings,
+          completedTrainingsCount: everyFifthProgress.qualifiedTrainingsCount,
+          availableEveryFifthRewards: everyFifthProgress.availableRewardsCount,
+          starterBonusAvailable: starterBonusAvailable,
+        ),
+        replyMarkup: _templates.profileActionsKeyboard(),
+        parseMode: 'HTML',
+      );
+      _flowByUserId.remove(userId);
+      return true;
+    }
+
+    if (text != null &&
+        (text == MessageTemplates.buttonProfileBookings || text.startsWith('/my_bookings'))) {
+      if (userId == null) {
+        return false;
+      }
+      await _maybeNotifyEveryFifthRewardUnlocked(
+        userId: userId,
+        chatId: chatId,
+        username: context.from?['username']?.toString(),
+      );
+      final now = _nowProvider();
+      final bookings = await _bookingRepository.listUserBookings(userId);
+      final activeBookings = bookings
+          .where(
+            (booking) =>
+                booking.status != BookingStatus.cancelled && !booking.startsAt.isBefore(now),
+          )
+          .toList(growable: false);
       await _sender.sendMessage(
         chatId,
         _templates.myBookings(
           bookings,
           now: now,
-          completedTrainingsCount: everyFifthProgress.qualifiedTrainingsCount,
-          availableEveryFifthRewards: everyFifthProgress.availableRewardsCount,
-          starterBonusAvailable: starterBonusAvailable,
         ),
         replyMarkup: activeBookings.isEmpty
-            ? _templates.privateMenuKeyboard(isAdmin: isAdmin)
+            ? _templates.profileActionsKeyboard()
             : _templates.bookingManagementSelectionKeyboard(activeBookings),
         parseMode: 'HTML',
       );

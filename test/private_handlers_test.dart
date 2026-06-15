@@ -224,6 +224,49 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonManageBookings)));
     });
 
+    test('opens profile summary with dedicated my bookings button', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 501,
+            userId: 9501,
+            title: 'Тренировка: Функциональная',
+            startsAt: DateTime(2026, 6, 20, 19, 0),
+            status: BookingStatus.pendingPayment,
+          ),
+        ]
+        ..everyFifthProgress = const EveryFifthRewardProgress(
+          qualifiedTrainingsCount: 3,
+          usedRewardsCount: 0,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        onboardingRepository: _FakeOnboardingRepository()
+          ..seedUser(userId: 9501, bonusAvailable: true),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 6, 10, 12, 0),
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9501, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9501},
+        'text': MessageTemplates.buttonProfile,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Профиль спортсмена DVOR'));
+      expect(sender.messages.single.text, contains('Прогресс лояльности'));
+      expect(sender.messages.single.text, contains(MessageTemplates.buttonProfileBookings));
+      expect(sender.messages.single.parseMode, 'HTML');
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonProfileBookings));
+    });
+
     test('handles coaching staff button and prints trainers list', () async {
       final sender = _FakeSender();
       final trainerDirectoryRepository = _FakeTrainerDirectoryRepository(
@@ -1716,10 +1759,8 @@ void main() {
         now: DateTime(2026, 6, 1, 12, 0),
       );
 
-      expect(text, contains('Актуальные:'));
-      expect(text, contains('Прошедшие:'));
-      expect(text, contains('Твой профиль'));
-      expect(text, contains('До следующей бесплатной тренировки'));
+      expect(text, contains('Актуальные'));
+      expect(text, contains('Прошедшие'));
       expect(text, contains('#90'));
       expect(text, contains('#91'));
     });
@@ -1750,9 +1791,9 @@ void main() {
         now: DateTime(2026, 6, 1, 12, 0),
       );
 
-      expect(text, contains('🏃 Трейл: TRAIL двора — Адыгея\n🕒 06.06.2026\n'));
-      expect(text, contains('🥾 Поход: Лаго-Наки\n🕒 07.06.2026\n'));
-      expect(text, contains('Тренировка: Функциональная\n🕒 08.06.2026 19:15\n'));
+      expect(text, contains('🏃 Трейл: TRAIL двора — Адыгея</b>\n🕒 06.06.2026\n'));
+      expect(text, contains('🥾 Поход: Лаго-Наки</b>\n🕒 07.06.2026\n'));
+      expect(text, contains('Тренировка: Функциональная</b>\n🕒 08.06.2026 19:15\n'));
       expect(text, isNot(contains('06.06.2026 00:00')));
       expect(text, isNot(contains('07.06.2026 14:30')));
     });

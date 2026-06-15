@@ -27,6 +27,7 @@ final class MessageTemplates {
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
   static const String buttonProfile = MessageCopy.buttonProfile;
+  static const String buttonProfileBookings = MessageCopy.buttonProfileBookings;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
   static const String buttonPayFully = MessageCopy.buttonPayFully;
   static const String buttonPayPartially = MessageCopy.buttonPayPartially;
@@ -532,45 +533,46 @@ final class MessageTemplates {
         'Проверь «${MessageCopy.buttonProfile}» или создай новую запись.';
   }
 
+  String profileOverview({
+    required int totalBookings,
+    required int activeBookings,
+    required int visitedBookings,
+    required int cancelledBookings,
+    required int completedTrainingsCount,
+    required int availableEveryFifthRewards,
+    required bool starterBonusAvailable,
+  }) {
+    final progressToNextFree = completedTrainingsCount % 4;
+    final trainingsLeftForNextFree = progressToNextFree == 0 ? 4 : 4 - progressToNextFree;
+    final rewardsHint = availableEveryFifthRewards > 0
+        ? '🎁 <b>Бесплатных по бонусу «каждая 5-я»:</b> <b>$availableEveryFifthRewards</b>'
+        : '🎯 <b>До следующей бесплатной:</b> <b>$trainingsLeftForNextFree</b> '
+            '(по правилу «каждая 5-я»)';
+    final starterHint = starterBonusAvailable
+        ? '⚡️ <b>Стартовая бесплатная:</b> доступна'
+        : '⚡️ <b>Стартовая бесплатная:</b> недоступна';
+    return '👤 <b>Профиль спортсмена DVOR</b>\n\n'
+        '📊 <b>Твоя статистика</b>\n'
+        '• Всего записей: <b>$totalBookings</b>\n'
+        '• Активные: <b>$activeBookings</b>\n'
+        '• Посещенные: <b>$visitedBookings</b>\n'
+        '• Отмененные: <b>$cancelledBookings</b>\n\n'
+        '🏋️ <b>Прогресс лояльности</b>\n'
+        '• Тренировок в зачет «каждая 5-я»: <b>$completedTrainingsCount</b>\n'
+        '• $rewardsHint\n'
+        '• $starterHint\n\n'
+        'Нажми «${MessageCopy.buttonProfileBookings}», чтобы открыть список записей и управление ими.';
+  }
+
   String myBookings(
     List<TrainingBooking> bookings, {
     DateTime? now,
-    int completedTrainingsCount = 0,
-    int availableEveryFifthRewards = 0,
-    bool starterBonusAvailable = false,
   }) {
     final splitPoint = (now ?? DateTime.now()).toLocal();
     final upcoming = bookings.where((booking) => !booking.startsAt.isBefore(splitPoint)).toList();
     final past = bookings.where((booking) => booking.startsAt.isBefore(splitPoint)).toList();
     past.sort((left, right) => right.startsAt.compareTo(left.startsAt));
-    final active = bookings
-        .where((booking) =>
-            booking.status != BookingStatus.cancelled && !booking.startsAt.isBefore(splitPoint))
-        .toList(growable: false);
-    final visited = bookings
-        .where((booking) =>
-            booking.startsAt.isBefore(splitPoint) && booking.status != BookingStatus.cancelled)
-        .toList(growable: false);
-    final cancelled = bookings.where((booking) => booking.status == BookingStatus.cancelled).length;
-    final progressToNextFree = completedTrainingsCount % 4;
-    final trainingsLeftForNextFree = progressToNextFree == 0 ? 4 : 4 - progressToNextFree;
-
-    final lines = <String>[
-      '👤 <b>Твой профиль</b>',
-      '📊 Записи: всего <b>${bookings.length}</b> • активных <b>${active.length}</b> • '
-          'посещенных <b>${visited.length}</b>',
-      '❌ Отмененных записей: <b>$cancelled</b>',
-      '🏋️ Посещено тренировок в зачет «каждая 5-я»: <b>$completedTrainingsCount</b>',
-      if (availableEveryFifthRewards > 0)
-        '🎁 Бесплатных тренировок по «каждая 5-я» доступно: <b>$availableEveryFifthRewards</b>'
-      else
-        '🎯 До следующей бесплатной тренировки по «каждая 5-я»: '
-            '<b>$trainingsLeftForNextFree</b>',
-      if (starterBonusAvailable)
-        '⚡️ Стартовая бесплатная тренировка: <b>доступна</b>'
-      else
-        '⚡️ Стартовая бесплатная тренировка: <b>недоступна</b>',
-    ];
+    final lines = <String>['🗂 <b>Мои записи</b>'];
 
     if (bookings.isEmpty) {
       lines.addAll(<String>[
@@ -582,26 +584,25 @@ final class MessageTemplates {
 
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    lines.add('\n🗂 <b>Мои записи</b>');
 
     if (upcoming.isNotEmpty) {
-      lines.add('\n📌 Актуальные:');
+      lines.add('\n📌 <b>Актуальные</b>');
       for (final booking in upcoming) {
         lines.add(
-          '\n🧩 #${booking.id} ${booking.trainingTitle}\n'
+          '\n🧩 <b>#${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>\n'
           '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-          '💳 ${_statusLabel(booking.status, booking: booking)}',
+          '💳 <b>${_escapeHtml(_statusLabel(booking.status, booking: booking))}</b>',
         );
       }
     }
 
     if (past.isNotEmpty) {
-      lines.add('\n🗃 Прошедшие:');
+      lines.add('\n🗃 <b>Прошедшие</b>');
       for (final booking in past) {
         lines.add(
-          '\n🧩 #${booking.id} ${booking.trainingTitle}\n'
+          '\n🧩 <b>#${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>\n'
           '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-          '💳 ${_statusLabel(booking.status, booking: booking)}',
+          '💳 <b>${_escapeHtml(_statusLabel(booking.status, booking: booking))}</b>',
         );
       }
     }
@@ -1141,6 +1142,10 @@ final class MessageTemplates {
 
   Map<String, Object?> simpleNavigationKeyboard() {
     return TelegramKeyboards.simpleNavigationKeyboard();
+  }
+
+  Map<String, Object?> profileActionsKeyboard() {
+    return TelegramKeyboards.profileActionsKeyboard();
   }
 
   Map<String, Object?> bookingManagementSelectionKeyboard(List<TrainingBooking> bookings) {
