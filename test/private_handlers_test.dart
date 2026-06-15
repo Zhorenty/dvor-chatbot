@@ -168,7 +168,7 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
       expect(buttons, isNot(contains(MessageTemplates.buttonCoachingStaff)));
-      expect(buttons, isNot(contains(MessageTemplates.buttonMyBookings)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonProfile)));
       expect(buttons, isNot(contains(MessageTemplates.buttonHelp)));
     });
 
@@ -192,7 +192,7 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonCoachingStaff));
       expect(buttons, contains(MessageTemplates.buttonTrainings));
-      expect(buttons, contains(MessageTemplates.buttonMyBookings));
+      expect(buttons, contains(MessageTemplates.buttonProfile));
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
     });
 
@@ -559,7 +559,7 @@ void main() {
       expect(sender.messages.single.text, contains('каждая 5-я тренировка бесплатная'));
       expect(sender.messages.single.text, contains('публикуем афиши всех мероприятий'));
       expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
-      expect(sender.messages.single.text, contains('/trainings, /book, /my_bookings'));
+      expect(sender.messages.single.text, contains('/trainings, /book, /profile, /my_bookings'));
       expect(sender.messages.single.text, isNot(contains('внешнего источника')));
     });
 
@@ -1718,6 +1718,8 @@ void main() {
 
       expect(text, contains('Актуальные:'));
       expect(text, contains('Прошедшие:'));
+      expect(text, contains('Твой профиль'));
+      expect(text, contains('До следующей бесплатной тренировки'));
       expect(text, contains('#90'));
       expect(text, contains('#91'));
     });

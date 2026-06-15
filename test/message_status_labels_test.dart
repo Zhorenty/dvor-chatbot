@@ -80,6 +80,6 @@ void main() {
 
     expect(text, contains('Бесплатно: стартовая тренировка 🎁'));
     expect(text, contains('Бесплатно: каждая 5-я тренировка 🎁'));
-    expect(text, contains('Статус: Бесплатно 🎁'));
+    expect(text, contains('Бесплатно 🎁'));
   });
 }

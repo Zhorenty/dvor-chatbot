@@ -607,7 +607,9 @@ final class PrivateHandlers {
     }
 
     if (text != null &&
-        (text == MessageTemplates.buttonMyBookings || text.startsWith('/my_bookings'))) {
+        (text == MessageTemplates.buttonProfile ||
+            text.startsWith('/profile') ||
+            text.startsWith('/my_bookings'))) {
       if (userId == null) {
         return false;
       }
@@ -616,20 +618,32 @@ final class PrivateHandlers {
         chatId: chatId,
         username: context.from?['username']?.toString(),
       );
+      final now = _nowProvider();
       final bookings = await _bookingRepository.listUserBookings(userId);
+      final everyFifthProgress = await _bookingRepository.getEveryFifthRewardProgress(
+        userId,
+        now: now,
+      );
+      final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
       final activeBookings = bookings
           .where(
             (booking) =>
-                booking.status != BookingStatus.cancelled &&
-                !booking.startsAt.isBefore(_nowProvider()),
+                booking.status != BookingStatus.cancelled && !booking.startsAt.isBefore(now),
           )
           .toList(growable: false);
       await _sender.sendMessage(
         chatId,
-        _templates.myBookings(bookings, now: _nowProvider()),
+        _templates.myBookings(
+          bookings,
+          now: now,
+          completedTrainingsCount: everyFifthProgress.qualifiedTrainingsCount,
+          availableEveryFifthRewards: everyFifthProgress.availableRewardsCount,
+          starterBonusAvailable: starterBonusAvailable,
+        ),
         replyMarkup: activeBookings.isEmpty
             ? _templates.privateMenuKeyboard(isAdmin: isAdmin)
             : _templates.bookingManagementSelectionKeyboard(activeBookings),
+        parseMode: 'HTML',
       );
       if (activeBookings.isNotEmpty) {
         _flowByUserId[userId] = _PrivateFlowState(

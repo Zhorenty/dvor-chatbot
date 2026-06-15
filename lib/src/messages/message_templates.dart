@@ -26,7 +26,7 @@ final class MessageTemplates {
   static const String buttonTrainings = MessageCopy.buttonTrainings;
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
-  static const String buttonMyBookings = MessageCopy.buttonMyBookings;
+  static const String buttonProfile = MessageCopy.buttonProfile;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
   static const String buttonPayFully = MessageCopy.buttonPayFully;
   static const String buttonPayPartially = MessageCopy.buttonPayPartially;
@@ -529,25 +529,60 @@ final class MessageTemplates {
 
   String noPendingPayment() {
     return 'Не нашел активной записи со статусом "Ожидает оплату" 🤔\n'
-        'Проверь «${MessageCopy.buttonMyBookings}» или создай новую запись.';
+        'Проверь «${MessageCopy.buttonProfile}» или создай новую запись.';
   }
 
   String myBookings(
     List<TrainingBooking> bookings, {
     DateTime? now,
+    int completedTrainingsCount = 0,
+    int availableEveryFifthRewards = 0,
+    bool starterBonusAvailable = false,
   }) {
-    if (bookings.isEmpty) {
-      return 'У тебя пока нет записей на мероприятия 🙃';
-    }
-
     final splitPoint = (now ?? DateTime.now()).toLocal();
     final upcoming = bookings.where((booking) => !booking.startsAt.isBefore(splitPoint)).toList();
     final past = bookings.where((booking) => booking.startsAt.isBefore(splitPoint)).toList();
     past.sort((left, right) => right.startsAt.compareTo(left.startsAt));
+    final active = bookings
+        .where((booking) =>
+            booking.status != BookingStatus.cancelled && !booking.startsAt.isBefore(splitPoint))
+        .toList(growable: false);
+    final visited = bookings
+        .where((booking) =>
+            booking.startsAt.isBefore(splitPoint) && booking.status != BookingStatus.cancelled)
+        .toList(growable: false);
+    final cancelled = bookings.where((booking) => booking.status == BookingStatus.cancelled).length;
+    final progressToNextFree = completedTrainingsCount % 4;
+    final trainingsLeftForNextFree = progressToNextFree == 0 ? 4 : 4 - progressToNextFree;
+
+    final lines = <String>[
+      '👤 <b>Твой профиль</b>',
+      '📊 Записи: всего <b>${bookings.length}</b> • активных <b>${active.length}</b> • '
+          'посещенных <b>${visited.length}</b>',
+      '❌ Отмененных записей: <b>$cancelled</b>',
+      '🏋️ Посещено тренировок в зачет «каждая 5-я»: <b>$completedTrainingsCount</b>',
+      if (availableEveryFifthRewards > 0)
+        '🎁 Бесплатных тренировок по «каждая 5-я» доступно: <b>$availableEveryFifthRewards</b>'
+      else
+        '🎯 До следующей бесплатной тренировки по «каждая 5-я»: '
+            '<b>$trainingsLeftForNextFree</b>',
+      if (starterBonusAvailable)
+        '⚡️ Стартовая бесплатная тренировка: <b>доступна</b>'
+      else
+        '⚡️ Стартовая бесплатная тренировка: <b>недоступна</b>',
+    ];
+
+    if (bookings.isEmpty) {
+      lines.addAll(<String>[
+        '',
+        'У тебя пока нет записей на мероприятия 🙃',
+      ]);
+      return lines.join('\n');
+    }
 
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    final lines = <String>['Твои записи 🗂'];
+    lines.add('\n🗂 <b>Мои записи</b>');
 
     if (upcoming.isNotEmpty) {
       lines.add('\n📌 Актуальные:');
@@ -938,7 +973,7 @@ final class MessageTemplates {
         'Текущий статус: ${_statusLabel(booking.status, booking: booking)}\n\n'
         '${paymentInstructions(booking)}\n\n'
         'После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь в этот чат файл с подтверждением (чек/скрин).\n'
-        'Если кнопка не сработала, открой «${MessageCopy.buttonMyBookings}» и выбери нужную запись.';
+        'Если кнопка не сработала, открой «${MessageCopy.buttonProfile}» и выбери нужную запись.';
   }
 
   String pendingPaymentExpired(TrainingBooking booking) {

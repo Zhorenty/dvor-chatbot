@@ -4,7 +4,7 @@ final class MessageCopy {
   static const String buttonTrainings = '📅 Расписание';
   static const String buttonCoachingStaff = '🧑‍🏫 Тренерский штаб';
   static const String buttonBookTraining = '✍️ Записаться';
-  static const String buttonMyBookings = '🗂 Мои записи';
+  static const String buttonProfile = '👤 Профиль';
   static const String buttonSubmitPayment = '💸 Я оплатил';
   static const String buttonPayFully = '💯 Оплатил полностью';
   static const String buttonPayPartially = '🟡 Внес предоплату';
