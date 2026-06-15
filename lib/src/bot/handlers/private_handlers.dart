@@ -2124,6 +2124,10 @@ final class PrivateHandlers {
     }
     final mergedTrainings = trainingsByKey.values.toList(growable: false)
       ..sort((left, right) => left.startsAt.compareTo(right.startsAt));
+    final now = _nowProvider();
+    final visibleTrainings = mergedTrainings
+        .where((training) => !_isArchivedTrainingAt(training, now: now))
+        .toList(growable: false);
     final queryKeys = <String>{
       ...trainingsByKey.keys,
       ...segmentBookings.map((booking) => booking.trainingKey),
@@ -2154,7 +2158,7 @@ final class PrivateHandlers {
     await _sender.sendMessage(
       chatId,
       _templates.trainingParticipants(
-        trainings: mergedTrainings,
+        trainings: visibleTrainings,
         bookingsByTrainingKey: normalizedByTraining,
         title: copy.title,
         emptyText: copy.emptyText,
@@ -2511,6 +2515,10 @@ final class PrivateHandlers {
 
   bool _isArchivedBookingAt(TrainingBooking booking, {required DateTime now}) {
     return booking.startsAt.isBefore(now) || booking.status == BookingStatus.cancelled;
+  }
+
+  bool _isArchivedTrainingAt(TrainingInfo training, {required DateTime now}) {
+    return training.startsAt.isBefore(now);
   }
 
   bool _isOutdoorCategory(_ActivityCategory category) {

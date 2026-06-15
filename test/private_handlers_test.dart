@@ -2572,6 +2572,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{2000},
+        nowProvider: () => DateTime(2026, 8, 1, 12, 0),
       );
 
       final handled = await handlers.handle(<String, dynamic>{
@@ -2601,8 +2602,8 @@ void main() {
         sender.messages.last.text.indexOf('@runner_cancelled'),
         greaterThan(sender.messages.last.text.indexOf('@runner_bonus')),
       );
-      expect(sender.messages.last.text, contains('Old Run'));
-      expect(sender.messages.last.text, contains('@runner_archived (Оплачено ✅)'));
+      expect(sender.messages.last.text, isNot(contains('Old Run')));
+      expect(sender.messages.last.text, isNot(contains('@runner_archived (Оплачено ✅)')));
       expect(sender.messages.last.text, isNot(contains('@runner_rejected')));
     });
 
