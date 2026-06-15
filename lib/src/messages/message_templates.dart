@@ -397,6 +397,18 @@ final class MessageTemplates {
         'Это бесплатная тренировка, подтверждение оплаты не нужно.';
   }
 
+  String bookingCreatedForWhitelistedTrainer(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Готово, ты записан(а) на тренировку ✅\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
+        'Номер записи: ${booking.id}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
+        'Ты в списке тренеров: подтверждение оплаты не требуется, это только информирование о записи.';
+  }
+
   String bookingAlreadyExists(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
@@ -756,6 +768,7 @@ final class MessageTemplates {
     required Map<String, List<TrainingBooking>> bookingsByTrainingKey,
     String title = 'Список записавшихся по тренировкам 👥',
     String emptyText = 'Ближайших тренировок пока нет, показывать список не для чего.',
+    bool Function(TrainingBooking booking)? isTrainerBooking,
   }) {
     if (trainings.isEmpty) {
       return emptyText;
@@ -763,6 +776,7 @@ final class MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final lines = <String>['<b>${_escapeHtml(title)}</b>'];
+    final trainerMatcher = isTrainerBooking ?? (_) => false;
     for (var index = 0; index < trainings.length; index++) {
       final training = trainings[index];
       final tags = bookingsByTrainingKey[training.sessionKey] ?? const <TrainingBooking>[];
@@ -770,22 +784,49 @@ final class MessageTemplates {
           tags.where((booking) => booking.status != BookingStatus.cancelled).toList();
       final cancelledTags =
           tags.where((booking) => booking.status == BookingStatus.cancelled).toList();
+      final activeTrainerTags = activeTags.where(trainerMatcher).toList(growable: false);
+      final activeParticipantTags =
+          activeTags.where((booking) => !trainerMatcher(booking)).toList(growable: false);
+      final cancelledTrainerTags = cancelledTags.where(trainerMatcher).toList(growable: false);
+      final cancelledParticipantTags =
+          cancelledTags.where((booking) => !trainerMatcher(booking)).toList(growable: false);
+      final displayedParticipantsCount =
+          training.includeTrainersInParticipants ? activeTags.length : activeParticipantTags.length;
       lines.addAll(<String>[
         '',
         '🏷 <b>${index + 1}. ${_escapeHtml(training.title)}</b>',
         '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}',
         '📍 ${_escapeHtml(training.location)}',
-        '👥 Участники: ${activeTags.length}/${_participantsLimitValueLabel(training.participantsLimit)}',
+        '👥 Участники: $displayedParticipantsCount/${_participantsLimitValueLabel(training.participantsLimit)}',
       ]);
       if (activeTags.isEmpty && cancelledTags.isEmpty) {
         lines.add('• Пока никто не записался');
       } else {
-        for (final booking in activeTags) {
+        if (activeParticipantTags.isNotEmpty) {
+          lines.add('👤 Участники:');
+        }
+        for (final booking in activeParticipantTags) {
           lines.add(
             '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
         }
-        for (final booking in cancelledTags) {
+        if (activeTrainerTags.isNotEmpty) {
+          lines.add('🧑‍🏫 Тренеры:');
+        }
+        for (final booking in activeTrainerTags) {
+          lines.add(
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+          );
+        }
+        if (cancelledParticipantTags.isNotEmpty || cancelledTrainerTags.isNotEmpty) {
+          lines.add('❌ Отмененные:');
+        }
+        for (final booking in cancelledParticipantTags) {
+          lines.add(
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+          );
+        }
+        for (final booking in cancelledTrainerTags) {
           lines.add(
             '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
@@ -958,6 +999,17 @@ final class MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return '🎁 <b>Операционное событие: новая бесплатная запись</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
+  }
+
+  String trainerBookingCreatedAdminNotification(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '🧑‍🏫 <b>Операционное событие: тренер записался</b>\n'
         'Запись: <b>#${booking.id}</b>\n'
         'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
         'Событие: ${_escapeHtml(booking.trainingTitle)}\n'

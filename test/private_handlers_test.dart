@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
+import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
@@ -1088,6 +1089,67 @@ void main() {
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -1001612).text;
       expect(adminMessage, contains('новая бесплатная запись'));
       expect(adminMessage, contains('Статус: Бесплатно'));
+    });
+
+    test('skips payment confirmation flow for whitelisted trainer booking', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      expect(isTrainerBookingWhitelisted(userId: 857655217, username: 'zhorenty'), isTrue);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Paid session',
+              startsAt: DateTime(2026, 7, 12, 20, 0),
+              location: 'Main hall',
+              price: 1200,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100111,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 857655217,
+          'username': 'zhorenty',
+        },
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 857655217,
+          'username': 'zhorenty',
+        },
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 857655217,
+          'username': 'zhorenty',
+        },
+        'text': '🎯 1. Paid session',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.createCalls, 1);
+      expect(bookingRepository.lastUpdatedBookingId, 99);
+      expect(bookingRepository.lastUpdatedStatus, BookingStatus.paid);
+      expect(sender.messages.last.text, contains('Ты в списке тренеров'));
+      expect(sender.messages.last.text, isNot(contains('Реквизиты для оплаты')));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100111).text;
+      expect(adminMessage, contains('тренер записался'));
+      expect(adminMessage, contains('tg://user?id=1'));
     });
 
     test('shows starter bonus button and applies free training once', () async {
@@ -2561,8 +2623,8 @@ void main() {
           ),
           _booking(
             id: 72,
-            userId: 7002,
-            userUsername: 'runner_bonus',
+            userId: 857655217,
+            userUsername: 'zhorenty',
             trainingKey: training.sessionKey,
             title: training.title,
             startsAt: training.startsAt,
@@ -2638,16 +2700,18 @@ void main() {
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Список записавшихся'));
       expect(sender.messages.last.text, contains('Список записавшихся'));
-      expect(sender.messages.last.text, contains('👥 Участники: 2/∞'));
+      expect(sender.messages.last.text, contains('👥 Участники: 1/∞'));
+      expect(sender.messages.last.text, contains('👤 Участники:'));
+      expect(sender.messages.last.text, contains('🧑‍🏫 Тренеры:'));
       expect(sender.messages.last.text, contains('@runner_one'));
       expect(
         sender.messages.last.text,
-        contains('@runner_bonus (Бесплатно: стартовая тренировка 🎁)'),
+        contains('@zhorenty (Бесплатно: стартовая тренировка 🎁)'),
       );
       expect(sender.messages.last.text, contains('@runner_cancelled (Отменено ❌)'));
       expect(
         sender.messages.last.text.indexOf('@runner_cancelled'),
-        greaterThan(sender.messages.last.text.indexOf('@runner_bonus')),
+        greaterThan(sender.messages.last.text.indexOf('@zhorenty')),
       );
       expect(sender.messages.last.text, isNot(contains('Old Run')));
       expect(sender.messages.last.text, isNot(contains('@runner_archived (Оплачено ✅)')));

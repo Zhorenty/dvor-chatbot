@@ -53,6 +53,8 @@ final class FakeBookingRepository implements BookingRepository {
   int cancelCalls = 0;
   int rescheduleCalls = 0;
   int? lastSubmittedBookingId;
+  int? lastUpdatedBookingId;
+  BookingStatus? lastUpdatedStatus;
   List<TrainingBooking> queue = const <TrainingBooking>[];
   List<TrainingBooking> bookingsByTrainingKey = const <TrainingBooking>[];
   List<TrainingBooking> userBookings = const <TrainingBooking>[];
@@ -227,6 +229,8 @@ final class FakeBookingRepository implements BookingRepository {
     BookingStatus status, {
     String? paymentNote,
   }) async {
+    lastUpdatedBookingId = bookingId;
+    lastUpdatedStatus = status;
     final training = lastCreatedTraining;
     return fakeBooking(
       id: bookingId,

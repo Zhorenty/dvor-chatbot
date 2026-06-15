@@ -178,6 +178,20 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'limit',
       ],
     );
+    final includeTrainersInParticipantsIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'include_trainers_in_participants',
+        'include_coaches_in_participants',
+        'count_trainers_as_participants',
+        'count_coaches_as_participants',
+        'trainers_as_participants',
+        'coaches_as_participants',
+        'include_trainers',
+        'включать_тренеров_в_участников',
+        'тренеры_в_участниках',
+      ],
+    );
     final coachIndex = _firstHeaderIndex(
       headers,
       const <String>[
@@ -229,6 +243,8 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           category: category,
           price: _parsePrice(_optionalCell(row, priceIndex)),
           participantsLimit: _parseParticipantsLimit(_optionalCell(row, participantsLimitIndex)),
+          includeTrainersInParticipants:
+              _parseBoolFlag(_optionalCell(row, includeTrainersInParticipantsIndex)),
           coach: _optionalCell(row, coachIndex),
           notes: _optionalCell(row, notesIndex),
         ),
@@ -514,6 +530,39 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
       return null;
     }
     return parsed;
+  }
+
+  bool _parseBoolFlag(String? raw, {bool defaultValue = false}) {
+    if (raw == null) {
+      return defaultValue;
+    }
+    final normalized = raw.trim().toLowerCase();
+    if (normalized.isEmpty) {
+      return defaultValue;
+    }
+    if (const <String>{
+      '1',
+      'true',
+      'yes',
+      'y',
+      'on',
+      'да',
+      'д',
+    }.contains(normalized)) {
+      return true;
+    }
+    if (const <String>{
+      '0',
+      'false',
+      'no',
+      'n',
+      'off',
+      'нет',
+      'н',
+    }.contains(normalized)) {
+      return false;
+    }
+    return defaultValue;
   }
 
   int _firstHeaderIndex(List<String> headers, List<String> aliases) {

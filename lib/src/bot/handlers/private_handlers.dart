@@ -12,6 +12,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private/private_flow_store.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_static_commands.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_update_router.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
+import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
@@ -548,11 +549,12 @@ final class PrivateHandlers {
         return true;
       }
       final selectedTraining = flowState.availableTrainings[index - 1];
+      final username = context.from?['username']?.toString();
       late final BookingCreateResult result;
       try {
         result = await _bookingRepository.createPendingBooking(
           userId: userId,
-          userUsername: context.from?['username']?.toString(),
+          userUsername: username,
           training: selectedTraining,
         );
       } on BookingParticipantsLimitExceededException {
@@ -579,6 +581,23 @@ final class PrivateHandlers {
           chatId,
           result.created
               ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
+              : _templates.bookingAlreadyExists(bookingForResponse),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          parseMode: 'HTML',
+        );
+        return true;
+      }
+      if (_isWhitelistedTrainerBooking(userId: userId, username: username)) {
+        final paidBooking =
+            await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
+        final bookingForResponse =
+            _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+        _flowByUserId.remove(userId);
+        await _notifyAdminAboutTrainerBookingCreated(bookingForResponse);
+        await _sender.sendMessage(
+          chatId,
+          result.created
+              ? _templates.bookingCreatedForWhitelistedTrainer(bookingForResponse)
               : _templates.bookingAlreadyExists(bookingForResponse),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
           parseMode: 'HTML',
@@ -2216,6 +2235,7 @@ final class PrivateHandlers {
         bookingsByTrainingKey: normalizedByTraining,
         title: copy.title,
         emptyText: copy.emptyText,
+        isTrainerBooking: _isWhitelistedTrainerBookingByBooking,
       ),
       replyMarkup: _templates.privateMenuKeyboard(
         isAdmin: isAdmin,
@@ -2933,6 +2953,21 @@ final class PrivateHandlers {
     }
   }
 
+  Future<void> _notifyAdminAboutTrainerBookingCreated(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.trainerBookingCreatedAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about trainer booking creation: $error', stackTrace);
+    }
+  }
+
   Future<void> _maybeNotifyGroupAboutCapacity(TrainingInfo training) async {
     final targetChatId = _targetChatId;
     final participantsLimit = training.participantsLimit;
@@ -2944,7 +2979,11 @@ final class PrivateHandlers {
       <String>{training.sessionKey},
       limit: participantsLimit,
     );
-    final freeSpots = participantsLimit - activeBookings.length;
+    final participantsCount = _countParticipantsForTraining(
+      bookings: activeBookings,
+      training: training,
+    );
+    final freeSpots = participantsLimit - participantsCount;
     if (freeSpots <= 0) {
       if (_fullCapacityNotifiedTrainingKeys.contains(training.sessionKey)) {
         return;
@@ -3029,6 +3068,32 @@ final class PrivateHandlers {
       return false;
     }
     return paymentNote.startsWith(_paymentChoicePartialMarker);
+  }
+
+  int _countParticipantsForTraining({
+    required List<TrainingBooking> bookings,
+    required TrainingInfo training,
+  }) {
+    if (training.includeTrainersInParticipants) {
+      return bookings.length;
+    }
+    return bookings
+        .where((booking) => !_isWhitelistedTrainerBooking(
+              userId: booking.userId,
+              username: booking.userUsername,
+            ))
+        .length;
+  }
+
+  bool _isWhitelistedTrainerBooking({
+    required int userId,
+    required String? username,
+  }) {
+    return isTrainerBookingWhitelisted(userId: userId, username: username);
+  }
+
+  bool _isWhitelistedTrainerBookingByBooking(TrainingBooking booking) {
+    return _isWhitelistedTrainerBooking(userId: booking.userId, username: booking.userUsername);
   }
 
   Future<bool> _openPendingPaymentFlow({

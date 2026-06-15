@@ -93,8 +93,12 @@ dart run bin/dvor_bot.dart --token=123456:ABCDEF --target-chat-id=-1001234567890
 
 Опциональные колонки:
 
+- `participants_limit`
 - `coach`
 - `notes`
+- `include_trainers_in_participants` (`1/0`, `true/false`, `yes/no`, `да/нет`) — учитывать ли тренеров из whitelist как участников для лимита мест
+
+Whitelist тренеров для автозаписи без шага подтверждения оплаты задается в `lib/src/config/trainer_booking_whitelist.dart`.
 
 Походы и трейлы загружаются из тех же Google Sheets автоматически:
 

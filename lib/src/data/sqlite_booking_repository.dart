@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/pending_payment_expiry_policy.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
@@ -117,7 +118,11 @@ final class SqliteBookingRepository implements BookingRepository {
       }
       if (bookingForResponse.status == BookingStatus.cancelled ||
           bookingForResponse.status == BookingStatus.paymentRejected) {
-        _assertParticipantsLimitNotExceeded(training);
+        _assertParticipantsLimitNotExceeded(
+          training,
+          userId: userId,
+          userUsername: normalizedUsername,
+        );
         final reactivated = await _reactivateBookingAsPendingPayment(
           bookingId: bookingForResponse.id,
           userUsername: normalizedUsername,
@@ -139,7 +144,11 @@ final class SqliteBookingRepository implements BookingRepository {
         );
         if (rebound.status == BookingStatus.cancelled ||
             rebound.status == BookingStatus.paymentRejected) {
-          _assertParticipantsLimitNotExceeded(training);
+          _assertParticipantsLimitNotExceeded(
+            training,
+            userId: userId,
+            userUsername: normalizedUsername,
+          );
           final reactivated = await _reactivateBookingAsPendingPayment(
             bookingId: rebound.id,
             userUsername: normalizedUsername,
@@ -149,7 +158,11 @@ final class SqliteBookingRepository implements BookingRepository {
         return BookingCreateResult(booking: rebound, created: false);
       }
     }
-    _assertParticipantsLimitNotExceeded(training);
+    _assertParticipantsLimitNotExceeded(
+      training,
+      userId: userId,
+      userUsername: normalizedUsername,
+    );
     try {
       db.execute(
         '''
@@ -200,7 +213,11 @@ final class SqliteBookingRepository implements BookingRepository {
       }
       if (existing.status == BookingStatus.cancelled ||
           existing.status == BookingStatus.paymentRejected) {
-        _assertParticipantsLimitNotExceeded(training);
+        _assertParticipantsLimitNotExceeded(
+          training,
+          userId: userId,
+          userUsername: normalizedUsername,
+        );
         final reactivated = await _reactivateBookingAsPendingPayment(
           bookingId: existing.id,
           userUsername: normalizedUsername,
@@ -1117,11 +1134,44 @@ final class SqliteBookingRepository implements BookingRepository {
     return reactivated;
   }
 
-  void _assertParticipantsLimitNotExceeded(TrainingInfo training) {
+  void _assertParticipantsLimitNotExceeded(
+    TrainingInfo training, {
+    required int userId,
+    required String? userUsername,
+  }) {
     final participantsLimit = training.participantsLimit;
     if (participantsLimit == null || participantsLimit <= 0) {
       return;
     }
+    final includeTrainers = training.includeTrainersInParticipants;
+    if (!includeTrainers && isTrainerBookingWhitelisted(userId: userId, username: userUsername)) {
+      return;
+    }
+    final excludedUserIds = includeTrainers ? const <int>{} : trainerBookingWhitelistUserIds;
+    final excludedUsernames = includeTrainers
+        ? const <String>{}
+        : trainerBookingWhitelistUsernames
+            .map(normalizeTelegramUsername)
+            .whereType<String>()
+            .toSet();
+    final exclusionClauses = <String>[];
+    final args = <Object?>[
+      training.sessionKey,
+      BookingStatus.cancelled.dbValue,
+      BookingStatus.paymentRejected.dbValue,
+    ];
+    if (excludedUserIds.isNotEmpty) {
+      final placeholders = List<String>.filled(excludedUserIds.length, '?').join(', ');
+      exclusionClauses.add('user_id IN ($placeholders)');
+      args.addAll(excludedUserIds);
+    }
+    if (excludedUsernames.isNotEmpty) {
+      final placeholders = List<String>.filled(excludedUsernames.length, '?').join(', ');
+      exclusionClauses.add('LOWER(user_username) IN ($placeholders)');
+      args.addAll(excludedUsernames);
+    }
+    final excludedSql =
+        exclusionClauses.isEmpty ? '' : '\n        AND NOT (${exclusionClauses.join(' OR ')})';
     final db = _database;
     final result = db.select(
       '''
@@ -1129,13 +1179,9 @@ final class SqliteBookingRepository implements BookingRepository {
       FROM bookings
       WHERE training_key = ?
         AND status != ?
-        AND status != ?;
+        AND status != ?$excludedSql;
       ''',
-      <Object?>[
-        training.sessionKey,
-        BookingStatus.cancelled.dbValue,
-        BookingStatus.paymentRejected.dbValue,
-      ],
+      args,
     );
     final total = (result.first['total'] as int?) ?? 0;
     if (total >= participantsLimit) {

@@ -9,6 +9,7 @@ final class TrainingInfo {
     this.category = ActivityCategory.trainings,
     this.price,
     this.participantsLimit,
+    this.includeTrainersInParticipants = false,
     this.coach,
     this.notes,
   });
@@ -20,6 +21,7 @@ final class TrainingInfo {
   final ActivityCategory category;
   final int? price;
   final int? participantsLimit;
+  final bool includeTrainersInParticipants;
   final String? coach;
   final String? notes;
 

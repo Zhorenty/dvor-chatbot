@@ -118,7 +118,7 @@ void main() {
       );
 
       expect(text, contains('в течение 120 минут'));
-      expect(text, contains('записаться заново'));
+      expect(text, contains('запись отменится автоматически'));
     });
   });
 }
