@@ -3174,6 +3174,70 @@ void main() {
       expect(secondPageButtons, isNot(contains(MessageTemplates.buttonBookingsNextPage)));
     });
 
+    test('hides passed bookings in active management list', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..adminSegmentCounts = (active: 1, archived: 2)
+        ..adminBookings = <TrainingBooking>[
+          _booking(
+            id: 701,
+            userId: 9701,
+            title: 'Future Run',
+            startsAt: DateTime(2026, 10, 1, 10, 0),
+            status: BookingStatus.pendingPayment,
+          ),
+          _booking(
+            id: 702,
+            userId: 9702,
+            title: 'Past Run',
+            startsAt: DateTime(2026, 9, 1, 10, 0),
+            status: BookingStatus.pendingPayment,
+          ),
+          _booking(
+            id: 703,
+            userId: 9703,
+            title: 'Cancelled Run',
+            startsAt: DateTime(2026, 10, 2, 10, 0),
+            status: BookingStatus.cancelled,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2306},
+        nowProvider: () => DateTime(2026, 9, 20, 10, 0),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2306},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2306},
+        'text': MessageTemplates.buttonBookingsList,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2306},
+        'text': '${MessageTemplates.buttonActiveBookings} (1)',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2306},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Future Run'));
+      expect(sender.messages.last.text, isNot(contains('Past Run')));
+      expect(sender.messages.last.text, isNot(contains('Cancelled Run')));
+      expect(sender.messages.last.text, contains('всего записей: 1'));
+    });
+
     test('archives selected booking from admin management flow', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
@@ -3196,6 +3260,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{2301},
+        nowProvider: () => DateTime(2026, 10, 2, 10, 0),
       );
 
       await handlers.handle(<String, dynamic>{

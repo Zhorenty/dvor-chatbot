@@ -1388,9 +1388,15 @@ final class PrivateHandlers {
         return true;
       }
       final archived = flowState?.adminViewingArchived ?? false;
-      final bookings = await _bookingRepository.adminListBookings(
+      final listedBookings = await _bookingRepository.adminListBookings(
         category: category,
         archived: archived,
+      );
+      final now = _nowProvider();
+      final bookings = _filterBookingsByArchivedSegment(
+        listedBookings,
+        archived: archived,
+        now: now,
       );
       _flowByUserId[userId] = flowState!.copyWith(
         step: _PrivateFlowStep.selectingAdminBookingFromList,
@@ -2451,13 +2457,19 @@ final class PrivateHandlers {
     if (flowState == null || flowState.step != _PrivateFlowStep.selectingAdminBookingFromList) {
       return;
     }
-    final allBookings = flowState.availableBookings;
+    final now = _nowProvider();
+    final allBookings = _filterBookingsByArchivedSegment(
+      flowState.availableBookings,
+      archived: flowState.adminViewingArchived,
+      now: now,
+    );
     final maxPage = _maxAdminBookingsPage(allBookings);
     final page = flowState.adminBookingsPage.clamp(0, maxPage);
     final start = page * _adminBookingsPageSize;
     final end = (start + _adminBookingsPageSize).clamp(0, allBookings.length);
     final pageBookings = allBookings.sublist(start, end);
-    _flowByUserId[userId] = flowState.copyWith(adminBookingsPage: page);
+    _flowByUserId[userId] =
+        flowState.copyWith(adminBookingsPage: page, availableBookings: allBookings);
     await _sender.sendMessage(
       chatId,
       _templates.chooseAdminBookingFromList(
@@ -2483,6 +2495,22 @@ final class PrivateHandlers {
       return 0;
     }
     return (bookings.length - 1) ~/ _adminBookingsPageSize;
+  }
+
+  List<TrainingBooking> _filterBookingsByArchivedSegment(
+    List<TrainingBooking> bookings, {
+    required bool archived,
+    required DateTime now,
+  }) {
+    return bookings
+        .where(
+          (booking) => archived == _isArchivedBookingAt(booking, now: now),
+        )
+        .toList(growable: false);
+  }
+
+  bool _isArchivedBookingAt(TrainingBooking booking, {required DateTime now}) {
+    return booking.startsAt.isBefore(now) || booking.status == BookingStatus.cancelled;
   }
 
   bool _isOutdoorCategory(_ActivityCategory category) {
