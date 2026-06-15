@@ -67,6 +67,8 @@ final class PrivateHandlers {
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
   final Set<String> _lowCapacityNotifiedTrainingKeys = <String>{};
   final Set<String> _fullCapacityNotifiedTrainingKeys = <String>{};
+  int? _lastCapacityGroupMessageId;
+  _CapacityGroupNotificationType? _lastCapacityGroupMessageType;
   late final ActivityCatalogService _catalogService =
       ActivityCatalogService(scheduleRepository: _scheduleRepository);
   late final ScheduleQueryService _scheduleQueryService = ScheduleQueryService(
@@ -80,8 +82,11 @@ final class PrivateHandlers {
       PaymentReviewService(bookingRepository: _bookingRepository, catalogService: _catalogService);
   late final EconomicSummaryService _economicSummaryService = EconomicSummaryService(
       bookingRepository: _bookingRepository, catalogService: _catalogService);
-  late final NoblesListService _noblesListService =
-      NoblesListService(bookingRepository: _bookingRepository, catalogService: _catalogService);
+  late final NoblesListService _noblesListService = NoblesListService(
+    bookingRepository: _bookingRepository,
+    catalogService: _catalogService,
+    nowProvider: _nowProvider,
+  );
   final PrivateUpdateRouter _updateRouter = const PrivateUpdateRouter();
   final ScheduleHandler _scheduleHandler = const ScheduleHandler();
   final BookingHandler _bookingHandler = const BookingHandler();
@@ -565,15 +570,16 @@ final class PrivateHandlers {
         );
         return true;
       }
-      if (result.created) {
-        await _maybeNotifyGroupAboutCapacity(selectedTraining);
-      }
       if (_isFreeActivity(selectedTraining)) {
         final paidBooking =
             await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
         final bookingForResponse =
             _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
         if (result.created) {
+          await _maybeNotifyGroupAboutCapacity(
+            selectedTraining,
+            bookingStatus: bookingForResponse.status,
+          );
           await _notifyAdminAboutFreeBookingCreated(bookingForResponse);
         }
         _flowByUserId.remove(userId);
@@ -593,6 +599,12 @@ final class PrivateHandlers {
         final bookingForResponse =
             _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
         _flowByUserId.remove(userId);
+        if (result.created) {
+          await _maybeNotifyGroupAboutCapacity(
+            selectedTraining,
+            bookingStatus: bookingForResponse.status,
+          );
+        }
         await _notifyAdminAboutTrainerBookingCreated(bookingForResponse);
         await _sender.sendMessage(
           chatId,
@@ -1089,6 +1101,10 @@ final class PrivateHandlers {
       } else {
         await _notifyAdminAboutEveryFifthBonusApplied(booking);
       }
+      await _maybeNotifyGroupAboutCapacity(
+        _trainingInfoFromBooking(booking),
+        bookingStatus: booking.status,
+      );
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
         chatId,
@@ -2108,6 +2124,10 @@ final class PrivateHandlers {
           moderatorUserId: userId,
           moderatorUsername: context.from?['username']?.toString(),
         );
+        await _maybeNotifyGroupAboutCapacity(
+          _trainingInfoFromBooking(booking),
+          bookingStatus: booking.status,
+        );
       }
       await _sendAdminMessage(
         chatId,
@@ -2968,7 +2988,13 @@ final class PrivateHandlers {
     }
   }
 
-  Future<void> _maybeNotifyGroupAboutCapacity(TrainingInfo training) async {
+  Future<void> _maybeNotifyGroupAboutCapacity(
+    TrainingInfo training, {
+    required BookingStatus bookingStatus,
+  }) async {
+    if (!_isCapacityConfirmedBookingStatus(bookingStatus)) {
+      return;
+    }
     final targetChatId = _targetChatId;
     final participantsLimit = training.participantsLimit;
     if (targetChatId == null || participantsLimit == null || participantsLimit <= 0) {
@@ -2979,8 +3005,11 @@ final class PrivateHandlers {
       <String>{training.sessionKey},
       limit: participantsLimit,
     );
+    final confirmedBookings = activeBookings
+        .where((booking) => _isCapacityConfirmedBookingStatus(booking.status))
+        .toList();
     final participantsCount = _countParticipantsForTraining(
-      bookings: activeBookings,
+      bookings: confirmedBookings,
       training: training,
     );
     final freeSpots = participantsLimit - participantsCount;
@@ -2989,7 +3018,7 @@ final class PrivateHandlers {
         return;
       }
       try {
-        await _sender.sendMessage(
+        final messageId = await _sender.sendMessage(
           targetChatId,
           _templates.groupTrainingNoSpotsLeft(
             training: training,
@@ -2997,6 +3026,8 @@ final class PrivateHandlers {
           ),
           parseMode: 'HTML',
         );
+        _lastCapacityGroupMessageId = messageId;
+        _lastCapacityGroupMessageType = _CapacityGroupNotificationType.noSpots;
         _fullCapacityNotifiedTrainingKeys.add(training.sessionKey);
         _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
       } on Object catch (error, stackTrace) {
@@ -3011,7 +3042,24 @@ final class PrivateHandlers {
     }
 
     try {
-      await _sender.sendMessage(
+      final previousLowCapacityMessageId =
+          _lastCapacityGroupMessageType == _CapacityGroupNotificationType.lowSpots
+              ? _lastCapacityGroupMessageId
+              : null;
+      if (previousLowCapacityMessageId != null) {
+        try {
+          await _sender.deleteMessage(
+            targetChatId,
+            messageId: previousLowCapacityMessageId,
+          );
+        } on Object catch (error, stackTrace) {
+          l.w(
+            'Failed to delete previous low-capacity group notification: $error',
+            stackTrace,
+          );
+        }
+      }
+      final messageId = await _sender.sendMessage(
         targetChatId,
         _templates.groupTrainingLowSpots(
           training: training,
@@ -3020,6 +3068,8 @@ final class PrivateHandlers {
         ),
         parseMode: 'HTML',
       );
+      _lastCapacityGroupMessageId = messageId;
+      _lastCapacityGroupMessageType = _CapacityGroupNotificationType.lowSpots;
       _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify group about low training capacity: $error', stackTrace);
@@ -3094,6 +3144,21 @@ final class PrivateHandlers {
 
   bool _isWhitelistedTrainerBookingByBooking(TrainingBooking booking) {
     return _isWhitelistedTrainerBooking(userId: booking.userId, username: booking.userUsername);
+  }
+
+  bool _isCapacityConfirmedBookingStatus(BookingStatus status) {
+    return status == BookingStatus.paid ||
+        status == BookingStatus.partialPaid ||
+        status == BookingStatus.freeTraining;
+  }
+
+  TrainingInfo _trainingInfoFromBooking(TrainingBooking booking) {
+    return TrainingInfo(
+      title: booking.trainingTitle,
+      startsAt: booking.startsAt,
+      location: booking.location,
+      category: _catalogService.categoryForBooking(booking),
+    );
   }
 
   Future<bool> _openPendingPaymentFlow({
@@ -3203,6 +3268,8 @@ typedef _PrivateFlowStep = PrivateFlowStep;
 typedef _ActivityCategory = ActivityCategory;
 
 enum _FreeTrainingBonusType { starter, everyFifth }
+
+enum _CapacityGroupNotificationType { lowSpots, noSpots }
 
 enum _EconomicSummaryRange {
   currentWeek('за текущую неделю'),

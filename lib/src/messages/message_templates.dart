@@ -846,6 +846,8 @@ final class MessageTemplates {
     final lines = <String>[
       '🏰 <b>Список дворян</b>',
       'Всего записей на тренировки: <b>$totalTrainings</b>',
+      'В зачет идут только уже прошедшие по времени тренировки '
+          '(<code>starts_at &lt; now</code>).',
       '',
     ];
     for (var index = 0; index < users.length; index++) {

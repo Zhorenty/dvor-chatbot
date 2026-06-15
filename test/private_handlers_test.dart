@@ -894,7 +894,7 @@ void main() {
       expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
     });
 
-    test('sends group notification when free spots drop below 30%', () async {
+    test('does not send low-spots group notification for pending payment booking', () async {
       final sender = _FakeSender();
       final training = TrainingInfo(
         title: 'Full body',
@@ -941,9 +941,155 @@ void main() {
 
       expect(handled, isTrue);
       final groupMessages = sender.messages.where((message) => message.chatId == -100777).toList();
+      expect(groupMessages, isEmpty);
+    });
+
+    test('sends low-spots group notification for confirmed booking', () async {
+      final sender = _FakeSender();
+      final training = TrainingInfo(
+        title: 'Full body',
+        startsAt: DateTime(2026, 7, 15, 19, 0),
+        location: 'Main hall',
+        participantsLimit: 10,
+        price: 0,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = List<TrainingBooking>.generate(
+          8,
+          (index) => _booking(
+            id: 330 + index,
+            trainingKey: training.sessionKey,
+            title: training.title,
+            startsAt: training.startsAt,
+            location: training.location,
+            status: BookingStatus.paid,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[training]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        targetChatId: -100777,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1616, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1616},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1616, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1616},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1616, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1616},
+        'text': '🎯 1. Full body',
+      });
+
+      expect(handled, isTrue);
+      final groupMessages = sender.messages.where((message) => message.chatId == -100777).toList();
       expect(groupMessages, hasLength(1));
       expect(groupMessages.single.text, contains('почти не осталось мест'));
       expect(groupMessages.single.text, contains('Свободных мест: 2 из 10'));
+    });
+
+    test('deletes previous low-spots message before sending new one', () async {
+      final sender = _FakeSender();
+      final firstTraining = TrainingInfo(
+        title: 'First low spots',
+        startsAt: DateTime(2026, 7, 20, 19, 0),
+        location: 'Main hall',
+        participantsLimit: 10,
+        price: 0,
+      );
+      final secondTraining = TrainingInfo(
+        title: 'Second low spots',
+        startsAt: DateTime(2026, 7, 21, 19, 0),
+        location: 'Main hall',
+        participantsLimit: 10,
+        price: 0,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          ...List<TrainingBooking>.generate(
+            8,
+            (index) => _booking(
+              id: 600 + index,
+              trainingKey: firstTraining.sessionKey,
+              title: firstTraining.title,
+              startsAt: firstTraining.startsAt,
+              location: firstTraining.location,
+              status: BookingStatus.paid,
+            ),
+          ),
+          ...List<TrainingBooking>.generate(
+            8,
+            (index) => _booking(
+              id: 700 + index,
+              trainingKey: secondTraining.sessionKey,
+              title: secondTraining.title,
+              startsAt: secondTraining.startsAt,
+              location: secondTraining.location,
+              status: BookingStatus.paid,
+            ),
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[firstTraining, secondTraining]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        targetChatId: -100779,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1617, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1617},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1617, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1617},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1617, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1617},
+        'text': '🎯 1. First low spots',
+      });
+
+      final groupMessages = sender.messages.where((message) => message.chatId == -100779).toList();
+      expect(groupMessages, hasLength(1));
+      final firstLowMessageId = sender.messages.indexOf(groupMessages.first) + 1;
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1617, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1617},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1617, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1617},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1617, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1617},
+        'text': '🎯 2. Second low spots',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.deletedMessages, hasLength(1));
+      expect(sender.deletedMessages.single.chatId, -100779);
+      expect(sender.deletedMessages.single.messageId, firstLowMessageId);
+      final updatedGroupMessages =
+          sender.messages.where((message) => message.chatId == -100779).toList();
+      expect(updatedGroupMessages, hasLength(2));
     });
 
     test('sends group notification when no spots are left', () async {
@@ -953,6 +1099,7 @@ void main() {
         startsAt: DateTime(2026, 7, 16, 20, 0),
         location: 'Arena',
         participantsLimit: 3,
+        price: 0,
       );
       final bookingRepository = _FakeBookingRepository()
         ..bookingsByTrainingKey = List<TrainingBooking>.generate(
@@ -963,7 +1110,7 @@ void main() {
             title: training.title,
             startsAt: training.startsAt,
             location: training.location,
-            status: BookingStatus.pendingPayment,
+            status: BookingStatus.paid,
           ),
         );
       final handlers = PrivateHandlers(
@@ -3100,6 +3247,14 @@ void main() {
             title: '🏃 Трейл: Лаго-Наки',
             status: BookingStatus.paymentSubmitted,
           ),
+          _booking(
+            id: 807,
+            userId: 5004,
+            userUsername: 'future_runner',
+            title: 'Future training',
+            status: BookingStatus.paid,
+            startsAt: DateTime(2026, 10, 1, 19, 0),
+          ),
         ];
       final handlers = PrivateHandlers(
         sender: sender,
@@ -3107,6 +3262,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{2100},
+        nowProvider: () => DateTime(2026, 9, 1, 0, 0),
       );
 
       final handled = await handlers.handle(<String, dynamic>{
@@ -3120,9 +3276,11 @@ void main() {
       final text = sender.messages.single.text;
       expect(text, contains('Список дворян'));
       expect(text, contains('Всего записей на тренировки:'));
+      expect(text, contains('В зачет идут только уже прошедшие по времени тренировки'));
       expect(text, contains('1. @runner_one (5001) —'));
       expect(text, contains('2. @runner_two (5002) —'));
       expect(text, contains('tg://user?id=5003 (5003) —'));
+      expect(text, isNot(contains('@future_runner')));
       expect(text, isNot(contains('Поход')));
       expect(text, isNot(contains('Трейл')));
     });

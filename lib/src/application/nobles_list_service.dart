@@ -10,13 +10,17 @@ final class NoblesListService {
   const NoblesListService({
     required BookingRepository bookingRepository,
     required ActivityCatalogService catalogService,
+    DateTime Function()? nowProvider,
   })  : _bookingRepository = bookingRepository,
-        _catalogService = catalogService;
+        _catalogService = catalogService,
+        _nowProvider = nowProvider ?? DateTime.now;
 
   final BookingRepository _bookingRepository;
   final ActivityCatalogService _catalogService;
+  final DateTime Function() _nowProvider;
 
   Future<({List<NobleUserStats> users, int totalTrainings})> buildStats() async {
+    final now = _nowProvider();
     final statusBatches = await Future.wait(<Future<List<TrainingBooking>>>[
       _bookingRepository.listByStatus(BookingStatus.pendingPayment, limit: 1000),
       _bookingRepository.listByStatus(BookingStatus.paymentSubmitted, limit: 1000),
@@ -29,6 +33,9 @@ final class NoblesListService {
 
     for (final booking in allBookings) {
       if (_catalogService.categoryForBooking(booking) != ActivityCategory.trainings) {
+        continue;
+      }
+      if (!booking.startsAt.isBefore(now)) {
         continue;
       }
       totalTrainings += 1;
