@@ -574,8 +574,7 @@ final class MessageTemplates {
     final rewardsHint = availableEveryFifthRewards > 0
         ? '🎁 <b>Бесплатных по бонусу «каждая 5-я»:</b> <b>$availableEveryFifthRewards</b>'
         : '🎯 <b>До следующей бесплатной:</b> <b>$trainingsLeftForNextFree</b>';
-    final starterHint =
-        starterBonusAvailable ? '• ⚡️ <b>Стартовая бесплатная:</b> доступна\n' : '';
+    final starterHint = starterBonusAvailable ? '• ⚡️ <b>Стартовая бесплатная:</b> доступна\n' : '';
     return '👤 <b>Профиль спортсмена DVOR</b>\n\n'
         '📊 <b>Твоя статистика</b>\n'
         '• Всего записей: <b>$totalBookings</b>\n'

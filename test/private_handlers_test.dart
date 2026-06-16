@@ -444,7 +444,7 @@ void main() {
             ),
             TrainerInfo(
               name: 'Гость',
-              link: 'https://example.com/guest',
+              link: 'https://t.me/@guest_coach',
               description: 'Guest coach',
             ),
           ],
@@ -475,7 +475,7 @@ void main() {
         text,
         contains('<a href="https://t.me/maria_run">Мария Романова</a>'),
       );
-      expect(text, contains('гость'));
+      expect(text, contains('<a href="https://t.me/guest_coach">гость</a>'));
       expect(text, contains('🧑‍🏫 Тренер:'));
       expect(sender.messages.last.parseMode, 'HTML');
     });

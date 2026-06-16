@@ -275,11 +275,21 @@ final class ScheduleTemplates {
       return null;
     }
     if (trimmed.startsWith('@')) {
-      final value = trimmed.substring(1).trim();
+      final value = _sanitizeTelegramUsername(trimmed.substring(1));
       return value.isEmpty ? null : value;
     }
     if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-      final value = trimmed.replaceFirst('@', '').trim();
+      final candidateUri = Uri.tryParse('https://$trimmed');
+      final host = candidateUri?.host.toLowerCase();
+      if (host == 't.me' ||
+          host == 'www.t.me' ||
+          host == 'telegram.me' ||
+          host == 'www.telegram.me') {
+        final segment = candidateUri!.pathSegments.isEmpty ? '' : candidateUri.pathSegments.first;
+        final value = _sanitizeTelegramUsername(segment);
+        return value.isEmpty ? null : value;
+      }
+      final value = _sanitizeTelegramUsername(trimmed);
       return value.isEmpty ? null : value;
     }
 
@@ -294,8 +304,28 @@ final class ScheduleTemplates {
         host != 'www.telegram.me') {
       return null;
     }
-    final segment = uri.pathSegments.isEmpty ? '' : uri.pathSegments.first.trim();
-    return segment.isEmpty ? null : segment;
+    final segment = uri.pathSegments.isEmpty ? '' : uri.pathSegments.first;
+    final value = _sanitizeTelegramUsername(segment);
+    return value.isEmpty ? null : value;
+  }
+
+  String _sanitizeTelegramUsername(String raw) {
+    var value = raw.trim();
+    if (value.startsWith('@')) {
+      value = value.substring(1);
+    }
+    final queryIndex = value.indexOf('?');
+    if (queryIndex >= 0) {
+      value = value.substring(0, queryIndex);
+    }
+    final hashIndex = value.indexOf('#');
+    if (hashIndex >= 0) {
+      value = value.substring(0, hashIndex);
+    }
+    if (value.contains('/')) {
+      value = value.split('/').first;
+    }
+    return value.trim();
   }
 
   String _escapeHtml(String value) {

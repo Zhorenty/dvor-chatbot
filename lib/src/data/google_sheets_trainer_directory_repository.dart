@@ -129,6 +129,13 @@ final class GoogleSheetsTrainerDirectoryRepository implements TrainerDirectoryRe
     if (value.isEmpty) {
       return value;
     }
+    final lower = value.toLowerCase();
+    if (lower.startsWith('t.me/') ||
+        lower.startsWith('www.t.me/') ||
+        lower.startsWith('telegram.me/') ||
+        lower.startsWith('www.telegram.me/')) {
+      return 'https://$value';
+    }
     if (value.startsWith('@') || value.startsWith('http://') || value.startsWith('https://')) {
       return value;
     }

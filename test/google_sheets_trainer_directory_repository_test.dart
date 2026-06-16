@@ -69,5 +69,22 @@ void main() {
       expect(repository.list().single.name, 'Alex');
       expect(repository.list().single.role, isEmpty);
     });
+
+    test('normalizes t.me links without protocol', () async {
+      final repository = GoogleSheetsTrainerDirectoryRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'name,link,description,role\n'
+            'Alex,t.me/@alex,Head coach,Strength',
+            200,
+          );
+        }),
+      );
+
+      final refreshed = await repository.refresh(force: true);
+      expect(refreshed, isTrue);
+      expect(repository.list().single.link, 'https://t.me/@alex');
+    });
   });
 }

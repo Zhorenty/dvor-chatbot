@@ -193,6 +193,7 @@ final class PrivateHandlers {
         case _PrivateFlowStep.selectingTraining:
           final selectedCategory = flowState?.selectedCategory;
           if (selectedCategory != null && flowState?.bookingFromSchedulePreview == true) {
+            await _refreshTrainerDirectoryForSchedule();
             _flowByUserId[userId] = flowState!.copyWith(
               step: _PrivateFlowStep.viewingScheduleCategory,
               availableTrainings: const <TrainingInfo>[],
@@ -534,6 +535,7 @@ final class PrivateHandlers {
         availableTrainings: const <TrainingInfo>[],
         selectedCategory: category,
       );
+      await _refreshTrainerDirectoryForSchedule();
       await _sender.sendMessage(
         chatId,
         _scheduleTextByCategory(category),
@@ -785,9 +787,8 @@ final class PrivateHandlers {
         return true;
       }
       final now = _nowProvider();
-      final currentCount = bookings
-          .where((booking) => !_isArchivedBookingAt(booking, now: now))
-          .length;
+      final currentCount =
+          bookings.where((booking) => !_isArchivedBookingAt(booking, now: now)).length;
       final pastCount = bookings.length - currentCount;
       _flowByUserId[userId] = _PrivateFlowState(
         step: _PrivateFlowStep.selectingBookingListSegment,
@@ -2295,6 +2296,13 @@ final class PrivateHandlers {
     return _scheduleQueryService.scheduleText(category);
   }
 
+  Future<void> _refreshTrainerDirectoryForSchedule() async {
+    final refreshOk = await _trainerDirectoryRepository.refresh();
+    if (!refreshOk) {
+      l.w('Trainer directory refresh failed before schedule rendering. Using cached trainers.');
+    }
+  }
+
   List<TrainingInfo> _bookableItemsByCategory(_ActivityCategory category) {
     return _catalogService.bookableItems(category);
   }
@@ -2699,7 +2707,8 @@ final class PrivateHandlers {
       return;
     }
     final now = _nowProvider();
-    final currentCount = bookings.where((booking) => !_isArchivedBookingAt(booking, now: now)).length;
+    final currentCount =
+        bookings.where((booking) => !_isArchivedBookingAt(booking, now: now)).length;
     final pastCount = bookings.length - currentCount;
     _flowByUserId[userId] = _PrivateFlowState(
       step: _PrivateFlowStep.selectingBookingListSegment,
