@@ -86,22 +86,24 @@ final class PrivateStaticCommands {
     }
 
     if (text.startsWith('/coaches') || text == MessageTemplates.buttonCoachingStaff) {
-      if (userId != null) {
-        flowByUserId.remove(userId);
-      }
       final refreshOk = await trainerDirectoryRepository.refresh();
       if (!refreshOk) {
         l.w('Trainer directory refresh failed. Using cached trainers list.');
       }
       final trainers = trainerDirectoryRepository.list(limit: 30);
+      if (userId != null) {
+        flowByUserId[userId] = PrivateFlowState(
+          step: PrivateFlowStep.viewingCoachingStaff,
+          availableTrainings: const <TrainingInfo>[],
+          availableTrainers: trainers,
+        );
+      }
       await sender.sendMessage(
         chatId,
         templates.coachingStaff(trainers),
-        replyMarkup: templates.privateMenuKeyboard(
-          isAdmin: isAdmin,
-          canViewParticipantsList: canViewParticipantsList,
-        ),
+        replyMarkup: templates.coachingStaffActionsKeyboard(),
         parseMode: 'HTML',
+        disableWebPagePreview: true,
       );
       return true;
     }

@@ -26,6 +26,7 @@ final class MessageTemplates {
 
   static const String buttonTrainings = MessageCopy.buttonTrainings;
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
+  static const String buttonCoachDetails = MessageCopy.buttonCoachDetails;
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
   static const String buttonSubscription = MessageCopy.buttonSubscription;
   static const String buttonProfile = MessageCopy.buttonProfile;
@@ -69,6 +70,8 @@ final class MessageTemplates {
   static const String buttonBackToBookingsList = MessageCopy.buttonBackToBookingsList;
   static const String buttonBookingsPreviousPage = MessageCopy.buttonBookingsPreviousPage;
   static const String buttonBookingsNextPage = MessageCopy.buttonBookingsNextPage;
+  static const String buttonCurrentBookings = MessageCopy.buttonCurrentBookings;
+  static const String buttonPastBookings = MessageCopy.buttonPastBookings;
   static const String buttonCreateAnotherBooking = MessageCopy.buttonCreateAnotherBooking;
   static const String buttonConfirmCreateBooking = MessageCopy.buttonConfirmCreateBooking;
   static const String buttonCancelCreateBooking = MessageCopy.buttonCancelCreateBooking;
@@ -137,6 +140,18 @@ final class MessageTemplates {
 
   String coachingStaff(List<TrainerInfo> trainers) {
     return _scheduleTemplates.coachingStaff(trainers);
+  }
+
+  String chooseTrainerProfile(List<TrainerInfo> trainers) {
+    return _scheduleTemplates.chooseTrainerProfile(trainers);
+  }
+
+  String trainerProfile(TrainerInfo trainer) {
+    return _scheduleTemplates.trainerProfile(trainer);
+  }
+
+  String unknownTrainerSelection() {
+    return _scheduleTemplates.unknownTrainerSelection();
   }
 
   String chooseBookingCategory() {
@@ -407,6 +422,18 @@ final class MessageTemplates {
         'Это бесплатная тренировка, подтверждение оплаты не нужно.';
   }
 
+  String bookingCreatedForWhitelistedTrainer(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Готово, ты записан(а) на тренировку ✅\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
+        'Номер записи: ${booking.id}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
+        'Ты в списке тренеров: подтверждение оплаты не требуется, это только информирование о записи.';
+  }
+
   String bookingAlreadyExists(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
@@ -578,7 +605,7 @@ final class MessageTemplates {
         '🏋️ <b>Прогресс лояльности</b>\n'
         '• Тренировок в зачет «каждая 5-я»: <b>$completedTrainingsCount</b>\n'
         '• $rewardsHint\n'
-        '• $starterHint\n\n'
+        '$starterHint\n'
         'Нажми «${MessageCopy.buttonProfileBookings}», чтобы открыть список записей и управление ими.';
   }
 
@@ -714,6 +741,11 @@ final class MessageTemplates {
         '$nextStep';
   }
 
+  String chooseMyBookingsSegment() {
+    return '🗂 <b>Мои записи</b>\n'
+        'Выбери список ниже: «Актуальные» или «Прошедшие».';
+  }
+
   String myBookings(
     List<TrainingBooking> bookings, {
     DateTime? now,
@@ -756,6 +788,44 @@ final class MessageTemplates {
         );
       }
     }
+    return lines.join('\n');
+  }
+
+  String chooseMyBookingFromList(
+    List<TrainingBooking> bookings, {
+    required bool past,
+    required int page,
+    required int totalPages,
+    required int totalCount,
+  }) {
+    if (bookings.isEmpty) {
+      final segmentLabel = past ? 'Прошедшие' : 'Актуальные';
+      return '📭 <b>В этом списке пока пусто</b>\n'
+          'Сегмент: <b>${_escapeHtml(segmentLabel)}</b>';
+    }
+    final segmentLabel = past ? 'Прошедшие' : 'Актуальные';
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final lines = <String>[
+      '🧾 <b>Мои записи</b>',
+      'Фильтр: <b>${_escapeHtml(segmentLabel)}</b>',
+      'Страница <b>$page/$totalPages</b> • всего записей: <b>$totalCount</b>',
+      '<b>Записи на текущей странице:</b>',
+    ];
+    for (var index = 0; index < bookings.length; index++) {
+      final booking = bookings[index];
+      lines.addAll(<String>[
+        '',
+        '🧩 <b>${index + 1}. #${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>',
+        '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}',
+        '💳 ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
+      ]);
+    }
+    lines.addAll(<String>[
+      '',
+      'Выбери запись кнопкой ниже.',
+      'Чтобы сменить сегмент, нажми «${MessageCopy.buttonBack}».',
+    ]);
     return lines.join('\n');
   }
 
@@ -906,6 +976,7 @@ final class MessageTemplates {
     required Map<String, List<TrainingBooking>> bookingsByTrainingKey,
     String title = 'Список записавшихся по тренировкам 👥',
     String emptyText = 'Ближайших тренировок пока нет, показывать список не для чего.',
+    bool Function(TrainingBooking booking)? isTrainerBooking,
   }) {
     if (trainings.isEmpty) {
       return emptyText;
@@ -913,6 +984,7 @@ final class MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final lines = <String>['<b>${_escapeHtml(title)}</b>'];
+    final trainerMatcher = isTrainerBooking ?? (_) => false;
     for (var index = 0; index < trainings.length; index++) {
       final training = trainings[index];
       final tags = bookingsByTrainingKey[training.sessionKey] ?? const <TrainingBooking>[];
@@ -920,22 +992,49 @@ final class MessageTemplates {
           tags.where((booking) => booking.status != BookingStatus.cancelled).toList();
       final cancelledTags =
           tags.where((booking) => booking.status == BookingStatus.cancelled).toList();
+      final activeTrainerTags = activeTags.where(trainerMatcher).toList(growable: false);
+      final activeParticipantTags =
+          activeTags.where((booking) => !trainerMatcher(booking)).toList(growable: false);
+      final cancelledTrainerTags = cancelledTags.where(trainerMatcher).toList(growable: false);
+      final cancelledParticipantTags =
+          cancelledTags.where((booking) => !trainerMatcher(booking)).toList(growable: false);
+      final displayedParticipantsCount =
+          training.includeTrainersInParticipants ? activeTags.length : activeParticipantTags.length;
       lines.addAll(<String>[
         '',
         '🏷 <b>${index + 1}. ${_escapeHtml(training.title)}</b>',
         '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}',
         '📍 ${_escapeHtml(training.location)}',
-        '👥 Участники: ${activeTags.length}/${_participantsLimitValueLabel(training.participantsLimit)}',
+        '👥 Участники: $displayedParticipantsCount/${_participantsLimitValueLabel(training.participantsLimit)}',
       ]);
       if (activeTags.isEmpty && cancelledTags.isEmpty) {
         lines.add('• Пока никто не записался');
       } else {
-        for (final booking in activeTags) {
+        if (activeParticipantTags.isNotEmpty) {
+          lines.add('👤 Участники:');
+        }
+        for (final booking in activeParticipantTags) {
           lines.add(
             '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
         }
-        for (final booking in cancelledTags) {
+        if (activeTrainerTags.isNotEmpty) {
+          lines.add('🧑‍🏫 Тренеры:');
+        }
+        for (final booking in activeTrainerTags) {
+          lines.add(
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+          );
+        }
+        if (cancelledParticipantTags.isNotEmpty || cancelledTrainerTags.isNotEmpty) {
+          lines.add('❌ Отмененные:');
+        }
+        for (final booking in cancelledParticipantTags) {
+          lines.add(
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+          );
+        }
+        for (final booking in cancelledTrainerTags) {
           lines.add(
             '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
@@ -955,6 +1054,8 @@ final class MessageTemplates {
     final lines = <String>[
       '🏰 <b>Список дворян</b>',
       'Всего записей на тренировки: <b>$totalTrainings</b>',
+      'В зачет идут только уже прошедшие по времени тренировки '
+          '(<code>starts_at &lt; now</code>).',
       '',
     ];
     for (var index = 0; index < users.length; index++) {
@@ -1121,6 +1222,17 @@ final class MessageTemplates {
         'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
   }
 
+  String trainerBookingCreatedAdminNotification(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '🧑‍🏫 <b>Операционное событие: тренер записался</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
+  }
+
   String pendingPaymentReminder(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
@@ -1270,6 +1382,14 @@ final class MessageTemplates {
     return TelegramKeyboards.scheduleCategoryActionsKeyboard();
   }
 
+  Map<String, Object?> coachingStaffActionsKeyboard() {
+    return TelegramKeyboards.coachingStaffActionsKeyboard();
+  }
+
+  Map<String, Object?> trainerSelectionKeyboard(List<TrainerInfo> trainers) {
+    return TelegramKeyboards.trainerSelectionKeyboard(trainers);
+  }
+
   Map<String, Object?> paymentsQueueCategorySelectionKeyboard({
     required int trainings,
     required int yoga,
@@ -1314,6 +1434,18 @@ final class MessageTemplates {
     return TelegramKeyboards.bookingManagementSelectionKeyboard(bookings);
   }
 
+  Map<String, Object?> myBookingSelectionKeyboard(
+    List<TrainingBooking> bookings, {
+    required bool hasPreviousPage,
+    required bool hasNextPage,
+  }) {
+    return TelegramKeyboards.myBookingSelectionKeyboard(
+      bookings,
+      hasPreviousPage: hasPreviousPage,
+      hasNextPage: hasNextPage,
+    );
+  }
+
   Map<String, Object?> adminBookingSelectionKeyboard(
     List<TrainingBooking> bookings, {
     required bool hasPreviousPage,
@@ -1353,6 +1485,16 @@ final class MessageTemplates {
     return TelegramKeyboards.bookingSegmentKeyboard(
       activeCount: activeCount,
       archivedCount: archivedCount,
+    );
+  }
+
+  Map<String, Object?> myBookingSegmentKeyboard({
+    required int currentCount,
+    required int pastCount,
+  }) {
+    return TelegramKeyboards.myBookingSegmentKeyboard(
+      currentCount: currentCount,
+      pastCount: pastCount,
     );
   }
 

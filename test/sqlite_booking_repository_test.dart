@@ -115,6 +115,68 @@ void main() {
       await repository.close();
     });
 
+    test('does not count whitelisted trainers in participants limit by default', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Limited session',
+        startsAt: DateTime(2030, 6, 10, 19),
+        location: 'Gym A',
+        participantsLimit: 1,
+      );
+
+      await repository.createPendingBooking(
+        userId: 99001,
+        userUsername: '@zhorenty',
+        training: training,
+      );
+
+      final second = await repository.createPendingBooking(
+        userId: 1002,
+        userUsername: '@runner_1002',
+        training: training,
+      );
+
+      expect(second.created, isTrue);
+
+      await repository.close();
+    });
+
+    test('counts whitelisted trainers in participants limit when enabled', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Limited session',
+        startsAt: DateTime(2030, 6, 10, 19),
+        location: 'Gym A',
+        participantsLimit: 1,
+        includeTrainersInParticipants: true,
+      );
+
+      await repository.createPendingBooking(
+        userId: 99001,
+        userUsername: '@zhorenty',
+        training: training,
+      );
+
+      expect(
+        () => repository.createPendingBooking(
+          userId: 1002,
+          userUsername: '@runner_1002',
+          training: training,
+        ),
+        throwsA(isA<BookingParticipantsLimitExceededException>()),
+      );
+
+      await repository.close();
+    });
+
     test('lists bookings by training keys without cancelled and rejected records', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',

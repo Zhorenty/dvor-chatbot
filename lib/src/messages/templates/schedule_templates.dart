@@ -96,20 +96,44 @@ final class ScheduleTemplates {
     if (trainers.isEmpty) {
       return 'Список тренеров пока пуст. Попробуй чуть позже 🙏';
     }
-    final lines = <String>['🧑‍🏫 <b>Тренерский штаб DVOR</b>'];
+    final lines = <String>[
+      '🧑‍🏫 <b>Тренерский штаб DVOR</b>',
+      'Выбери «Подробнее о тренере», чтобы открыть карточку 👇',
+    ];
     for (var index = 0; index < trainers.length; index++) {
       final trainer = trainers[index];
-      final description =
-          _normalizeTrainerDescription(trainer.description).split('\n').map(_escapeHtml).join('\n');
+      final role = _normalizeTrainerRole(trainer.role);
       lines.addAll(<String>[
         '',
         '👤 <b>${index + 1}. ${_escapeHtml(trainer.name)}</b>',
+        if (role.isNotEmpty) '🎯 ${_escapeHtml(role)}',
         '🔗 ${_trainerLinkLabel(trainer.link)}',
-        '📝 $description',
       ]);
     }
     return lines.join('\n');
   }
+
+  String chooseTrainerProfile(List<TrainerInfo> trainers) {
+    if (trainers.isEmpty) {
+      return 'Список тренеров пока пуст. Попробуй чуть позже 🙏';
+    }
+    return 'Выбери тренера из списка ниже 👇';
+  }
+
+  String trainerProfile(TrainerInfo trainer) {
+    final description =
+        _normalizeTrainerDescription(trainer.description).split('\n').map(_escapeHtml).join('\n');
+    final role = _normalizeTrainerRole(trainer.role);
+    return <String>[
+      '🧑‍🏫 <b>${_escapeHtml(trainer.name)}</b>',
+      if (role.isNotEmpty) '🎯 <b>Направление:</b> ${_escapeHtml(role)}',
+      '🔗 <b>Контакт:</b> ${_trainerLinkLabel(trainer.link)}',
+      '📝 <b>О тренере:</b>',
+      description,
+    ].join('\n');
+  }
+
+  String unknownTrainerSelection() => 'Не смог распознать тренера. Выбери кнопку из списка 👇';
 
   String scheduleRefreshDone() =>
       'Готово! Google Docs обновил ✅\nОбновил расписание и список тренеров.';
@@ -174,6 +198,16 @@ final class ScheduleTemplates {
     if (lowerCoach.contains('команда') ||
         lowerCoach.contains('тренерский штаб') ||
         lowerCoach.contains('несколько')) {
+      return 'Тренеры';
+    }
+    final normalized = lowerCoach.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final hasExplicitListSeparators = normalized.contains(',') ||
+        normalized.contains(';') ||
+        normalized.contains('/') ||
+        normalized.contains(' и ') ||
+        normalized.contains(' & ') ||
+        normalized.contains(' + ');
+    if (hasExplicitListSeparators) {
       return 'Тренеры';
     }
     return 'Тренер';
@@ -251,11 +285,21 @@ final class ScheduleTemplates {
       return null;
     }
     if (trimmed.startsWith('@')) {
-      final value = trimmed.substring(1).trim();
+      final value = _sanitizeTelegramUsername(trimmed.substring(1));
       return value.isEmpty ? null : value;
     }
     if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
-      final value = trimmed.replaceFirst('@', '').trim();
+      final candidateUri = Uri.tryParse('https://$trimmed');
+      final host = candidateUri?.host.toLowerCase();
+      if (host == 't.me' ||
+          host == 'www.t.me' ||
+          host == 'telegram.me' ||
+          host == 'www.telegram.me') {
+        final segment = candidateUri!.pathSegments.isEmpty ? '' : candidateUri.pathSegments.first;
+        final value = _sanitizeTelegramUsername(segment);
+        return value.isEmpty ? null : value;
+      }
+      final value = _sanitizeTelegramUsername(trimmed);
       return value.isEmpty ? null : value;
     }
 
@@ -270,8 +314,28 @@ final class ScheduleTemplates {
         host != 'www.telegram.me') {
       return null;
     }
-    final segment = uri.pathSegments.isEmpty ? '' : uri.pathSegments.first.trim();
-    return segment.isEmpty ? null : segment;
+    final segment = uri.pathSegments.isEmpty ? '' : uri.pathSegments.first;
+    final value = _sanitizeTelegramUsername(segment);
+    return value.isEmpty ? null : value;
+  }
+
+  String _sanitizeTelegramUsername(String raw) {
+    var value = raw.trim();
+    if (value.startsWith('@')) {
+      value = value.substring(1);
+    }
+    final queryIndex = value.indexOf('?');
+    if (queryIndex >= 0) {
+      value = value.substring(0, queryIndex);
+    }
+    final hashIndex = value.indexOf('#');
+    if (hashIndex >= 0) {
+      value = value.substring(0, hashIndex);
+    }
+    if (value.contains('/')) {
+      value = value.split('/').first;
+    }
+    return value.trim();
   }
 
   String _escapeHtml(String value) {
@@ -310,5 +374,9 @@ final class ScheduleTemplates {
     }
 
     return lines.join('\n');
+  }
+
+  String _normalizeTrainerRole(String raw) {
+    return raw.replaceAll('\r\n', '\n').replaceAll('\n', ' ').trim();
   }
 }

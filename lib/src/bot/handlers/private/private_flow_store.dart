@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 
@@ -7,6 +8,8 @@ const Object _privateFlowUnset = Object();
 
 enum PrivateFlowStep {
   selectingScheduleCategory,
+  viewingCoachingStaff,
+  selectingTrainerProfile,
   viewingScheduleCategory,
   selectingBookingCategory,
   selectingParticipantsCategory,
@@ -15,6 +18,7 @@ enum PrivateFlowStep {
   viewingSubscriptionOverview,
   confirmingSubscriptionPayment,
   selectingTraining,
+  selectingBookingListSegment,
   paymentConfirmation,
   selectingBookingToManage,
   selectingBookingAction,
@@ -46,6 +50,7 @@ final class PrivateFlowState {
   const PrivateFlowState({
     required this.step,
     required this.availableTrainings,
+    this.availableTrainers = const <TrainerInfo>[],
     this.availableBookings = const <TrainingBooking>[],
     this.activeBooking,
     this.selectedBooking,
@@ -62,6 +67,7 @@ final class PrivateFlowState {
 
   final PrivateFlowStep step;
   final List<TrainingInfo> availableTrainings;
+  final List<TrainerInfo> availableTrainers;
   final List<TrainingBooking> availableBookings;
   final TrainingBooking? activeBooking;
   final TrainingBooking? selectedBooking;
@@ -78,6 +84,7 @@ final class PrivateFlowState {
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
     List<TrainingInfo>? availableTrainings,
+    List<TrainerInfo>? availableTrainers,
     List<TrainingBooking>? availableBookings,
     Object? activeBooking = _privateFlowUnset,
     Object? selectedBooking = _privateFlowUnset,
@@ -94,6 +101,7 @@ final class PrivateFlowState {
     return PrivateFlowState(
       step: step ?? this.step,
       availableTrainings: availableTrainings ?? this.availableTrainings,
+      availableTrainers: availableTrainers ?? this.availableTrainers,
       availableBookings: availableBookings ?? this.availableBookings,
       activeBooking: identical(activeBooking, _privateFlowUnset)
           ? this.activeBooking

@@ -12,6 +12,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private/private_flow_store.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_static_commands.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_update_router.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
+import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
@@ -20,6 +21,7 @@ import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
+import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
@@ -31,6 +33,7 @@ final class PrivateHandlers {
   static const String _paymentChoiceFullMarker = '__payment_choice_full__';
   static const String _paymentChoicePartialMarker = '__payment_choice_partial__';
   static const int _adminBookingsPageSize = 8;
+  static const int _myBookingsPageSize = 8;
   static const int _yogaTrainerUserId = 857655217;
 
   PrivateHandlers({
@@ -71,6 +74,8 @@ final class PrivateHandlers {
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
   final Set<String> _lowCapacityNotifiedTrainingKeys = <String>{};
   final Set<String> _fullCapacityNotifiedTrainingKeys = <String>{};
+  int? _lastCapacityGroupMessageId;
+  _CapacityGroupNotificationType? _lastCapacityGroupMessageType;
   late final ActivityCatalogService _catalogService =
       ActivityCatalogService(scheduleRepository: _scheduleRepository);
   late final ScheduleQueryService _scheduleQueryService = ScheduleQueryService(
@@ -84,8 +89,11 @@ final class PrivateHandlers {
       PaymentReviewService(bookingRepository: _bookingRepository, catalogService: _catalogService);
   late final EconomicSummaryService _economicSummaryService = EconomicSummaryService(
       bookingRepository: _bookingRepository, catalogService: _catalogService);
-  late final NoblesListService _noblesListService =
-      NoblesListService(bookingRepository: _bookingRepository, catalogService: _catalogService);
+  late final NoblesListService _noblesListService = NoblesListService(
+    bookingRepository: _bookingRepository,
+    catalogService: _catalogService,
+    nowProvider: _nowProvider,
+  );
   final PrivateUpdateRouter _updateRouter = const PrivateUpdateRouter();
   final ScheduleHandler _scheduleHandler = const ScheduleHandler();
   final BookingHandler _bookingHandler = const BookingHandler();
@@ -154,17 +162,29 @@ final class PrivateHandlers {
       }
       switch (flowState?.step) {
         case _PrivateFlowStep.selectingScheduleCategory:
+        case _PrivateFlowStep.viewingCoachingStaff:
         case _PrivateFlowStep.selectingBookingCategory:
         case _PrivateFlowStep.selectingParticipantsCategory:
         case _PrivateFlowStep.selectingPaymentsQueueCategory:
         case _PrivateFlowStep.selectingEconomicSummaryPeriod:
         case _PrivateFlowStep.viewingSubscriptionOverview:
-        case _PrivateFlowStep.selectingBookingToManage:
+        case _PrivateFlowStep.selectingBookingListSegment:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
             chatId,
             'Вернул в главное меню 👇',
             replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+        case _PrivateFlowStep.selectingTrainerProfile:
+          final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
+          _flowByUserId[userId] = flowState!.copyWith(step: _PrivateFlowStep.viewingCoachingStaff);
+          await _sender.sendMessage(
+            chatId,
+            _templates.coachingStaff(trainers),
+            replyMarkup: _templates.coachingStaffActionsKeyboard(),
+            parseMode: 'HTML',
+            disableWebPagePreview: true,
           );
           return true;
         case _PrivateFlowStep.viewingScheduleCategory:
@@ -179,6 +199,7 @@ final class PrivateHandlers {
         case _PrivateFlowStep.selectingTraining:
           final selectedCategory = flowState?.selectedCategory;
           if (selectedCategory != null && flowState?.bookingFromSchedulePreview == true) {
+            await _refreshTrainerDirectoryForSchedule();
             _flowByUserId[userId] = flowState!.copyWith(
               step: _PrivateFlowStep.viewingScheduleCategory,
               availableTrainings: const <TrainingInfo>[],
@@ -226,14 +247,14 @@ final class PrivateHandlers {
           );
           return true;
         case _PrivateFlowStep.selectingBookingAction:
-          final bookings = flowState!.availableBookings;
-          _flowByUserId[userId] =
-              flowState.copyWith(step: _PrivateFlowStep.selectingBookingToManage);
-          await _sender.sendMessage(
-            chatId,
-            _templates.chooseBookingToManage(bookings),
-            replyMarkup: _templates.bookingManagementSelectionKeyboard(bookings),
+          _flowByUserId[userId] = flowState!.copyWith(
+            step: _PrivateFlowStep.selectingBookingToManage,
+            selectedBooking: null,
           );
+          await _sendMyBookingListPage(chatId: chatId, userId: userId);
+          return true;
+        case _PrivateFlowStep.selectingBookingToManage:
+          await _openMyBookingListSegment(chatId: chatId, userId: userId);
           return true;
         case _PrivateFlowStep.selectingRescheduleTraining:
           final selectedBooking = flowState?.selectedBooking;
@@ -480,6 +501,70 @@ final class PrivateHandlers {
     }
 
     if (userId != null &&
+        flowState?.step == _PrivateFlowStep.viewingCoachingStaff &&
+        text == MessageTemplates.buttonCoachDetails) {
+      final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
+      if (trainers.isEmpty) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.coachingStaff(trainers),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          parseMode: 'HTML',
+          disableWebPagePreview: true,
+        );
+        return true;
+      }
+      _flowByUserId[userId] = flowState!.copyWith(step: _PrivateFlowStep.selectingTrainerProfile);
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseTrainerProfile(trainers),
+        replyMarkup: _templates.trainerSelectionKeyboard(trainers),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.viewingCoachingStaff &&
+        text != null &&
+        !text.startsWith('/')) {
+      final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
+      await _sender.sendMessage(
+        chatId,
+        _templates.coachingStaff(trainers),
+        replyMarkup: _templates.coachingStaffActionsKeyboard(),
+        parseMode: 'HTML',
+        disableWebPagePreview: true,
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingTrainerProfile &&
+        text != null &&
+        !text.startsWith('/')) {
+      final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
+      final index = _parseTrainerSelectionIndex(text);
+      if (index == null || index < 1 || index > trainers.length) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownTrainerSelection(),
+          replyMarkup: _templates.trainerSelectionKeyboard(trainers),
+        );
+        return true;
+      }
+      final trainer = trainers[index - 1];
+      await _sender.sendMessage(
+        chatId,
+        _templates.trainerProfile(trainer),
+        replyMarkup: _templates.trainerSelectionKeyboard(trainers),
+        parseMode: 'HTML',
+        disableWebPagePreview: true,
+      );
+      return true;
+    }
+
+    if (userId != null &&
         flowState?.step == _PrivateFlowStep.selectingScheduleCategory &&
         text != null &&
         !text.startsWith('/')) {
@@ -497,6 +582,7 @@ final class PrivateHandlers {
         availableTrainings: const <TrainingInfo>[],
         selectedCategory: category,
       );
+      await _refreshTrainerDirectoryForSchedule();
       await _sender.sendMessage(
         chatId,
         _scheduleTextByCategory(category),
@@ -595,11 +681,12 @@ final class PrivateHandlers {
         return true;
       }
       final selectedTraining = flowState.availableTrainings[index - 1];
+      final username = context.from?['username']?.toString();
       late final BookingCreateResult result;
       try {
         result = await _bookingRepository.createPendingBooking(
           userId: userId,
-          userUsername: context.from?['username']?.toString(),
+          userUsername: username,
           training: selectedTraining,
         );
       } on BookingParticipantsLimitExceededException {
@@ -610,15 +697,16 @@ final class PrivateHandlers {
         );
         return true;
       }
-      if (result.created) {
-        await _maybeNotifyGroupAboutCapacity(selectedTraining);
-      }
       if (_isFreeActivity(selectedTraining)) {
         final paidBooking =
             await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
         final bookingForResponse =
             _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
         if (result.created) {
+          await _maybeNotifyGroupAboutCapacity(
+            selectedTraining,
+            bookingStatus: bookingForResponse.status,
+          );
           await _notifyAdminAboutFreeBookingCreated(bookingForResponse);
         }
         _flowByUserId.remove(userId);
@@ -628,6 +716,30 @@ final class PrivateHandlers {
               ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
               : _templates.bookingAlreadyExists(bookingForResponse),
           replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          parseMode: 'HTML',
+        );
+        return true;
+      }
+      if (_isWhitelistedTrainerBooking(userId: userId, username: username)) {
+        final paidBooking =
+            await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
+        final bookingForResponse =
+            _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+        _flowByUserId.remove(userId);
+        if (result.created) {
+          await _maybeNotifyGroupAboutCapacity(
+            selectedTraining,
+            bookingStatus: bookingForResponse.status,
+          );
+        }
+        await _notifyAdminAboutTrainerBookingCreated(bookingForResponse);
+        await _sender.sendMessage(
+          chatId,
+          result.created
+              ? _templates.bookingCreatedForWhitelistedTrainer(bookingForResponse)
+              : _templates.bookingAlreadyExists(bookingForResponse),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          parseMode: 'HTML',
         );
         return true;
       }
@@ -649,6 +761,7 @@ final class PrivateHandlers {
           showCancelBooking: _canCancelBookingByPolicy(result.booking),
           showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(result.booking),
         ),
+        parseMode: 'HTML',
       );
       return true;
     }
@@ -717,32 +830,80 @@ final class PrivateHandlers {
         chatId: chatId,
         username: context.from?['username']?.toString(),
       );
-      final now = _nowProvider();
       final bookings = await _bookingRepository.listUserBookings(userId);
-      final activeBookings = bookings
-          .where(
-            (booking) =>
-                booking.status != BookingStatus.cancelled && !booking.startsAt.isBefore(now),
-          )
-          .toList(growable: false);
+      if (bookings.isEmpty) {
+        await _sender.sendMessage(
+          chatId,
+          'У тебя пока нет записей на мероприятия 🙃',
+          replyMarkup: _templates.profileActionsKeyboard(),
+        );
+        return true;
+      }
+      final now = _nowProvider();
+      final currentCount =
+          bookings.where((booking) => !_isArchivedBookingAt(booking, now: now)).length;
+      final pastCount = bookings.length - currentCount;
+      _flowByUserId[userId] = _PrivateFlowState(
+        step: _PrivateFlowStep.selectingBookingListSegment,
+        availableTrainings: const <TrainingInfo>[],
+        availableBookings: bookings,
+      );
       await _sender.sendMessage(
         chatId,
-        _templates.myBookings(
-          bookings,
-          now: now,
+        _templates.chooseMyBookingsSegment(),
+        replyMarkup: _templates.myBookingSegmentKeyboard(
+          currentCount: currentCount,
+          pastCount: pastCount,
         ),
-        replyMarkup: activeBookings.isEmpty
-            ? _templates.profileActionsKeyboard()
-            : _templates.bookingManagementSelectionKeyboard(activeBookings),
         parseMode: 'HTML',
       );
-      if (activeBookings.isNotEmpty) {
-        _flowByUserId[userId] = _PrivateFlowState(
-          step: _PrivateFlowStep.selectingBookingToManage,
-          availableTrainings: const <TrainingInfo>[],
-          availableBookings: activeBookings,
-        );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingBookingListSegment &&
+        text != null &&
+        !text.startsWith('/')) {
+      final past = _parseMyBookingSegmentSelection(text);
+      if (past == null) {
+        final selectedBookingId = _parseBookingSelectionId(text);
+        if (selectedBookingId != null) {
+          final now = _nowProvider();
+          final currentBookings = flowState!.availableBookings
+              .where((booking) => !_isArchivedBookingAt(booking, now: now))
+              .toList(growable: false);
+          TrainingBooking? selectedBooking;
+          for (final booking in currentBookings) {
+            if (booking.id == selectedBookingId) {
+              selectedBooking = booking;
+              break;
+            }
+          }
+          if (selectedBooking != null) {
+            _flowByUserId[userId] = flowState.copyWith(
+              step: _PrivateFlowStep.selectingBookingAction,
+              adminViewingArchived: false,
+              availableBookings: currentBookings,
+              selectedBooking: selectedBooking,
+            );
+            await _sender.sendMessage(
+              chatId,
+              _templates.bookingActions(selectedBooking),
+              replyMarkup: _bookingActionsKeyboard(selectedBooking),
+            );
+            return true;
+          }
+        }
+        await _openMyBookingListSegment(chatId: chatId, userId: userId);
+        return true;
       }
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingBookingToManage,
+        adminViewingArchived: past,
+        selectedBooking: null,
+        adminBookingsPage: 0,
+      );
+      await _sendMyBookingListPage(chatId: chatId, userId: userId);
       return true;
     }
 
@@ -750,6 +911,20 @@ final class PrivateHandlers {
         flowState?.step == _PrivateFlowStep.selectingBookingToManage &&
         text != null &&
         !text.startsWith('/')) {
+      if (text == MessageTemplates.buttonBookingsNextPage) {
+        _flowByUserId[userId] = flowState!.copyWith(
+          adminBookingsPage: flowState.adminBookingsPage + 1,
+        );
+        await _sendMyBookingListPage(chatId: chatId, userId: userId);
+        return true;
+      }
+      if (text == MessageTemplates.buttonBookingsPreviousPage) {
+        _flowByUserId[userId] = flowState!.copyWith(
+          adminBookingsPage: flowState.adminBookingsPage - 1,
+        );
+        await _sendMyBookingListPage(chatId: chatId, userId: userId);
+        return true;
+      }
       final currentFlow = flowState!;
       final selectedBookingId = _parseBookingSelectionId(text);
       TrainingBooking? selectedBooking;
@@ -760,11 +935,7 @@ final class PrivateHandlers {
         }
       }
       if (selectedBooking == null) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.chooseBookingToManage(currentFlow.availableBookings),
-          replyMarkup: _templates.bookingManagementSelectionKeyboard(currentFlow.availableBookings),
-        );
+        await _sendMyBookingListPage(chatId: chatId, userId: userId);
         return true;
       }
       _flowByUserId[userId] = currentFlow.copyWith(
@@ -1210,6 +1381,10 @@ final class PrivateHandlers {
       } else {
         await _notifyAdminAboutEveryFifthBonusApplied(booking);
       }
+      await _maybeNotifyGroupAboutCapacity(
+        _trainingInfoFromBooking(booking),
+        bookingStatus: booking.status,
+      );
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
         chatId,
@@ -2267,6 +2442,10 @@ final class PrivateHandlers {
           moderatorUserId: userId,
           moderatorUsername: context.from?['username']?.toString(),
         );
+        await _maybeNotifyGroupAboutCapacity(
+          _trainingInfoFromBooking(booking),
+          bookingStatus: booking.status,
+        );
       }
       await _sendAdminMessage(
         chatId,
@@ -2337,6 +2516,13 @@ final class PrivateHandlers {
 
   String _scheduleTextByCategory(_ActivityCategory category) {
     return _scheduleQueryService.scheduleText(category);
+  }
+
+  Future<void> _refreshTrainerDirectoryForSchedule() async {
+    final refreshOk = await _trainerDirectoryRepository.refresh();
+    if (!refreshOk) {
+      l.w('Trainer directory refresh failed before schedule rendering. Using cached trainers.');
+    }
   }
 
   List<TrainingInfo> _bookableItemsByCategory(_ActivityCategory category) {
@@ -2436,6 +2622,7 @@ final class PrivateHandlers {
         bookingsByTrainingKey: normalizedByTraining,
         title: copy.title,
         emptyText: copy.emptyText,
+        isTrainerBooking: _isWhitelistedTrainerBookingByBooking,
       ),
       replyMarkup: _templates.privateMenuKeyboard(
         isAdmin: isAdmin,
@@ -2664,12 +2851,31 @@ final class PrivateHandlers {
     return _updateRouter.parseBookingIdSelection(text);
   }
 
+  int? _parseTrainerSelectionIndex(String text) {
+    final match = RegExp(r'(\d+)\.').firstMatch(text);
+    if (match == null) {
+      return null;
+    }
+    return int.tryParse(match.group(1) ?? '');
+  }
+
   bool? _parseBookingSegmentSelection(String text) {
     final normalized = text.trim().toLowerCase();
     if (normalized.contains('актив')) {
       return false;
     }
     if (normalized.contains('архив')) {
+      return true;
+    }
+    return null;
+  }
+
+  bool? _parseMyBookingSegmentSelection(String text) {
+    final normalized = text.trim().toLowerCase();
+    if (normalized.contains('актуал')) {
+      return false;
+    }
+    if (normalized.contains('прошед')) {
       return true;
     }
     return null;
@@ -2706,6 +2912,90 @@ final class PrivateHandlers {
       return null;
     }
     return trimmed.startsWith('@') ? trimmed.substring(1) : trimmed;
+  }
+
+  Future<void> _openMyBookingListSegment({
+    required int chatId,
+    required int userId,
+  }) async {
+    final bookings = await _bookingRepository.listUserBookings(userId);
+    if (bookings.isEmpty) {
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        'У тебя пока нет записей на мероприятия 🙃',
+        replyMarkup: _templates.profileActionsKeyboard(),
+      );
+      return;
+    }
+    final now = _nowProvider();
+    final currentCount =
+        bookings.where((booking) => !_isArchivedBookingAt(booking, now: now)).length;
+    final pastCount = bookings.length - currentCount;
+    _flowByUserId[userId] = _PrivateFlowState(
+      step: _PrivateFlowStep.selectingBookingListSegment,
+      availableTrainings: const <TrainingInfo>[],
+      availableBookings: bookings,
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.chooseMyBookingsSegment(),
+      replyMarkup: _templates.myBookingSegmentKeyboard(
+        currentCount: currentCount,
+        pastCount: pastCount,
+      ),
+      parseMode: 'HTML',
+    );
+  }
+
+  Future<void> _sendMyBookingListPage({
+    required int chatId,
+    required int userId,
+  }) async {
+    final flowState = _flowByUserId[userId];
+    if (flowState == null || flowState.step != _PrivateFlowStep.selectingBookingToManage) {
+      return;
+    }
+    final now = _nowProvider();
+    final allBookings = _filterBookingsByArchivedSegment(
+      flowState.availableBookings,
+      archived: flowState.adminViewingArchived,
+      now: now,
+    );
+    final maxPage = _maxMyBookingsPage(allBookings);
+    final page = flowState.adminBookingsPage.clamp(0, maxPage);
+    final start = page * _myBookingsPageSize;
+    final end = (start + _myBookingsPageSize).clamp(0, allBookings.length);
+    final pageBookings = allBookings.sublist(start, end);
+    _flowByUserId[userId] = flowState.copyWith(
+      adminBookingsPage: page,
+      availableBookings: allBookings,
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.chooseMyBookingFromList(
+        pageBookings,
+        past: flowState.adminViewingArchived,
+        page: page + 1,
+        totalPages: maxPage + 1,
+        totalCount: allBookings.length,
+      ),
+      replyMarkup: allBookings.isEmpty
+          ? _templates.myBookingSegmentKeyboard(currentCount: 0, pastCount: 0)
+          : _templates.myBookingSelectionKeyboard(
+              pageBookings,
+              hasPreviousPage: page > 0,
+              hasNextPage: page < maxPage,
+            ),
+      parseMode: 'HTML',
+    );
+  }
+
+  int _maxMyBookingsPage(List<TrainingBooking> bookings) {
+    if (bookings.isEmpty) {
+      return 0;
+    }
+    return (bookings.length - 1) ~/ _myBookingsPageSize;
   }
 
   Future<void> _openAdminBookingListSegment({
@@ -3233,7 +3523,28 @@ final class PrivateHandlers {
     }
   }
 
-  Future<void> _maybeNotifyGroupAboutCapacity(TrainingInfo training) async {
+  Future<void> _notifyAdminAboutTrainerBookingCreated(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.trainerBookingCreatedAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about trainer booking creation: $error', stackTrace);
+    }
+  }
+
+  Future<void> _maybeNotifyGroupAboutCapacity(
+    TrainingInfo training, {
+    required BookingStatus bookingStatus,
+  }) async {
+    if (!_isCapacityConfirmedBookingStatus(bookingStatus)) {
+      return;
+    }
     final targetChatId = _targetChatId;
     final participantsLimit = training.participantsLimit;
     if (targetChatId == null || participantsLimit == null || participantsLimit <= 0) {
@@ -3244,19 +3555,29 @@ final class PrivateHandlers {
       <String>{training.sessionKey},
       limit: participantsLimit,
     );
-    final freeSpots = participantsLimit - activeBookings.length;
+    final confirmedBookings = activeBookings
+        .where((booking) => _isCapacityConfirmedBookingStatus(booking.status))
+        .toList();
+    final participantsCount = _countParticipantsForTraining(
+      bookings: confirmedBookings,
+      training: training,
+    );
+    final freeSpots = participantsLimit - participantsCount;
     if (freeSpots <= 0) {
       if (_fullCapacityNotifiedTrainingKeys.contains(training.sessionKey)) {
         return;
       }
       try {
-        await _sender.sendMessage(
+        final messageId = await _sender.sendMessage(
           targetChatId,
           _templates.groupTrainingNoSpotsLeft(
             training: training,
             participantsLimit: participantsLimit,
           ),
+          parseMode: 'HTML',
         );
+        _lastCapacityGroupMessageId = messageId;
+        _lastCapacityGroupMessageType = _CapacityGroupNotificationType.noSpots;
         _fullCapacityNotifiedTrainingKeys.add(training.sessionKey);
         _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
       } on Object catch (error, stackTrace) {
@@ -3271,14 +3592,34 @@ final class PrivateHandlers {
     }
 
     try {
-      await _sender.sendMessage(
+      final previousLowCapacityMessageId =
+          _lastCapacityGroupMessageType == _CapacityGroupNotificationType.lowSpots
+              ? _lastCapacityGroupMessageId
+              : null;
+      if (previousLowCapacityMessageId != null) {
+        try {
+          await _sender.deleteMessage(
+            targetChatId,
+            messageId: previousLowCapacityMessageId,
+          );
+        } on Object catch (error, stackTrace) {
+          l.w(
+            'Failed to delete previous low-capacity group notification: $error',
+            stackTrace,
+          );
+        }
+      }
+      final messageId = await _sender.sendMessage(
         targetChatId,
         _templates.groupTrainingLowSpots(
           training: training,
           freeSpots: freeSpots,
           participantsLimit: participantsLimit,
         ),
+        parseMode: 'HTML',
       );
+      _lastCapacityGroupMessageId = messageId;
+      _lastCapacityGroupMessageType = _CapacityGroupNotificationType.lowSpots;
       _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify group about low training capacity: $error', stackTrace);
@@ -3327,6 +3668,47 @@ final class PrivateHandlers {
       return false;
     }
     return paymentNote.startsWith(_paymentChoicePartialMarker);
+  }
+
+  int _countParticipantsForTraining({
+    required List<TrainingBooking> bookings,
+    required TrainingInfo training,
+  }) {
+    if (training.includeTrainersInParticipants) {
+      return bookings.length;
+    }
+    return bookings
+        .where((booking) => !_isWhitelistedTrainerBooking(
+              userId: booking.userId,
+              username: booking.userUsername,
+            ))
+        .length;
+  }
+
+  bool _isWhitelistedTrainerBooking({
+    required int userId,
+    required String? username,
+  }) {
+    return isTrainerBookingWhitelisted(userId: userId, username: username);
+  }
+
+  bool _isWhitelistedTrainerBookingByBooking(TrainingBooking booking) {
+    return _isWhitelistedTrainerBooking(userId: booking.userId, username: booking.userUsername);
+  }
+
+  bool _isCapacityConfirmedBookingStatus(BookingStatus status) {
+    return status == BookingStatus.paid ||
+        status == BookingStatus.partialPaid ||
+        status == BookingStatus.freeTraining;
+  }
+
+  TrainingInfo _trainingInfoFromBooking(TrainingBooking booking) {
+    return TrainingInfo(
+      title: booking.trainingTitle,
+      startsAt: booking.startsAt,
+      location: booking.location,
+      category: _catalogService.categoryForBooking(booking),
+    );
   }
 
   Future<bool> _openPendingPaymentFlow({
@@ -3436,6 +3818,8 @@ typedef _PrivateFlowStep = PrivateFlowStep;
 typedef _ActivityCategory = ActivityCategory;
 
 enum _FreeTrainingBonusType { starter, everyFifth }
+
+enum _CapacityGroupNotificationType { lowSpots, noSpots }
 
 enum _EconomicSummaryRange {
   currentWeek('за текущую неделю'),

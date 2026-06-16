@@ -3,6 +3,7 @@ final class MessageCopy {
 
   static const String buttonTrainings = '📅 Расписание';
   static const String buttonCoachingStaff = '🧑‍🏫 Тренерский штаб';
+  static const String buttonCoachDetails = '📖 Подробнее о тренере';
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonSubscription = '💎 Абонемент';
   static const String buttonProfile = '👤 Профиль';
@@ -46,6 +47,8 @@ final class MessageCopy {
   static const String buttonBackToBookingsList = '📋 К списку записей';
   static const String buttonBookingsPreviousPage = '⬅️ Предыдущая страница';
   static const String buttonBookingsNextPage = '➡️ Следующая страница';
+  static const String buttonCurrentBookings = '🟢 Актуальные';
+  static const String buttonPastBookings = '🗃 Прошедшие';
   static const String buttonCreateAnotherBooking = '➕ Создать еще';
   static const String buttonConfirmCreateBooking = '✅ Создать';
   static const String buttonCancelCreateBooking = '↩️ Не создавать';
