@@ -200,6 +200,16 @@ final class ScheduleTemplates {
         lowerCoach.contains('несколько')) {
       return 'Тренеры';
     }
+    final normalized = lowerCoach.replaceAll(RegExp(r'\s+'), ' ').trim();
+    final hasExplicitListSeparators = normalized.contains(',') ||
+        normalized.contains(';') ||
+        normalized.contains('/') ||
+        normalized.contains(' и ') ||
+        normalized.contains(' & ') ||
+        normalized.contains(' + ');
+    if (hasExplicitListSeparators) {
+      return 'Тренеры';
+    }
     return 'Тренер';
   }
 

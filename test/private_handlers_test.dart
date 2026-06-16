@@ -476,7 +476,7 @@ void main() {
         contains('<a href="https://t.me/maria_run">Мария Романова</a>'),
       );
       expect(text, contains('<a href="https://t.me/guest_coach">гость</a>'));
-      expect(text, contains('🧑‍🏫 Тренер:'));
+      expect(text, contains('🧑‍🏫 Тренеры:'));
       expect(sender.messages.last.parseMode, 'HTML');
     });
 
