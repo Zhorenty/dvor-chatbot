@@ -102,6 +102,7 @@ final class PrivateStaticCommands {
           canViewParticipantsList: canViewParticipantsList,
         ),
         parseMode: 'HTML',
+        disableWebPagePreview: true,
       );
       return true;
     }

@@ -311,6 +311,7 @@ void main() {
       );
       expect(sender.messages.single.text, contains('\n📝 Беговые тренировки\n\nи восстановление'));
       expect(sender.messages.single.text, isNot(contains('\n   🔗')));
+      expect(sender.messages.single.disableWebPagePreview, isTrue);
       expect(
         _keyboardTexts(sender.messages.single.replyMarkup),
         contains(MessageTemplates.buttonCoachingStaff),
