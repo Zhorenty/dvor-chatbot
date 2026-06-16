@@ -595,6 +595,7 @@ final class MessageTemplates {
     required bool starterBonusAvailable,
     required MembershipLevel membershipLevel,
     DateTime? subscriptionActiveUntil,
+    int? subscriptionRemainingProTrainings,
     String? subscriptionRequestStatusLine,
     required int subscriptionTotalApprovedCount,
     DateTime? subscriptionCurrentPeriodStart,
@@ -618,6 +619,11 @@ final class MessageTemplates {
         ? '• ⏳ <b>До конца PRO:</b> '
             '<b>${subscriptionActiveUntil.difference(currentMoment).inDays.clamp(0, 3650)}</b> дн.'
         : null;
+    final remainingProTrainingsText =
+        membershipLevel == MembershipLevel.pro && subscriptionRemainingProTrainings != null
+            ? '• 🏋️ <b>Осталось тренировок PRO:</b> '
+                '<b>${subscriptionRemainingProTrainings.clamp(0, 8)}/8</b>'
+            : null;
     final currentPeriodText = subscriptionCurrentPeriodStart == null ||
             subscriptionActiveUntil == null
         ? null
@@ -630,6 +636,7 @@ final class MessageTemplates {
         '🔐 <b>Текущий статус</b>\n'
         '• $subscriptionHint\n'
         '${daysLeftText == null ? '' : '$daysLeftText\n'}'
+        '${remainingProTrainingsText == null ? '' : '$remainingProTrainingsText\n'}'
         '${currentPeriodText == null ? '' : '$currentPeriodText\n'}'
         '${requestStatusText == null ? '' : '$requestStatusText\n'}'
         '• 📚 <b>Оформлений/продлений:</b> <b>$subscriptionTotalApprovedCount</b>\n\n'
@@ -648,6 +655,7 @@ final class MessageTemplates {
   String subscriptionOverview({
     required MembershipLevel membershipLevel,
     DateTime? activeUntil,
+    int? remainingProTrainings,
   }) {
     final untilLabel =
         activeUntil == null ? null : DateFormat('dd.MM.yyyy').format(activeUntil.toLocal());
@@ -670,6 +678,8 @@ final class MessageTemplates {
     if (membershipLevel == MembershipLevel.pro) {
       lines.addAll(<String>[
         '',
+        if (remainingProTrainings != null)
+          '🏋️ <b>Осталось тренировок в текущем PRO:</b> <b>${remainingProTrainings.clamp(0, 8)}/8</b>',
         '🔄 <b>Продление доступно уже сейчас:</b> нажми «${MessageCopy.buttonSubscribeApply}» и отправь чек.',
         'После подтверждения продлим абонемент еще на 1 месяц ✅',
       ]);

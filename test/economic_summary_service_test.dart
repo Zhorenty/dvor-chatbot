@@ -161,6 +161,15 @@ void main() {
           trainingPrice: -100,
           updatedAt: DateTime(2026, 6, 10, 10),
         ),
+        fakeBooking(
+          id: 20,
+          trainingKey: 'trainings|20',
+          title: 'Включено в PRO',
+          status: BookingStatus.paid,
+          trainingPrice: 1500,
+          paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+          updatedAt: DateTime(2026, 6, 11, 10),
+        ),
       ];
     final service = EconomicSummaryService(
       bookingRepository: bookingRepository,
@@ -173,9 +182,9 @@ void main() {
 
     expect(summary.totalRevenue, 11000);
     expect(summary.paidBookingsCount, 6);
-    expect(summary.freeBookingsCount, 3);
+    expect(summary.freeBookingsCount, 4);
     expect(summary.starterFreeBookingsCount, 1);
-    expect(summary.regularFreeBookingsCount, 2);
+    expect(summary.regularFreeBookingsCount, 3);
     expect(summary.everyFifthFreeBookingsCount, 0);
     expect(summary.unknownPriceBookingsCount, 0);
     expect(summary.averageCheck, 1833);

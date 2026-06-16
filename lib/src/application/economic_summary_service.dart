@@ -95,6 +95,11 @@ final class EconomicSummaryService {
         everyFifthFreeBookingsCount++;
         continue;
       }
+      if (paymentNote == MessageFormatters.proIncludedTrainingPaymentNoteMarker) {
+        freeBookingsCount++;
+        regularFreeBookingsCount++;
+        continue;
+      }
       if (price != null && price <= 0) {
         freeBookingsCount++;
         regularFreeBookingsCount++;
