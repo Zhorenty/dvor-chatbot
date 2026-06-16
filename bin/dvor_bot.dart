@@ -11,8 +11,10 @@ import 'package:dvor_chatbot/src/data/google_sheets_trainer_directory_repository
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/sqlite_subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/static_schedule_repository.dart';
 import 'package:dvor_chatbot/src/data/static_trainer_directory_repository.dart';
+import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -33,8 +35,10 @@ Future<void> main(List<String> args) async {
   final scheduleRepository = _createScheduleRepository(config);
   final trainerDirectoryRepository = _createTrainerDirectoryRepository(config);
   final bookingRepository = _createBookingRepository(config);
+  final subscriptionRepository = _createSubscriptionRepository(config);
   final onboardingRepository = _createOnboardingRepository(config);
   await bookingRepository.init();
+  await subscriptionRepository.init();
   await onboardingRepository.init();
 
   final runner = BotRunner(
@@ -43,12 +47,14 @@ Future<void> main(List<String> args) async {
     scheduleRepository: scheduleRepository,
     bookingRepository: bookingRepository,
     onboardingRepository: onboardingRepository,
+    subscriptionRepository: subscriptionRepository,
     sender: client,
     templates: templates,
     privateHandlers: PrivateHandlers(
       sender: client,
       scheduleRepository: scheduleRepository,
       bookingRepository: bookingRepository,
+      subscriptionRepository: subscriptionRepository,
       onboardingRepository: onboardingRepository,
       trainerDirectoryRepository: trainerDirectoryRepository,
       templates: templates,
@@ -77,6 +83,7 @@ Future<void> main(List<String> args) async {
   } finally {
     await runner.stop();
     await bookingRepository.close();
+    await subscriptionRepository.close();
     await onboardingRepository.close();
   }
 }
@@ -126,6 +133,12 @@ BookingRepository _createBookingRepository(AppConfig config) {
 
 OnboardingRepository _createOnboardingRepository(AppConfig config) {
   return SqliteOnboardingRepository(
+    dbPath: config.bookingsDbPath,
+  );
+}
+
+SubscriptionRepository _createSubscriptionRepository(AppConfig config) {
+  return SqliteSubscriptionRepository(
     dbPath: config.bookingsDbPath,
   );
 }

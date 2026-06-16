@@ -2,6 +2,7 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -27,6 +28,7 @@ final class MessageTemplates {
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
   static const String buttonCoachDetails = MessageCopy.buttonCoachDetails;
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
+  static const String buttonSubscription = MessageCopy.buttonSubscription;
   static const String buttonProfile = MessageCopy.buttonProfile;
   static const String buttonProfileBookings = MessageCopy.buttonProfileBookings;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
@@ -46,6 +48,23 @@ final class MessageTemplates {
   static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
   static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
   static const String buttonEconomicSummary = MessageCopy.buttonEconomicSummary;
+  static const String buttonSubscriptionsAdmin = MessageCopy.buttonSubscriptionsAdmin;
+  static const String buttonSubscriptionsList = MessageCopy.buttonSubscriptionsList;
+  static const String buttonSubscribersManagement = MessageCopy.buttonSubscribersManagement;
+  static const String buttonSubscribeApply = MessageCopy.buttonSubscribeApply;
+  static const String buttonRenewSubscription = MessageCopy.buttonRenewSubscription;
+  static const String buttonSubscriptionsFilterActive = MessageCopy.buttonSubscriptionsFilterActive;
+  static const String buttonSubscriptionsFilterExpiring =
+      MessageCopy.buttonSubscriptionsFilterExpiring;
+  static const String buttonSubscriptionsFilterPending =
+      MessageCopy.buttonSubscriptionsFilterPending;
+  static const String buttonSubscriptionsFilterCancelled =
+      MessageCopy.buttonSubscriptionsFilterCancelled;
+  static const String buttonSubscriptionsSearch = MessageCopy.buttonSubscriptionsSearch;
+  static const String buttonSkipComment = MessageCopy.buttonSkipComment;
+  static const String buttonReasonNotConfirmed = MessageCopy.buttonReasonNotConfirmed;
+  static const String buttonReasonWrongAmount = MessageCopy.buttonReasonWrongAmount;
+  static const String buttonReasonDuplicate = MessageCopy.buttonReasonDuplicate;
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;
@@ -84,6 +103,12 @@ final class MessageTemplates {
       MessageCopy.callbackApprovePartialPaymentPrefix;
   static const String callbackRejectPaymentPrefix = MessageCopy.callbackRejectPaymentPrefix;
   static const String callbackOpenPaymentsQueue = MessageCopy.callbackOpenPaymentsQueue;
+  static const String callbackApproveSubscriptionPrefix =
+      MessageCopy.callbackApproveSubscriptionPrefix;
+  static const String callbackRejectSubscriptionPrefix =
+      MessageCopy.callbackRejectSubscriptionPrefix;
+  static const String callbackCancelSubscriptionPrefix =
+      MessageCopy.callbackCancelSubscriptionPrefix;
   static const String scheduleDocumentUrl = MessageCopy.scheduleDocumentUrl;
 
   String privateWelcome() {
@@ -568,14 +593,46 @@ final class MessageTemplates {
     required int completedTrainingsCount,
     required int availableEveryFifthRewards,
     required bool starterBonusAvailable,
+    required MembershipLevel membershipLevel,
+    DateTime? subscriptionActiveUntil,
+    String? subscriptionRequestStatusLine,
+    required int subscriptionTotalApprovedCount,
+    DateTime? subscriptionCurrentPeriodStart,
+    DateTime? now,
   }) {
     final progressToNextFree = completedTrainingsCount % 4;
     final trainingsLeftForNextFree = progressToNextFree == 0 ? 4 : 4 - progressToNextFree;
     final rewardsHint = availableEveryFifthRewards > 0
         ? '🎁 <b>Бесплатных по бонусу «каждая 5-я»:</b> <b>$availableEveryFifthRewards</b>'
-        : '🎯 <b>До следующей бесплатной:</b> <b>$trainingsLeftForNextFree</b>';
-    final starterHint = starterBonusAvailable ? '• ⚡️ <b>Стартовая бесплатная:</b> доступна\n' : '';
+        : '🎯 <b>До следующей бесплатной:</b> <b>$trainingsLeftForNextFree</b> '
+            '(по правилу «каждая 5-я»)';
+    final starterHint = starterBonusAvailable
+        ? '⚡️ <b>Стартовая бесплатная:</b> доступна'
+        : '⚡️ <b>Стартовая бесплатная:</b> недоступна';
+    final subscriptionHint = membershipLevel == MembershipLevel.pro
+        ? '💎 <b>Абонемент:</b> PRO'
+            '${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
+        : '💎 <b>Абонемент:</b> Normal';
+    final currentMoment = now ?? DateTime.now();
+    final daysLeftText = membershipLevel == MembershipLevel.pro && subscriptionActiveUntil != null
+        ? '• ⏳ <b>До конца PRO:</b> '
+            '<b>${subscriptionActiveUntil.difference(currentMoment).inDays.clamp(0, 3650)}</b> дн.'
+        : null;
+    final currentPeriodText = subscriptionCurrentPeriodStart == null ||
+            subscriptionActiveUntil == null
+        ? null
+        : '• 📆 <b>Текущий период:</b> ${DateFormat('dd.MM.yyyy').format(subscriptionCurrentPeriodStart)}'
+            ' — ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}';
+    final requestStatusText = subscriptionRequestStatusLine == null
+        ? null
+        : '• 🧾 <b>Заявка:</b> $subscriptionRequestStatusLine';
     return '👤 <b>Профиль спортсмена DVOR</b>\n\n'
+        '🔐 <b>Текущий статус</b>\n'
+        '• $subscriptionHint\n'
+        '${daysLeftText == null ? '' : '$daysLeftText\n'}'
+        '${currentPeriodText == null ? '' : '$currentPeriodText\n'}'
+        '${requestStatusText == null ? '' : '$requestStatusText\n'}'
+        '• 📚 <b>Оформлений/продлений:</b> <b>$subscriptionTotalApprovedCount</b>\n\n'
         '📊 <b>Твоя статистика</b>\n'
         '• Всего записей: <b>$totalBookings</b>\n'
         '• Активные: <b>$activeBookings</b>\n'
@@ -586,6 +643,248 @@ final class MessageTemplates {
         '• $rewardsHint\n'
         '$starterHint\n'
         'Нажми «${MessageCopy.buttonProfileBookings}», чтобы открыть список записей и управление ими.';
+  }
+
+  String subscriptionOverview({
+    required MembershipLevel membershipLevel,
+    DateTime? activeUntil,
+  }) {
+    final untilLabel =
+        activeUntil == null ? null : DateFormat('dd.MM.yyyy').format(activeUntil.toLocal());
+    final statusLabel = membershipLevel == MembershipLevel.pro
+        ? '<b>PRO</b>${untilLabel == null ? '' : ' до <b>$untilLabel</b>'}'
+        : '<b>Normal</b>';
+    final lines = <String>[
+      '💎 <b>Абонемент DVOR PRO</b>',
+      '🚀 Твой статус: $statusLabel',
+      '💸 Стоимость: <b>3990 ₽ / месяц</b>',
+      '',
+      '🔥 <b>Что ты получаешь в PRO на 1 месяц:</b>',
+      '1) 🏋️ 8 бесплатных тренировок',
+      '2) 🤝 Доступ в закрытую DVOR PRO-группу',
+      '3) 🧪 Разбор медицинских анализов с рекомендациями',
+      '4) 🎟 Скидка 10-25% на мероприятия DVOR',
+      '5) 🎯 Одна индивидуальная тренировка с тренером',
+      '6) 📈 Личный кабинет в TrainingPeaks',
+    ];
+    if (membershipLevel == MembershipLevel.pro) {
+      lines.addAll(<String>[
+        '',
+        '🔄 <b>Продление доступно уже сейчас:</b> нажми «${MessageCopy.buttonSubscribeApply}» и отправь чек.',
+        'После подтверждения продлим абонемент еще на 1 месяц ✅',
+      ]);
+    } else {
+      lines.addAll(<String>[
+        '',
+        'Нажми «${MessageCopy.buttonSubscribeApply}», чтобы оформить абонемент.',
+      ]);
+    }
+    return lines.join('\n');
+  }
+
+  String subscriptionPaymentInstructions() {
+    return '💳 <b>Оформление абонемента PRO</b>\n'
+        'Стоимость: <b>3990 ₽</b>\n'
+        'Срок: 1 месяц.\n\n'
+        'Реквизиты для оплаты:\n'
+        '• Получатель: Денис Р.\n'
+        '• Банк: 🟦 OZON БАНК 🟦\n'
+        '• Номер телефона: +7(995)122-06-15\n\n'
+        'После оплаты отправь в этот чат файл с подтверждением (документ/фото чека).';
+  }
+
+  String subscriptionPaymentProofRequired() {
+    return 'Чтобы отправить заявку на абонемент:\n'
+        '1) Нажми «${MessageCopy.buttonSubscribeApply}».\n'
+        '2) Пришли файл с подтверждением оплаты (документ/фото).\n'
+        '3) Дождись проверки администратором.';
+  }
+
+  String subscriptionPaymentSubmitted() {
+    return '✅ Заявка на абонемент отправлена на проверку.\n'
+        'Как только админ подтвердит оплату, статус в профиле обновится на PRO.';
+  }
+
+  String subscriptionAlreadyPending() {
+    return 'ℹ️ Заявка на абонемент уже на проверке.\n'
+        'Ожидай подтверждения от администратора.';
+  }
+
+  String subscriptionAlreadyActive({DateTime? activeUntil}) {
+    final until = activeUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(activeUntil)}';
+    return '✅ У тебя уже активен абонемент PRO$until.';
+  }
+
+  String chooseAdminSubscriptionsAction() {
+    return '💎 <b>Управление абонементами</b>\n'
+        'Выбери раздел ниже: фильтры, очередь модерации или поиск.';
+  }
+
+  String subscriptionsList(List<SubscriptionRequest> items, {required DateTime now}) {
+    final _ = now;
+    if (items.isEmpty) {
+      return '📋 <b>Список абонементов</b>\n'
+          'По выбранному фильтру ничего не найдено.';
+    }
+    final formatter = DateFormat('dd.MM.yyyy');
+    final lines = <String>[
+      '📋 <b>Список абонементов</b>',
+      'Всего: <b>${items.length}</b>',
+    ];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final until = item.activeUntil;
+      final untilLabel = until == null ? '—' : formatter.format(until);
+      final statusLabel = switch (item.status) {
+        SubscriptionRequestStatus.active => 'active',
+        SubscriptionRequestStatus.paymentSubmitted => 'payment_submitted',
+        SubscriptionRequestStatus.cancelled => 'cancelled',
+        SubscriptionRequestStatus.rejected => 'rejected',
+      };
+      lines.add(
+        '${index + 1}. ${_escapeHtml(_userTagById(item.userId, username: item.userUsername))} '
+        '(${item.userId}) — <b>$statusLabel</b>, до <b>$untilLabel</b>',
+      );
+    }
+    return lines.join('\n');
+  }
+
+  String subscriptionActiveItem(SubscriptionRequest request) {
+    final until = request.activeUntil == null
+        ? 'не задано'
+        : DateFormat('dd.MM.yyyy').format(request.activeUntil!);
+    return '💎 <b>Абонемент #${request.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
+        '(${request.userId})\n'
+        'Статус: <b>PRO</b>\n'
+        'Активен до: <b>$until</b>\n\n'
+        'Можно отменить абонемент кнопкой ниже.';
+  }
+
+  String subscriptionPendingQueueIntro(int total) {
+    return '🧾 <b>Заявки на абонемент</b>\n'
+        'Ожидают проверки: <b>$total</b>.\n'
+        'Ниже отправил каждую заявку отдельным сообщением.';
+  }
+
+  String subscriptionPendingQueueEmpty() {
+    return '✨ <b>Заявки на абонемент</b>\n'
+        'Очередь пуста.';
+  }
+
+  String subscriptionPendingQueueItem(SubscriptionRequest request) {
+    final created = DateFormat('dd.MM.yyyy HH:mm').format(request.createdAt);
+    final note = request.paymentNote?.trim();
+    return '🧾 <b>Заявка #${request.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
+        '(${request.userId})\n'
+        'Отправлена: $created'
+        '${note == null || note.isEmpty ? '' : '\nКомментарий: ${_escapeHtml(note)}'}\n\n'
+        'Подтверди или отклони заявку кнопками ниже.';
+  }
+
+  String subscriptionReviewResultWithNextStep({
+    required SubscriptionRequest request,
+    required int remaining,
+  }) {
+    final status =
+        request.status == SubscriptionRequestStatus.active ? 'PRO активирован' : 'Отклонено';
+    final nextStep = remaining > 0
+        ? 'Осталось заявок: $remaining. Открой «${MessageCopy.buttonSubscribersManagement}», чтобы проверить следующую.'
+        : 'Очередь пустая.';
+    return '✅ <b>Заявка #${request.id} обработана</b>\n'
+        '$status\n'
+        '$nextStep';
+  }
+
+  String subscriptionCancelResult(SubscriptionRequest request) {
+    return '✅ <b>Абонемент #${request.id} отменен</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
+        '(${request.userId})';
+  }
+
+  String subscriptionStatusLineFromSnapshot(SubscriptionUserSnapshot snapshot) {
+    if (snapshot.latestPending != null) {
+      return 'На проверке';
+    }
+    final activeUntil = snapshot.membership.activeUntil;
+    if (snapshot.membership.level == MembershipLevel.pro && activeUntil != null) {
+      return 'Активен до ${DateFormat('dd.MM.yyyy').format(activeUntil)}';
+    }
+    final rejected = snapshot.latestRejectedOrCancelled;
+    if (rejected != null) {
+      final reason = rejected.moderationReason?.trim();
+      final comment = rejected.moderationComment?.trim();
+      if ((reason ?? '').isNotEmpty || (comment ?? '').isNotEmpty) {
+        final suffix = <String>[
+          if ((reason ?? '').isNotEmpty) reason!,
+          if ((comment ?? '').isNotEmpty) comment!,
+        ].join(' — ');
+        return 'Отклонен ($suffix)';
+      }
+      return 'Отклонен';
+    }
+    return 'Нет активной заявки';
+  }
+
+  String subscriptionFilterPrompt() {
+    return '📋 <b>Фильтры абонементов</b>\n'
+        'Выбери нужный сегмент: активные, скоро истекают, на проверке или отмененные.';
+  }
+
+  String subscriptionSearchPrompt() {
+    return '🔎 Введи запрос для поиска абонемента:\n'
+        '• <code>@username</code>\n'
+        '• <code>userId</code>\n'
+        '• <code>номер заявки</code>';
+  }
+
+  String subscriptionModerationReasonPrompt({required bool isCancel}) {
+    return isCancel ? 'Выбери причину отмены абонемента.' : 'Выбери причину отклонения заявки.';
+  }
+
+  String subscriptionModerationCommentPrompt() {
+    return 'Добавь комментарий для клиента или нажми «${MessageCopy.buttonSkipComment}».';
+  }
+
+  String subscriptionApprovedForUser({required DateTime activeUntil}) {
+    return '✅ Оплата подтверждена, PRO активирован до '
+        '<b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.\n'
+        'Тренируйся в PRO и продли через «${MessageCopy.buttonSubscription}» → '
+        '«${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String subscriptionRejectedForUser({String? reason, String? comment}) {
+    final details = <String>[
+      if ((reason ?? '').trim().isNotEmpty) 'Причина: ${_escapeHtml(reason!.trim())}',
+      if ((comment ?? '').trim().isNotEmpty) 'Комментарий: ${_escapeHtml(comment!.trim())}',
+    ];
+    return '❌ Заявка на абонемент отклонена.\n'
+        '${details.isEmpty ? '' : '${details.join('\n')}\n'}'
+        'Проверь оплату/чек и отправь новую заявку кнопкой «${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String subscriptionCancelledForUser({String? reason, String? comment}) {
+    final details = <String>[
+      if ((reason ?? '').trim().isNotEmpty) 'Причина: ${_escapeHtml(reason!.trim())}',
+      if ((comment ?? '').trim().isNotEmpty) 'Комментарий: ${_escapeHtml(comment!.trim())}',
+    ];
+    return '⛔️ Текущий PRO-абонемент был отменен администратором.\n'
+        '${details.isEmpty ? '' : '${details.join('\n')}\n'}'
+        'Чтобы вернуть PRO, нажми «${MessageCopy.buttonSubscription}» → '
+        '«${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String subscriptionRenewalReminder({required DateTime activeUntil, required int daysBefore}) {
+    return '⏳ До окончания PRO осталось <b>$daysBefore дн.</b>\n'
+        'Абонемент активен до <b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.\n'
+        'Продли заранее: «${MessageCopy.buttonSubscription}» → «${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String subscriptionExpiryPromo() {
+    return '🔥 Твой PRO закончился, но форму терять не нужно.\n'
+        'Вернись в PRO сегодня и получи бонус от DVOR.\n'
+        'Нажми «${MessageCopy.buttonSubscription}», затем «${MessageCopy.buttonSubscribeApply}».';
   }
 
   String chooseMyBookingsSegment() {
@@ -955,6 +1254,14 @@ final class MessageTemplates {
     );
   }
 
+  Map<String, Object?> subscriptionDecisionInlineKeyboard(int requestId) {
+    return TelegramKeyboards.subscriptionDecisionInlineKeyboard(requestId);
+  }
+
+  Map<String, Object?> subscriptionCancelInlineKeyboard(int requestId) {
+    return TelegramKeyboards.subscriptionCancelInlineKeyboard(requestId);
+  }
+
   String bookingNotFound(int id) {
     return '😕 <b>Запись #$id не найдена</b>';
   }
@@ -978,13 +1285,15 @@ final class MessageTemplates {
           '• Получатель: Елена П.\n'
           '• Банк: 🟨 Т-БАНК 🟨\n'
           '• Номер телефона: +7(961)313-11-44\n'
-          '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.';
+          '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
+          '• После отмены нужно записаться заново.';
     }
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
         '• Номер телефона: +7(995)122-06-15\n'
-        '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.';
+        '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
+        '• После отмены нужно записаться заново.';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
@@ -1265,6 +1574,24 @@ final class MessageTemplates {
     return TelegramKeyboards.profileActionsKeyboard();
   }
 
+  Map<String, Object?> subscriptionOverviewKeyboard({
+    required bool canApply,
+  }) {
+    return TelegramKeyboards.subscriptionOverviewKeyboard(canApply: canApply);
+  }
+
+  Map<String, Object?> adminSubscriptionFilterKeyboard() {
+    return TelegramKeyboards.adminSubscriptionFilterKeyboard();
+  }
+
+  Map<String, Object?> subscriptionModerationReasonKeyboard() {
+    return TelegramKeyboards.subscriptionModerationReasonKeyboard();
+  }
+
+  Map<String, Object?> subscriptionModerationCommentKeyboard() {
+    return TelegramKeyboards.subscriptionModerationCommentKeyboard();
+  }
+
   Map<String, Object?> bookingManagementSelectionKeyboard(List<TrainingBooking> bookings) {
     return TelegramKeyboards.bookingManagementSelectionKeyboard(bookings);
   }
@@ -1307,6 +1634,10 @@ final class MessageTemplates {
 
   Map<String, Object?> adminBookingManagementKeyboard() {
     return TelegramKeyboards.adminBookingManagementKeyboard();
+  }
+
+  Map<String, Object?> adminSubscriptionsMenuKeyboard() {
+    return TelegramKeyboards.adminSubscriptionsMenuKeyboard();
   }
 
   Map<String, Object?> bookingSegmentKeyboard({

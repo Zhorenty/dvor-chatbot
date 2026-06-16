@@ -1,10 +1,12 @@
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -409,6 +411,168 @@ final class FakeBookingRepository implements BookingRepository {
   }) async {
     return everyFifthProgress;
   }
+}
+
+final class FakeSubscriptionRepository implements SubscriptionRepository {
+  MembershipLevel membershipLevel = MembershipLevel.normal;
+  DateTime? membershipActiveUntil;
+  List<SubscriptionRequest> pendingRequests = const <SubscriptionRequest>[];
+  List<SubscriptionRequest> activeSubscriptions = const <SubscriptionRequest>[];
+  SubmitSubscriptionRequestResult submitResult = const SubmitSubscriptionRequestResult(
+    outcome: SubmitSubscriptionRequestOutcome.created,
+  );
+  ReviewSubscriptionRequestResult reviewResult = const ReviewSubscriptionRequestResult(
+    outcome: ReviewSubscriptionRequestOutcome.notFound,
+  );
+  int submitCalls = 0;
+  int reviewCalls = 0;
+  int cancelCalls = 0;
+  CancelSubscriptionResult cancelResult = const CancelSubscriptionResult(
+    outcome: CancelSubscriptionOutcome.notFound,
+  );
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<CancelSubscriptionResult> cancelActiveSubscription({
+    required int requestId,
+    required DateTime cancelledAt,
+    String? reason,
+    String? comment,
+  }) async {
+    cancelCalls += 1;
+    return cancelResult;
+  }
+
+  @override
+  Future<SubscriptionMembership> getMembership(
+    int userId, {
+    required DateTime now,
+  }) async {
+    return SubscriptionMembership(
+      level: membershipLevel,
+      activeUntil: membershipActiveUntil,
+    );
+  }
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<SubscriptionUserSnapshot> getUserSnapshot(
+    int userId, {
+    required DateTime now,
+  }) async {
+    return SubscriptionUserSnapshot(
+      membership: SubscriptionMembership(
+        level: membershipLevel,
+        activeUntil: membershipActiveUntil,
+      ),
+      totalApprovedCount: activeSubscriptions.length,
+      latestPending: pendingRequests.isEmpty ? null : pendingRequests.first,
+      latestActiveRequest: activeSubscriptions.isEmpty ? null : activeSubscriptions.first,
+    );
+  }
+
+  @override
+  Future<List<SubscriptionRequest>> listActiveSubscriptions({
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    return activeSubscriptions.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<List<SubscriptionRequest>> listPendingRequests({int limit = 50}) async {
+    return pendingRequests.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<List<SubscriptionRequest>> listSubscriptionsByFilter({
+    required SubscriptionListFilter filter,
+    required DateTime now,
+    int limit = 200,
+  }) async {
+    return switch (filter) {
+      SubscriptionListFilter.pending => pendingRequests.take(limit).toList(growable: false),
+      _ => activeSubscriptions.take(limit).toList(growable: false),
+    };
+  }
+
+  @override
+  Future<List<SubscriptionRequest>> searchSubscriptions(
+    String query, {
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    final all = <SubscriptionRequest>[...activeSubscriptions, ...pendingRequests];
+    return all.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<ReviewSubscriptionRequestResult> reviewPendingRequest({
+    required int requestId,
+    required bool approve,
+    required DateTime reviewedAt,
+  }) async {
+    reviewCalls += 1;
+    return reviewResult;
+  }
+
+  @override
+  Future<ReviewSubscriptionRequestResult> reviewPendingRequestWithReason({
+    required int requestId,
+    required bool approve,
+    required DateTime reviewedAt,
+    String? reason,
+    String? comment,
+  }) async {
+    reviewCalls += 1;
+    return reviewResult;
+  }
+
+  @override
+  Future<SubmitSubscriptionRequestResult> submitPaymentRequest({
+    required int userId,
+    String? userUsername,
+    String? note,
+    required int paymentProofChatId,
+    required int paymentProofMessageId,
+    required DateTime requestedAt,
+  }) async {
+    submitCalls += 1;
+    return submitResult;
+  }
+
+  @override
+  Future<List<RenewalReminderTarget>> listRenewalReminderTargets({
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    return const <RenewalReminderTarget>[];
+  }
+
+  @override
+  Future<void> markRenewalReminderSent({
+    required int requestId,
+    required int daysBefore,
+    required DateTime sentAt,
+  }) async {}
+
+  @override
+  Future<List<SubscriptionRequest>> listExpiredWithoutPromo({
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    return const <SubscriptionRequest>[];
+  }
+
+  @override
+  Future<void> markExpiryPromoSent({
+    required int requestId,
+    required DateTime sentAt,
+  }) async {}
 }
 
 final class FakeTrainerDirectoryRepository implements TrainerDirectoryRepository {

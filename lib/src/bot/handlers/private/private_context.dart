@@ -131,5 +131,20 @@ String? callbackToCommandText(String? callbackData) {
   if (callbackData == MessageCopy.callbackOpenPaymentsQueue) {
     return '/payments_queue';
   }
+  if (callbackData.startsWith(MessageCopy.callbackApproveSubscriptionPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackApproveSubscriptionPrefix.length);
+    final requestId = int.tryParse(rawId);
+    return requestId == null ? null : '/approve_subscription $requestId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackRejectSubscriptionPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackRejectSubscriptionPrefix.length);
+    final requestId = int.tryParse(rawId);
+    return requestId == null ? null : '/reject_subscription $requestId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackCancelSubscriptionPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackCancelSubscriptionPrefix.length);
+    final requestId = int.tryParse(rawId);
+    return requestId == null ? null : '/cancel_subscription $requestId';
+  }
   return null;
 }

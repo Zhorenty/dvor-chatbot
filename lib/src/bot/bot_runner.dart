@@ -8,11 +8,13 @@ import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
 import 'package:dvor_chatbot/src/jobs/starter_bonus_reminder_job.dart';
+import 'package:dvor_chatbot/src/jobs/subscription_renewal_job.dart';
 import 'package:dvor_chatbot/src/jobs/welcome_cleanup_job.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
@@ -27,6 +29,7 @@ final class BotRunner {
     required TrainingScheduleRepository scheduleRepository,
     required BookingRepository bookingRepository,
     required OnboardingRepository onboardingRepository,
+    required SubscriptionRepository subscriptionRepository,
     required MessageSender sender,
     required MessageTemplates templates,
     required PrivateHandlers privateHandlers,
@@ -53,6 +56,11 @@ final class BotRunner {
           onboardingRepository: onboardingRepository,
           sender: sender,
         ),
+        _subscriptionRenewalJob = SubscriptionRenewalJob(
+          subscriptionRepository: subscriptionRepository,
+          sender: sender,
+          templates: templates,
+        ),
         _economicSummaryJob = EconomicSummaryJob(
           bookingRepository: bookingRepository,
           economicSummaryService: EconomicSummaryService(
@@ -73,6 +81,7 @@ final class BotRunner {
   final PaymentReminderJob _paymentReminderJob;
   final StarterBonusReminderJob _starterBonusReminderJob;
   final WelcomeCleanupJob _welcomeCleanupJob;
+  final SubscriptionRenewalJob _subscriptionRenewalJob;
   final EconomicSummaryJob _economicSummaryJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
@@ -87,6 +96,7 @@ final class BotRunner {
   Timer? _starterBonusReminderTimer;
   Timer? _welcomeCleanupTimer;
   Timer? _economicSummaryTimer;
+  Timer? _subscriptionRenewalTimer;
 
   Future<void> start() async {
     await _initializeLongPolling();
@@ -127,7 +137,14 @@ final class BotRunner {
       }
       _launchBackgroundJob('economic summary', _economicSummaryJob.run);
     });
+    _subscriptionRenewalTimer = Timer.periodic(const Duration(minutes: 30), (_) {
+      if (_stopping) {
+        return;
+      }
+      _launchBackgroundJob('subscription renewal', _subscriptionRenewalJob.run);
+    });
     _launchBackgroundJob('economic summary', _economicSummaryJob.run);
+    _launchBackgroundJob('subscription renewal', _subscriptionRenewalJob.run);
 
     while (!_stopping) {
       try {
@@ -190,6 +207,7 @@ final class BotRunner {
     _starterBonusReminderTimer?.cancel();
     _welcomeCleanupTimer?.cancel();
     _economicSummaryTimer?.cancel();
+    _subscriptionRenewalTimer?.cancel();
     _closeClient();
     await _waitForIdleOperations();
   }

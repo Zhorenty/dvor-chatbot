@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
+import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
@@ -20,6 +21,7 @@ final class PrivateHandlersHarness {
     MessageTemplates templates = const MessageTemplates(),
     FakeBookingRepository? bookingRepository,
     FakeOnboardingRepository? onboardingRepository,
+    SubscriptionRepository subscriptionRepository = const NoopSubscriptionRepository(),
   })  : sender = FakeSender(),
         scheduleRepository = FakeScheduleRepository(
           trainings,
@@ -37,6 +39,7 @@ final class PrivateHandlersHarness {
       sender: sender,
       scheduleRepository: scheduleRepository,
       bookingRepository: booking,
+      subscriptionRepository: subscriptionRepository,
       onboardingRepository: onboarding,
       trainerDirectoryRepository: trainerDirectoryRepository,
       templates: _templates,
