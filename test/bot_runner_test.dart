@@ -73,6 +73,7 @@ void main() {
     final scheduleRepository = FakeScheduleRepository(const []);
     final bookingRepository = FakeBookingRepository();
     final onboardingRepository = FakeOnboardingRepository();
+    final subscriptionRepository = FakeSubscriptionRepository();
     final templates = const MessageTemplates();
     runner = BotRunner(
       config: const AppConfig(
@@ -96,6 +97,7 @@ void main() {
       scheduleRepository: scheduleRepository,
       bookingRepository: bookingRepository,
       onboardingRepository: onboardingRepository,
+      subscriptionRepository: subscriptionRepository,
       sender: sender,
       templates: templates,
       privateHandlers: PrivateHandlers(

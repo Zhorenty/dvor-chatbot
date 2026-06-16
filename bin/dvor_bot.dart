@@ -47,6 +47,7 @@ Future<void> main(List<String> args) async {
     scheduleRepository: scheduleRepository,
     bookingRepository: bookingRepository,
     onboardingRepository: onboardingRepository,
+    subscriptionRepository: subscriptionRepository,
     sender: client,
     templates: templates,
     privateHandlers: PrivateHandlers(

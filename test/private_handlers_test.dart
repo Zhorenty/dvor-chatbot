@@ -254,6 +254,34 @@ void main() {
           contains(MessageTemplates.buttonSubscribeApply));
     });
 
+    test('shows renewal call-to-action for active PRO subscription', () async {
+      final sender = _FakeSender();
+      final subscriptionRepository = _FakeSubscriptionRepository()
+        ..membershipLevel = MembershipLevel.pro
+        ..membershipActiveUntil = DateTime(2026, 8, 1, 12);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: subscriptionRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9103, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9103},
+        'text': MessageTemplates.buttonSubscription,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('Продление доступно уже сейчас'));
+      expect(
+        _keyboardTexts(sender.messages.single.replyMarkup),
+        contains(MessageTemplates.buttonSubscribeApply),
+      );
+    });
+
     test('submits subscription payment request after proof file', () async {
       final sender = _FakeSender();
       final request = SubscriptionRequest(
@@ -302,6 +330,85 @@ void main() {
       expect(subscriptionRepository.submitCalls, 1);
       expect(sender.messages.last.text, contains('Заявка на абонемент отправлена'));
       expect(sender.messages.any((item) => item.chatId == -100500), isTrue);
+    });
+
+    test('back from subscription payment keeps current PRO status', () async {
+      final sender = _FakeSender();
+      final subscriptionRepository = _FakeSubscriptionRepository()
+        ..membershipLevel = MembershipLevel.pro
+        ..membershipActiveUntil = DateTime(2026, 8, 1, 12);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: subscriptionRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9301, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9301},
+        'text': MessageTemplates.buttonSubscribeApply,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9301, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9301},
+        'text': MessageTemplates.buttonBack,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Твой статус: <b>PRO</b>'));
+    });
+
+    test('admin can cancel active subscription by command', () async {
+      final sender = _FakeSender();
+      final subscriptionRepository = _FakeSubscriptionRepository()
+        ..cancelResult = CancelSubscriptionResult(
+          outcome: CancelSubscriptionOutcome.success,
+          request: SubscriptionRequest(
+            id: 4001,
+            userId: 9911,
+            userUsername: 'pro_user',
+            status: SubscriptionRequestStatus.cancelled,
+            createdAt: DateTime(2026, 7, 1, 10),
+            updatedAt: DateTime(2026, 7, 10, 10),
+            activeUntil: DateTime(2026, 7, 10, 10),
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: subscriptionRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{9100},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100},
+        'text': '/cancel_subscription 4001',
+      });
+      final reasonHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100},
+        'text': MessageTemplates.buttonReasonNotConfirmed,
+      });
+      final commentHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100},
+        'text': MessageTemplates.buttonSkipComment,
+      });
+
+      expect(handled, isTrue);
+      expect(reasonHandled, isTrue);
+      expect(commentHandled, isTrue);
+      expect(subscriptionRepository.cancelCalls, 1);
+      expect(
+        sender.messages.any((message) => message.text.contains('Абонемент #4001 отменен')),
+        isTrue,
+      );
     });
 
     test('opens profile summary with dedicated my bookings button', () async {

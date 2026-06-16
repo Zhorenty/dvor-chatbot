@@ -17,6 +17,10 @@ final class PrivateNavigationTemplates {
         '1) Нажми «${MessageCopy.buttonTrainings}» и выбери категорию.\n'
         '2) Для абонемента нажми «${MessageCopy.buttonSubscription}».\n'
         '3) Для записи на событие используй команду /book.\n\n'
+        '💎 <b>PRO-абонемент DVOR</b>\n'
+        'Тренить с абонементом выгоднее: больше регулярности, больше дисциплины и больше силы.\n'
+        'Собирай форму системно, а не рывками 💪\n'
+        'Как оформить: нажми «${MessageCopy.buttonSubscription}», затем «${MessageCopy.buttonSubscribeApply}».\n\n'
         'Если нужна подсказка, нажми «${MessageCopy.buttonHelp}».';
   }
 

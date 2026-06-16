@@ -208,6 +208,9 @@ final class TelegramKeyboards {
     return _replyKeyboard(
       <List<Map<String, String>>>[
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonRenewSubscription},
+        ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonProfileBookings},
         ],
         <Map<String, String>>[
@@ -383,12 +386,81 @@ final class TelegramKeyboards {
     };
   }
 
+  static Map<String, Object?> subscriptionCancelInlineKeyboard(int requestId) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': '⛔️ Отменить абонемент',
+            'callback_data': '${MessageCopy.callbackCancelSubscriptionPrefix}$requestId',
+          },
+        ],
+      ],
+    };
+  }
+
   static Map<String, Object?> adminSubscriptionsMenuKeyboard() {
     return _replyKeyboard(
       <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonSubscriptionsList},
           <String, String>{'text': MessageCopy.buttonSubscribersManagement},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSubscriptionsSearch},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminSubscriptionFilterKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSubscriptionsFilterActive},
+          <String, String>{'text': MessageCopy.buttonSubscriptionsFilterExpiring},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSubscriptionsFilterPending},
+          <String, String>{'text': MessageCopy.buttonSubscriptionsFilterCancelled},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> subscriptionModerationReasonKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonReasonNotConfirmed},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonReasonWrongAmount},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonReasonDuplicate},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> subscriptionModerationCommentKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSkipComment},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},

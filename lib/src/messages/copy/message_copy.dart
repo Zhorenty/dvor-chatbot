@@ -29,6 +29,16 @@ final class MessageCopy {
   static const String buttonSubscriptionsList = '📋 Список абонементов';
   static const String buttonSubscribersManagement = '🛠 Управление абонентами';
   static const String buttonSubscribeApply = '✅ Оформить';
+  static const String buttonRenewSubscription = '🔄 Продлить PRO';
+  static const String buttonSubscriptionsFilterActive = '🟢 Активные';
+  static const String buttonSubscriptionsFilterExpiring = '⏳ Скоро истекают';
+  static const String buttonSubscriptionsFilterPending = '🧾 На проверке';
+  static const String buttonSubscriptionsFilterCancelled = '🚫 Отмененные';
+  static const String buttonSubscriptionsSearch = '🔎 Поиск';
+  static const String buttonSkipComment = '⏭ Без комментария';
+  static const String buttonReasonNotConfirmed = 'Чек не подтвержден';
+  static const String buttonReasonWrongAmount = 'Сумма не совпадает';
+  static const String buttonReasonDuplicate = 'Дубликат заявки';
   static const String buttonParticipantsList = '👥 Список записавшихся';
   static const String buttonNoblesList = '🏰 Список дворян';
   static const String buttonManageBookings = '🛠 Управление записями';
@@ -69,6 +79,7 @@ final class MessageCopy {
   static const String callbackOpenPaymentsQueue = 'payment:open_queue';
   static const String callbackApproveSubscriptionPrefix = 'subscription:approve:';
   static const String callbackRejectSubscriptionPrefix = 'subscription:reject:';
+  static const String callbackCancelSubscriptionPrefix = 'subscription:cancel:';
 
   static const String scheduleDocumentUrl =
       'https://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';

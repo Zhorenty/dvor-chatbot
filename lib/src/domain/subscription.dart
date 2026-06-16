@@ -1,6 +1,7 @@
 enum SubscriptionRequestStatus {
   paymentSubmitted('payment_submitted'),
   active('active'),
+  cancelled('cancelled'),
   rejected('rejected');
 
   const SubscriptionRequestStatus(this.dbValue);
@@ -28,6 +29,12 @@ final class SubscriptionRequest {
     this.paymentNote,
     this.paymentProofChatId,
     this.paymentProofMessageId,
+    this.moderationReason,
+    this.moderationComment,
+    this.renewalReminder7SentAt,
+    this.renewalReminder3SentAt,
+    this.renewalReminder1SentAt,
+    this.expiryPromoSentAt,
   });
 
   final int id;
@@ -41,6 +48,12 @@ final class SubscriptionRequest {
   final String? paymentNote;
   final int? paymentProofChatId;
   final int? paymentProofMessageId;
+  final String? moderationReason;
+  final String? moderationComment;
+  final DateTime? renewalReminder7SentAt;
+  final DateTime? renewalReminder3SentAt;
+  final DateTime? renewalReminder1SentAt;
+  final DateTime? expiryPromoSentAt;
 }
 
 enum MembershipLevel { normal, pro }
@@ -58,7 +71,6 @@ final class SubscriptionMembership {
 enum SubmitSubscriptionRequestOutcome {
   created,
   alreadyPending,
-  alreadyActive,
 }
 
 final class SubmitSubscriptionRequestResult {
@@ -69,6 +81,55 @@ final class SubmitSubscriptionRequestResult {
 
   final SubmitSubscriptionRequestOutcome outcome;
   final SubscriptionRequest? request;
+}
+
+enum CancelSubscriptionOutcome {
+  success,
+  notFound,
+  invalidStatus,
+}
+
+final class CancelSubscriptionResult {
+  const CancelSubscriptionResult({
+    required this.outcome,
+    this.request,
+  });
+
+  final CancelSubscriptionOutcome outcome;
+  final SubscriptionRequest? request;
+}
+
+enum SubscriptionListFilter {
+  active,
+  expiringSoon,
+  pending,
+  cancelledOrRejected,
+}
+
+final class SubscriptionUserSnapshot {
+  const SubscriptionUserSnapshot({
+    required this.membership,
+    required this.totalApprovedCount,
+    this.latestPending,
+    this.latestRejectedOrCancelled,
+    this.latestActiveRequest,
+  });
+
+  final SubscriptionMembership membership;
+  final int totalApprovedCount;
+  final SubscriptionRequest? latestPending;
+  final SubscriptionRequest? latestRejectedOrCancelled;
+  final SubscriptionRequest? latestActiveRequest;
+}
+
+final class RenewalReminderTarget {
+  const RenewalReminderTarget({
+    required this.request,
+    required this.daysBefore,
+  });
+
+  final SubscriptionRequest request;
+  final int daysBefore;
 }
 
 enum ReviewSubscriptionRequestOutcome {

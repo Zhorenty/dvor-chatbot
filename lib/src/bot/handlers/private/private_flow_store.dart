@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -25,6 +26,10 @@ enum PrivateFlowStep {
   selectingRescheduleTraining,
   selectingAdminBookingManagementAction,
   selectingAdminSubscriptionsAction,
+  selectingAdminSubscriptionFilter,
+  enteringAdminSubscriptionSearchQuery,
+  selectingAdminSubscriptionReasonTemplate,
+  enteringAdminSubscriptionReasonComment,
   selectingAdminBookingListSegment,
   selectingAdminBookingListCategory,
   selectingAdminBookingFromList,
@@ -46,6 +51,11 @@ enum PaymentChoice {
   partial,
 }
 
+enum SubscriptionModerationAction {
+  reject,
+  cancel,
+}
+
 final class PrivateFlowState {
   const PrivateFlowState({
     required this.step,
@@ -63,6 +73,11 @@ final class PrivateFlowState {
     this.adminCreateTraining,
     this.paymentChoice,
     this.adminBookingsPage = 0,
+    this.adminSubscriptionFilter = SubscriptionListFilter.active,
+    this.subscriptionModerationAction,
+    this.subscriptionModerationRequestId,
+    this.subscriptionModerationReason,
+    this.subscriptionSearchQuery,
   });
 
   final PrivateFlowStep step;
@@ -80,6 +95,11 @@ final class PrivateFlowState {
   final TrainingInfo? adminCreateTraining;
   final PaymentChoice? paymentChoice;
   final int adminBookingsPage;
+  final SubscriptionListFilter adminSubscriptionFilter;
+  final SubscriptionModerationAction? subscriptionModerationAction;
+  final int? subscriptionModerationRequestId;
+  final String? subscriptionModerationReason;
+  final String? subscriptionSearchQuery;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -97,6 +117,11 @@ final class PrivateFlowState {
     Object? adminCreateTraining = _privateFlowUnset,
     Object? paymentChoice = _privateFlowUnset,
     int? adminBookingsPage,
+    SubscriptionListFilter? adminSubscriptionFilter,
+    Object? subscriptionModerationAction = _privateFlowUnset,
+    Object? subscriptionModerationRequestId = _privateFlowUnset,
+    Object? subscriptionModerationReason = _privateFlowUnset,
+    Object? subscriptionSearchQuery = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -128,6 +153,19 @@ final class PrivateFlowState {
           ? this.paymentChoice
           : paymentChoice as PaymentChoice?,
       adminBookingsPage: adminBookingsPage ?? this.adminBookingsPage,
+      adminSubscriptionFilter: adminSubscriptionFilter ?? this.adminSubscriptionFilter,
+      subscriptionModerationAction: identical(subscriptionModerationAction, _privateFlowUnset)
+          ? this.subscriptionModerationAction
+          : subscriptionModerationAction as SubscriptionModerationAction?,
+      subscriptionModerationRequestId: identical(subscriptionModerationRequestId, _privateFlowUnset)
+          ? this.subscriptionModerationRequestId
+          : subscriptionModerationRequestId as int?,
+      subscriptionModerationReason: identical(subscriptionModerationReason, _privateFlowUnset)
+          ? this.subscriptionModerationReason
+          : subscriptionModerationReason as String?,
+      subscriptionSearchQuery: identical(subscriptionSearchQuery, _privateFlowUnset)
+          ? this.subscriptionSearchQuery
+          : subscriptionSearchQuery as String?,
     );
   }
 }

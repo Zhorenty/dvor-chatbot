@@ -141,5 +141,10 @@ String? callbackToCommandText(String? callbackData) {
     final requestId = int.tryParse(rawId);
     return requestId == null ? null : '/reject_subscription $requestId';
   }
+  if (callbackData.startsWith(MessageCopy.callbackCancelSubscriptionPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackCancelSubscriptionPrefix.length);
+    final requestId = int.tryParse(rawId);
+    return requestId == null ? null : '/cancel_subscription $requestId';
+  }
   return null;
 }
