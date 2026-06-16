@@ -1,9 +1,6 @@
 const Set<int> trainerBookingWhitelistUserIds = <int>{};
 
 const Set<String> trainerBookingWhitelistUsernames = <String>{
-  /// Жора
-  '@zhorenty',
-
   /// Катя
   '@k_morozzovaa',
 
@@ -15,9 +12,6 @@ const Set<String> trainerBookingWhitelistUsernames = <String>{
 
   /// Андрей
   '@androdentio',
-
-  /// Денис
-  '@nudden',
 
   /// Саша Шум
   '@shum_show',
