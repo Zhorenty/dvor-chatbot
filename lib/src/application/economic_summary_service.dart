@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
+import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
@@ -74,6 +75,9 @@ final class EconomicSummaryService {
     final byEvent = <String, _MutableStats>{};
 
     for (final booking in bookings) {
+      if (isTrainerBookingWhitelisted(userId: booking.userId, username: booking.userUsername)) {
+        continue;
+      }
       if (booking.status == BookingStatus.freeTraining) {
         freeBookingsCount++;
         regularFreeBookingsCount++;

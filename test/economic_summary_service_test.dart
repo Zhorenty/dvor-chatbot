@@ -182,4 +182,71 @@ void main() {
     expect(summary.byEvent, hasLength(5));
     expect(summary.byEvent.first.eventTitle, '🥾 Поход C');
   });
+
+  test('excludes trainer bookings from all economic summary counters', () async {
+    final period = EconomicSummaryPeriod(
+      type: EconomicReportType.weekly,
+      startInclusive: DateTime(2026, 6, 1),
+      endExclusive: DateTime(2026, 6, 8),
+    );
+    final bookingRepository = FakeBookingRepository()
+      ..queue = <TrainingBooking>[
+        fakeBooking(
+          id: 21,
+          trainingKey: 'trainings|21',
+          title: 'Обычная платная',
+          status: BookingStatus.paid,
+          trainingPrice: 1200,
+          updatedAt: DateTime(2026, 6, 3, 10),
+        ),
+        fakeBooking(
+          id: 22,
+          userId: 999001,
+          userUsername: '@zhorenty',
+          trainingKey: 'hikes|22',
+          title: '🥾 Поход тренера',
+          status: BookingStatus.paid,
+          trainingPrice: 3500,
+          updatedAt: DateTime(2026, 6, 4, 10),
+        ),
+        fakeBooking(
+          id: 23,
+          userId: 999002,
+          userUsername: '@k_morozzovaa',
+          trainingKey: 'trainings|23',
+          title: 'Бесплатная тренера',
+          status: BookingStatus.freeTraining,
+          trainingPrice: 0,
+          updatedAt: DateTime(2026, 6, 5, 10),
+        ),
+        fakeBooking(
+          id: 24,
+          userId: 999003,
+          userUsername: '@pro_svet_lena',
+          trainingKey: 'trainings|24',
+          title: 'Без цены тренера',
+          status: BookingStatus.paid,
+          trainingPrice: null,
+          updatedAt: DateTime(2026, 6, 6, 10),
+        ),
+      ];
+    final service = EconomicSummaryService(
+      bookingRepository: bookingRepository,
+      catalogService: ActivityCatalogService(
+        scheduleRepository: FakeScheduleRepository(const []),
+      ),
+    );
+
+    final summary = await service.buildSummary(period);
+
+    expect(summary.totalRevenue, 1200);
+    expect(summary.paidBookingsCount, 1);
+    expect(summary.freeBookingsCount, 0);
+    expect(summary.regularFreeBookingsCount, 0);
+    expect(summary.starterFreeBookingsCount, 0);
+    expect(summary.everyFifthFreeBookingsCount, 0);
+    expect(summary.unknownPriceBookingsCount, 0);
+    expect(summary.byEvent, hasLength(1));
+    expect(summary.byEvent.single.eventTitle, 'Обычная платная');
+  });
 }
