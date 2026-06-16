@@ -32,6 +32,7 @@ import 'package:l/l.dart';
 final class PrivateHandlers {
   static const String _paymentChoiceFullMarker = '__payment_choice_full__';
   static const String _paymentChoicePartialMarker = '__payment_choice_partial__';
+  static const int _proIncludedTrainingsPerPeriod = 8;
   static const int _adminBookingsPageSize = 8;
   static const int _myBookingsPageSize = 8;
   static const int _yogaTrainerUserId = 857655217;
@@ -233,9 +234,14 @@ final class PrivateHandlers {
           );
           return true;
         case _PrivateFlowStep.confirmingSubscriptionPayment:
+          final now = _nowProvider();
           final membership = await _subscriptionRepository.getMembership(
             userId,
-            now: _nowProvider(),
+            now: now,
+          );
+          final remainingProTrainings = await _proIncludedTrainingRemainingCount(
+            userId: userId,
+            membership: membership,
           );
           _flowByUserId[userId] = const _PrivateFlowState(
             step: _PrivateFlowStep.viewingSubscriptionOverview,
@@ -246,6 +252,7 @@ final class PrivateHandlers {
             _templates.subscriptionOverview(
               membershipLevel: membership.level,
               activeUntil: membership.activeUntil,
+              remainingProTrainings: remainingProTrainings,
             ),
             replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: true),
             parseMode: 'HTML',
@@ -488,9 +495,14 @@ final class PrivateHandlers {
       if (userId == null) {
         return false;
       }
+      final now = _nowProvider();
       final membership = await _subscriptionRepository.getMembership(
         userId,
-        now: _nowProvider(),
+        now: now,
+      );
+      final remainingProTrainings = await _proIncludedTrainingRemainingCount(
+        userId: userId,
+        membership: membership,
       );
       _flowByUserId[userId] = const _PrivateFlowState(
         step: _PrivateFlowStep.viewingSubscriptionOverview,
@@ -501,6 +513,7 @@ final class PrivateHandlers {
         _templates.subscriptionOverview(
           membershipLevel: membership.level,
           activeUntil: membership.activeUntil,
+          remainingProTrainings: remainingProTrainings,
         ),
         replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: true),
         parseMode: 'HTML',
@@ -751,6 +764,36 @@ final class PrivateHandlers {
         );
         return true;
       }
+      final proIncludedAvailable = await _hasProIncludedTrainingAvailable(
+        userId: userId,
+        training: selectedTraining,
+        booking: result.booking,
+      );
+      if (proIncludedAvailable) {
+        final paidBooking = await _bookingRepository.updateStatus(
+          result.booking.id,
+          BookingStatus.paid,
+          paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+        );
+        final bookingForResponse =
+            _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+        _flowByUserId.remove(userId);
+        if (result.created) {
+          await _maybeNotifyGroupAboutCapacity(
+            selectedTraining,
+            bookingStatus: bookingForResponse.status,
+          );
+        }
+        await _sender.sendMessage(
+          chatId,
+          result.created
+              ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
+              : _templates.bookingAlreadyExists(bookingForResponse),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          parseMode: 'HTML',
+        );
+        return true;
+      }
       final starterBonusOffered = selectedTraining.category == _ActivityCategory.trainings &&
           await _hasAnyFreeTrainingBonusAvailable(userId);
       _flowByUserId[userId] = flowState.copyWith(
@@ -792,6 +835,10 @@ final class PrivateHandlers {
       final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
       final subscriptionSnapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
       final membership = subscriptionSnapshot.membership;
+      final remainingProTrainings = await _proIncludedTrainingRemainingCount(
+        userId: userId,
+        membership: membership,
+      );
       final activeBookings = bookings
           .where(
             (booking) =>
@@ -818,6 +865,7 @@ final class PrivateHandlers {
           starterBonusAvailable: starterBonusAvailable,
           membershipLevel: membership.level,
           subscriptionActiveUntil: membership.activeUntil,
+          subscriptionRemainingProTrainings: remainingProTrainings,
           subscriptionRequestStatusLine:
               _templates.subscriptionStatusLineFromSnapshot(subscriptionSnapshot),
           subscriptionTotalApprovedCount: subscriptionSnapshot.totalApprovedCount,
@@ -3625,6 +3673,53 @@ final class PrivateHandlers {
       now: _nowProvider(),
     );
     return progress.availableRewardsCount > 0;
+  }
+
+  Future<bool> _hasProIncludedTrainingAvailable({
+    required int userId,
+    required TrainingInfo training,
+    required TrainingBooking booking,
+  }) async {
+    if (training.category != ActivityCategory.trainings) {
+      return false;
+    }
+    if (_isFreeActivity(training)) {
+      return false;
+    }
+    if (booking.status != BookingStatus.pendingPayment) {
+      return false;
+    }
+    final now = _nowProvider();
+    final membership = await _subscriptionRepository.getMembership(userId, now: now);
+    final remaining = await _proIncludedTrainingRemainingCount(
+      userId: userId,
+      membership: membership,
+    );
+    return (remaining ?? 0) > 0;
+  }
+
+  Future<int?> _proIncludedTrainingRemainingCount({
+    required int userId,
+    required SubscriptionMembership membership,
+  }) async {
+    final activeUntil = membership.activeUntil;
+    if (membership.level != MembershipLevel.pro || activeUntil == null) {
+      return null;
+    }
+    final periodStart = activeUntil.subtract(const Duration(days: 30));
+    final paidBookings = await _bookingRepository.listPaidBookingsInRange(
+      fromInclusive: periodStart,
+      toExclusive: activeUntil.add(const Duration(seconds: 1)),
+    );
+    final usedIncludedTrainings = paidBookings
+        .where(
+          (item) =>
+              item.userId == userId &&
+              item.paymentNote == MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+        )
+        .length;
+    final remaining = _proIncludedTrainingsPerPeriod - usedIncludedTrainings;
+    return remaining < 0 ? 0 : remaining;
   }
 
   bool _isFreeActivity(TrainingInfo training) {

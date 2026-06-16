@@ -34,6 +34,7 @@ TrainingBooking _booking({
   String location = 'Hall',
   BookingStatus status = BookingStatus.pendingPayment,
   String? paymentNote,
+  DateTime? updatedAt,
 }) {
   return fakeBooking(
     id: id,
@@ -47,6 +48,7 @@ TrainingBooking _booking({
     location: location,
     status: status,
     paymentNote: paymentNote,
+    updatedAt: updatedAt,
   );
 }
 
@@ -256,13 +258,30 @@ void main() {
 
     test('shows renewal call-to-action for active PRO subscription', () async {
       final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          _booking(
+            id: 8101,
+            userId: 9103,
+            status: BookingStatus.paid,
+            paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+            updatedAt: DateTime(2026, 7, 10, 10),
+          ),
+          _booking(
+            id: 8102,
+            userId: 9103,
+            status: BookingStatus.paid,
+            paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+            updatedAt: DateTime(2026, 7, 11, 10),
+          ),
+        ];
       final subscriptionRepository = _FakeSubscriptionRepository()
         ..membershipLevel = MembershipLevel.pro
         ..membershipActiveUntil = DateTime(2026, 8, 1, 12);
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
-        bookingRepository: _FakeBookingRepository(),
+        bookingRepository: bookingRepository,
         subscriptionRepository: subscriptionRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
@@ -275,6 +294,7 @@ void main() {
       });
 
       expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('Осталось тренировок в текущем PRO:</b> <b>6/8</b>'));
       expect(sender.messages.single.text, contains('Продление доступно уже сейчас'));
       expect(
         _keyboardTexts(sender.messages.single.replyMarkup),
@@ -452,6 +472,42 @@ void main() {
       expect(sender.messages.single.parseMode, 'HTML');
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonProfileBookings));
+    });
+
+    test('shows remaining PRO trainings in profile for active subscription', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          for (var i = 0; i < 3; i++)
+            _booking(
+              id: 9100 + i,
+              userId: 9502,
+              status: BookingStatus.paid,
+              paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+              updatedAt: DateTime(2026, 7, 12 + i, 10),
+            ),
+        ];
+      final subscriptionRepository = _FakeSubscriptionRepository()
+        ..membershipLevel = MembershipLevel.pro
+        ..membershipActiveUntil = DateTime(2026, 8, 1, 12);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        subscriptionRepository: subscriptionRepository,
+        onboardingRepository: _FakeOnboardingRepository()..seedUser(userId: 9502),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9502, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9502},
+        'text': MessageTemplates.buttonProfile,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('Осталось тренировок PRO:</b> <b>5/8</b>'));
     });
 
     test('handles coaching staff flow with compact list and trainer card', () async {
@@ -1511,6 +1567,71 @@ void main() {
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100111).text;
       expect(adminMessage, contains('тренер записался'));
       expect(adminMessage, contains('tg://user?id=1'));
+    });
+
+    test('auto-applies included PRO training when subscription is active', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          for (var i = 1; i <= 7; i++)
+            _booking(
+              id: 200 + i,
+              userId: 1603,
+              status: BookingStatus.paid,
+              paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+              startsAt: DateTime(2026, 7, 10 + i, 19, 0),
+            ),
+        ];
+      final subscriptionRepository = _FakeSubscriptionRepository()
+        ..membershipLevel = MembershipLevel.pro
+        ..membershipActiveUntil = DateTime(2026, 7, 31, 12, 0);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'PRO included session',
+              startsAt: DateTime(2026, 7, 25, 19, 0),
+              location: 'Main hall',
+              price: 1300,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        subscriptionRepository: subscriptionRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 20, 10, 0),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1603, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1603, 'username': 'pro_user'},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1603, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1603, 'username': 'pro_user'},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1603, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1603, 'username': 'pro_user'},
+        'text': '🎯 1. PRO included session',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.lastUpdatedBookingId, 99);
+      expect(bookingRepository.lastUpdatedStatus, BookingStatus.paid);
+      expect(
+        bookingRepository.lastUpdatedPaymentNote,
+        MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+      );
+      expect(sender.messages.last.text, contains('Включено в PRO'));
+      expect(sender.messages.last.text, isNot(contains('Реквизиты для оплаты')));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
     });
 
     test('shows starter bonus button and applies free training once', () async {

@@ -208,7 +208,7 @@ final class TelegramKeyboards {
     return _replyKeyboard(
       <List<Map<String, String>>>[
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonRenewSubscription},
+          <String, String>{'text': MessageCopy.buttonSubscription},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonProfileBookings},
