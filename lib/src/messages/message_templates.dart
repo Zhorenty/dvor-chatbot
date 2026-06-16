@@ -64,6 +64,8 @@ final class MessageTemplates {
   static const String buttonBackToBookingsList = MessageCopy.buttonBackToBookingsList;
   static const String buttonBookingsPreviousPage = MessageCopy.buttonBookingsPreviousPage;
   static const String buttonBookingsNextPage = MessageCopy.buttonBookingsNextPage;
+  static const String buttonCurrentBookings = MessageCopy.buttonCurrentBookings;
+  static const String buttonPastBookings = MessageCopy.buttonPastBookings;
   static const String buttonCreateAnotherBooking = MessageCopy.buttonCreateAnotherBooking;
   static const String buttonConfirmCreateBooking = MessageCopy.buttonConfirmCreateBooking;
   static const String buttonCancelCreateBooking = MessageCopy.buttonCancelCreateBooking;
@@ -571,11 +573,9 @@ final class MessageTemplates {
     final trainingsLeftForNextFree = progressToNextFree == 0 ? 4 : 4 - progressToNextFree;
     final rewardsHint = availableEveryFifthRewards > 0
         ? '🎁 <b>Бесплатных по бонусу «каждая 5-я»:</b> <b>$availableEveryFifthRewards</b>'
-        : '🎯 <b>До следующей бесплатной:</b> <b>$trainingsLeftForNextFree</b> '
-            '(по правилу «каждая 5-я»)';
-    final starterHint = starterBonusAvailable
-        ? '⚡️ <b>Стартовая бесплатная:</b> доступна'
-        : '⚡️ <b>Стартовая бесплатная:</b> недоступна';
+        : '🎯 <b>До следующей бесплатной:</b> <b>$trainingsLeftForNextFree</b>';
+    final starterHint =
+        starterBonusAvailable ? '• ⚡️ <b>Стартовая бесплатная:</b> доступна\n' : '';
     return '👤 <b>Профиль спортсмена DVOR</b>\n\n'
         '📊 <b>Твоя статистика</b>\n'
         '• Всего записей: <b>$totalBookings</b>\n'
@@ -585,8 +585,13 @@ final class MessageTemplates {
         '🏋️ <b>Прогресс лояльности</b>\n'
         '• Тренировок в зачет «каждая 5-я»: <b>$completedTrainingsCount</b>\n'
         '• $rewardsHint\n'
-        '• $starterHint\n\n'
+        '$starterHint\n'
         'Нажми «${MessageCopy.buttonProfileBookings}», чтобы открыть список записей и управление ими.';
+  }
+
+  String chooseMyBookingsSegment() {
+    return '🗂 <b>Мои записи</b>\n'
+        'Выбери список ниже: «Актуальные» или «Прошедшие».';
   }
 
   String myBookings(
@@ -631,6 +636,44 @@ final class MessageTemplates {
         );
       }
     }
+    return lines.join('\n');
+  }
+
+  String chooseMyBookingFromList(
+    List<TrainingBooking> bookings, {
+    required bool past,
+    required int page,
+    required int totalPages,
+    required int totalCount,
+  }) {
+    if (bookings.isEmpty) {
+      final segmentLabel = past ? 'Прошедшие' : 'Актуальные';
+      return '📭 <b>В этом списке пока пусто</b>\n'
+          'Сегмент: <b>${_escapeHtml(segmentLabel)}</b>';
+    }
+    final segmentLabel = past ? 'Прошедшие' : 'Актуальные';
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final lines = <String>[
+      '🧾 <b>Мои записи</b>',
+      'Фильтр: <b>${_escapeHtml(segmentLabel)}</b>',
+      'Страница <b>$page/$totalPages</b> • всего записей: <b>$totalCount</b>',
+      '<b>Записи на текущей странице:</b>',
+    ];
+    for (var index = 0; index < bookings.length; index++) {
+      final booking = bookings[index];
+      lines.addAll(<String>[
+        '',
+        '🧩 <b>${index + 1}. #${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>',
+        '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}',
+        '💳 ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
+      ]);
+    }
+    lines.addAll(<String>[
+      '',
+      'Выбери запись кнопкой ниже.',
+      'Чтобы сменить сегмент, нажми «${MessageCopy.buttonBack}».',
+    ]);
     return lines.join('\n');
   }
 
@@ -1227,6 +1270,18 @@ final class MessageTemplates {
     return TelegramKeyboards.bookingManagementSelectionKeyboard(bookings);
   }
 
+  Map<String, Object?> myBookingSelectionKeyboard(
+    List<TrainingBooking> bookings, {
+    required bool hasPreviousPage,
+    required bool hasNextPage,
+  }) {
+    return TelegramKeyboards.myBookingSelectionKeyboard(
+      bookings,
+      hasPreviousPage: hasPreviousPage,
+      hasNextPage: hasNextPage,
+    );
+  }
+
   Map<String, Object?> adminBookingSelectionKeyboard(
     List<TrainingBooking> bookings, {
     required bool hasPreviousPage,
@@ -1262,6 +1317,16 @@ final class MessageTemplates {
     return TelegramKeyboards.bookingSegmentKeyboard(
       activeCount: activeCount,
       archivedCount: archivedCount,
+    );
+  }
+
+  Map<String, Object?> myBookingSegmentKeyboard({
+    required int currentCount,
+    required int pastCount,
+  }) {
+    return TelegramKeyboards.myBookingSegmentKeyboard(
+      currentCount: currentCount,
+      pastCount: pastCount,
     );
   }
 

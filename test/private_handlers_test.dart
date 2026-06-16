@@ -2136,6 +2136,11 @@ void main() {
         'from': <String, dynamic>{'id': 2301},
         'text': '/my_bookings',
       });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2301, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': MessageTemplates.buttonCurrentBookings,
+      });
       final afterSelection = sender.messages.last;
       expect(_keyboardTexts(afterSelection.replyMarkup), contains('🧾 #301 Old session'));
 
@@ -2551,6 +2556,11 @@ void main() {
         'chat': <String, dynamic>{'id': 2360, 'type': 'private'},
         'from': <String, dynamic>{'id': 2360},
         'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2360, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2360},
+        'text': MessageTemplates.buttonCurrentBookings,
       });
 
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);

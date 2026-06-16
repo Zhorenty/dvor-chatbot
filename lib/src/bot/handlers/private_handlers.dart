@@ -31,6 +31,7 @@ final class PrivateHandlers {
   static const String _paymentChoiceFullMarker = '__payment_choice_full__';
   static const String _paymentChoicePartialMarker = '__payment_choice_partial__';
   static const int _adminBookingsPageSize = 8;
+  static const int _myBookingsPageSize = 8;
   static const int _yogaTrainerUserId = 857655217;
 
   PrivateHandlers({
@@ -161,7 +162,7 @@ final class PrivateHandlers {
         case _PrivateFlowStep.selectingParticipantsCategory:
         case _PrivateFlowStep.selectingPaymentsQueueCategory:
         case _PrivateFlowStep.selectingEconomicSummaryPeriod:
-        case _PrivateFlowStep.selectingBookingToManage:
+        case _PrivateFlowStep.selectingBookingListSegment:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
             chatId,
@@ -225,14 +226,14 @@ final class PrivateHandlers {
           );
           return true;
         case _PrivateFlowStep.selectingBookingAction:
-          final bookings = flowState!.availableBookings;
-          _flowByUserId[userId] =
-              flowState.copyWith(step: _PrivateFlowStep.selectingBookingToManage);
-          await _sender.sendMessage(
-            chatId,
-            _templates.chooseBookingToManage(bookings),
-            replyMarkup: _templates.bookingManagementSelectionKeyboard(bookings),
+          _flowByUserId[userId] = flowState!.copyWith(
+            step: _PrivateFlowStep.selectingBookingToManage,
+            selectedBooking: null,
           );
+          await _sendMyBookingListPage(chatId: chatId, userId: userId);
+          return true;
+        case _PrivateFlowStep.selectingBookingToManage:
+          await _openMyBookingListSegment(chatId: chatId, userId: userId);
           return true;
         case _PrivateFlowStep.selectingRescheduleTraining:
           final selectedBooking = flowState?.selectedBooking;
@@ -774,32 +775,81 @@ final class PrivateHandlers {
         chatId: chatId,
         username: context.from?['username']?.toString(),
       );
-      final now = _nowProvider();
       final bookings = await _bookingRepository.listUserBookings(userId);
-      final activeBookings = bookings
-          .where(
-            (booking) =>
-                booking.status != BookingStatus.cancelled && !booking.startsAt.isBefore(now),
-          )
-          .toList(growable: false);
+      if (bookings.isEmpty) {
+        await _sender.sendMessage(
+          chatId,
+          'У тебя пока нет записей на мероприятия 🙃',
+          replyMarkup: _templates.profileActionsKeyboard(),
+        );
+        return true;
+      }
+      final now = _nowProvider();
+      final currentCount = bookings
+          .where((booking) => !_isArchivedBookingAt(booking, now: now))
+          .length;
+      final pastCount = bookings.length - currentCount;
+      _flowByUserId[userId] = _PrivateFlowState(
+        step: _PrivateFlowStep.selectingBookingListSegment,
+        availableTrainings: const <TrainingInfo>[],
+        availableBookings: bookings,
+      );
       await _sender.sendMessage(
         chatId,
-        _templates.myBookings(
-          bookings,
-          now: now,
+        _templates.chooseMyBookingsSegment(),
+        replyMarkup: _templates.myBookingSegmentKeyboard(
+          currentCount: currentCount,
+          pastCount: pastCount,
         ),
-        replyMarkup: activeBookings.isEmpty
-            ? _templates.profileActionsKeyboard()
-            : _templates.bookingManagementSelectionKeyboard(activeBookings),
         parseMode: 'HTML',
       );
-      if (activeBookings.isNotEmpty) {
-        _flowByUserId[userId] = _PrivateFlowState(
-          step: _PrivateFlowStep.selectingBookingToManage,
-          availableTrainings: const <TrainingInfo>[],
-          availableBookings: activeBookings,
-        );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingBookingListSegment &&
+        text != null &&
+        !text.startsWith('/')) {
+      final past = _parseMyBookingSegmentSelection(text);
+      if (past == null) {
+        final selectedBookingId = _parseBookingSelectionId(text);
+        if (selectedBookingId != null) {
+          final now = _nowProvider();
+          final currentBookings = flowState!.availableBookings
+              .where((booking) => !_isArchivedBookingAt(booking, now: now))
+              .toList(growable: false);
+          TrainingBooking? selectedBooking;
+          for (final booking in currentBookings) {
+            if (booking.id == selectedBookingId) {
+              selectedBooking = booking;
+              break;
+            }
+          }
+          if (selectedBooking != null) {
+            _flowByUserId[userId] = flowState.copyWith(
+              step: _PrivateFlowStep.selectingBookingAction,
+              adminViewingArchived: false,
+              availableBookings: currentBookings,
+              selectedBooking: selectedBooking,
+            );
+            await _sender.sendMessage(
+              chatId,
+              _templates.bookingActions(selectedBooking),
+              replyMarkup: _bookingActionsKeyboard(selectedBooking),
+            );
+            return true;
+          }
+        }
+        await _openMyBookingListSegment(chatId: chatId, userId: userId);
+        return true;
       }
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingBookingToManage,
+        adminViewingArchived: past,
+        selectedBooking: null,
+        adminBookingsPage: 0,
+      );
+      await _sendMyBookingListPage(chatId: chatId, userId: userId);
       return true;
     }
 
@@ -807,6 +857,20 @@ final class PrivateHandlers {
         flowState?.step == _PrivateFlowStep.selectingBookingToManage &&
         text != null &&
         !text.startsWith('/')) {
+      if (text == MessageTemplates.buttonBookingsNextPage) {
+        _flowByUserId[userId] = flowState!.copyWith(
+          adminBookingsPage: flowState.adminBookingsPage + 1,
+        );
+        await _sendMyBookingListPage(chatId: chatId, userId: userId);
+        return true;
+      }
+      if (text == MessageTemplates.buttonBookingsPreviousPage) {
+        _flowByUserId[userId] = flowState!.copyWith(
+          adminBookingsPage: flowState.adminBookingsPage - 1,
+        );
+        await _sendMyBookingListPage(chatId: chatId, userId: userId);
+        return true;
+      }
       final currentFlow = flowState!;
       final selectedBookingId = _parseBookingSelectionId(text);
       TrainingBooking? selectedBooking;
@@ -817,11 +881,7 @@ final class PrivateHandlers {
         }
       }
       if (selectedBooking == null) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.chooseBookingToManage(currentFlow.availableBookings),
-          replyMarkup: _templates.bookingManagementSelectionKeyboard(currentFlow.availableBookings),
-        );
+        await _sendMyBookingListPage(chatId: chatId, userId: userId);
         return true;
       }
       _flowByUserId[userId] = currentFlow.copyWith(
@@ -2580,6 +2640,17 @@ final class PrivateHandlers {
     return null;
   }
 
+  bool? _parseMyBookingSegmentSelection(String text) {
+    final normalized = text.trim().toLowerCase();
+    if (normalized.contains('актуал')) {
+      return false;
+    }
+    if (normalized.contains('прошед')) {
+      return true;
+    }
+    return null;
+  }
+
   BookingStatus? _parsePaymentStatusSelection(String text) {
     final normalized = text.trim().toLowerCase();
     if (normalized.contains('ожидает')) {
@@ -2611,6 +2682,89 @@ final class PrivateHandlers {
       return null;
     }
     return trimmed.startsWith('@') ? trimmed.substring(1) : trimmed;
+  }
+
+  Future<void> _openMyBookingListSegment({
+    required int chatId,
+    required int userId,
+  }) async {
+    final bookings = await _bookingRepository.listUserBookings(userId);
+    if (bookings.isEmpty) {
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        'У тебя пока нет записей на мероприятия 🙃',
+        replyMarkup: _templates.profileActionsKeyboard(),
+      );
+      return;
+    }
+    final now = _nowProvider();
+    final currentCount = bookings.where((booking) => !_isArchivedBookingAt(booking, now: now)).length;
+    final pastCount = bookings.length - currentCount;
+    _flowByUserId[userId] = _PrivateFlowState(
+      step: _PrivateFlowStep.selectingBookingListSegment,
+      availableTrainings: const <TrainingInfo>[],
+      availableBookings: bookings,
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.chooseMyBookingsSegment(),
+      replyMarkup: _templates.myBookingSegmentKeyboard(
+        currentCount: currentCount,
+        pastCount: pastCount,
+      ),
+      parseMode: 'HTML',
+    );
+  }
+
+  Future<void> _sendMyBookingListPage({
+    required int chatId,
+    required int userId,
+  }) async {
+    final flowState = _flowByUserId[userId];
+    if (flowState == null || flowState.step != _PrivateFlowStep.selectingBookingToManage) {
+      return;
+    }
+    final now = _nowProvider();
+    final allBookings = _filterBookingsByArchivedSegment(
+      flowState.availableBookings,
+      archived: flowState.adminViewingArchived,
+      now: now,
+    );
+    final maxPage = _maxMyBookingsPage(allBookings);
+    final page = flowState.adminBookingsPage.clamp(0, maxPage);
+    final start = page * _myBookingsPageSize;
+    final end = (start + _myBookingsPageSize).clamp(0, allBookings.length);
+    final pageBookings = allBookings.sublist(start, end);
+    _flowByUserId[userId] = flowState.copyWith(
+      adminBookingsPage: page,
+      availableBookings: allBookings,
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.chooseMyBookingFromList(
+        pageBookings,
+        past: flowState.adminViewingArchived,
+        page: page + 1,
+        totalPages: maxPage + 1,
+        totalCount: allBookings.length,
+      ),
+      replyMarkup: allBookings.isEmpty
+          ? _templates.myBookingSegmentKeyboard(currentCount: 0, pastCount: 0)
+          : _templates.myBookingSelectionKeyboard(
+              pageBookings,
+              hasPreviousPage: page > 0,
+              hasNextPage: page < maxPage,
+            ),
+      parseMode: 'HTML',
+    );
+  }
+
+  int _maxMyBookingsPage(List<TrainingBooking> bookings) {
+    if (bookings.isEmpty) {
+      return 0;
+    }
+    return (bookings.length - 1) ~/ _myBookingsPageSize;
   }
 
   Future<void> _openAdminBookingListSegment({

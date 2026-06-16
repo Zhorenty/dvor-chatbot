@@ -377,6 +377,56 @@ final class TelegramKeyboards {
     );
   }
 
+  static Map<String, Object?> myBookingSegmentKeyboard({
+    required int currentCount,
+    required int pastCount,
+  }) {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': '${MessageCopy.buttonCurrentBookings} ($currentCount)'},
+          <String, String>{'text': '${MessageCopy.buttonPastBookings} ($pastCount)'},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> myBookingSelectionKeyboard(
+    List<TrainingBooking> bookings, {
+    required bool hasPreviousPage,
+    required bool hasNextPage,
+  }) {
+    final rows = <List<Map<String, String>>>[];
+    for (final booking in bookings) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': '🧾 #${booking.id} ${booking.trainingTitle}'},
+        ],
+      );
+    }
+    if (hasPreviousPage || hasNextPage) {
+      final pageButtons = <Map<String, String>>[];
+      if (hasPreviousPage) {
+        pageButtons.add(<String, String>{'text': MessageCopy.buttonBookingsPreviousPage});
+      }
+      if (hasNextPage) {
+        pageButtons.add(<String, String>{'text': MessageCopy.buttonBookingsNextPage});
+      }
+      rows.add(pageButtons);
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonBack},
+        <String, String>{'text': MessageCopy.buttonMainMenu},
+      ],
+    );
+    return _replyKeyboard(rows);
+  }
+
   static Map<String, Object?> adminBookingActionsKeyboard({
     required bool canRestore,
   }) {
