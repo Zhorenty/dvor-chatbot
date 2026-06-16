@@ -25,6 +25,7 @@ final class MessageTemplates {
 
   static const String buttonTrainings = MessageCopy.buttonTrainings;
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
+  static const String buttonCoachDetails = MessageCopy.buttonCoachDetails;
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
   static const String buttonProfile = MessageCopy.buttonProfile;
   static const String buttonProfileBookings = MessageCopy.buttonProfileBookings;
@@ -127,6 +128,18 @@ final class MessageTemplates {
 
   String coachingStaff(List<TrainerInfo> trainers) {
     return _scheduleTemplates.coachingStaff(trainers);
+  }
+
+  String chooseTrainerProfile(List<TrainerInfo> trainers) {
+    return _scheduleTemplates.chooseTrainerProfile(trainers);
+  }
+
+  String trainerProfile(TrainerInfo trainer) {
+    return _scheduleTemplates.trainerProfile(trainer);
+  }
+
+  String unknownTrainerSelection() {
+    return _scheduleTemplates.unknownTrainerSelection();
   }
 
   String chooseBookingCategory() {
@@ -1166,6 +1179,14 @@ final class MessageTemplates {
 
   Map<String, Object?> scheduleCategoryActionsKeyboard() {
     return TelegramKeyboards.scheduleCategoryActionsKeyboard();
+  }
+
+  Map<String, Object?> coachingStaffActionsKeyboard() {
+    return TelegramKeyboards.coachingStaffActionsKeyboard();
+  }
+
+  Map<String, Object?> trainerSelectionKeyboard(List<TrainerInfo> trainers) {
+    return TelegramKeyboards.trainerSelectionKeyboard(trainers);
   }
 
   Map<String, Object?> paymentsQueueCategorySelectionKeyboard({

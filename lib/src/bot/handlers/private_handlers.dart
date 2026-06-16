@@ -19,6 +19,7 @@ import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
@@ -155,6 +156,7 @@ final class PrivateHandlers {
       }
       switch (flowState?.step) {
         case _PrivateFlowStep.selectingScheduleCategory:
+        case _PrivateFlowStep.viewingCoachingStaff:
         case _PrivateFlowStep.selectingBookingCategory:
         case _PrivateFlowStep.selectingParticipantsCategory:
         case _PrivateFlowStep.selectingPaymentsQueueCategory:
@@ -165,6 +167,17 @@ final class PrivateHandlers {
             chatId,
             'Вернул в главное меню 👇',
             replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          );
+          return true;
+        case _PrivateFlowStep.selectingTrainerProfile:
+          final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
+          _flowByUserId[userId] = flowState!.copyWith(step: _PrivateFlowStep.viewingCoachingStaff);
+          await _sender.sendMessage(
+            chatId,
+            _templates.coachingStaff(trainers),
+            replyMarkup: _templates.coachingStaffActionsKeyboard(),
+            parseMode: 'HTML',
+            disableWebPagePreview: true,
           );
           return true;
         case _PrivateFlowStep.viewingScheduleCategory:
@@ -434,6 +447,70 @@ final class PrivateHandlers {
         chatId,
         _templates.chooseBookingCategory(),
         replyMarkup: _templates.categorySelectionKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.viewingCoachingStaff &&
+        text == MessageTemplates.buttonCoachDetails) {
+      final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
+      if (trainers.isEmpty) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.coachingStaff(trainers),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          parseMode: 'HTML',
+          disableWebPagePreview: true,
+        );
+        return true;
+      }
+      _flowByUserId[userId] = flowState!.copyWith(step: _PrivateFlowStep.selectingTrainerProfile);
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseTrainerProfile(trainers),
+        replyMarkup: _templates.trainerSelectionKeyboard(trainers),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.viewingCoachingStaff &&
+        text != null &&
+        !text.startsWith('/')) {
+      final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
+      await _sender.sendMessage(
+        chatId,
+        _templates.coachingStaff(trainers),
+        replyMarkup: _templates.coachingStaffActionsKeyboard(),
+        parseMode: 'HTML',
+        disableWebPagePreview: true,
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingTrainerProfile &&
+        text != null &&
+        !text.startsWith('/')) {
+      final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
+      final index = _parseTrainerSelectionIndex(text);
+      if (index == null || index < 1 || index > trainers.length) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownTrainerSelection(),
+          replyMarkup: _templates.trainerSelectionKeyboard(trainers),
+        );
+        return true;
+      }
+      final trainer = trainers[index - 1];
+      await _sender.sendMessage(
+        chatId,
+        _templates.trainerProfile(trainer),
+        replyMarkup: _templates.trainerSelectionKeyboard(trainers),
+        parseMode: 'HTML',
+        disableWebPagePreview: true,
       );
       return true;
     }
@@ -2482,6 +2559,14 @@ final class PrivateHandlers {
 
   int? _parseBookingSelectionId(String text) {
     return _updateRouter.parseBookingIdSelection(text);
+  }
+
+  int? _parseTrainerSelectionIndex(String text) {
+    final match = RegExp(r'(\d+)\.').firstMatch(text);
+    if (match == null) {
+      return null;
+    }
+    return int.tryParse(match.group(1) ?? '');
   }
 
   bool? _parseBookingSegmentSelection(String text) {

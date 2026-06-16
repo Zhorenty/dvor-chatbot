@@ -3,6 +3,7 @@ final class MessageCopy {
 
   static const String buttonTrainings = '📅 Расписание';
   static const String buttonCoachingStaff = '🧑‍🏫 Тренерский штаб';
+  static const String buttonCoachDetails = '📖 Подробнее о тренере';
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonProfile = '👤 Профиль';
   static const String buttonProfileBookings = '🗂 Мои записи';

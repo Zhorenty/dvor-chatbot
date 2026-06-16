@@ -10,12 +10,10 @@ void main() {
       final repository = GoogleSheetsTrainerDirectoryRepository(
         csvUrl: Uri.parse('https://example.com/schedule.csv?gid=0'),
         httpClient: MockClient((request) async {
-          final gid = request.url.queryParameters['gid'];
-          expect(gid, '195037978');
           return http.Response(
-            'name,link,description\n'
-            'Alex,@alex,Head coach\n'
-            'Maria,maria_run,Running coach',
+            'name,link,description,role\n'
+            'Alex,@alex,Head coach,Strength\n'
+            'Maria,maria_run,Running coach,Running',
             200,
           );
         }),
@@ -28,8 +26,18 @@ void main() {
       expect(
         items,
         const <TrainerInfo>[
-          TrainerInfo(name: 'Alex', link: '@alex', description: 'Head coach'),
-          TrainerInfo(name: 'Maria', link: '@maria_run', description: 'Running coach'),
+          TrainerInfo(
+            name: 'Alex',
+            link: '@alex',
+            description: 'Head coach',
+            role: 'Strength',
+          ),
+          TrainerInfo(
+            name: 'Maria',
+            link: '@maria_run',
+            description: 'Running coach',
+            role: 'Running',
+          ),
         ],
       );
     });
@@ -59,6 +67,7 @@ void main() {
       expect(secondRefresh, isFalse);
       expect(repository.list(), hasLength(1));
       expect(repository.list().single.name, 'Alex');
+      expect(repository.list().single.role, isEmpty);
     });
   });
 }

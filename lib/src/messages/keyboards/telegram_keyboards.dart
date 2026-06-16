@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
@@ -113,6 +114,38 @@ final class TelegramKeyboards {
         ],
       ],
     );
+  }
+
+  static Map<String, Object?> coachingStaffActionsKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonCoachDetails},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> trainerSelectionKeyboard(List<TrainerInfo> trainers) {
+    final rows = <List<Map<String, String>>>[];
+    for (var index = 0; index < trainers.length; index++) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': '👤 ${index + 1}. ${trainers[index].name}'},
+        ],
+      );
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonBack},
+        <String, String>{'text': MessageCopy.buttonMainMenu},
+      ],
+    );
+    return _replyKeyboard(rows);
   }
 
   static Map<String, Object?> paymentConfirmationKeyboard({

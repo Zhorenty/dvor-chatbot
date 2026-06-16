@@ -82,6 +82,10 @@ final class GoogleSheetsTrainerDirectoryRepository implements TrainerDirectoryRe
       headers,
       const <String>['description', 'about', 'bio', 'desc', 'описание'],
     );
+    final roleIndex = _firstExistingHeaderIndex(
+      headers,
+      const <String>['role', 'specialization', 'direction', 'роль', 'направление'],
+    );
 
     if (nameIndex < 0 || linkIndex < 0 || descriptionIndex < 0) {
       throw const FormatException(
@@ -94,6 +98,7 @@ final class GoogleSheetsTrainerDirectoryRepository implements TrainerDirectoryRe
       final name = _cell(row, nameIndex);
       final link = _cell(row, linkIndex);
       final description = _cell(row, descriptionIndex);
+      final role = _cell(row, roleIndex);
       if (name.isEmpty || link.isEmpty || description.isEmpty) {
         continue;
       }
@@ -102,6 +107,7 @@ final class GoogleSheetsTrainerDirectoryRepository implements TrainerDirectoryRe
           name: name,
           link: _normalizeLink(link),
           description: description,
+          role: role,
         ),
       );
     }

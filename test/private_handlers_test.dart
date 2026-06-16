@@ -268,7 +268,7 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonProfileBookings));
     });
 
-    test('handles coaching staff button and prints trainers list', () async {
+    test('handles coaching staff flow with compact list and trainer card', () async {
       final sender = _FakeSender();
       final trainerDirectoryRepository = _FakeTrainerDirectoryRepository(
         const <TrainerInfo>[
@@ -276,11 +276,13 @@ void main() {
             name: 'Алексей Петров',
             link: '@alxpetrov',
             description: 'Силовая и функциональная подготовка',
+            role: 'Силовые и функциональные тренировки',
           ),
           TrainerInfo(
             name: 'Мария Романова',
             link: '@maria_run',
             description: '  Беговые тренировки  \n\n и восстановление  ',
+            role: 'Бег и восстановление',
           ),
         ],
       );
@@ -298,23 +300,48 @@ void main() {
         'from': <String, dynamic>{'id': 9102},
         'text': MessageTemplates.buttonCoachingStaff,
       });
+      final detailsHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9102, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9102},
+        'text': MessageTemplates.buttonCoachDetails,
+      });
+      final profileHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9102, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9102},
+        'text': '👤 2. Мария Романова',
+      });
 
       expect(handled, isTrue);
+      expect(detailsHandled, isTrue);
+      expect(profileHandled, isTrue);
       expect(trainerDirectoryRepository.refreshCalls, 1);
-      expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.text, contains('Тренерский штаб DVOR'));
-      expect(sender.messages.single.text, contains('Алексей Петров'));
-      expect(sender.messages.single.text, contains('@maria_run'));
+      expect(sender.messages, hasLength(3));
+      expect(sender.messages.first.text, contains('Тренерский штаб DVOR'));
+      expect(sender.messages.first.text, contains('Алексей Петров'));
+      expect(sender.messages.first.text, contains('Силовые и функциональные тренировки'));
+      expect(sender.messages.first.text, isNot(contains('📝')));
+      expect(sender.messages[1].text, contains('Выбери тренера'));
+      expect(sender.messages.last.text, contains('<b>Мария Романова</b>'));
+      expect(sender.messages.last.text, contains('Направление'));
+      expect(sender.messages.last.text, contains('📝 <b>О тренере:</b>'));
       expect(
-        sender.messages.single.text,
-        contains('\n🔗 <a href="https://t.me/alxpetrov">@alxpetrov</a>'),
+        sender.messages.last.text,
+        contains('\n🔗 <b>Контакт:</b> <a href="https://t.me/maria_run">@maria_run</a>'),
       );
-      expect(sender.messages.single.text, contains('\n📝 Беговые тренировки\n\nи восстановление'));
-      expect(sender.messages.single.text, isNot(contains('\n   🔗')));
-      expect(sender.messages.single.disableWebPagePreview, isTrue);
+      expect(sender.messages.last.text, contains('Беговые тренировки\n\nи восстановление'));
+      expect(sender.messages.first.disableWebPagePreview, isTrue);
+      expect(sender.messages.last.disableWebPagePreview, isTrue);
       expect(
-        _keyboardTexts(sender.messages.single.replyMarkup),
-        contains(MessageTemplates.buttonCoachingStaff),
+        _keyboardTexts(sender.messages.first.replyMarkup),
+        contains(MessageTemplates.buttonCoachDetails),
+      );
+      expect(
+        _keyboardTexts(sender.messages[1].replyMarkup),
+        contains('👤 1. Алексей Петров'),
+      );
+      expect(
+        _keyboardTexts(sender.messages.last.replyMarkup),
+        contains('👤 2. Мария Романова'),
       );
     });
 

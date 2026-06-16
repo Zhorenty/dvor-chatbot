@@ -96,20 +96,44 @@ final class ScheduleTemplates {
     if (trainers.isEmpty) {
       return 'Список тренеров пока пуст. Попробуй чуть позже 🙏';
     }
-    final lines = <String>['🧑‍🏫 <b>Тренерский штаб DVOR</b>'];
+    final lines = <String>[
+      '🧑‍🏫 <b>Тренерский штаб DVOR</b>',
+      'Выбери «Подробнее о тренере», чтобы открыть карточку 👇',
+    ];
     for (var index = 0; index < trainers.length; index++) {
       final trainer = trainers[index];
-      final description =
-          _normalizeTrainerDescription(trainer.description).split('\n').map(_escapeHtml).join('\n');
+      final role = _normalizeTrainerRole(trainer.role);
       lines.addAll(<String>[
         '',
         '👤 <b>${index + 1}. ${_escapeHtml(trainer.name)}</b>',
+        if (role.isNotEmpty) '🎯 ${_escapeHtml(role)}',
         '🔗 ${_trainerLinkLabel(trainer.link)}',
-        '📝 $description',
       ]);
     }
     return lines.join('\n');
   }
+
+  String chooseTrainerProfile(List<TrainerInfo> trainers) {
+    if (trainers.isEmpty) {
+      return 'Список тренеров пока пуст. Попробуй чуть позже 🙏';
+    }
+    return 'Выбери тренера из списка ниже 👇';
+  }
+
+  String trainerProfile(TrainerInfo trainer) {
+    final description =
+        _normalizeTrainerDescription(trainer.description).split('\n').map(_escapeHtml).join('\n');
+    final role = _normalizeTrainerRole(trainer.role);
+    return <String>[
+      '🧑‍🏫 <b>${_escapeHtml(trainer.name)}</b>',
+      if (role.isNotEmpty) '🎯 <b>Направление:</b> ${_escapeHtml(role)}',
+      '🔗 <b>Контакт:</b> ${_trainerLinkLabel(trainer.link)}',
+      '📝 <b>О тренере:</b>',
+      description,
+    ].join('\n');
+  }
+
+  String unknownTrainerSelection() => 'Не смог распознать тренера. Выбери кнопку из списка 👇';
 
   String scheduleRefreshDone() =>
       'Готово! Google Docs обновил ✅\nОбновил расписание и список тренеров.';
@@ -310,5 +334,9 @@ final class ScheduleTemplates {
     }
 
     return lines.join('\n');
+  }
+
+  String _normalizeTrainerRole(String raw) {
+    return raw.replaceAll('\r\n', '\n').replaceAll('\n', ' ').trim();
   }
 }
