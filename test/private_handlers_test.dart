@@ -806,7 +806,9 @@ void main() {
 
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
-      expect(sender.messages, hasLength(2));
+      expect(sender.messages, hasLength(3));
+      expect(sender.messages[1].text, contains('Ближайшие походы OUTDVOR'));
+      expect(sender.messages[1].text, contains('Поход на водопады'));
       expect(sender.messages.last.text, contains('Выбери поход из кнопок'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains('🎯 1. Поход на водопады'));
@@ -846,6 +848,9 @@ void main() {
       });
 
       expect(handled, isTrue);
+      expect(sender.messages, hasLength(3));
+      expect(sender.messages[1].text, contains('Ближайшие трейлы OUTDVOR'));
+      expect(sender.messages[1].text, contains('Трейл перевал'));
       expect(sender.messages.last.text, contains('Выбери трейл из кнопок'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains('🎯 1. Трейл перевал'));

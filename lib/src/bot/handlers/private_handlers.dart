@@ -754,6 +754,13 @@ final class PrivateHandlers {
           availableTrainings: const <TrainingInfo>[],
           selectedCategory: category,
         );
+        await _refreshTrainerDirectoryForSchedule();
+        await _sender.sendMessage(
+          chatId,
+          _scheduleTextByCategory(category),
+          parseMode: 'HTML',
+          disableWebPagePreview: true,
+        );
         await _sender.sendMessage(
           chatId,
           _templates.chooseOutdoorEventForDetails(category),
