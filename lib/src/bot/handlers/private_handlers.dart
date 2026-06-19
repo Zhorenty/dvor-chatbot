@@ -1083,7 +1083,9 @@ final class PrivateHandlers {
       );
       _flowByUserId.remove(userId);
       if (cancelResult.outcome == BookingActionOutcome.success && cancelResult.booking != null) {
-        await _notifyAdminAboutBookingCancelled(cancelResult.booking!);
+        if (_shouldNotifyAdminAboutBookingCancellation(selectedBooking)) {
+          await _notifyAdminAboutBookingCancelled(selectedBooking);
+        }
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelled(cancelResult.booking!),
@@ -1477,7 +1479,9 @@ final class PrivateHandlers {
       );
       _flowByUserId.remove(userId);
       if (cancelResult.outcome == BookingActionOutcome.success && cancelResult.booking != null) {
-        await _notifyAdminAboutBookingCancelled(cancelResult.booking!);
+        if (_shouldNotifyAdminAboutBookingCancellation(targetBooking)) {
+          await _notifyAdminAboutBookingCancelled(targetBooking);
+        }
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelled(cancelResult.booking!),
@@ -4091,6 +4095,10 @@ final class PrivateHandlers {
     return status == BookingStatus.paid ||
         status == BookingStatus.partialPaid ||
         status == BookingStatus.freeTraining;
+  }
+
+  bool _shouldNotifyAdminAboutBookingCancellation(TrainingBooking booking) {
+    return _isCapacityConfirmedBookingStatus(booking.status);
   }
 
   TrainingInfo _trainingInfoFromBooking(TrainingBooking booking) {

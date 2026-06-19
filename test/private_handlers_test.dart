@@ -2942,6 +2942,67 @@ void main() {
       expect(adminMessage.text, contains('🥾 Поход: Архыз'));
     });
 
+    test('does not notify admin chat on cancellation before payment', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 411,
+            userId: 2411,
+            trainingKey: 'hikes|2026-06-10T12:00:00.000Z|🥾 Поход: Домбай|Маршрут',
+            title: '🥾 Поход: Домбай',
+            startsAt: now.add(const Duration(days: 9)),
+            location: 'Маршрут',
+            status: BookingStatus.pendingPayment,
+          ),
+        ]
+        ..cancelResult = BookingActionResult(
+          outcome: BookingActionOutcome.success,
+          booking: _booking(
+            id: 411,
+            userId: 2411,
+            trainingKey: 'hikes|2026-06-10T12:00:00.000Z|🥾 Поход: Домбай|Маршрут',
+            title: '🥾 Поход: Домбай',
+            startsAt: now.add(const Duration(days: 9)),
+            location: 'Маршрут',
+            status: BookingStatus.cancelled,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100603,
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2411, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2411},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2411, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2411},
+        'text': '🧾 #411 🥾 Поход: Домбай',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2411, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2411},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 1);
+      expect(bookingRepository.lastCancelledBookingId, 411);
+      expect(sender.messages.last.text, contains('отменена'));
+      final adminMessages = sender.messages.where((message) => message.chatId == -100603).toList();
+      expect(adminMessages, isEmpty);
+    });
+
     test('does not cancel outdoor booking when less than 7 days left', () async {
       final now = DateTime(2026, 6, 1, 12, 0);
       final sender = _FakeSender();
