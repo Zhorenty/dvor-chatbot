@@ -16,7 +16,6 @@ final class MessageCopy {
   static const String buttonRepeatBooking = '🔂 Повторить запись';
   static const String buttonCompletePayment = '💳 Доплатить';
   static const String buttonCancelBooking = '❌ Отменить запись';
-  static const String buttonCancel = '↩️ Отменить';
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';
   static const String buttonHelp = '🆘 Помощь';

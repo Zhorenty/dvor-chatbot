@@ -1916,46 +1916,6 @@ void main() {
       expect(submitted, isTrue);
       expect(bookingRepository.submitCalls, 0);
       expect(sender.messages.last.text, contains('Пришли файл'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains(MessageTemplates.buttonCancel));
-    });
-
-    test('shows cancel action when payment flow is opened without pending payment', () async {
-      final sender = _FakeSender();
-      final bookingRepository = _FakeBookingRepository()
-        ..userBookings = <TrainingBooking>[
-          _booking(id: 1962, userId: 9162, status: BookingStatus.paid),
-        ];
-      final handlers = PrivateHandlers(
-        sender: sender,
-        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
-        bookingRepository: bookingRepository,
-        templates: const MessageTemplates(),
-        adminUserIds: const <int>{},
-      );
-
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 9162, 'type': 'private'},
-        'from': <String, dynamic>{'id': 9162},
-        'text': MessageTemplates.buttonSubmitPayment,
-      });
-
-      expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Не нашел активной записи'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains(MessageTemplates.buttonCancel));
-      expect(buttons, contains(MessageTemplates.buttonMainMenu));
-
-      final cancelHandled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 9162, 'type': 'private'},
-        'from': <String, dynamic>{'id': 9162},
-        'text': MessageTemplates.buttonCancel,
-      });
-
-      expect(cancelHandled, isTrue);
-      expect(sender.messages.last.text, contains('Действие отменено'));
-      final menuButtons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(menuButtons, contains(MessageTemplates.buttonTrainings));
     });
 
     test('asks for payment proof file when text is sent at confirmation step', () async {

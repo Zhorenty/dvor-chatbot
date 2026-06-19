@@ -454,19 +454,6 @@ final class PrivateHandlers {
       }
     }
 
-    if (text == MessageTemplates.buttonCancel) {
-      if (userId == null) {
-        return false;
-      }
-      _flowByUserId.remove(userId);
-      await _sender.sendMessage(
-        chatId,
-        'Действие отменено 👌',
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-      );
-      return true;
-    }
-
     if (text != null && (text == MessageTemplates.buttonBookTraining || text.startsWith('/book'))) {
       if (userId == null) {
         return false;
@@ -1520,7 +1507,7 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.noPendingPayment(),
-            replyMarkup: _templates.cancelActionKeyboard(),
+            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
           );
         }
         return true;

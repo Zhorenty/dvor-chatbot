@@ -39,7 +39,6 @@ final class MessageTemplates {
   static const String buttonRepeatBooking = MessageCopy.buttonRepeatBooking;
   static const String buttonCompletePayment = MessageCopy.buttonCompletePayment;
   static const String buttonCancelBooking = MessageCopy.buttonCancelBooking;
-  static const String buttonCancel = MessageCopy.buttonCancel;
   static const String buttonBack = MessageCopy.buttonBack;
   static const String buttonMainMenu = MessageCopy.buttonMainMenu;
   static const String buttonHelp = MessageCopy.buttonHelp;
@@ -1586,22 +1585,16 @@ final class MessageTemplates {
     required bool showStarterBonus,
     bool showCancelBooking = false,
     bool showOutdoorPaymentTypeChoice = false,
-    bool showCancelAction = true,
   }) {
     return TelegramKeyboards.paymentConfirmationKeyboard(
       showStarterBonus: showStarterBonus,
       showCancelBooking: showCancelBooking,
       showOutdoorPaymentTypeChoice: showOutdoorPaymentTypeChoice,
-      showCancelAction: showCancelAction,
     );
   }
 
   Map<String, Object?> simpleNavigationKeyboard() {
     return TelegramKeyboards.simpleNavigationKeyboard();
-  }
-
-  Map<String, Object?> cancelActionKeyboard() {
-    return TelegramKeyboards.cancelActionKeyboard();
   }
 
   Map<String, Object?> profileActionsKeyboard() {
