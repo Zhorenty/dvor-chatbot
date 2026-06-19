@@ -6,7 +6,6 @@ import 'package:dvor_chatbot/src/application/payment_review_service.dart';
 import 'package:dvor_chatbot/src/application/schedule_query_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/admin_handler.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/booking_handler.dart';
-import 'package:dvor_chatbot/src/bot/handlers/private/payment_handler.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_context.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_flow_store.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_static_commands.dart';
@@ -98,7 +97,6 @@ final class PrivateHandlers {
   final PrivateUpdateRouter _updateRouter = const PrivateUpdateRouter();
   final ScheduleHandler _scheduleHandler = const ScheduleHandler();
   final BookingHandler _bookingHandler = const BookingHandler();
-  final PaymentHandler _paymentHandler = const PaymentHandler();
   final AdminHandler _adminHandler = const AdminHandler();
   final PrivateStaticCommands _staticCommands = const PrivateStaticCommands();
 
@@ -454,6 +452,19 @@ final class PrivateHandlers {
           );
           return true;
       }
+    }
+
+    if (text == MessageTemplates.buttonCancel) {
+      if (userId == null) {
+        return false;
+      }
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        'Действие отменено 👌',
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return true;
     }
 
     if (text != null && (text == MessageTemplates.buttonBookTraining || text.startsWith('/book'))) {
@@ -1508,8 +1519,8 @@ final class PrivateHandlers {
         if (!opened) {
           await _sender.sendMessage(
             chatId,
-            _paymentHandler.chooseBookingFirstText(MessageTemplates.buttonBookTraining),
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            _templates.noPendingPayment(),
+            replyMarkup: _templates.cancelActionKeyboard(),
           );
         }
         return true;

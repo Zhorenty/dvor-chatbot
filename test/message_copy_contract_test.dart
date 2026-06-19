@@ -31,6 +31,7 @@ void main() {
             canRepeat: true,
           ),
         ),
+        ..._replyTexts(TelegramKeyboards.cancelActionKeyboard()),
       };
 
       expect(allTexts, contains(MessageCopy.buttonBack));
@@ -38,6 +39,7 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonSubmitPayment));
       expect(allTexts, isNot(contains(MessageCopy.buttonPayFully)));
       expect(allTexts, contains(MessageCopy.buttonPayPartially));
+      expect(allTexts, contains(MessageCopy.buttonCancel));
       expect(allTexts, contains(MessageCopy.buttonUseStarterBonus));
       expect(allTexts, contains(MessageCopy.buttonCancelBooking));
       expect(allTexts, contains(MessageCopy.buttonTrainings));

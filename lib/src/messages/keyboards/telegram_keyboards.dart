@@ -155,6 +155,7 @@ final class TelegramKeyboards {
     required bool showStarterBonus,
     bool showCancelBooking = false,
     bool showOutdoorPaymentTypeChoice = false,
+    bool showCancelAction = true,
   }) {
     final rows = <List<Map<String, String>>>[];
     if (showStarterBonus) {
@@ -185,6 +186,13 @@ final class TelegramKeyboards {
         ],
       );
     }
+    if (showCancelAction) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonCancel},
+        ],
+      );
+    }
     rows.add(
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonBack},
@@ -199,6 +207,19 @@ final class TelegramKeyboards {
       <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> cancelActionKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonCancel},
+        ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],
       ],
