@@ -18,6 +18,13 @@ void main() {
           ),
         ),
         ..._replyTexts(
+          TelegramKeyboards.paymentConfirmationKeyboard(
+            showStarterBonus: true,
+            showCancelBooking: true,
+            showOutdoorPaymentTypeChoice: false,
+          ),
+        ),
+        ..._replyTexts(
           TelegramKeyboards.bookingActionsKeyboard(
             canReschedule: true,
             canCancel: true,
@@ -29,7 +36,7 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonBack));
       expect(allTexts, contains(MessageCopy.buttonMainMenu));
       expect(allTexts, contains(MessageCopy.buttonSubmitPayment));
-      expect(allTexts, contains(MessageCopy.buttonPayFully));
+      expect(allTexts, isNot(contains(MessageCopy.buttonPayFully)));
       expect(allTexts, contains(MessageCopy.buttonPayPartially));
       expect(allTexts, contains(MessageCopy.buttonUseStarterBonus));
       expect(allTexts, contains(MessageCopy.buttonCancelBooking));

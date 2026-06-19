@@ -502,8 +502,9 @@ final class MessageTemplates {
   }
 
   String chooseOutdoorPaymentType() {
-    return 'Какой формат оплаты ты уже сделал(а)? 👇\n'
-        'Выбери вариант и затем отправь чек.';
+    return 'Нажми «${MessageCopy.buttonPayPartially}», если внес(ла) предоплату — '
+        '<b>50% от суммы</b> 👇\n'
+        'После этого отправь чек.';
   }
 
   String paymentSubmittedAdminNotification(TrainingBooking booking) {

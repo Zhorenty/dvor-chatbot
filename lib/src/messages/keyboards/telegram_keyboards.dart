@@ -167,16 +167,17 @@ final class TelegramKeyboards {
     if (showOutdoorPaymentTypeChoice) {
       rows.add(
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonPayFully},
           <String, String>{'text': MessageCopy.buttonPayPartially},
         ],
       );
     }
-    rows.add(
-      <Map<String, String>>[
-        <String, String>{'text': MessageCopy.buttonSubmitPayment},
-      ],
-    );
+    if (!showOutdoorPaymentTypeChoice) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSubmitPayment},
+        ],
+      );
+    }
     if (showCancelBooking) {
       rows.add(
         <Map<String, String>>[

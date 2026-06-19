@@ -4342,8 +4342,9 @@ void main() {
 
       expect(handled, isTrue);
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains(MessageTemplates.buttonPayFully));
       expect(buttons, contains(MessageTemplates.buttonPayPartially));
+      expect(buttons, isNot(contains(MessageTemplates.buttonPayFully)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
     });
 
     test('opens top-up flow for partial paid booking without payment type choice', () async {

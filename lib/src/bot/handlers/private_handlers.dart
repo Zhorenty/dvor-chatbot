@@ -1523,6 +1523,7 @@ final class PrivateHandlers {
         needsPaymentChoice
             ? _templates.chooseOutdoorPaymentType()
             : _templates.paymentProofRequired(),
+        parseMode: needsPaymentChoice ? 'HTML' : null,
         replyMarkup: _templates.paymentConfirmationKeyboard(
           showStarterBonus: flowState?.starterBonusOffered ?? false,
           showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
@@ -1546,6 +1547,7 @@ final class PrivateHandlers {
         needsPaymentChoice
             ? _templates.chooseOutdoorPaymentType()
             : _templates.paymentProofRequired(),
+        parseMode: needsPaymentChoice ? 'HTML' : null,
         replyMarkup: _templates.paymentConfirmationKeyboard(
           showStarterBonus: flowState.starterBonusOffered,
           showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
