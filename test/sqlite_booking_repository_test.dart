@@ -366,6 +366,36 @@ void main() {
       await repository.close();
     });
 
+    test('submits payment for partial paid booking id', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final created = await repository.createPendingBooking(
+        userId: 2122,
+        training: TrainingInfo(
+          title: 'Trail top-up',
+          startsAt: DateTime(2030, 6, 20, 8),
+          location: 'Mountain',
+        ),
+      );
+      await repository.updateStatus(created.booking.id, BookingStatus.partialPaid);
+
+      final submitted = await repository.submitPaymentForLatestPending(
+        2122,
+        bookingId: created.booking.id,
+        note: 'final payment proof',
+      );
+
+      expect(submitted, isNotNull);
+      expect(submitted!.id, created.booking.id);
+      expect(submitted.status, BookingStatus.paymentSubmitted);
+      expect(submitted.paymentNote, 'final payment proof');
+
+      await repository.close();
+    });
+
     test('returns pending bookings for reminder and marks reminder sent', () async {
       final now = DateTime(2030, 6, 1, 12, 0);
       final repository = SqliteBookingRepository(
@@ -394,7 +424,7 @@ void main() {
 
       final afterMark = await repository.listPendingPaymentForReminder(
         createdBefore: now.add(const Duration(minutes: 1)),
-        remindedBefore: now.subtract(const Duration(minutes: 1)),
+        remindedBefore: now.add(const Duration(days: 1)),
       );
       expect(afterMark, isEmpty);
 

@@ -1103,6 +1103,30 @@ final class PrivateHandlers {
 
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.selectingBookingAction &&
+        text == MessageTemplates.buttonCompletePayment) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null || selectedBooking.status != BookingStatus.partialPaid) {
+        await _sender.sendMessage(
+          chatId,
+          selectedBooking == null
+              ? _templates.privateFallback()
+              : _templates.bookingActions(selectedBooking),
+          replyMarkup: selectedBooking == null
+              ? _templates.privateMenuKeyboard(isAdmin: isAdmin)
+              : _bookingActionsKeyboard(selectedBooking),
+        );
+        return true;
+      }
+      await _openPaymentFlowForBooking(
+        chatId: chatId,
+        userId: userId,
+        booking: selectedBooking,
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingBookingAction &&
         text == MessageTemplates.buttonRepeatBooking) {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
@@ -1113,24 +1137,12 @@ final class PrivateHandlers {
         );
         return true;
       }
-      if (selectedBooking.status == BookingStatus.pendingPayment) {
-        final starterBonusOffered =
-            _catalogService.categoryForBooking(selectedBooking) == _ActivityCategory.trainings &&
-                await _hasAnyFreeTrainingBonusAvailable(userId);
-        _flowByUserId[userId] = flowState!.copyWith(
-          step: _PrivateFlowStep.paymentConfirmation,
-          activeBooking: selectedBooking,
-          starterBonusOffered: starterBonusOffered,
-          paymentChoice: null,
-        );
-        await _sender.sendMessage(
-          chatId,
-          _templates.paymentDetailsSent(selectedBooking),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(selectedBooking),
-            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(selectedBooking),
-          ),
+      if (selectedBooking.status == BookingStatus.pendingPayment ||
+          selectedBooking.status == BookingStatus.partialPaid) {
+        await _openPaymentFlowForBooking(
+          chatId: chatId,
+          userId: userId,
+          booking: selectedBooking,
         );
         return true;
       }
@@ -3278,6 +3290,7 @@ final class PrivateHandlers {
       canReschedule: _bookingPolicyService.canReschedule(booking),
       canCancel: _canCancelBookingByPolicy(booking),
       canRepeat: true,
+      canCompletePayment: booking.status == BookingStatus.partialPaid,
     );
   }
 
@@ -4089,36 +4102,49 @@ final class PrivateHandlers {
     );
   }
 
-  Future<bool> _openPendingPaymentFlow({
+  Future<void> _openPaymentFlowForBooking({
     required int chatId,
     required int userId,
+    required TrainingBooking booking,
   }) async {
-    final bookings = await _bookingRepository.listUserBookings(userId, limit: 20);
-    final pending = bookings.where((item) => item.status == BookingStatus.pendingPayment).toList();
-    if (pending.isEmpty) {
-      return false;
-    }
-    pending.sort((left, right) => left.startsAt.compareTo(right.startsAt));
-    final target = pending.first;
     final starterBonusOffered =
-        _catalogService.categoryForBooking(target) == _ActivityCategory.trainings &&
+        _catalogService.categoryForBooking(booking) == _ActivityCategory.trainings &&
             await _hasAnyFreeTrainingBonusAvailable(userId);
     _flowByUserId[userId] = _PrivateFlowState(
       step: _PrivateFlowStep.paymentConfirmation,
       availableTrainings: const <TrainingInfo>[],
-      activeBooking: target,
+      activeBooking: booking,
       starterBonusOffered: starterBonusOffered,
       paymentChoice: null,
     );
     await _sender.sendMessage(
       chatId,
-      _templates.paymentDetailsSent(target),
+      _templates.paymentDetailsSent(booking),
       replyMarkup: _templates.paymentConfirmationKeyboard(
         showStarterBonus: starterBonusOffered,
-        showCancelBooking: _canCancelBookingByPolicy(target),
-        showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(target),
+        showCancelBooking: _canCancelBookingByPolicy(booking),
+        showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(booking),
       ),
     );
+  }
+
+  Future<bool> _openPendingPaymentFlow({
+    required int chatId,
+    required int userId,
+  }) async {
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 20);
+    final pending = bookings
+        .where(
+          (item) =>
+              item.status == BookingStatus.pendingPayment ||
+              item.status == BookingStatus.partialPaid,
+        )
+        .toList();
+    if (pending.isEmpty) {
+      return false;
+    }
+    pending.sort((left, right) => left.startsAt.compareTo(right.startsAt));
+    await _openPaymentFlowForBooking(chatId: chatId, userId: userId, booking: pending.first);
     return true;
   }
 

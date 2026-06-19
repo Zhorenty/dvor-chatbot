@@ -37,6 +37,7 @@ final class MessageTemplates {
   static const String buttonUseStarterBonus = MessageCopy.buttonUseStarterBonus;
   static const String buttonRescheduleBooking = MessageCopy.buttonRescheduleBooking;
   static const String buttonRepeatBooking = MessageCopy.buttonRepeatBooking;
+  static const String buttonCompletePayment = MessageCopy.buttonCompletePayment;
   static const String buttonCancelBooking = MessageCopy.buttonCancelBooking;
   static const String buttonBack = MessageCopy.buttonBack;
   static const String buttonMainMenu = MessageCopy.buttonMainMenu;
@@ -1012,11 +1013,18 @@ final class MessageTemplates {
   String bookingActions(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final hint = switch (booking.status) {
+      BookingStatus.pendingPayment =>
+        'Подсказка: «${MessageCopy.buttonRepeatBooking}» откроет оплату по этой записи.',
+      BookingStatus.partialPaid =>
+        'Подсказка: для доплаты используй «${MessageCopy.buttonCompletePayment}».',
+      _ => 'Подсказка: «${MessageCopy.buttonRepeatBooking}» откроет похожие события.',
+    };
     return 'Запись #${booking.id}\n'
         '${booking.trainingTitle}\n'
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n\n'
         'Выбери действие 👇\n'
-        'Подсказка: «${MessageCopy.buttonRepeatBooking}» откроет похожие события.';
+        '$hint';
   }
 
   String chooseTrainingForReschedule(List<TrainingInfo> items, {required TrainingBooking booking}) {
@@ -1439,6 +1447,14 @@ final class MessageTemplates {
   }
 
   String paymentDetailsSent(TrainingBooking booking) {
+    if (booking.status == BookingStatus.partialPaid) {
+      return 'Предоплату по записи #${booking.id} уже зафиксировали 🟡\n'
+          'Чтобы доплатить остаток:\n'
+          '1) Нажми «${MessageCopy.buttonSubmitPayment}».\n'
+          '2) Отправь в этот чат файл с подтверждением оплаты (чек/скрин) 📎\n\n'
+          'Реквизиты не изменились:\n'
+          '${paymentInstructions(booking)}';
+    }
     if (!MessageFormatters.isOutdoorBooking(booking)) {
       final yogaHint = MessageFormatters.isYogaBooking(booking) ? '\n\n${_yogaContactsHint()}' : '';
       return '${paymentInstructions(booking)}\n\n'
@@ -1634,11 +1650,13 @@ final class MessageTemplates {
     required bool canReschedule,
     required bool canCancel,
     required bool canRepeat,
+    bool canCompletePayment = false,
   }) {
     return TelegramKeyboards.bookingActionsKeyboard(
       canReschedule: canReschedule,
       canCancel: canCancel,
       canRepeat: canRepeat,
+      canCompletePayment: canCompletePayment,
     );
   }
 

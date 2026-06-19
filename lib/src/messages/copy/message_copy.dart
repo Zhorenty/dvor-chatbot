@@ -14,6 +14,7 @@ final class MessageCopy {
   static const String buttonUseStarterBonus = '🎁 Использовать бесплатную тренировку';
   static const String buttonRescheduleBooking = '🔁 Перенести запись';
   static const String buttonRepeatBooking = '🔂 Повторить запись';
+  static const String buttonCompletePayment = '💳 Доплатить';
   static const String buttonCancelBooking = '❌ Отменить запись';
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';

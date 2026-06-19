@@ -349,22 +349,30 @@ final class SqliteBookingRepository implements BookingRepository {
         ? db.select(
             '''
             SELECT id FROM bookings
-            WHERE user_id = ? AND status = ?
-            ORDER BY starts_at ASC
+            WHERE user_id = ?
+              AND status IN (?, ?)
+            ORDER BY starts_at ASC,
+                     CASE status WHEN ? THEN 0 ELSE 1 END ASC
             LIMIT 1;
             ''',
-            <Object?>[userId, BookingStatus.pendingPayment.dbValue],
+            <Object?>[
+              userId,
+              BookingStatus.pendingPayment.dbValue,
+              BookingStatus.partialPaid.dbValue,
+              BookingStatus.partialPaid.dbValue,
+            ],
           )
         : db.select(
             '''
             SELECT id FROM bookings
-            WHERE id = ? AND user_id = ? AND status = ?
+            WHERE id = ? AND user_id = ? AND status IN (?, ?)
             LIMIT 1;
             ''',
             <Object?>[
               bookingId,
               userId,
               BookingStatus.pendingPayment.dbValue,
+              BookingStatus.partialPaid.dbValue,
             ],
           );
     if (result.isEmpty) {
@@ -517,6 +525,8 @@ final class SqliteBookingRepository implements BookingRepository {
     required DateTime remindedBefore,
     int limit = 20,
   }) async {
+    // Kept in signature for backward compatibility; reminders are single-shot now.
+    final _ = remindedBefore;
     _expireOverduePendingBookings();
     final db = _database;
     final result = db.select(
@@ -524,14 +534,13 @@ final class SqliteBookingRepository implements BookingRepository {
       SELECT * FROM bookings
       WHERE status = ?
         AND created_at <= ?
-        AND (last_reminder_at IS NULL OR last_reminder_at <= ?)
+        AND last_reminder_at IS NULL
       ORDER BY created_at ASC
       LIMIT ?;
       ''',
       <Object?>[
         BookingStatus.pendingPayment.dbValue,
         createdBefore.toUtc().toIso8601String(),
-        remindedBefore.toUtc().toIso8601String(),
         limit,
       ],
     );

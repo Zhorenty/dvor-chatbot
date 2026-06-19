@@ -294,7 +294,8 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.single.text, contains('Осталось тренировок в текущем PRO:</b> <b>6/8</b>'));
+      expect(sender.messages.single.text,
+          contains('Осталось тренировок в текущем PRO:</b> <b>6/8</b>'));
       expect(sender.messages.single.text, contains('Продление доступно уже сейчас'));
       expect(
         _keyboardTexts(sender.messages.single.replyMarkup),
@@ -4343,6 +4344,88 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPayFully));
       expect(buttons, contains(MessageTemplates.buttonPayPartially));
+    });
+
+    test('opens top-up flow for partial paid booking without payment type choice', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 931,
+            userId: 3931,
+            title: '🏃 Трейл: Приэльбрусье',
+            trainingKey: 'trails|2026-10-01T10:00:00.000Z|🏃 Трейл: Приэльбрусье|Маршрут',
+            startsAt: DateTime(2026, 10, 1, 10, 0),
+            location: 'Маршрут',
+            status: BookingStatus.partialPaid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3931, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3931},
+        'text': MessageTemplates.buttonSubmitPayment,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Предоплату по записи #931 уже зафиксировали'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, isNot(contains(MessageTemplates.buttonPayFully)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonPayPartially)));
+      expect(buttons, contains(MessageTemplates.buttonSubmitPayment));
+    });
+
+    test('shows dedicated top-up action for partial paid booking in profile', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 932,
+            userId: 3932,
+            title: '🥾 Поход: Архыз',
+            trainingKey: 'hikes|2026-10-02T10:00:00.000Z|🥾 Поход: Архыз|Маршрут',
+            startsAt: DateTime(2026, 10, 2, 10, 0),
+            location: 'Маршрут',
+            status: BookingStatus.partialPaid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3932, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3932},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3932, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3932},
+        'text': '🧾 #932 🥾 Поход: Архыз',
+      });
+
+      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(actionButtons, contains(MessageTemplates.buttonCompletePayment));
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3932, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3932},
+        'text': MessageTemplates.buttonCompletePayment,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Предоплату по записи #932 уже зафиксировали'));
     });
 
     test('repeat booking action opens booking flow for same category', () async {

@@ -292,6 +292,7 @@ final class TelegramKeyboards {
     required bool canReschedule,
     required bool canCancel,
     required bool canRepeat,
+    bool canCompletePayment = false,
   }) {
     final rows = <List<Map<String, String>>>[];
     if (canReschedule) {
@@ -312,6 +313,13 @@ final class TelegramKeyboards {
       rows.add(
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonRepeatBooking},
+        ],
+      );
+    }
+    if (canCompletePayment) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonCompletePayment},
         ],
       );
     }

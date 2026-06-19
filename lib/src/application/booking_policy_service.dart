@@ -86,7 +86,8 @@ final class BookingPolicyService {
   }
 
   bool shouldShowOutdoorPaymentTypeChoice(TrainingBooking booking) {
-    return isOutdoorCategory(categoryForBooking(booking));
+    return isOutdoorCategory(categoryForBooking(booking)) &&
+        booking.status == BookingStatus.pendingPayment;
   }
 
   bool _isFreeActivity(TrainingInfo training) {
