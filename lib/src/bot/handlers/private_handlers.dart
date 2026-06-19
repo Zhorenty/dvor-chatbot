@@ -186,6 +186,55 @@ final class PrivateHandlers {
             disableWebPagePreview: true,
           );
           return true;
+        case _PrivateFlowStep.selectingOutdoorDetailEvent:
+          final selectedCategory = flowState?.selectedCategory;
+          if (selectedCategory == null) {
+            _flowByUserId.remove(userId);
+            await _sender.sendMessage(
+              chatId,
+              'Вернул в главное меню 👇',
+              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            );
+            return true;
+          }
+          _flowByUserId[userId] = flowState!.copyWith(
+            step: _PrivateFlowStep.viewingScheduleCategory,
+            selectedOutdoorActivity: null,
+            outdoorDetailType: null,
+          );
+          await _sender.sendMessage(
+            chatId,
+            _scheduleTextByCategory(selectedCategory),
+            replyMarkup: _templates.scheduleCategoryActionsKeyboard(
+              showOutdoorActions: _isOutdoorCategory(selectedCategory),
+            ),
+            parseMode: 'HTML',
+            disableWebPagePreview: true,
+          );
+          return true;
+        case _PrivateFlowStep.selectingOutdoorDetailType:
+          final selectedCategory = flowState?.selectedCategory;
+          if (selectedCategory == null || !_isOutdoorCategory(selectedCategory)) {
+            _flowByUserId.remove(userId);
+            await _sender.sendMessage(
+              chatId,
+              'Вернул в главное меню 👇',
+              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            );
+            return true;
+          }
+          final outdoorItems = _catalogService.outdoorItems(selectedCategory);
+          _flowByUserId[userId] = flowState!.copyWith(
+            step: _PrivateFlowStep.selectingOutdoorDetailEvent,
+            selectedOutdoorActivity: null,
+            outdoorDetailType: null,
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseOutdoorEventForDetails(selectedCategory),
+            replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
+          );
+          return true;
         case _PrivateFlowStep.viewingScheduleCategory:
           _flowByUserId[userId] =
               flowState!.copyWith(step: _PrivateFlowStep.selectingScheduleCategory);
@@ -587,54 +636,101 @@ final class PrivateHandlers {
 
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.viewingScheduleCategory &&
-        text == MessageTemplates.buttonOutdoorEquipment) {
+        (text == MessageTemplates.buttonOutdoorEquipment ||
+            text == MessageTemplates.buttonOutdoorItinerary)) {
       final category = flowState?.selectedCategory;
-      if (category == _ActivityCategory.hikes) {
-        final items = _catalogService.outdoorItems(_ActivityCategory.hikes);
-        await _sender.sendMessage(
-          chatId,
-          _templates.hikesEquipment(items),
-          replyMarkup: _templates.scheduleCategoryActionsKeyboard(showOutdoorActions: true),
-          parseMode: 'HTML',
-        );
+      if (category == null || !_isOutdoorCategory(category)) {
         return true;
       }
-      if (category == _ActivityCategory.trails) {
-        final items = _catalogService.outdoorItems(_ActivityCategory.trails);
-        await _sender.sendMessage(
-          chatId,
-          _templates.trailsEquipment(items),
-          replyMarkup: _templates.scheduleCategoryActionsKeyboard(showOutdoorActions: true),
-          parseMode: 'HTML',
-        );
-        return true;
-      }
+      final outdoorItems = _catalogService.outdoorItems(category);
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingOutdoorDetailEvent,
+        selectedOutdoorActivity: null,
+        outdoorDetailType: null,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseOutdoorEventForDetails(category),
+        replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
+      );
+      return true;
     }
 
     if (userId != null &&
-        flowState?.step == _PrivateFlowStep.viewingScheduleCategory &&
-        text == MessageTemplates.buttonOutdoorItinerary) {
+        flowState?.step == _PrivateFlowStep.selectingOutdoorDetailEvent &&
+        text != null &&
+        !text.startsWith('/')) {
       final category = flowState?.selectedCategory;
-      if (category == _ActivityCategory.hikes) {
-        final items = _catalogService.outdoorItems(_ActivityCategory.hikes);
+      if (category == null || !_isOutdoorCategory(category)) {
         await _sender.sendMessage(
           chatId,
-          _templates.hikesItinerary(items),
-          replyMarkup: _templates.scheduleCategoryActionsKeyboard(showOutdoorActions: true),
+          _templates.unknownCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+        return true;
+      }
+      final outdoorItems = _catalogService.outdoorItems(category);
+      final index = _parseTrainingSelectionIndex(text);
+      if (index == null || index < 1 || index > outdoorItems.length) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownOutdoorSelection(),
+          replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
+        );
+        return true;
+      }
+      final selectedOutdoor = outdoorItems[index - 1];
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingOutdoorDetailType,
+        selectedOutdoorActivity: selectedOutdoor,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseOutdoorDetailType(selectedOutdoor),
+        replyMarkup: _templates.outdoorDetailTypeKeyboard(),
+        parseMode: 'HTML',
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingOutdoorDetailType &&
+        text != null &&
+        !text.startsWith('/')) {
+      final selectedOutdoor = flowState?.selectedOutdoorActivity;
+      if (selectedOutdoor == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.unknownOutdoorSelection(),
+          replyMarkup: _templates.simpleNavigationKeyboard(),
+        );
+        return true;
+      }
+      if (text == MessageTemplates.buttonOutdoorEquipment) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.outdoorEquipmentDetails(selectedOutdoor),
+          replyMarkup: _templates.outdoorDetailTypeKeyboard(),
           parseMode: 'HTML',
         );
         return true;
       }
-      if (category == _ActivityCategory.trails) {
-        final items = _catalogService.outdoorItems(_ActivityCategory.trails);
+      if (text == MessageTemplates.buttonOutdoorItinerary) {
         await _sender.sendMessage(
           chatId,
-          _templates.trailsItinerary(items),
-          replyMarkup: _templates.scheduleCategoryActionsKeyboard(showOutdoorActions: true),
+          _templates.outdoorItineraryDetails(selectedOutdoor),
+          replyMarkup: _templates.outdoorDetailTypeKeyboard(),
           parseMode: 'HTML',
         );
         return true;
       }
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseOutdoorDetailType(selectedOutdoor),
+        replyMarkup: _templates.outdoorDetailTypeKeyboard(),
+        parseMode: 'HTML',
+      );
+      return true;
     }
 
     if (userId != null &&
@@ -3645,7 +3741,12 @@ final class PrivateHandlers {
         if (outdoorItem != null) {
           await _sender.sendMessage(
             booking.userId,
-            _templates.outdoorPostPaymentRecap(outdoorItem),
+            _templates.outdoorItineraryDetails(outdoorItem),
+            parseMode: 'HTML',
+          );
+          await _sender.sendMessage(
+            booking.userId,
+            _templates.outdoorEquipmentDetails(outdoorItem),
             parseMode: 'HTML',
           );
         }

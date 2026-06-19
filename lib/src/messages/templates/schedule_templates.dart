@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -141,6 +142,44 @@ final class ScheduleTemplates {
       _escapeHtml(
         equipment ?? 'Список экипировки скоро добавим. Следи за обновлениями в чате события.',
       ),
+    ].join('\n');
+  }
+
+  String chooseOutdoorEventForDetails(ActivityCategory category) {
+    final categoryLabel = category == ActivityCategory.hikes ? 'поход' : 'трейл';
+    return 'Выбери $categoryLabel, для которого показать детали 👇';
+  }
+
+  String chooseOutdoorDetailType(OutdoorActivityInfo item) {
+    return 'Выбран(о): <b>${_escapeHtml(item.title)}</b>\n'
+        'Что показать: расписание или экипировку?';
+  }
+
+  String unknownOutdoorSelection() {
+    return 'Не смог распознать выбор события. Выбери кнопку с номером из списка 👇';
+  }
+
+  String outdoorEquipmentDetails(OutdoorActivityInfo item) {
+    final equipment = _normalizeMultiline(item.equipment);
+    return <String>[
+      '🎒 <b>Экипировка</b>',
+      'Событие: <b>${_escapeHtml(item.title)}</b>',
+      '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+      '',
+      _escapeHtml(
+        equipment ?? 'Список экипировки скоро добавим. Следи за обновлениями в чате события.',
+      ),
+    ].join('\n');
+  }
+
+  String outdoorItineraryDetails(OutdoorActivityInfo item) {
+    final itinerary = _normalizeMultiline(item.itinerary);
+    return <String>[
+      '🗺 <b>Расписание похода</b>',
+      'Событие: <b>${_escapeHtml(item.title)}</b>',
+      '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+      '',
+      _escapeHtml(itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате события.'),
     ].join('\n');
   }
 

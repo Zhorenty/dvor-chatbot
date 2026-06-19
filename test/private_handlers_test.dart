@@ -1117,7 +1117,7 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
-    test('shows outdoor detail actions and opens equipment block', () async {
+    test('shows outdoor details for selected hike only', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -1131,6 +1131,14 @@ void main() {
               dateTo: DateTime(2026, 7, 21, 23, 59, 59),
               description: 'Двухдневный маршрут',
               equipment: 'Ботинки, дождевик, фонарь',
+            ),
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Поход на Ачишхо',
+              dateFrom: DateTime(2026, 7, 27),
+              dateTo: DateTime(2026, 7, 27, 23, 59, 59),
+              description: 'Однодневный маршрут',
+              equipment: 'Треккинговые палки',
             ),
           ],
         ),
@@ -1154,13 +1162,27 @@ void main() {
         'from': <String, dynamic>{'id': 1612},
         'text': MessageTemplates.buttonOutdoorEquipment,
       });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1612},
+        'text': '🎯 1. Поход на Бзерпинский карниз',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1612},
+        'text': MessageTemplates.buttonOutdoorEquipment,
+      });
 
       expect(opened, isTrue);
       final scheduleButtons = _keyboardTexts(sender.messages[1].replyMarkup);
       expect(scheduleButtons, contains(MessageTemplates.buttonOutdoorEquipment));
       expect(scheduleButtons, contains(MessageTemplates.buttonOutdoorItinerary));
-      expect(sender.messages.last.text, contains('Экипировка для ближайших походов'));
+      expect(sender.messages[2].text, contains('Выбери поход'));
+      expect(sender.messages[3].text, contains('Что показать: расписание или экипировку'));
+      expect(sender.messages.last.text, contains('Экипировка'));
+      expect(sender.messages.last.text, contains('Поход на Бзерпинский карниз'));
       expect(sender.messages.last.text, contains('Ботинки, дождевик, фонарь'));
+      expect(sender.messages.last.text, isNot(contains('Треккинговые палки')));
     });
 
     test('creates booking after selecting a training button', () async {
@@ -4295,16 +4317,17 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(3));
+      expect(sender.messages, hasLength(4));
       expect(sender.messages[0].chatId, 1777);
       expect(sender.messages[0].text, contains('Оплата подтверждена'));
       expect(sender.messages[1].chatId, 1777);
-      expect(sender.messages[1].text, contains('Орг-напоминание перед стартом'));
       expect(sender.messages[1].text, contains('Расписание похода'));
       expect(sender.messages[1].text, contains('Сбор в 06:00, выезд в 06:30'));
-      expect(sender.messages[1].text, contains('Экипировка'));
-      expect(sender.messages[2].chatId, 1901);
-      expect(sender.messages[2].text, contains('Статус записи #77 обновлен'));
+      expect(sender.messages[2].chatId, 1777);
+      expect(sender.messages[2].text, contains('Экипировка'));
+      expect(sender.messages[2].text, contains('Ботинки, дождевик, вода'));
+      expect(sender.messages[3].chatId, 1901);
+      expect(sender.messages[3].text, contains('Статус записи #77 обновлен'));
     });
 
     test('handles payment moderation callback buttons for admin', () async {

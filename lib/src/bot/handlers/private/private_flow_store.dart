@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -12,6 +13,8 @@ enum PrivateFlowStep {
   viewingCoachingStaff,
   selectingTrainerProfile,
   viewingScheduleCategory,
+  selectingOutdoorDetailEvent,
+  selectingOutdoorDetailType,
   selectingBookingCategory,
   selectingParticipantsCategory,
   selectingPaymentsQueueCategory,
@@ -51,6 +54,11 @@ enum PaymentChoice {
   partial,
 }
 
+enum OutdoorDetailType {
+  equipment,
+  itinerary,
+}
+
 enum SubscriptionModerationAction {
   reject,
   cancel,
@@ -65,6 +73,7 @@ final class PrivateFlowState {
     this.activeBooking,
     this.selectedBooking,
     this.selectedCategory,
+    this.selectedOutdoorActivity,
     this.bookingFromSchedulePreview = false,
     this.starterBonusOffered = false,
     this.adminViewingArchived = false,
@@ -78,6 +87,7 @@ final class PrivateFlowState {
     this.subscriptionModerationRequestId,
     this.subscriptionModerationReason,
     this.subscriptionSearchQuery,
+    this.outdoorDetailType,
   });
 
   final PrivateFlowStep step;
@@ -87,6 +97,7 @@ final class PrivateFlowState {
   final TrainingBooking? activeBooking;
   final TrainingBooking? selectedBooking;
   final ActivityCategory? selectedCategory;
+  final OutdoorActivityInfo? selectedOutdoorActivity;
   final bool bookingFromSchedulePreview;
   final bool starterBonusOffered;
   final bool adminViewingArchived;
@@ -100,6 +111,7 @@ final class PrivateFlowState {
   final int? subscriptionModerationRequestId;
   final String? subscriptionModerationReason;
   final String? subscriptionSearchQuery;
+  final OutdoorDetailType? outdoorDetailType;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -109,6 +121,7 @@ final class PrivateFlowState {
     Object? activeBooking = _privateFlowUnset,
     Object? selectedBooking = _privateFlowUnset,
     Object? selectedCategory = _privateFlowUnset,
+    Object? selectedOutdoorActivity = _privateFlowUnset,
     bool? bookingFromSchedulePreview,
     bool? starterBonusOffered,
     bool? adminViewingArchived,
@@ -122,6 +135,7 @@ final class PrivateFlowState {
     Object? subscriptionModerationRequestId = _privateFlowUnset,
     Object? subscriptionModerationReason = _privateFlowUnset,
     Object? subscriptionSearchQuery = _privateFlowUnset,
+    Object? outdoorDetailType = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -137,6 +151,9 @@ final class PrivateFlowState {
       selectedCategory: identical(selectedCategory, _privateFlowUnset)
           ? this.selectedCategory
           : selectedCategory as ActivityCategory?,
+      selectedOutdoorActivity: identical(selectedOutdoorActivity, _privateFlowUnset)
+          ? this.selectedOutdoorActivity
+          : selectedOutdoorActivity as OutdoorActivityInfo?,
       bookingFromSchedulePreview: bookingFromSchedulePreview ?? this.bookingFromSchedulePreview,
       starterBonusOffered: starterBonusOffered ?? this.starterBonusOffered,
       adminViewingArchived: adminViewingArchived ?? this.adminViewingArchived,
@@ -166,6 +183,9 @@ final class PrivateFlowState {
       subscriptionSearchQuery: identical(subscriptionSearchQuery, _privateFlowUnset)
           ? this.subscriptionSearchQuery
           : subscriptionSearchQuery as String?,
+      outdoorDetailType: identical(outdoorDetailType, _privateFlowUnset)
+          ? this.outdoorDetailType
+          : outdoorDetailType as OutdoorDetailType?,
     );
   }
 }

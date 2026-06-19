@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -168,6 +169,39 @@ final class TelegramKeyboards {
       ],
     );
     return _replyKeyboard(rows);
+  }
+
+  static Map<String, Object?> outdoorSelectionKeyboard(List<OutdoorActivityInfo> items) {
+    final rows = <List<Map<String, String>>>[];
+    for (var index = 0; index < items.length; index++) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': '🎯 ${index + 1}. ${items[index].title}'},
+        ],
+      );
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonBack},
+        <String, String>{'text': MessageCopy.buttonMainMenu},
+      ],
+    );
+    return _replyKeyboard(rows);
+  }
+
+  static Map<String, Object?> outdoorDetailTypeKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOutdoorItinerary},
+          <String, String>{'text': MessageCopy.buttonOutdoorEquipment},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
   }
 
   static Map<String, Object?> paymentConfirmationKeyboard({

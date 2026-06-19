@@ -172,6 +172,26 @@ final class MessageTemplates {
     return _scheduleTemplates.outdoorPostPaymentRecap(item);
   }
 
+  String chooseOutdoorEventForDetails(ActivityCategory category) {
+    return _scheduleTemplates.chooseOutdoorEventForDetails(category);
+  }
+
+  String chooseOutdoorDetailType(OutdoorActivityInfo item) {
+    return _scheduleTemplates.chooseOutdoorDetailType(item);
+  }
+
+  String unknownOutdoorSelection() {
+    return _scheduleTemplates.unknownOutdoorSelection();
+  }
+
+  String outdoorEquipmentDetails(OutdoorActivityInfo item) {
+    return _scheduleTemplates.outdoorEquipmentDetails(item);
+  }
+
+  String outdoorItineraryDetails(OutdoorActivityInfo item) {
+    return _scheduleTemplates.outdoorItineraryDetails(item);
+  }
+
   String chooseScheduleCategory() {
     return _scheduleTemplates.chooseScheduleCategory();
   }
@@ -1591,6 +1611,14 @@ final class MessageTemplates {
 
   Map<String, Object?> trainerSelectionKeyboard(List<TrainerInfo> trainers) {
     return TelegramKeyboards.trainerSelectionKeyboard(trainers);
+  }
+
+  Map<String, Object?> outdoorSelectionKeyboard(List<OutdoorActivityInfo> items) {
+    return TelegramKeyboards.outdoorSelectionKeyboard(items);
+  }
+
+  Map<String, Object?> outdoorDetailTypeKeyboard() {
+    return TelegramKeyboards.outdoorDetailTypeKeyboard();
   }
 
   Map<String, Object?> paymentsQueueCategorySelectionKeyboard({
