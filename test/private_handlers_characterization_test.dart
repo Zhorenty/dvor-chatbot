@@ -64,7 +64,7 @@ void main() {
       expect(harness.sender.messages.last.text, contains('записал тебя'));
     });
 
-    test('quick book from viewed category keeps context', () async {
+    test('quick book from selected hike action creates booking', () async {
       final harness = PrivateHandlersHarness(
         outdoorActivities: <OutdoorActivityInfo>[
           OutdoorActivityInfo(
@@ -88,6 +88,11 @@ void main() {
         userId: 1610,
         text: MessageTemplates.buttonCategoryHikes,
       );
+      await harness.handleText(
+        chatId: 1610,
+        userId: 1610,
+        text: '🎯 1. Поход на Бзерпинский карниз',
+      );
       final handled = await harness.handleText(
         chatId: 1610,
         userId: 1610,
@@ -95,8 +100,8 @@ void main() {
       );
 
       expect(handled, isTrue);
-      expect(harness.sender.messages.last.text, contains('выбери мероприятие для записи'));
-      expect(harness.sender.messages.last.text, contains('🥾 Поход: Поход на Бзерпинский карниз'));
+      expect(harness.booking.createCalls, 1);
+      expect(harness.sender.messages.last.text, contains('записал тебя'));
     });
 
     test('payment moderation callback keeps callback and notifications behavior', () async {

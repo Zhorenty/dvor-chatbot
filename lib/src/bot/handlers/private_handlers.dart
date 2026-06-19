@@ -187,29 +187,15 @@ final class PrivateHandlers {
           );
           return true;
         case _PrivateFlowStep.selectingOutdoorDetailEvent:
-          final selectedCategory = flowState?.selectedCategory;
-          if (selectedCategory == null) {
-            _flowByUserId.remove(userId);
-            await _sender.sendMessage(
-              chatId,
-              'Вернул в главное меню 👇',
-              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-            );
-            return true;
-          }
           _flowByUserId[userId] = flowState!.copyWith(
-            step: _PrivateFlowStep.viewingScheduleCategory,
+            step: _PrivateFlowStep.selectingScheduleCategory,
             selectedOutdoorActivity: null,
             outdoorDetailType: null,
           );
           await _sender.sendMessage(
             chatId,
-            _scheduleTextByCategory(selectedCategory),
-            replyMarkup: _templates.scheduleCategoryActionsKeyboard(
-              showOutdoorActions: _isOutdoorCategory(selectedCategory),
-            ),
-            parseMode: 'HTML',
-            disableWebPagePreview: true,
+            _templates.chooseScheduleCategory(),
+            replyMarkup: _templates.categorySelectionKeyboard(),
           );
           return true;
         case _PrivateFlowStep.selectingOutdoorDetailType:
@@ -514,6 +500,21 @@ final class PrivateHandlers {
         chatId: chatId,
         username: context.from?['username']?.toString(),
       );
+      if (flowState?.step == _PrivateFlowStep.selectingOutdoorDetailType &&
+          flowState?.selectedOutdoorActivity != null) {
+        final selectedTraining =
+            _catalogService.toBookableInfo(flowState!.selectedOutdoorActivity!);
+        await _createOrContinueBooking(
+          chatId: chatId,
+          userId: userId,
+          isAdmin: isAdmin,
+          flowState: flowState,
+          selectedTraining: selectedTraining,
+          username: context.from?['username']?.toString(),
+          onParticipantsLimitReplyMarkup: _templates.outdoorDetailTypeKeyboard(),
+        );
+        return true;
+      }
       final scheduleCategoryContext = flowState?.step == _PrivateFlowStep.viewingScheduleCategory
           ? flowState?.selectedCategory
           : null;
@@ -746,21 +747,35 @@ final class PrivateHandlers {
         );
         return true;
       }
-      _flowByUserId[userId] = _PrivateFlowState(
-        step: _PrivateFlowStep.viewingScheduleCategory,
-        availableTrainings: const <TrainingInfo>[],
-        selectedCategory: category,
-      );
-      await _refreshTrainerDirectoryForSchedule();
-      await _sender.sendMessage(
-        chatId,
-        _scheduleTextByCategory(category),
-        replyMarkup: _templates.scheduleCategoryActionsKeyboard(
-          showOutdoorActions: _isOutdoorCategory(category),
-        ),
-        parseMode: 'HTML',
-        disableWebPagePreview: true,
-      );
+      if (_isOutdoorCategory(category)) {
+        final outdoorItems = _catalogService.outdoorItems(category);
+        _flowByUserId[userId] = _PrivateFlowState(
+          step: _PrivateFlowStep.selectingOutdoorDetailEvent,
+          availableTrainings: const <TrainingInfo>[],
+          selectedCategory: category,
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseOutdoorEventForDetails(category),
+          replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
+        );
+      } else {
+        _flowByUserId[userId] = _PrivateFlowState(
+          step: _PrivateFlowStep.viewingScheduleCategory,
+          availableTrainings: const <TrainingInfo>[],
+          selectedCategory: category,
+        );
+        await _refreshTrainerDirectoryForSchedule();
+        await _sender.sendMessage(
+          chatId,
+          _scheduleTextByCategory(category),
+          replyMarkup: _templates.scheduleCategoryActionsKeyboard(
+            showOutdoorActions: _isOutdoorCategory(category),
+          ),
+          parseMode: 'HTML',
+          disableWebPagePreview: true,
+        );
+      }
       return true;
     }
 
@@ -853,116 +868,15 @@ final class PrivateHandlers {
       }
       final selectedTraining = flowState.availableTrainings[index - 1];
       final username = context.from?['username']?.toString();
-      late final BookingCreateResult result;
-      try {
-        result = await _bookingRepository.createPendingBooking(
-          userId: userId,
-          userUsername: username,
-          training: selectedTraining,
-        );
-      } on BookingParticipantsLimitExceededException {
-        await _sender.sendMessage(
-          chatId,
-          _templates.bookingParticipantsLimitExceeded(),
-          replyMarkup: _templates.bookingSelectionKeyboard(flowState.availableTrainings),
-        );
-        return true;
-      }
-      if (_isFreeActivity(selectedTraining)) {
-        final paidBooking =
-            await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
-        final bookingForResponse =
-            _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
-        if (result.created) {
-          await _maybeNotifyGroupAboutCapacity(
-            selectedTraining,
-            bookingStatus: bookingForResponse.status,
-          );
-          await _notifyAdminAboutFreeBookingCreated(bookingForResponse);
-        }
-        _flowByUserId.remove(userId);
-        await _sender.sendMessage(
-          chatId,
-          result.created
-              ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
-              : _templates.bookingAlreadyExists(bookingForResponse),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-          parseMode: 'HTML',
-        );
-        return true;
-      }
-      if (_isWhitelistedTrainerBooking(userId: userId, username: username)) {
-        final paidBooking =
-            await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
-        final bookingForResponse =
-            _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
-        _flowByUserId.remove(userId);
-        if (result.created) {
-          await _maybeNotifyGroupAboutCapacity(
-            selectedTraining,
-            bookingStatus: bookingForResponse.status,
-          );
-        }
-        await _notifyAdminAboutTrainerBookingCreated(bookingForResponse);
-        await _sender.sendMessage(
-          chatId,
-          result.created
-              ? _templates.bookingCreatedForWhitelistedTrainer(bookingForResponse)
-              : _templates.bookingAlreadyExists(bookingForResponse),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-          parseMode: 'HTML',
-        );
-        return true;
-      }
-      final proIncludedAvailable = await _hasProIncludedTrainingAvailable(
+      await _createOrContinueBooking(
+        chatId: chatId,
         userId: userId,
-        training: selectedTraining,
-        booking: result.booking,
-      );
-      if (proIncludedAvailable) {
-        final paidBooking = await _bookingRepository.updateStatus(
-          result.booking.id,
-          BookingStatus.paid,
-          paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
-        );
-        final bookingForResponse =
-            _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
-        _flowByUserId.remove(userId);
-        if (result.created) {
-          await _maybeNotifyGroupAboutCapacity(
-            selectedTraining,
-            bookingStatus: bookingForResponse.status,
-          );
-        }
-        await _sender.sendMessage(
-          chatId,
-          result.created
-              ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
-              : _templates.bookingAlreadyExists(bookingForResponse),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-          parseMode: 'HTML',
-        );
-        return true;
-      }
-      final starterBonusOffered = selectedTraining.category == _ActivityCategory.trainings &&
-          await _hasAnyFreeTrainingBonusAvailable(userId);
-      _flowByUserId[userId] = flowState.copyWith(
-        step: _PrivateFlowStep.paymentConfirmation,
-        activeBooking: result.booking,
-        starterBonusOffered: starterBonusOffered,
-        paymentChoice: null,
-      );
-      await _sender.sendMessage(
-        chatId,
-        result.created
-            ? _templates.bookingCreated(result.booking)
-            : _templates.bookingAlreadyExists(result.booking),
-        replyMarkup: _templates.paymentConfirmationKeyboard(
-          showStarterBonus: starterBonusOffered,
-          showCancelBooking: _canCancelBookingByPolicy(result.booking),
-          showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(result.booking),
-        ),
-        parseMode: 'HTML',
+        isAdmin: isAdmin,
+        flowState: flowState,
+        selectedTraining: selectedTraining,
+        username: username,
+        onParticipantsLimitReplyMarkup:
+            _templates.bookingSelectionKeyboard(flowState.availableTrainings),
       );
       return true;
     }
@@ -3154,6 +3068,128 @@ final class PrivateHandlers {
       chatId,
       _templates.economicSummary(summary, periodLabel: range.label),
       replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+    );
+  }
+
+  Future<void> _createOrContinueBooking({
+    required int chatId,
+    required int userId,
+    required bool isAdmin,
+    required _PrivateFlowState flowState,
+    required TrainingInfo selectedTraining,
+    required String? username,
+    required Map<String, Object?> onParticipantsLimitReplyMarkup,
+  }) async {
+    late final BookingCreateResult result;
+    try {
+      result = await _bookingRepository.createPendingBooking(
+        userId: userId,
+        userUsername: username,
+        training: selectedTraining,
+      );
+    } on BookingParticipantsLimitExceededException {
+      await _sender.sendMessage(
+        chatId,
+        _templates.bookingParticipantsLimitExceeded(),
+        replyMarkup: onParticipantsLimitReplyMarkup,
+      );
+      return;
+    }
+    if (_isFreeActivity(selectedTraining)) {
+      final paidBooking =
+          await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
+      final bookingForResponse =
+          _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+      if (result.created) {
+        await _maybeNotifyGroupAboutCapacity(
+          selectedTraining,
+          bookingStatus: bookingForResponse.status,
+        );
+        await _notifyAdminAboutFreeBookingCreated(bookingForResponse);
+      }
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        result.created
+            ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
+            : _templates.bookingAlreadyExists(bookingForResponse),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        parseMode: 'HTML',
+      );
+      return;
+    }
+    if (_isWhitelistedTrainerBooking(userId: userId, username: username)) {
+      final paidBooking =
+          await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
+      final bookingForResponse =
+          _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+      _flowByUserId.remove(userId);
+      if (result.created) {
+        await _maybeNotifyGroupAboutCapacity(
+          selectedTraining,
+          bookingStatus: bookingForResponse.status,
+        );
+      }
+      await _notifyAdminAboutTrainerBookingCreated(bookingForResponse);
+      await _sender.sendMessage(
+        chatId,
+        result.created
+            ? _templates.bookingCreatedForWhitelistedTrainer(bookingForResponse)
+            : _templates.bookingAlreadyExists(bookingForResponse),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        parseMode: 'HTML',
+      );
+      return;
+    }
+    final proIncludedAvailable = await _hasProIncludedTrainingAvailable(
+      userId: userId,
+      training: selectedTraining,
+      booking: result.booking,
+    );
+    if (proIncludedAvailable) {
+      final paidBooking = await _bookingRepository.updateStatus(
+        result.booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+      );
+      final bookingForResponse =
+          _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+      _flowByUserId.remove(userId);
+      if (result.created) {
+        await _maybeNotifyGroupAboutCapacity(
+          selectedTraining,
+          bookingStatus: bookingForResponse.status,
+        );
+      }
+      await _sender.sendMessage(
+        chatId,
+        result.created
+            ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
+            : _templates.bookingAlreadyExists(bookingForResponse),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        parseMode: 'HTML',
+      );
+      return;
+    }
+    final starterBonusOffered = selectedTraining.category == _ActivityCategory.trainings &&
+        await _hasAnyFreeTrainingBonusAvailable(userId);
+    _flowByUserId[userId] = flowState.copyWith(
+      step: _PrivateFlowStep.paymentConfirmation,
+      activeBooking: result.booking,
+      starterBonusOffered: starterBonusOffered,
+      paymentChoice: null,
+    );
+    await _sender.sendMessage(
+      chatId,
+      result.created
+          ? _templates.bookingCreated(result.booking)
+          : _templates.bookingAlreadyExists(result.booking),
+      replyMarkup: _templates.paymentConfirmationKeyboard(
+        showStarterBonus: starterBonusOffered,
+        showCancelBooking: _canCancelBookingByPolicy(result.booking),
+        showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(result.booking),
+      ),
+      parseMode: 'HTML',
     );
   }
 

@@ -758,7 +758,7 @@ void main() {
       expect(sender.messages.last.text, contains('Тренировка из кнопки'));
     });
 
-    test('shows hikes in schedule category', () async {
+    test('opens hike selection in schedule category', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -807,12 +807,13 @@ void main() {
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages.last.text, contains('Ближайшие походы'));
-      expect(sender.messages.last.text, contains('Поход на водопады'));
-      expect(sender.messages.last.text, isNot(contains('Трейл перевал')));
+      expect(sender.messages.last.text, contains('Выбери поход из кнопок'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains('🎯 1. Поход на водопады'));
+      expect(buttons, isNot(contains('Трейл перевал')));
     });
 
-    test('shows trails in schedule category', () async {
+    test('opens trail selection in schedule category', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -845,8 +846,9 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Ближайшие трейлы'));
-      expect(sender.messages.last.text, contains('Трейл перевал'));
+      expect(sender.messages.last.text, contains('Выбери трейл из кнопок'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains('🎯 1. Трейл перевал'));
     });
 
     test('help button shows client-facing bot capabilities', () async {
@@ -1022,7 +1024,7 @@ void main() {
       expect(sender.messages.single.text, contains('выбери категорию для записи'));
     });
 
-    test('book button uses viewed schedule category without reselect', () async {
+    test('book button in selected hike actions creates booking', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();
       final handlers = PrivateHandlers(
@@ -1055,6 +1057,11 @@ void main() {
         'from': <String, dynamic>{'id': 1610},
         'text': MessageTemplates.buttonCategoryHikes,
       });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1610, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1610},
+        'text': '🎯 1. Поход на Бзерпинский карниз',
+      });
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1610, 'type': 'private'},
         'from': <String, dynamic>{'id': 1610},
@@ -1062,13 +1069,12 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(3));
-      expect(sender.messages.last.text, contains('выбери мероприятие для записи'));
-      expect(sender.messages.last.text, contains('🥾 Поход: Поход на Бзерпинский карниз'));
-      expect(sender.messages.last.text, isNot(contains('выбери категорию для записи')));
+      expect(bookingRepository.createCalls, 1);
+      expect(bookingRepository.lastCreatedTraining?.title, contains('Поход на Бзерпинский карниз'));
+      expect(sender.messages.last.text, contains('записал тебя'));
     });
 
-    test('back from quick booking returns to viewed schedule category', () async {
+    test('back from outdoor event selection returns to schedule categories', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -1102,7 +1108,7 @@ void main() {
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
         'from': <String, dynamic>{'id': 1611},
-        'text': MessageTemplates.buttonBookTraining,
+        'text': '🎯 1. Трейл Фишт',
       });
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
@@ -1111,9 +1117,9 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Ближайшие трейлы OUTDVOR'));
+      expect(sender.messages.last.text, contains('Выбери трейл из кнопок'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, contains('🎯 1. Трейл Фишт'));
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
@@ -1160,7 +1166,7 @@ void main() {
       final opened = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
         'from': <String, dynamic>{'id': 1612},
-        'text': MessageTemplates.buttonOutdoorEquipment,
+        'text': '🎯 1. Поход на Бзерпинский карниз',
       });
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
@@ -1174,11 +1180,12 @@ void main() {
       });
 
       expect(opened, isTrue);
-      final scheduleButtons = _keyboardTexts(sender.messages[1].replyMarkup);
-      expect(scheduleButtons, contains(MessageTemplates.buttonOutdoorEquipment));
-      expect(scheduleButtons, contains(MessageTemplates.buttonOutdoorItinerary));
-      expect(sender.messages[2].text, contains('Выбери поход'));
-      expect(sender.messages[3].text, contains('Что показать: расписание или экипировку'));
+      final actionsButtons = _keyboardTexts(sender.messages[2].replyMarkup);
+      expect(actionsButtons, contains(MessageTemplates.buttonBookTraining));
+      expect(actionsButtons, contains(MessageTemplates.buttonOutdoorEquipment));
+      expect(actionsButtons, contains(MessageTemplates.buttonOutdoorItinerary));
+      expect(sender.messages[1].text, contains('Выбери поход'));
+      expect(sender.messages[2].text, contains('Выбери действие'));
       expect(sender.messages.last.text, contains('Экипировка'));
       expect(sender.messages.last.text, contains('Поход на Бзерпинский карниз'));
       expect(sender.messages.last.text, contains('Ботинки, дождевик, фонарь'));

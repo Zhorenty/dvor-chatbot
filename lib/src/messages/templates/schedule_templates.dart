@@ -147,12 +147,12 @@ final class ScheduleTemplates {
 
   String chooseOutdoorEventForDetails(ActivityCategory category) {
     final categoryLabel = category == ActivityCategory.hikes ? 'поход' : 'трейл';
-    return 'Выбери $categoryLabel, для которого показать детали 👇';
+    return 'Выбери $categoryLabel из кнопок 👇';
   }
 
   String chooseOutdoorDetailType(OutdoorActivityInfo item) {
     return 'Выбран(о): <b>${_escapeHtml(item.title)}</b>\n'
-        'Что показать: расписание или экипировку?';
+        'Выбери действие 👇';
   }
 
   String unknownOutdoorSelection() {
