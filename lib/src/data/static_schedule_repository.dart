@@ -90,6 +90,9 @@ final List<OutdoorActivityInfo> _outdoorItems = <OutdoorActivityInfo>[
     dateFrom: DateTime(2026, 6, 14),
     dateTo: DateTime(2026, 6, 14, 23, 59, 59),
     description: 'Легкий маршрут для всех уровней с привалом у озера.',
+    equipment: 'Треккинговые кроссовки, дождевик, вода 1.5л, перекус, индивидуальная аптечка.',
+    itinerary:
+        'Сбор в 07:30 у штаба DVOR, выезд в 08:00, старт маршрута в 09:30, привал у озера в 13:00, возвращение к 20:00.',
     price: 1500,
     participantsLimit: 30,
   ),
@@ -99,6 +102,10 @@ final List<OutdoorActivityInfo> _outdoorItems = <OutdoorActivityInfo>[
     dateFrom: DateTime(2026, 6, 21),
     dateTo: DateTime(2026, 6, 22, 23, 59, 59),
     description: 'Двухдневный трейл с ночевкой и набором высоты.',
+    equipment:
+        'Треккинговые ботинки, налобный фонарь, термобелье, ветровка, рюкзак 20-30л, запас воды 2л.',
+    itinerary:
+        'День 1: сбор 05:30, выезд 06:00, старт 08:30, лагерь в 18:00. День 2: выход 07:00, финиш 15:00, возвращение 21:00.',
     price: 4200,
     participantsLimit: 0,
   ),

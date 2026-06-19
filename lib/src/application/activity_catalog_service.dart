@@ -77,6 +77,29 @@ final class ActivityCatalogService {
     }).toList(growable: false);
   }
 
+  OutdoorActivityInfo? outdoorByBooking(TrainingBooking booking) {
+    final category = categoryForBooking(booking);
+    if (category != ActivityCategory.hikes && category != ActivityCategory.trails) {
+      return null;
+    }
+    final items = outdoorItems(category);
+    if (items.isEmpty) {
+      return null;
+    }
+    final normalizedBookingTitle = _normalizeOutdoorTitle(booking.trainingTitle);
+    final exactByTitle = items.where(
+      (item) => _normalizeOutdoorTitle(item.title) == normalizedBookingTitle,
+    );
+    final exactByDate = exactByTitle.where((item) => _isSameDay(item.dateFrom, booking.startsAt));
+    if (exactByDate.isNotEmpty) {
+      return exactByDate.first;
+    }
+    if (exactByTitle.isNotEmpty) {
+      return exactByTitle.first;
+    }
+    return null;
+  }
+
   ActivityCategory categoryForBooking(TrainingBooking booking) {
     final keyPrefix = booking.trainingKey.split('|').firstOrNull;
     if (keyPrefix != null) {
@@ -128,6 +151,18 @@ final class ActivityCatalogService {
     }
     final toLabel = '${twoDigits(to.day)}.${twoDigits(to.month)}.${to.year}';
     return '$fromLabel — $toLabel';
+  }
+
+  bool _isSameDay(DateTime left, DateTime right) {
+    return left.year == right.year && left.month == right.month && left.day == right.day;
+  }
+
+  String _normalizeOutdoorTitle(String value) {
+    var normalized = value.trim().toLowerCase();
+    normalized = normalized.replaceFirst(RegExp(r'^🥾\s*поход:\s*'), '');
+    normalized = normalized.replaceFirst(RegExp(r'^🏃\s*трейл:\s*'), '');
+    normalized = normalized.replaceAll(RegExp(r'\s+'), ' ');
+    return normalized;
   }
 }
 

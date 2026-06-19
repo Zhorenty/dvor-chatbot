@@ -206,7 +206,9 @@ final class PrivateHandlers {
             await _sender.sendMessage(
               chatId,
               _scheduleTextByCategory(selectedCategory),
-              replyMarkup: _templates.scheduleCategoryActionsKeyboard(),
+              replyMarkup: _templates.scheduleCategoryActionsKeyboard(
+                showOutdoorActions: _isOutdoorCategory(selectedCategory),
+              ),
               parseMode: 'HTML',
               disableWebPagePreview: true,
             );
@@ -584,6 +586,58 @@ final class PrivateHandlers {
     }
 
     if (userId != null &&
+        flowState?.step == _PrivateFlowStep.viewingScheduleCategory &&
+        text == MessageTemplates.buttonOutdoorEquipment) {
+      final category = flowState?.selectedCategory;
+      if (category == _ActivityCategory.hikes) {
+        final items = _catalogService.outdoorItems(_ActivityCategory.hikes);
+        await _sender.sendMessage(
+          chatId,
+          _templates.hikesEquipment(items),
+          replyMarkup: _templates.scheduleCategoryActionsKeyboard(showOutdoorActions: true),
+          parseMode: 'HTML',
+        );
+        return true;
+      }
+      if (category == _ActivityCategory.trails) {
+        final items = _catalogService.outdoorItems(_ActivityCategory.trails);
+        await _sender.sendMessage(
+          chatId,
+          _templates.trailsEquipment(items),
+          replyMarkup: _templates.scheduleCategoryActionsKeyboard(showOutdoorActions: true),
+          parseMode: 'HTML',
+        );
+        return true;
+      }
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.viewingScheduleCategory &&
+        text == MessageTemplates.buttonOutdoorItinerary) {
+      final category = flowState?.selectedCategory;
+      if (category == _ActivityCategory.hikes) {
+        final items = _catalogService.outdoorItems(_ActivityCategory.hikes);
+        await _sender.sendMessage(
+          chatId,
+          _templates.hikesItinerary(items),
+          replyMarkup: _templates.scheduleCategoryActionsKeyboard(showOutdoorActions: true),
+          parseMode: 'HTML',
+        );
+        return true;
+      }
+      if (category == _ActivityCategory.trails) {
+        final items = _catalogService.outdoorItems(_ActivityCategory.trails);
+        await _sender.sendMessage(
+          chatId,
+          _templates.trailsItinerary(items),
+          replyMarkup: _templates.scheduleCategoryActionsKeyboard(showOutdoorActions: true),
+          parseMode: 'HTML',
+        );
+        return true;
+      }
+    }
+
+    if (userId != null &&
         flowState?.step == _PrivateFlowStep.selectingScheduleCategory &&
         text != null &&
         !text.startsWith('/')) {
@@ -605,7 +659,9 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _scheduleTextByCategory(category),
-        replyMarkup: _templates.scheduleCategoryActionsKeyboard(),
+        replyMarkup: _templates.scheduleCategoryActionsKeyboard(
+          showOutdoorActions: _isOutdoorCategory(category),
+        ),
         parseMode: 'HTML',
         disableWebPagePreview: true,
       );
@@ -3584,6 +3640,16 @@ final class PrivateHandlers {
             ? _templates.paymentApprovedForUser(booking)
             : _templates.paymentRejectedForUser(booking),
       );
+      if (isApproved) {
+        final outdoorItem = _catalogService.outdoorByBooking(booking);
+        if (outdoorItem != null) {
+          await _sender.sendMessage(
+            booking.userId,
+            _templates.outdoorPostPaymentRecap(outdoorItem),
+            parseMode: 'HTML',
+          );
+        }
+      }
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify user about payment review: $error', stackTrace);
     }

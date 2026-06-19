@@ -90,6 +90,58 @@ final class ScheduleTemplates {
 
   String chooseScheduleCategory() => 'Выбери раздел расписания 👇';
 
+  String hikesEquipment(List<OutdoorActivityInfo> items) {
+    return _outdoorEquipmentList(
+      title: '🎒 Экипировка для ближайших походов OUTDVOR',
+      icon: '🥾',
+      items: items,
+      emptyText: 'Для ближайших походов список экипировки пока не добавлен.',
+    );
+  }
+
+  String trailsEquipment(List<OutdoorActivityInfo> items) {
+    return _outdoorEquipmentList(
+      title: '🎒 Экипировка для ближайших трейлов OUTDVOR',
+      icon: '🏃',
+      items: items,
+      emptyText: 'Для ближайших трейлов список экипировки пока не добавлен.',
+    );
+  }
+
+  String hikesItinerary(List<OutdoorActivityInfo> items) {
+    return _outdoorItineraryList(
+      title: '🗺 Расписание ближайших походов OUTDVOR',
+      icon: '🥾',
+      items: items,
+      emptyText: 'Для ближайших походов расписание пока не добавлено.',
+    );
+  }
+
+  String trailsItinerary(List<OutdoorActivityInfo> items) {
+    return _outdoorItineraryList(
+      title: '🗺 Расписание ближайших трейлов OUTDVOR',
+      icon: '🏃',
+      items: items,
+      emptyText: 'Для ближайших трейлов расписание пока не добавлено.',
+    );
+  }
+
+  String outdoorPostPaymentRecap(OutdoorActivityInfo item) {
+    final itinerary = _normalizeMultiline(item.itinerary);
+    final equipment = _normalizeMultiline(item.equipment);
+    return <String>[
+      '🧭 <b>Орг-напоминание перед стартом</b>',
+      'Событие: <b>${_escapeHtml(item.title)}</b>',
+      '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+      if (itinerary != null && itinerary.isNotEmpty)
+        '🗺 Ближайший план: ${_escapeHtml(_firstLine(itinerary))}',
+      if (equipment != null && equipment.isNotEmpty)
+        '🎒 Сверь экипировку: ${_escapeHtml(_firstLine(equipment))}',
+      '',
+      'Чтобы посмотреть детали, используй кнопки «Экипировка» и «Расписание похода» в разделе расписания.',
+    ].join('\n');
+  }
+
   String noUpcomingForBooking() => 'Пока нет ближайших мероприятий для записи 😌';
 
   String coachingStaff(List<TrainerInfo> trainers) {
@@ -161,10 +213,103 @@ final class ScheduleTemplates {
         '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
         '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
         if (item.price != null) '💳 ${MessageFormatters.trainingPriceLabel(item.price)}',
-        if (item.description.trim().isNotEmpty) '📝 ${_escapeHtml(item.description.trim())}',
+        if (item.description.trim().isNotEmpty)
+          '📝 ${_escapeHtml(_shortOutdoorDescription(item.description))}',
       ]);
     }
     return lines.join('\n');
+  }
+
+  String _outdoorEquipmentList({
+    required String title,
+    required String icon,
+    required List<OutdoorActivityInfo> items,
+    required String emptyText,
+  }) {
+    if (items.isEmpty) {
+      return emptyText;
+    }
+    final lines = <String>['<b>${_escapeHtml(title)}</b>'];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final equipment = _normalizeMultiline(item.equipment);
+      lines.addAll(<String>[
+        '',
+        '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
+        '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+        '🎒 ${_escapeHtml(equipment ?? 'Список скоро добавим. Следи за обновлениями в чате события.')}',
+      ]);
+    }
+    return lines.join('\n');
+  }
+
+  String _outdoorItineraryList({
+    required String title,
+    required String icon,
+    required List<OutdoorActivityInfo> items,
+    required String emptyText,
+  }) {
+    if (items.isEmpty) {
+      return emptyText;
+    }
+    final lines = <String>['<b>${_escapeHtml(title)}</b>'];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final itinerary = _normalizeMultiline(item.itinerary);
+      lines.addAll(<String>[
+        '',
+        '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
+        '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+        '🗺 ${_escapeHtml(itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате события.')}',
+      ]);
+    }
+    return lines.join('\n');
+  }
+
+  String _shortOutdoorDescription(String raw) {
+    final normalized = _normalizeMultiline(raw);
+    if (normalized == null || normalized.isEmpty) {
+      return '';
+    }
+    final lines = normalized.split('\n');
+    final firstTwo = lines.take(2).join('\n');
+    return firstTwo.length > 220 ? '${firstTwo.substring(0, 217)}...' : firstTwo;
+  }
+
+  String? _normalizeMultiline(String? raw) {
+    if (raw == null) {
+      return null;
+    }
+    final normalized = raw.replaceAll('\r\n', '\n');
+    final rawLines = normalized.split('\n').map((line) => line.trim()).toList(growable: false);
+    final lines = <String>[];
+    var previousWasEmpty = false;
+    for (final line in rawLines) {
+      if (line.isEmpty) {
+        if (!previousWasEmpty && lines.isNotEmpty) {
+          lines.add('');
+        }
+        previousWasEmpty = true;
+        continue;
+      }
+      lines.add(line);
+      previousWasEmpty = false;
+    }
+    while (lines.isNotEmpty && lines.last.isEmpty) {
+      lines.removeLast();
+    }
+    if (lines.isEmpty) {
+      return null;
+    }
+    return lines.join('\n');
+  }
+
+  String _firstLine(String value) {
+    final lines = value.split('\n');
+    if (lines.isEmpty) {
+      return value;
+    }
+    return lines.first.trim();
   }
 
   String _trainerLinkLabel(String rawLink) {

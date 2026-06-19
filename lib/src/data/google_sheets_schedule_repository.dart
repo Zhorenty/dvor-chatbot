@@ -265,6 +265,27 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     final dateFromIndex = headers.indexOf('date_from');
     final dateToIndex = headers.indexOf('date_to');
     final descriptionIndex = headers.indexOf('description');
+    final equipmentIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'equipment',
+        'gear',
+        'kit',
+        'экипировка',
+      ],
+    );
+    final itineraryIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'itinerary',
+        'schedule',
+        'timeline',
+        'program',
+        'расписание',
+        'тайминг',
+        'план',
+      ],
+    );
     final priceIndex = headers.indexOf('price');
     final participantsLimitIndex = _firstHeaderIndex(
       headers,
@@ -311,6 +332,8 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           dateFrom: dateFrom,
           dateTo: dateTo,
           description: description,
+          equipment: _optionalCell(row, equipmentIndex),
+          itinerary: _optionalCell(row, itineraryIndex),
           price: _parsePrice(_optionalCell(row, priceIndex)),
           participantsLimit: _parseParticipantsLimit(_optionalCell(row, participantsLimitIndex)),
         ),

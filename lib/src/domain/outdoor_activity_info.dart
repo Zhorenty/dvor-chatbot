@@ -10,6 +10,8 @@ final class OutdoorActivityInfo {
     required this.dateFrom,
     required this.dateTo,
     required this.description,
+    this.equipment,
+    this.itinerary,
     this.price,
     this.participantsLimit,
   });
@@ -19,6 +21,8 @@ final class OutdoorActivityInfo {
   final DateTime dateFrom;
   final DateTime dateTo;
   final String description;
+  final String? equipment;
+  final String? itinerary;
   final int? price;
   final int? participantsLimit;
 }

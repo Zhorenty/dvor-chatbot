@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -119,6 +120,44 @@ void main() {
 
       expect(text, contains('в течение 120 минут'));
       expect(text, contains('запись отменится автоматически'));
+    });
+  });
+
+  group('MessageTemplates outdoor details copy', () {
+    const templates = MessageTemplates();
+
+    test('renders hikes equipment details as separate block', () {
+      final text = templates.hikesEquipment(<OutdoorActivityInfo>[
+        OutdoorActivityInfo(
+          type: OutdoorActivityType.hike,
+          title: 'Поход на Ачишхо',
+          dateFrom: DateTime(2026, 7, 21),
+          dateTo: DateTime(2026, 7, 21, 23, 59, 59),
+          description: 'Дневной маршрут',
+          equipment: 'Ботинки, дождевик, вода 2л',
+        ),
+      ]);
+
+      expect(text, contains('Экипировка для ближайших походов'));
+      expect(text, contains('Поход на Ачишхо'));
+      expect(text, contains('Ботинки, дождевик, вода 2л'));
+    });
+
+    test('renders itinerary details for trails', () {
+      final text = templates.trailsItinerary(<OutdoorActivityInfo>[
+        OutdoorActivityInfo(
+          type: OutdoorActivityType.trail,
+          title: 'Трейл Фишт',
+          dateFrom: DateTime(2026, 8, 2),
+          dateTo: DateTime(2026, 8, 3, 23, 59, 59),
+          description: 'Горный трек',
+          itinerary: 'Сбор 05:00, выезд 05:30, старт 08:00',
+        ),
+      ]);
+
+      expect(text, contains('Расписание ближайших трейлов'));
+      expect(text, contains('Трейл Фишт'));
+      expect(text, contains('Сбор 05:00, выезд 05:30, старт 08:00'));
     });
   });
 }

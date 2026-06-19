@@ -105,7 +105,26 @@ final class TelegramKeyboards {
     );
   }
 
-  static Map<String, Object?> scheduleCategoryActionsKeyboard() {
+  static Map<String, Object?> scheduleCategoryActionsKeyboard({
+    bool showOutdoorActions = false,
+  }) {
+    if (showOutdoorActions) {
+      return _replyKeyboard(
+        <List<Map<String, String>>>[
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonBookTraining},
+            <String, String>{'text': MessageCopy.buttonOutdoorEquipment},
+          ],
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonOutdoorItinerary},
+            <String, String>{'text': MessageCopy.buttonBack},
+          ],
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonMainMenu},
+          ],
+        ],
+      );
+    }
     return _replyKeyboard(
       <List<Map<String, String>>>[
         <Map<String, String>>[

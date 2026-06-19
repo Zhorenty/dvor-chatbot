@@ -46,6 +46,8 @@ final class MessageTemplates {
   static const String buttonCategoryYoga = MessageCopy.buttonCategoryYoga;
   static const String buttonCategoryHikes = MessageCopy.buttonCategoryHikes;
   static const String buttonCategoryTrails = MessageCopy.buttonCategoryTrails;
+  static const String buttonOutdoorEquipment = MessageCopy.buttonOutdoorEquipment;
+  static const String buttonOutdoorItinerary = MessageCopy.buttonOutdoorItinerary;
   static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
   static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
   static const String buttonEconomicSummary = MessageCopy.buttonEconomicSummary;
@@ -148,6 +150,26 @@ final class MessageTemplates {
 
   String trails(List<OutdoorActivityInfo> items) {
     return _scheduleTemplates.trails(items);
+  }
+
+  String hikesEquipment(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.hikesEquipment(items);
+  }
+
+  String trailsEquipment(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.trailsEquipment(items);
+  }
+
+  String hikesItinerary(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.hikesItinerary(items);
+  }
+
+  String trailsItinerary(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.trailsItinerary(items);
+  }
+
+  String outdoorPostPaymentRecap(OutdoorActivityInfo item) {
+    return _scheduleTemplates.outdoorPostPaymentRecap(item);
   }
 
   String chooseScheduleCategory() {
@@ -1555,8 +1577,12 @@ final class MessageTemplates {
     return TelegramKeyboards.categorySelectionKeyboard();
   }
 
-  Map<String, Object?> scheduleCategoryActionsKeyboard() {
-    return TelegramKeyboards.scheduleCategoryActionsKeyboard();
+  Map<String, Object?> scheduleCategoryActionsKeyboard({
+    bool showOutdoorActions = false,
+  }) {
+    return TelegramKeyboards.scheduleCategoryActionsKeyboard(
+      showOutdoorActions: showOutdoorActions,
+    );
   }
 
   Map<String, Object?> coachingStaffActionsKeyboard() {

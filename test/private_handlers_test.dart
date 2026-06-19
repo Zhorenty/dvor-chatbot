@@ -1117,6 +1117,52 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
+    test('shows outdoor detail actions and opens equipment block', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Поход на Бзерпинский карниз',
+              dateFrom: DateTime(2026, 7, 20),
+              dateTo: DateTime(2026, 7, 21, 23, 59, 59),
+              description: 'Двухдневный маршрут',
+              equipment: 'Ботинки, дождевик, фонарь',
+            ),
+          ],
+        ),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1612},
+        'text': MessageTemplates.buttonTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1612},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+      final opened = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1612},
+        'text': MessageTemplates.buttonOutdoorEquipment,
+      });
+
+      expect(opened, isTrue);
+      final scheduleButtons = _keyboardTexts(sender.messages[1].replyMarkup);
+      expect(scheduleButtons, contains(MessageTemplates.buttonOutdoorEquipment));
+      expect(scheduleButtons, contains(MessageTemplates.buttonOutdoorItinerary));
+      expect(sender.messages.last.text, contains('Экипировка для ближайших походов'));
+      expect(sender.messages.last.text, contains('Ботинки, дождевик, фонарь'));
+    });
+
     test('creates booking after selecting a training button', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();
@@ -4204,6 +4250,59 @@ void main() {
       expect(sender.messages[1].text, contains('Проверил админ: @chief_admin (1900)'));
       expect(sender.messages[2].chatId, 19);
       expect(sender.messages[2].text, contains('Статус записи #10 обновлен'));
+    });
+
+    test('sends outdoor recap after approved payment for hike booking', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..paymentReviewResult = PaymentReviewResult(
+          outcome: PaymentReviewOutcome.success,
+          booking: _booking(
+            id: 77,
+            userId: 1777,
+            title: '🥾 Поход: Архыз выходные',
+            trainingKey: 'hikes|2026-10-15T00:00:00.000Z|🥾 Поход: Архыз выходные|Маршрут',
+            startsAt: DateTime(2026, 10, 15, 8, 0),
+            location: 'Маршрут',
+            status: BookingStatus.paid,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Архыз выходные',
+              dateFrom: DateTime(2026, 10, 15),
+              dateTo: DateTime(2026, 10, 16, 23, 59, 59),
+              description: 'Маршрут 2 дня',
+              equipment: 'Ботинки, дождевик, вода',
+              itinerary: 'Сбор в 06:00, выезд в 06:30',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1901},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1901, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1901},
+        'text': '/approve_payment 77',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(3));
+      expect(sender.messages[0].chatId, 1777);
+      expect(sender.messages[0].text, contains('Оплата подтверждена'));
+      expect(sender.messages[1].chatId, 1777);
+      expect(sender.messages[1].text, contains('Орг-напоминание перед стартом'));
+      expect(sender.messages[1].text, contains('Сверь экипировку'));
+      expect(sender.messages[2].chatId, 1901);
+      expect(sender.messages[2].text, contains('Статус записи #77 обновлен'));
     });
 
     test('handles payment moderation callback buttons for admin', () async {
