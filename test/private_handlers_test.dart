@@ -4300,7 +4300,9 @@ void main() {
       expect(sender.messages[0].text, contains('Оплата подтверждена'));
       expect(sender.messages[1].chatId, 1777);
       expect(sender.messages[1].text, contains('Орг-напоминание перед стартом'));
-      expect(sender.messages[1].text, contains('Сверь экипировку'));
+      expect(sender.messages[1].text, contains('Расписание похода'));
+      expect(sender.messages[1].text, contains('Сбор в 06:00, выезд в 06:30'));
+      expect(sender.messages[1].text, contains('Экипировка'));
       expect(sender.messages[2].chatId, 1901);
       expect(sender.messages[2].text, contains('Статус записи #77 обновлен'));
     });

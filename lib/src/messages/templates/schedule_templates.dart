@@ -133,12 +133,14 @@ final class ScheduleTemplates {
       '🧭 <b>Орг-напоминание перед стартом</b>',
       'Событие: <b>${_escapeHtml(item.title)}</b>',
       '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
-      if (itinerary != null && itinerary.isNotEmpty)
-        '🗺 Ближайший план: ${_escapeHtml(_firstLine(itinerary))}',
-      if (equipment != null && equipment.isNotEmpty)
-        '🎒 Сверь экипировку: ${_escapeHtml(_firstLine(equipment))}',
       '',
-      'Чтобы посмотреть детали, используй кнопки «Экипировка» и «Расписание похода» в разделе расписания.',
+      '🗺 <b>Расписание похода</b>',
+      _escapeHtml(itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате события.'),
+      '',
+      '🎒 <b>Экипировка</b>',
+      _escapeHtml(
+        equipment ?? 'Список экипировки скоро добавим. Следи за обновлениями в чате события.',
+      ),
     ].join('\n');
   }
 
@@ -302,14 +304,6 @@ final class ScheduleTemplates {
       return null;
     }
     return lines.join('\n');
-  }
-
-  String _firstLine(String value) {
-    final lines = value.split('\n');
-    if (lines.isEmpty) {
-      return value;
-    }
-    return lines.first.trim();
   }
 
   String _trainerLinkLabel(String rawLink) {
