@@ -87,7 +87,10 @@ void main() {
         ),
       );
 
-      expect(text, contains('📍 Где: Вершина хребта Магито в Карачаево-Черкесии'));
+      expect(text, contains('Событие: 🥾 Поход: ПИК ЗАКАН'));
+      expect(text, contains('📍 Вершина хребта Магито в Карачаево-Черкесии'));
+      expect(text, isNot(contains('📍 Где:')));
+      expect(text, isNot(contains('Тренировка:')));
       expect(text, isNot(contains('<a href=')));
       expect(text, isNot(contains('google.com/maps/search')));
     });
@@ -109,7 +112,7 @@ void main() {
   group('MessageTemplates payment lifecycle copy', () {
     const templates = MessageTemplates();
 
-    test('includes 120-minute payment ttl in requisites', () {
+    test('includes 3-minute payment ttl in requisites', () {
       final text = templates.paymentInstructions(
         _booking(
           trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
@@ -118,8 +121,23 @@ void main() {
         ),
       );
 
-      expect(text, contains('в течение 120 минут'));
+      expect(text, contains('в течение 3 минут'));
       expect(text, contains('запись отменится автоматически'));
+    });
+
+    test('shows outdoor 50-50 payment split in requisites', () {
+      final text = templates.paymentInstructions(
+        _booking(
+          trainingKey: 'hikes|2026-06-14T00:00:00.000Z|🥾 Поход: ПИК ЗАКАН|Магито',
+          trainingTitle: '🥾 Поход: ПИК ЗАКАН',
+          location: 'Вершина хребта Магито в Карачаево-Черкесии',
+        ),
+      );
+
+      expect(text, contains('Реквизиты OUTDVOR'));
+      expect(text, contains('К оплате сейчас:'));
+      expect(text, contains('750 ₽'));
+      expect(text, contains('Остальные 50% — после похода/трейла.'));
     });
   });
 

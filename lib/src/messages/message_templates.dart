@@ -458,9 +458,9 @@ final class MessageTemplates {
     return 'Отлично, записал тебя! ✅\n'
         'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
         'Номер записи: ${booking.id}\n'
-        'Тренировка: ${booking.trainingTitle}\n'
+        '${_bookingTitleLine(booking)}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
+        '📍 Где: ${_bookingLocationLine(booking)}\n\n'
         '${paymentDetailsSent(booking)}\n\n'
         'Что дальше:\n'
         '1) Оплати по реквизитам выше.\n'
@@ -1346,15 +1346,31 @@ final class MessageTemplates {
           '• Получатель: Елена П.\n'
           '• Банк: 🟨 Т-БАНК 🟨\n'
           '• Номер телефона: +7(961)313-11-44\n'
-          '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
+          '• ⏳ Если не оплатить в течение 3 минут, запись отменится автоматически.\n'
+          '• После отмены нужно записаться заново.';
+    }
+    if (MessageFormatters.isOutdoorBooking(booking)) {
+      return '💳 <b>Реквизиты OUTDVOR</b>\n'
+          '• Получатель: <b>Денис Р.</b>\n'
+          '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
+          '• Номер телефона: <code>+7(995)122-06-15</code>\n'
+          '• К оплате сейчас: <b>${_outdoorPrepaymentAmountLabel(booking)}</b> (50% предоплата)\n'
+          '• Остальные 50% — после похода/трейла.\n'
+          '• ⏳ Если не оплатить в течение <b>3 минут</b>, запись отменится автоматически.\n'
           '• После отмены нужно записаться заново.';
     }
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
         '• Номер телефона: +7(995)122-06-15\n'
-        '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
+        '• ⏳ Если не оплатить в течение 3 минут, запись отменится автоматически.\n'
         '• После отмены нужно записаться заново.';
+  }
+
+  String outdoorBookingRule() {
+    return '🚸 <b>Правило OUTDVOR</b>\n\n'
+        '• Предоплата невозвратна при отмене за 7 дней и менее до старта.\n'
+        '• Сначала вносится 50% предоплаты, оставшиеся 50% — после похода/трейла.';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
@@ -1508,11 +1524,6 @@ final class MessageTemplates {
     }
 
     return '${paymentInstructions(booking)}\n\n'
-        'Правило Outdvor 🚸\n\n'
-        '• Предоплата невозвратна при отмене за 7 дней и менее до трейла/похода🦥\n\n'
-        'Это не штраф, а уважение к общим расходам на логистику, планирование '
-        'тренировки и трансфер. Такие мероприятия любят сильных и решительных. Спасибо за понимание. 💚💪\n'
-        '\n\n'
         'Когда переведешь оплату, нажми «${MessageCopy.buttonSubmitPayment}» '
         'и отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
         'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
@@ -1850,6 +1861,30 @@ final class MessageTemplates {
       return _escapeHtml(location);
     }
     return _locationAnchor(label: location, url: _mapsSearchUrl(location));
+  }
+
+  String _bookingTitleLine(TrainingBooking booking) {
+    if (MessageFormatters.isOutdoorBooking(booking)) {
+      return 'Событие: ${booking.trainingTitle}';
+    }
+    return 'Тренировка: ${booking.trainingTitle}';
+  }
+
+  String _bookingLocationLine(TrainingBooking booking) {
+    if (MessageFormatters.isOutdoorBooking(booking)) {
+      return '';
+    }
+
+    return '📍 Где: ${_bookingLocationLabel(booking)}';
+  }
+
+  String _outdoorPrepaymentAmountLabel(TrainingBooking booking) {
+    final price = booking.trainingPrice;
+    if (price == null || price <= 0) {
+      return '50% от полной стоимости';
+    }
+    final prepayment = (price / 2).ceil();
+    return MessageFormatters.trainingPriceLabel(prepayment);
   }
 
   String _locationAnchor({

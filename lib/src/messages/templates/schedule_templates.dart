@@ -136,11 +136,11 @@ final class ScheduleTemplates {
       '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
       '',
       '🗺 <b>Расписание похода</b>',
-      _escapeHtml(itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате события.'),
+      _escapeHtml(itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате.'),
       '',
       '🎒 <b>Экипировка</b>',
       _escapeHtml(
-        equipment ?? 'Список экипировки скоро добавим. Следи за обновлениями в чате события.',
+        equipment ?? 'Список экипировки скоро добавим. Следи за обновлениями в чате.',
       ),
     ].join('\n');
   }
@@ -167,7 +167,7 @@ final class ScheduleTemplates {
       '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
       '',
       _escapeHtml(
-        equipment ?? 'Список экипировки скоро добавим. Следи за обновлениями в чате события.',
+        equipment ?? 'Список экипировки скоро добавим. Следи за обновлениями в чате.',
       ),
     ].join('\n');
   }
@@ -179,7 +179,7 @@ final class ScheduleTemplates {
       'Событие: <b>${_escapeHtml(item.title)}</b>',
       '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
       '',
-      _escapeHtml(itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате события.'),
+      _escapeHtml(itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате.'),
     ].join('\n');
   }
 
@@ -246,7 +246,10 @@ final class ScheduleTemplates {
     if (items.isEmpty) {
       return emptyText;
     }
-    final lines = <String>['<b>${_escapeHtml(title)}</b>'];
+    final lines = <String>[
+      '<b>${_escapeHtml(title)}</b>',
+      '💳 <b>Оплата:</b> 50% предоплата при записи, оставшиеся 50% — после похода/трейла.',
+    ];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       lines.addAll(<String>[
@@ -278,7 +281,7 @@ final class ScheduleTemplates {
         '',
         '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
         '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
-        '🎒 ${_escapeHtml(equipment ?? 'Список скоро добавим. Следи за обновлениями в чате события.')}',
+        '🎒 ${_escapeHtml(equipment ?? 'Список скоро добавим. Следи за обновлениями в чате.')}',
       ]);
     }
     return lines.join('\n');
@@ -301,7 +304,7 @@ final class ScheduleTemplates {
         '',
         '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
         '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
-        '🗺 ${_escapeHtml(itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате события.')}',
+        '🗺 ${_escapeHtml(itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате.')}',
       ]);
     }
     return lines.join('\n');

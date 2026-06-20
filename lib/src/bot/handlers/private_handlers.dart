@@ -3186,6 +3186,13 @@ final class PrivateHandlers {
       starterBonusOffered: starterBonusOffered,
       paymentChoice: null,
     );
+    if (result.created && MessageFormatters.isOutdoorBooking(result.booking)) {
+      await _sender.sendMessage(
+        chatId,
+        _templates.outdoorBookingRule(),
+        parseMode: 'HTML',
+      );
+    }
     await _sender.sendMessage(
       chatId,
       result.created

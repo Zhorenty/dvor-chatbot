@@ -808,6 +808,7 @@ void main() {
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(3));
       expect(sender.messages[1].text, contains('Ближайшие походы OUTDVOR'));
+      expect(sender.messages[1].text, contains('50% предоплата при записи'));
       expect(sender.messages[1].text, contains('Поход на водопады'));
       expect(sender.messages.last.text, contains('Выбери поход из кнопок'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
@@ -850,6 +851,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(3));
       expect(sender.messages[1].text, contains('Ближайшие трейлы OUTDVOR'));
+      expect(sender.messages[1].text, contains('50% предоплата при записи'));
       expect(sender.messages[1].text, contains('Трейл перевал'));
       expect(sender.messages.last.text, contains('Выбери трейл из кнопок'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
@@ -1949,7 +1951,16 @@ void main() {
       expect(bookingRepository.createCalls, 1);
       expect(bookingRepository.lastCreatedTraining?.title, contains('Поход на хребет'));
       expect(bookingRepository.lastCreatedTraining?.location, contains('Ночевка в лагере'));
+      final ruleIndex =
+          sender.messages.indexWhere((message) => message.text.contains('Правило OUTDVOR'));
+      final requisitesIndex =
+          sender.messages.indexWhere((message) => message.text.contains('Реквизиты OUTDVOR'));
+      expect(ruleIndex, greaterThanOrEqualTo(0));
+      expect(requisitesIndex, greaterThan(ruleIndex));
       expect(sender.messages.last.text, contains('записал тебя'));
+      expect(sender.messages.last.text, contains('Событие: 🥾 Поход: Поход на хребет'));
+      expect(sender.messages.last.text, isNot(contains('Тренировка:')));
+      expect(sender.messages.last.text, isNot(contains('📍 Где:')));
     });
 
     test('payment is not submitted without proof file', () async {
