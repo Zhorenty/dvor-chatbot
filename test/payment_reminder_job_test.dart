@@ -35,4 +35,39 @@ void main() {
     expect(sender.messages.single.chatId, 9001);
     expect(sender.messages.single.text, contains('Время на оплату истекло'));
   });
+
+  test('sends pending reminder with HTML parse mode', () async {
+    final now = DateTime(2030, 6, 1, 12, 0);
+    final bookingRepository = FakeBookingRepository()
+      ..expiredPending = const <TrainingBooking>[]
+      ..pendingForReminder = <TrainingBooking>[
+        fakeBooking(
+          id: 777,
+          userId: 9002,
+          trainingKey: 'hikes|forest-trip',
+          title: '🥾 Поход: Лесной маршрут',
+        ),
+      ];
+    final sender = FakeSender();
+    final job = PaymentReminderJob(
+      bookingRepository: bookingRepository,
+      bookingPolicyService: BookingPolicyService(
+        catalogService: ActivityCatalogService(
+          scheduleRepository: FakeScheduleRepository(const []),
+        ),
+      ),
+      sender: sender,
+      templates: const MessageTemplates(),
+      pendingPaymentTtl: const Duration(minutes: 120),
+      nowProvider: () => now,
+    );
+
+    await job.run();
+
+    expect(sender.messages, hasLength(1));
+    expect(sender.messages.single.chatId, 9002);
+    expect(sender.messages.single.text, contains('Напоминание об оплате'));
+    expect(sender.messages.single.parseMode, 'HTML');
+    expect(bookingRepository.remindersMarked, 1);
+  });
 }

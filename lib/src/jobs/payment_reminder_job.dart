@@ -66,6 +66,7 @@ final class PaymentReminderJob {
               showStarterBonus: false,
               showCancelBooking: _bookingPolicyService.canCancel(booking, now: now),
             ),
+            parseMode: 'HTML',
           );
           await _bookingRepository.markReminderSent(booking.id);
         } on Object catch (error, stackTrace) {
