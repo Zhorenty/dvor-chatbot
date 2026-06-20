@@ -1341,12 +1341,13 @@ final class MessageTemplates {
   }
 
   String paymentInstructions(TrainingBooking booking) {
+    final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
     if (MessageFormatters.isYogaBooking(booking)) {
       return 'Реквизиты для оплаты:\n'
           '• Получатель: Елена П.\n'
           '• Банк: 🟨 Т-БАНК 🟨\n'
           '• Номер телефона: +7(961)313-11-44\n'
-          '• ⏳ Если не оплатить в течение 3 минут, запись отменится автоматически.\n'
+          '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
           '• После отмены нужно записаться заново.';
     }
     if (MessageFormatters.isOutdoorBooking(booking)) {
@@ -1355,22 +1356,23 @@ final class MessageTemplates {
           '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
           '• Номер телефона: <code>+7(995)122-06-15</code>\n'
           '• К оплате сейчас: <b>${_outdoorPrepaymentAmountLabel(booking)}</b> (50% предоплата)\n'
-          '• Остальные 50% — после похода/трейла.\n'
-          '• ⏳ Если не оплатить в течение <b>3 минут</b>, запись отменится автоматически.\n'
+          '• Остальные 50% — $outdoorFinalPaymentAfter.\n'
+          '• ⏳ Если не оплатить в течение <b>120 минут</b>, запись отменится автоматически.\n'
           '• После отмены нужно записаться заново.';
     }
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
         '• Номер телефона: +7(995)122-06-15\n'
-        '• ⏳ Если не оплатить в течение 3 минут, запись отменится автоматически.\n'
+        '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
         '• После отмены нужно записаться заново.';
   }
 
-  String outdoorBookingRule() {
+  String outdoorBookingRule(TrainingBooking booking) {
+    final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
     return '🚸 <b>Правило OUTDVOR</b>\n\n'
         '• Предоплата невозвратна при отмене за 7 дней и менее до старта.\n'
-        '• Сначала вносится 50% предоплаты, оставшиеся 50% — после похода/трейла.';
+        '• Сначала вносится 50% предоплаты, оставшиеся 50% — $outdoorFinalPaymentAfter.';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
@@ -1885,6 +1887,14 @@ final class MessageTemplates {
     }
     final prepayment = (price / 2).ceil();
     return MessageFormatters.trainingPriceLabel(prepayment);
+  }
+
+  String _outdoorFinalPaymentAfterLabel(TrainingBooking booking) {
+    final key = booking.trainingKey.toLowerCase();
+    if (key.startsWith('trails|')) {
+      return 'после трейла';
+    }
+    return 'после похода';
   }
 
   String _locationAnchor({

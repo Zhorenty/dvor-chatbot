@@ -76,6 +76,7 @@ Future<void> main(List<String> args) async {
     'scheduleSource=${config.scheduleSource.name}, '
     'targetChatId=${config.targetChatId}, '
     'admins=${config.adminUserIds.length}, '
+    'pendingPaymentTtlMinutes=${config.pendingPaymentTtlMinutes}, '
     'logLevel=${config.logLevel}',
   );
   try {

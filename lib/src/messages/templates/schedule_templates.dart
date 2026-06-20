@@ -75,6 +75,7 @@ final class ScheduleTemplates {
     return _outdoorActivitiesList(
       title: 'Ближайшие походы OUTDVOR 🥾',
       icon: '🥾',
+      finalPaymentAfter: 'после похода',
       items: items,
       emptyText: 'Пока походов в расписании нет 😌',
     );
@@ -84,6 +85,7 @@ final class ScheduleTemplates {
     return _outdoorActivitiesList(
       title: 'Ближайшие трейлы OUTDVOR 🏃',
       icon: '🏃',
+      finalPaymentAfter: 'после трейла',
       items: items,
       emptyText: 'Пока трейлов в расписании нет 😌',
     );
@@ -240,6 +242,7 @@ final class ScheduleTemplates {
   String _outdoorActivitiesList({
     required String title,
     required String icon,
+    required String finalPaymentAfter,
     required List<OutdoorActivityInfo> items,
     required String emptyText,
   }) {
@@ -248,7 +251,7 @@ final class ScheduleTemplates {
     }
     final lines = <String>[
       '<b>${_escapeHtml(title)}</b>',
-      '💳 <b>Оплата:</b> 50% предоплата при записи, оставшиеся 50% — после похода/трейла.',
+      '💳 <b>Оплата:</b> 50% предоплата при записи, оставшиеся 50% — $finalPaymentAfter.',
     ];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
@@ -256,7 +259,7 @@ final class ScheduleTemplates {
         '',
         '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
         '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
-        if (item.price != null) '💳 ${MessageFormatters.trainingPriceLabel(item.price)}',
+        if (item.price != null) '💳 ${_outdoorPriceWithPrepayment(item.price!)}',
         if (item.description.trim().isNotEmpty)
           '📝 ${_escapeHtml(_shortOutdoorDescription(item.description))}',
       ]);
@@ -559,5 +562,11 @@ final class ScheduleTemplates {
 
   String _normalizeTrainerRole(String raw) {
     return raw.replaceAll('\r\n', '\n').replaceAll('\n', ' ').trim();
+  }
+
+  String _outdoorPriceWithPrepayment(int price) {
+    final totalLabel = MessageFormatters.trainingPriceLabel(price);
+    final prepaymentLabel = MessageFormatters.trainingPriceLabel((price / 2).ceil());
+    return '$totalLabel (${_escapeHtml(prepaymentLabel)} предоплата 50%)';
   }
 }

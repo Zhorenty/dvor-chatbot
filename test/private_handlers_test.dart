@@ -809,6 +809,7 @@ void main() {
       expect(sender.messages, hasLength(3));
       expect(sender.messages[1].text, contains('Ближайшие походы OUTDVOR'));
       expect(sender.messages[1].text, contains('50% предоплата при записи'));
+      expect(sender.messages[1].text, contains('2500 ₽ (1250 ₽ предоплата 50%)'));
       expect(sender.messages[1].text, contains('Поход на водопады'));
       expect(sender.messages.last.text, contains('Выбери поход из кнопок'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);

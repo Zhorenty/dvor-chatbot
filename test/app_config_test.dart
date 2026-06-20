@@ -75,7 +75,7 @@ void main() {
       expect(config.googleSheetsCsvUrl, anyOf(isNull, ''));
       expect(config.scheduleSyncIntervalSeconds, 30);
       expect(config.bookingsDbPath, 'data/bookings.sqlite');
-      expect(config.pendingPaymentTtlMinutes, 5);
+      expect(config.pendingPaymentTtlMinutes, 120);
       expect(config.adminUserIds, isEmpty);
       expect(config.adminChatId, isNull);
       expect(config.logLevel, 'info');

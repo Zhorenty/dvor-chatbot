@@ -151,7 +151,7 @@ final class AppConfig {
       scheduleSyncIntervalSeconds:
           int.tryParse(scheduleSyncIntervalRaw ?? '')?.clamp(30, 86400) ?? 300,
       bookingsDbPath: bookingsDbPath,
-      pendingPaymentTtlMinutes: int.tryParse(pendingPaymentTtlRaw ?? '')?.clamp(5, 1440) ?? 120,
+      pendingPaymentTtlMinutes: int.tryParse(pendingPaymentTtlRaw ?? '')?.clamp(120, 1440) ?? 120,
       adminUserIds: _parseIntSet(adminUserIdsRaw),
       adminChatId: int.tryParse(adminChatIdRaw ?? ''),
       logLevel: logLevel,

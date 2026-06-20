@@ -3189,7 +3189,7 @@ final class PrivateHandlers {
     if (result.created && MessageFormatters.isOutdoorBooking(result.booking)) {
       await _sender.sendMessage(
         chatId,
-        _templates.outdoorBookingRule(),
+        _templates.outdoorBookingRule(result.booking),
         parseMode: 'HTML',
       );
     }

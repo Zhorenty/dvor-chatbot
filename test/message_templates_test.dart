@@ -112,7 +112,7 @@ void main() {
   group('MessageTemplates payment lifecycle copy', () {
     const templates = MessageTemplates();
 
-    test('includes 3-minute payment ttl in requisites', () {
+    test('includes 120-minute payment ttl in requisites', () {
       final text = templates.paymentInstructions(
         _booking(
           trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
@@ -121,7 +121,7 @@ void main() {
         ),
       );
 
-      expect(text, contains('в течение 3 минут'));
+      expect(text, contains('в течение 120 минут'));
       expect(text, contains('запись отменится автоматически'));
     });
 
@@ -137,7 +137,19 @@ void main() {
       expect(text, contains('Реквизиты OUTDVOR'));
       expect(text, contains('К оплате сейчас:'));
       expect(text, contains('750 ₽'));
-      expect(text, contains('Остальные 50% — после похода/трейла.'));
+      expect(text, contains('Остальные 50% — после похода.'));
+    });
+
+    test('shows trail-specific final payment wording in requisites', () {
+      final text = templates.paymentInstructions(
+        _booking(
+          trainingKey: 'trails|2026-08-14T00:00:00.000Z|🏃 Трейл: FISH-TRAIL|Фишт',
+          trainingTitle: '🏃 Трейл: FISH-TRAIL',
+          location: 'Плато Фишт',
+        ),
+      );
+
+      expect(text, contains('Остальные 50% — после трейла.'));
     });
   });
 
