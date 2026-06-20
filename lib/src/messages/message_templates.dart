@@ -460,7 +460,7 @@ final class MessageTemplates {
         'Номер записи: ${booking.id}\n'
         '${_bookingTitleLine(booking)}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 Где: ${_bookingLocationLine(booking)}\n\n'
+        '${_bookingLocationLine(booking)}\n\n'
         '${paymentDetailsSent(booking)}\n\n'
         'Что дальше:\n'
         '1) Оплати по реквизитам выше.\n'
@@ -1873,11 +1873,11 @@ final class MessageTemplates {
   }
 
   String _bookingLocationLine(TrainingBooking booking) {
+    final location = _bookingLocationLabel(booking);
     if (MessageFormatters.isOutdoorBooking(booking)) {
-      return '';
+      return '📍 $location';
     }
-
-    return '📍 Где: ${_bookingLocationLabel(booking)}';
+    return '📍 Где: $location';
   }
 
   String _outdoorPrepaymentAmountLabel(TrainingBooking booking) {

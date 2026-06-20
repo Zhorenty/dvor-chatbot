@@ -129,10 +129,11 @@ final class ActivityCatalogService {
     final category =
         item.type == OutdoorActivityType.hike ? ActivityCategory.hikes : ActivityCategory.trails;
     final prefix = item.type == OutdoorActivityType.hike ? '🥾 Поход' : '🏃 Трейл';
+    final location = item.location?.trim();
     return TrainingInfo(
       title: '$prefix: ${item.title}',
       startsAt: item.dateFrom,
-      location: item.description,
+      location: (location == null || location.isEmpty) ? item.description : location,
       category: category,
       price: item.price,
       participantsLimit: item.participantsLimit,

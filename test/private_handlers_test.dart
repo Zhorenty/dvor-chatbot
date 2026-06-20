@@ -1917,6 +1917,7 @@ void main() {
               title: 'Поход на хребет',
               dateFrom: DateTime(2026, 7, 13),
               dateTo: DateTime(2026, 7, 14, 23, 59, 59),
+              location: 'Лаго-Наки, старт от кордона',
               description: 'Ночевка в лагере',
               price: 3200,
             ),
@@ -1951,7 +1952,8 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 1);
       expect(bookingRepository.lastCreatedTraining?.title, contains('Поход на хребет'));
-      expect(bookingRepository.lastCreatedTraining?.location, contains('Ночевка в лагере'));
+      expect(
+          bookingRepository.lastCreatedTraining?.location, contains('Лаго-Наки, старт от кордона'));
       final ruleIndex =
           sender.messages.indexWhere((message) => message.text.contains('Правило OUTDVOR'));
       final requisitesIndex =

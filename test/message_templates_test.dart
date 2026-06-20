@@ -164,6 +164,7 @@ void main() {
           dateFrom: DateTime(2026, 7, 21),
           dateTo: DateTime(2026, 7, 21, 23, 59, 59),
           description: 'Дневной маршрут',
+          location: 'Красная Поляна, старт у подъемника',
           equipment: 'Ботинки, дождевик, вода 2л',
         ),
       ]);
@@ -181,6 +182,7 @@ void main() {
           dateFrom: DateTime(2026, 8, 2),
           dateTo: DateTime(2026, 8, 3, 23, 59, 59),
           description: 'Горный трек',
+          location: 'Плато Фишт',
           itinerary: 'Сбор 05:00, выезд 05:30, старт 08:00',
         ),
       ]);
@@ -188,6 +190,21 @@ void main() {
       expect(text, contains('Расписание ближайших трейлов'));
       expect(text, contains('Трейл Фишт'));
       expect(text, contains('Сбор 05:00, выезд 05:30, старт 08:00'));
+    });
+
+    test('renders outdoor schedule location when provided', () {
+      final text = templates.hikes(<OutdoorActivityInfo>[
+        OutdoorActivityInfo(
+          type: OutdoorActivityType.hike,
+          title: 'Поход на Бзерпинский карниз',
+          dateFrom: DateTime(2026, 9, 12),
+          dateTo: DateTime(2026, 9, 12, 23, 59, 59),
+          location: 'Роза Хутор, КПП Лаура',
+          description: 'Маршрут среднего уровня',
+        ),
+      ]);
+
+      expect(text, contains('📍 Где: Роза Хутор, КПП Лаура'));
     });
   });
 }

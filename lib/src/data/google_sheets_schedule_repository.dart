@@ -264,6 +264,16 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     final titleIndex = headers.indexOf('title');
     final dateFromIndex = headers.indexOf('date_from');
     final dateToIndex = headers.indexOf('date_to');
+    final locationIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'location',
+        'where',
+        'place',
+        'место',
+        'где',
+      ],
+    );
     final descriptionIndex = headers.indexOf('description');
     final equipmentIndex = _firstHeaderIndex(
       headers,
@@ -312,6 +322,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
       if (title.isEmpty || description.isEmpty) {
         continue;
       }
+      final location = _optionalCell(row, locationIndex)?.trim();
 
       final dateFrom = _parseRangeDateTime(_cell(row, dateFromIndex), isEndOfDay: false);
       if (dateFrom == null) {
@@ -332,6 +343,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           dateFrom: dateFrom,
           dateTo: dateTo,
           description: description,
+          location: location == null || location.isEmpty ? null : location,
           equipment: _optionalCell(row, equipmentIndex),
           itinerary: _optionalCell(row, itineraryIndex),
           price: _parsePrice(_optionalCell(row, priceIndex)),

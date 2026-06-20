@@ -114,11 +114,13 @@ void main() {
       expect(outdoor.first.title, 'Hike to waterfalls');
       expect(outdoor.first.dateFrom, DateTime(2030, 6, 5));
       expect(outdoor.first.dateTo, DateTime(2030, 6, 5, 23, 59, 59));
+      expect(outdoor.first.location, 'Sochi National Park');
       expect(outdoor.first.participantsLimit, 24);
       expect(outdoor.first.equipment, 'Waterproof jacket, trekking shoes');
       expect(outdoor.first.itinerary, 'Gathering 06:30, start 08:00');
       expect(outdoor.last.type, OutdoorActivityType.trail);
       expect(outdoor.last.title, 'Mountain trail');
+      expect(outdoor.last.location, 'Lago-Naki Plateau');
       expect(outdoor.last.price, 4500);
       expect(outdoor.last.participantsLimit, isNull);
       expect(outdoor.last.equipment, 'Headlamp, warm layer');
@@ -150,15 +152,15 @@ Future<http.Response> _mockCsvResponse(http.Request request) async {
   final gid = request.url.queryParameters['gid'];
   if (gid == '294119056') {
     return http.Response(
-      'title,date_from,date_to,description,equipment,itinerary,price,participants_limit\n'
-      'Hike to waterfalls,2030-06-05,,One day route,"Waterproof jacket, trekking shoes","Gathering 06:30, start 08:00",2000,24',
+      'title,date_from,date_to,location,description,equipment,itinerary,price,participants_limit\n'
+      'Hike to waterfalls,2030-06-05,,Sochi National Park,One day route,"Waterproof jacket, trekking shoes","Gathering 06:30, start 08:00",2000,24',
       200,
     );
   }
   if (gid == '1220729038') {
     return http.Response(
-      'title,date_from,date_to,description,equipment,itinerary,price,participants_limit\n'
-      'Mountain trail,2030-06-12,2030-06-14,Three day route,"Headlamp, warm layer","Day 1 climb, day 2 ridge",4500,0',
+      'title,date_from,date_to,location,description,equipment,itinerary,price,participants_limit\n'
+      'Mountain trail,2030-06-12,2030-06-14,Lago-Naki Plateau,Three day route,"Headlamp, warm layer","Day 1 climb, day 2 ridge",4500,0',
       200,
     );
   }

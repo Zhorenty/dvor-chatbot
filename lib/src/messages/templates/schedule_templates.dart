@@ -255,10 +255,12 @@ final class ScheduleTemplates {
     ];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
+      final location = item.location?.trim();
       lines.addAll(<String>[
         '',
         '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
         '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+        if (location != null && location.isNotEmpty) '📍 Где: ${_escapeHtml(location)}',
         if (item.price != null) '💳 ${_outdoorPriceWithPrepayment(item.price!)}',
         if (item.description.trim().isNotEmpty)
           '📝 ${_escapeHtml(_shortOutdoorDescription(item.description))}',
