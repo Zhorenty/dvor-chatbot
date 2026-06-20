@@ -460,7 +460,7 @@ final class MessageTemplates {
         'Номер записи: ${booking.id}\n'
         '${_bookingTitleLine(booking)}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '${_bookingLocationLine(booking)}\n\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
         '${paymentDetailsSent(booking)}\n\n'
         'Что дальше:\n'
         '1) Оплати по реквизитам выше.\n'
@@ -1870,14 +1870,6 @@ final class MessageTemplates {
       return 'Событие: ${booking.trainingTitle}';
     }
     return 'Тренировка: ${booking.trainingTitle}';
-  }
-
-  String _bookingLocationLine(TrainingBooking booking) {
-    final location = _bookingLocationLabel(booking);
-    if (MessageFormatters.isOutdoorBooking(booking)) {
-      return '📍 $location';
-    }
-    return '📍 Где: $location';
   }
 
   String _outdoorPrepaymentAmountLabel(TrainingBooking booking) {
