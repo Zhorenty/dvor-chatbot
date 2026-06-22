@@ -3431,13 +3431,13 @@ void main() {
       final oldHike = TrainingInfo(
         title: '🥾 Поход: DVORCAMP',
         startsAt: DateTime(2026, 7, 2),
-        location: 'Тренировки, тропы и теплые вечера.',
+        location: 'Старое описание похода',
         category: ActivityCategory.hikes,
       );
       final newHike = TrainingInfo(
         title: '🥾 Поход: DVORCAMP',
         startsAt: DateTime(2026, 7, 3),
-        location: 'Тренировки, тропы и теплые вечера.',
+        location: 'Новое описание похода',
         category: ActivityCategory.hikes,
       );
       final bookingRepository = _FakeBookingRepository()
@@ -3465,7 +3465,7 @@ void main() {
           _booking(
             id: 903,
             userId: 9002,
-            userUsername: 'whatshapped',
+            userUsername: 'hike_cancelled',
             trainingKey: oldHike.sessionKey,
             title: oldHike.title,
             startsAt: oldHike.startsAt,
@@ -3521,7 +3521,7 @@ void main() {
       expect(messageText, contains('🕒 03.07.2026'));
       expect(messageText, isNot(contains('🕒 02.07.2026')));
       expect(RegExp('@mi_harkevich').allMatches(messageText).length, 1);
-      expect(messageText, contains('@whatshapped (Отменено ❌)'));
+      expect(messageText, contains('@hike_cancelled (Отменено ❌)'));
     });
 
     test('merges trail participants when activity date changes', () async {
@@ -3529,13 +3529,13 @@ void main() {
       final oldTrail = TrainingInfo(
         title: '🏃 Трейл: Лаго-Наки',
         startsAt: DateTime(2026, 8, 10),
-        location: 'Горный маршрут',
+        location: 'Описание версии 1',
         category: ActivityCategory.trails,
       );
       final newTrail = TrainingInfo(
         title: '🏃 Трейл: Лаго-Наки',
         startsAt: DateTime(2026, 8, 12),
-        location: 'Горный маршрут',
+        location: 'Описание версии 2',
         category: ActivityCategory.trails,
       );
       final bookingRepository = _FakeBookingRepository()
@@ -3620,6 +3620,86 @@ void main() {
       expect(messageText, isNot(contains('🕒 10.08.2026')));
       expect(RegExp('@trail_runner').allMatches(messageText).length, 1);
       expect(messageText, contains('@trail_cancelled (Отменено ❌)'));
+    });
+
+    test('does not display trainers in hikes participants list', () async {
+      final sender = _FakeSender();
+      final hike = TrainingInfo(
+        title: '🥾 Поход: Эльбрус',
+        startsAt: DateTime(2026, 9, 12),
+        location: 'Горный лагерь',
+        category: ActivityCategory.hikes,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          _booking(
+            id: 930,
+            userId: 9301,
+            userUsername: 'hike_user',
+            trainingKey: hike.sessionKey,
+            title: hike.title,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 931,
+            userId: 999001,
+            userUsername: '@whatshapped',
+            trainingKey: hike.sessionKey,
+            title: hike.title,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.paid,
+          ),
+        ]
+        ..adminBookings = <TrainingBooking>[
+          _booking(
+            id: 930,
+            userId: 9301,
+            userUsername: 'hike_user',
+            trainingKey: hike.sessionKey,
+            title: hike.title,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Эльбрус',
+              dateFrom: hike.startsAt,
+              dateTo: hike.startsAt,
+              description: hike.location,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2003},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2003},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2003},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+
+      expect(categoryHandled, isTrue);
+      final messageText = sender.messages.last.text;
+      expect(messageText, contains('@hike_user'));
+      expect(messageText, isNot(contains('🧑‍🏫 Тренеры:')));
+      expect(messageText, isNot(contains('@whatshapped')));
     });
 
     test('merges training participants when session date changes', () async {

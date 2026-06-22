@@ -43,7 +43,9 @@ void main() {
     expect(sender.messages, hasLength(2));
     expect(sender.messages[0].chatId, 999);
     expect(sender.messages[0].text, contains('Экономическая сводка'));
+    expect(sender.messages[0].parseMode, 'HTML');
     expect(sender.messages[1].text, contains('Экономическая сводка'));
+    expect(sender.messages[1].parseMode, 'HTML');
   });
 
   test('retries report on next run after send failure', () async {

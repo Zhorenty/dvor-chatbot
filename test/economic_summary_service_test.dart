@@ -69,6 +69,8 @@ void main() {
 
     expect(summary.totalRevenue, 3200);
     expect(summary.paidBookingsCount, 2);
+    expect(summary.partialPaidBookingsCount, 0);
+    expect(summary.partialPaidRevenue, 0);
     expect(summary.freeBookingsCount, 2);
     expect(summary.regularFreeBookingsCount, 1);
     expect(summary.starterFreeBookingsCount, 0);
@@ -182,6 +184,8 @@ void main() {
 
     expect(summary.totalRevenue, 11000);
     expect(summary.paidBookingsCount, 6);
+    expect(summary.partialPaidBookingsCount, 0);
+    expect(summary.partialPaidRevenue, 0);
     expect(summary.freeBookingsCount, 4);
     expect(summary.starterFreeBookingsCount, 1);
     expect(summary.regularFreeBookingsCount, 3);
@@ -211,7 +215,7 @@ void main() {
         fakeBooking(
           id: 22,
           userId: 999001,
-          userUsername: '@zhorenty',
+          userUsername: '@whatshapped',
           trainingKey: 'hikes|22',
           title: '🥾 Поход тренера',
           status: BookingStatus.paid,
@@ -250,6 +254,8 @@ void main() {
 
     expect(summary.totalRevenue, 1200);
     expect(summary.paidBookingsCount, 1);
+    expect(summary.partialPaidBookingsCount, 0);
+    expect(summary.partialPaidRevenue, 0);
     expect(summary.freeBookingsCount, 0);
     expect(summary.regularFreeBookingsCount, 0);
     expect(summary.starterFreeBookingsCount, 0);
@@ -257,5 +263,55 @@ void main() {
     expect(summary.unknownPriceBookingsCount, 0);
     expect(summary.byEvent, hasLength(1));
     expect(summary.byEvent.single.eventTitle, 'Обычная платная');
+  });
+
+  test('counts partial payments as prepayments and includes them into revenue', () async {
+    final period = EconomicSummaryPeriod(
+      type: EconomicReportType.weekly,
+      startInclusive: DateTime(2026, 6, 1),
+      endExclusive: DateTime(2026, 6, 8),
+    );
+    final bookingRepository = FakeBookingRepository()
+      ..queue = <TrainingBooking>[
+        fakeBooking(
+          id: 31,
+          trainingKey: 'hikes|31',
+          title: '🥾 Поход: Предоплата',
+          status: BookingStatus.partialPaid,
+          trainingPrice: 2500,
+          updatedAt: DateTime(2026, 6, 2, 10),
+        ),
+        fakeBooking(
+          id: 32,
+          trainingKey: 'hikes|32',
+          title: '🥾 Поход: Полная оплата',
+          status: BookingStatus.paid,
+          trainingPrice: 2500,
+          updatedAt: DateTime(2026, 6, 3, 10),
+        ),
+      ];
+    final service = EconomicSummaryService(
+      bookingRepository: bookingRepository,
+      catalogService: ActivityCatalogService(
+        scheduleRepository: FakeScheduleRepository(const []),
+      ),
+    );
+
+    final summary = await service.buildSummary(period);
+
+    expect(summary.totalRevenue, 3750);
+    expect(summary.paidBookingsCount, 1);
+    expect(summary.partialPaidBookingsCount, 1);
+    expect(summary.partialPaidRevenue, 1250);
+    expect(summary.averageCheck, 1875);
+    expect(summary.byEvent, hasLength(2));
+    expect(
+      summary.byEvent.firstWhere((item) => item.eventTitle == '🥾 Поход: Полная оплата').revenue,
+      2500,
+    );
+    expect(
+      summary.byEvent.firstWhere((item) => item.eventTitle == '🥾 Поход: Предоплата').revenue,
+      1250,
+    );
   });
 }

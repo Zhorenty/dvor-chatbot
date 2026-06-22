@@ -1184,6 +1184,7 @@ final class MessageTemplates {
     String title = 'Список записавшихся по тренировкам 👥',
     String emptyText = 'Ближайших тренировок пока нет, показывать список не для чего.',
     bool Function(TrainingBooking booking)? isTrainerBooking,
+    bool showTrainers = true,
   }) {
     if (trainings.isEmpty) {
       return emptyText;
@@ -1225,15 +1226,16 @@ final class MessageTemplates {
             '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
         }
-        if (activeTrainerTags.isNotEmpty) {
+        if (showTrainers && activeTrainerTags.isNotEmpty) {
           lines.add('🧑‍🏫 Тренеры:');
         }
-        for (final booking in activeTrainerTags) {
+        for (final booking in showTrainers ? activeTrainerTags : const <TrainingBooking>[]) {
           lines.add(
             '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
         }
-        if (cancelledParticipantTags.isNotEmpty || cancelledTrainerTags.isNotEmpty) {
+        if (cancelledParticipantTags.isNotEmpty ||
+            (showTrainers && cancelledTrainerTags.isNotEmpty)) {
           lines.add('❌ Отмененные:');
         }
         for (final booking in cancelledParticipantTags) {
@@ -1241,7 +1243,7 @@ final class MessageTemplates {
             '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
         }
-        for (final booking in cancelledTrainerTags) {
+        for (final booking in showTrainers ? cancelledTrainerTags : const <TrainingBooking>[]) {
           lines.add(
             '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
           );
@@ -1558,7 +1560,10 @@ final class MessageTemplates {
       '',
       '<b>Финансы:</b>',
       '• Выручка: <b>${_money(summary.totalRevenue)}</b>',
-      '• Платных бронирований: <b>${summary.paidBookingsCount}</b>',
+      '• Полностью оплаченных бронирований: <b>${summary.paidBookingsCount}</b>',
+      if (summary.partialPaidBookingsCount > 0)
+        '• Предоплат: <b>${summary.partialPaidBookingsCount}</b> '
+            '(на сумму <b>${_money(summary.partialPaidRevenue)}</b>)',
       '• Средний чек: <b>${_money(summary.averageCheck)}</b>',
       if (summary.freeBookingsCount > 0)
         '• Бесплатных бронирований: <b>${summary.freeBookingsCount}</b>',

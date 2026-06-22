@@ -206,6 +206,31 @@ void main() {
 
       expect(text, contains('📍 Где: Роза Хутор, КПП Лаура'));
     });
+
+    test('renders full multi-line trail description in schedule list', () {
+      final text = templates.trails(<OutdoorActivityInfo>[
+        OutdoorActivityInfo(
+          type: OutdoorActivityType.trail,
+          title: 'Трейл Фишт',
+          dateFrom: DateTime(2026, 8, 2),
+          dateTo: DateTime(2026, 8, 3, 23, 59, 59),
+          description: 'Готовы к настоящему вызову? Тогда вперед!\n\n'
+              'Трейл от Яворовой Поляны до Фишта - это уже не прогулка.\n'
+              '• реальные подъемы и участки, где придется включать характер\n'
+              '• живописные тропы, свежий горный воздух',
+          location: 'Плато Фишт',
+        ),
+      ]);
+
+      expect(text, contains('📝 <b>Описание:</b>'));
+      expect(text, contains('Готовы к настоящему вызову? Тогда вперед!'));
+      expect(
+        text,
+        contains('Трейл от Яворовой Поляны до Фишта - это уже не прогулка.'),
+      );
+      expect(text, contains('• реальные подъемы и участки, где придется включать характер'));
+      expect(text, contains('• живописные тропы, свежий горный воздух'));
+    });
   });
 }
 

@@ -256,14 +256,15 @@ final class ScheduleTemplates {
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       final location = item.location?.trim();
+      final description = _normalizeMultiline(item.description);
       lines.addAll(<String>[
         '',
         '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
         '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
         if (location != null && location.isNotEmpty) '📍 Где: ${_escapeHtml(location)}',
         if (item.price != null) '💳 ${_outdoorPriceWithPrepayment(item.price!)}',
-        if (item.description.trim().isNotEmpty)
-          '📝 ${_escapeHtml(_shortOutdoorDescription(item.description))}',
+        if (description != null) '📝 <b>Описание:</b>',
+        if (description != null) _escapeHtml(description),
       ]);
     }
     return lines.join('\n');
@@ -313,16 +314,6 @@ final class ScheduleTemplates {
       ]);
     }
     return lines.join('\n');
-  }
-
-  String _shortOutdoorDescription(String raw) {
-    final normalized = _normalizeMultiline(raw);
-    if (normalized == null || normalized.isEmpty) {
-      return '';
-    }
-    final lines = normalized.split('\n');
-    final firstTwo = lines.take(2).join('\n');
-    return firstTwo.length > 220 ? '${firstTwo.substring(0, 217)}...' : firstTwo;
   }
 
   String? _normalizeMultiline(String? raw) {

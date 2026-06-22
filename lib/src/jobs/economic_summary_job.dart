@@ -59,7 +59,11 @@ final class EconomicSummaryJob {
     final summary = await _economicSummaryService.buildSummary(period);
     final text = _templates.economicSummary(summary);
     try {
-      await _sender.sendMessage(adminChatId, text);
+      await _sender.sendMessage(
+        adminChatId,
+        text,
+        parseMode: 'HTML',
+      );
     } on Object catch (error, stackTrace) {
       await _bookingRepository.rollbackEconomicReportSent(
         reportType: period.type.name,

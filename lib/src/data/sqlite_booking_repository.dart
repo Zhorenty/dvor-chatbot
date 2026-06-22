@@ -619,7 +619,7 @@ final class SqliteBookingRepository implements BookingRepository {
     final result = db.select(
       '''
       SELECT * FROM bookings
-      WHERE status IN (?, ?)
+      WHERE status IN (?, ?, ?)
         AND updated_at >= ?
         AND updated_at < ?
       ORDER BY updated_at ASC
@@ -628,6 +628,7 @@ final class SqliteBookingRepository implements BookingRepository {
       <Object?>[
         BookingStatus.paid.dbValue,
         BookingStatus.freeTraining.dbValue,
+        BookingStatus.partialPaid.dbValue,
         fromInclusive.toUtc().toIso8601String(),
         toExclusive.toUtc().toIso8601String(),
         limit,

@@ -65,12 +65,14 @@ final class EconomicSummaryService {
       toExclusive: period.endExclusive,
     );
     var paidBookingsCount = 0;
+    var partialPaidBookingsCount = 0;
     var freeBookingsCount = 0;
     var regularFreeBookingsCount = 0;
     var starterFreeBookingsCount = 0;
     var everyFifthFreeBookingsCount = 0;
     var unknownPriceBookingsCount = 0;
     var totalRevenue = 0;
+    var partialPaidRevenue = 0;
     final byCategory = <ActivityCategory, _MutableStats>{};
     final byEvent = <String, _MutableStats>{};
 
@@ -109,9 +111,18 @@ final class EconomicSummaryService {
         unknownPriceBookingsCount++;
         continue;
       }
+      final category = _catalogService.categoryForBooking(booking);
+      if (booking.status == BookingStatus.partialPaid) {
+        final prepayment = (price / 2).ceil();
+        partialPaidBookingsCount++;
+        partialPaidRevenue += prepayment;
+        totalRevenue += prepayment;
+        byCategory.putIfAbsent(category, () => _MutableStats()).add(prepayment);
+        byEvent.putIfAbsent(booking.trainingTitle, () => _MutableStats()).add(prepayment);
+        continue;
+      }
       paidBookingsCount++;
       totalRevenue += price;
-      final category = _catalogService.categoryForBooking(booking);
       byCategory.putIfAbsent(category, () => _MutableStats()).add(price);
       byEvent.putIfAbsent(booking.trainingTitle, () => _MutableStats()).add(price);
     }
@@ -140,13 +151,17 @@ final class EconomicSummaryService {
     return EconomicSummary(
       period: period,
       paidBookingsCount: paidBookingsCount,
+      partialPaidBookingsCount: partialPaidBookingsCount,
       freeBookingsCount: freeBookingsCount,
       regularFreeBookingsCount: regularFreeBookingsCount,
       starterFreeBookingsCount: starterFreeBookingsCount,
       everyFifthFreeBookingsCount: everyFifthFreeBookingsCount,
       unknownPriceBookingsCount: unknownPriceBookingsCount,
       totalRevenue: totalRevenue,
-      averageCheck: paidBookingsCount == 0 ? 0 : (totalRevenue / paidBookingsCount).round(),
+      partialPaidRevenue: partialPaidRevenue,
+      averageCheck: paidBookingsCount + partialPaidBookingsCount == 0
+          ? 0
+          : (totalRevenue / (paidBookingsCount + partialPaidBookingsCount)).round(),
       byCategory: categorySummary,
       byEvent: eventSummary.take(5).toList(growable: false),
     );

@@ -42,12 +42,14 @@ final class EconomicSummary {
   const EconomicSummary({
     required this.period,
     required this.paidBookingsCount,
+    required this.partialPaidBookingsCount,
     required this.freeBookingsCount,
     required this.regularFreeBookingsCount,
     required this.starterFreeBookingsCount,
     required this.everyFifthFreeBookingsCount,
     required this.unknownPriceBookingsCount,
     required this.totalRevenue,
+    required this.partialPaidRevenue,
     required this.averageCheck,
     required this.byCategory,
     required this.byEvent,
@@ -55,12 +57,14 @@ final class EconomicSummary {
 
   final EconomicSummaryPeriod period;
   final int paidBookingsCount;
+  final int partialPaidBookingsCount;
   final int freeBookingsCount;
   final int regularFreeBookingsCount;
   final int starterFreeBookingsCount;
   final int everyFifthFreeBookingsCount;
   final int unknownPriceBookingsCount;
   final int totalRevenue;
+  final int partialPaidRevenue;
   final int averageCheck;
   final List<EconomicSummaryByCategory> byCategory;
   final List<EconomicSummaryByEvent> byEvent;

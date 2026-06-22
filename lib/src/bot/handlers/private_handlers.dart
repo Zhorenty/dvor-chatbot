@@ -2896,6 +2896,7 @@ final class PrivateHandlers {
         title: copy.title,
         emptyText: copy.emptyText,
         isTrainerBooking: _isWhitelistedTrainerBookingByBooking,
+        showTrainers: !_isOutdoorCategory(category),
       ),
       replyMarkup: _templates.privateMenuKeyboard(
         isAdmin: isAdmin,
@@ -2989,11 +2990,19 @@ final class PrivateHandlers {
   }
 
   String _trainingSignature(TrainingInfo training) {
-    return '${training.title.trim().toLowerCase()}|${training.location.trim().toLowerCase()}';
+    final normalizedTitle = training.title.trim().toLowerCase();
+    if (_isOutdoorCategory(training.category)) {
+      return normalizedTitle;
+    }
+    return '$normalizedTitle|${training.location.trim().toLowerCase()}';
   }
 
   String _bookingSignature(TrainingBooking booking) {
-    return '${booking.trainingTitle.trim().toLowerCase()}|${booking.location.trim().toLowerCase()}';
+    final normalizedTitle = booking.trainingTitle.trim().toLowerCase();
+    if (MessageFormatters.isOutdoorBooking(booking)) {
+      return normalizedTitle;
+    }
+    return '$normalizedTitle|${booking.location.trim().toLowerCase()}';
   }
 
   Future<void> _sendPaymentsQueueByCategory({
