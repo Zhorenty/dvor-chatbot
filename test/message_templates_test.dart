@@ -120,6 +120,20 @@ void main() {
       expect(text, contains('Тренировка уже завтра'));
       expect(text, contains('Планируй заранее'));
     });
+
+    test('includes notes in group promo when provided', () {
+      final text = templates.groupTrainingTodayPromo(
+        training: TrainingInfo(
+          title: 'Функциональная тренировка',
+          startsAt: DateTime(2026, 6, 22, 19, 0),
+          location: 'Зал DVOR',
+          category: ActivityCategory.trainings,
+          notes: 'Возьми воду и полотенце',
+        ),
+      );
+
+      expect(text, contains('📝 Возьми воду и полотенце'));
+    });
   });
 
   group('MessageTemplates booking location formatting', () {

@@ -442,10 +442,12 @@ final class MessageTemplates {
     final cta = isToday
         ? 'Хочешь попасть на занятие сегодня? Записывайся 👇'
         : 'Планируй заранее: записывайся на тренировку 👇';
+    final notes = training.notes?.trim();
     return '📣 <b>$title</b>\n'
         '<b>${_escapeHtml(training.title)}</b>\n'
         '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 Где: ${_trainingLocationLabel(training)}\n\n'
+        '📍 Где: ${_trainingLocationLabel(training)}\n'
+        '${notes == null || notes.isEmpty ? '' : '📝 ${_escapeHtml(notes)}\n'}\n'
         '$cta\n'
         '${_groupBookingCta()}';
   }
