@@ -432,6 +432,24 @@ final class MessageTemplates {
     );
   }
 
+  String groupTrainingTodayPromo({
+    required TrainingInfo training,
+    bool isToday = true,
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final title = isToday ? 'Тренировка уже сегодня!' : 'Тренировка уже завтра!';
+    final cta = isToday
+        ? 'Хочешь попасть на занятие сегодня? Записывайся 👇'
+        : 'Планируй заранее: записывайся на тренировку 👇';
+    return '📣 <b>$title</b>\n'
+        '<b>${_escapeHtml(training.title)}</b>\n'
+        '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_trainingLocationLabel(training)}\n\n'
+        '$cta\n'
+        '${_groupBookingCta()}';
+  }
+
   String scheduleRefreshDone() {
     return _scheduleTemplates.scheduleRefreshDone();
   }

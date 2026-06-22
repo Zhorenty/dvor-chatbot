@@ -18,6 +18,7 @@ final class ScheduleTemplates {
       items: items,
       trainers: trainers,
       emptyText: 'Пока тренировок в расписании нет 😌 Скоро добавим новые даты!',
+      includeWeekdayShortInDate: true,
     );
   }
 
@@ -31,6 +32,7 @@ final class ScheduleTemplates {
       items: items,
       trainers: trainers,
       emptyText: 'Пока йоги в расписании нет 😌 Скоро добавим новые даты!',
+      includeWeekdayShortInDate: false,
     );
     return '$list\n\n'
         'По вопросам теории и практики можно написать тренеру-йоги.\n'
@@ -43,6 +45,7 @@ final class ScheduleTemplates {
     required List<TrainingInfo> items,
     required List<TrainerInfo> trainers,
     required String emptyText,
+    required bool includeWeekdayShortInDate,
   }) {
     if (items.isEmpty) {
       return emptyText;
@@ -59,7 +62,7 @@ final class ScheduleTemplates {
       lines.addAll(<String>[
         '',
         '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
-        '🕒 ${formatter.format(item.startsAt)}',
+        '🕒 ${_indoorDateLabel(item.startsAt, formatter, includeWeekdayShortInDate)}',
         '📍 ${_locationLabel(item)}',
         '👥 ${_participantsLimitLabel(item.participantsLimit)}',
         if (item.price != null) '💳 ${MessageFormatters.trainingPriceLabel(item.price)}',
@@ -368,6 +371,28 @@ final class ScheduleTemplates {
       return 'без лимита';
     }
     return '$participantsLimit мест';
+  }
+
+  String _indoorDateLabel(
+    DateTime value,
+    DateFormat formatter,
+    bool includeWeekdayShortInDate,
+  ) {
+    final formattedDate = formatter.format(value);
+    if (!includeWeekdayShortInDate) {
+      return formattedDate;
+    }
+    final weekday = switch (value.weekday) {
+      DateTime.monday => 'пн',
+      DateTime.tuesday => 'вт',
+      DateTime.wednesday => 'ср',
+      DateTime.thursday => 'чт',
+      DateTime.friday => 'пт',
+      DateTime.saturday => 'сб',
+      DateTime.sunday => 'вс',
+      _ => '',
+    };
+    return weekday.isEmpty ? formattedDate : '$weekday, $formattedDate';
   }
 
   String _coachTitle(String coach) {

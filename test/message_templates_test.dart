@@ -75,6 +75,53 @@ void main() {
     });
   });
 
+  group('MessageTemplates training schedule and promo copy', () {
+    const templates = MessageTemplates(botUsername: 'dvor_chatbot');
+
+    test('shows short weekday in trainings schedule date', () {
+      final text = templates.trainings(<TrainingInfo>[
+        TrainingInfo(
+          title: 'Функциональная тренировка',
+          startsAt: DateTime(2026, 6, 22, 19, 0),
+          location: 'Зал DVOR',
+          category: ActivityCategory.trainings,
+        ),
+      ]);
+
+      expect(text, contains('🕒 пн, 22.06.2026 19:00'));
+    });
+
+    test('builds group promo for training day with booking cta', () {
+      final text = templates.groupTrainingTodayPromo(
+        training: TrainingInfo(
+          title: 'Функциональная тренировка',
+          startsAt: DateTime(2026, 6, 22, 19, 0),
+          location: 'Зал DVOR',
+          category: ActivityCategory.trainings,
+        ),
+      );
+
+      expect(text, contains('Тренировка уже сегодня'));
+      expect(text, contains('Записывайся'));
+      expect(text, contains('https://t.me/dvor_chatbot?start=start'));
+    });
+
+    test('builds day-before promo with tomorrow wording', () {
+      final text = templates.groupTrainingTodayPromo(
+        training: TrainingInfo(
+          title: 'Утренняя тренировка',
+          startsAt: DateTime(2026, 6, 22, 10, 0),
+          location: 'Зал DVOR',
+          category: ActivityCategory.trainings,
+        ),
+        isToday: false,
+      );
+
+      expect(text, contains('Тренировка уже завтра'));
+      expect(text, contains('Планируй заранее'));
+    });
+  });
+
   group('MessageTemplates booking location formatting', () {
     const templates = MessageTemplates();
 

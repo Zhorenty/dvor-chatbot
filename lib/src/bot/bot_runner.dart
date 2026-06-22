@@ -15,6 +15,7 @@ import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
 import 'package:dvor_chatbot/src/jobs/starter_bonus_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/subscription_renewal_job.dart';
+import 'package:dvor_chatbot/src/jobs/training_day_promo_job.dart';
 import 'package:dvor_chatbot/src/jobs/welcome_cleanup_job.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
@@ -61,6 +62,12 @@ final class BotRunner {
           sender: sender,
           templates: templates,
         ),
+        _trainingDayPromoJob = TrainingDayPromoJob(
+          scheduleRepository: scheduleRepository,
+          sender: sender,
+          templates: templates,
+          targetChatId: config.targetChatId,
+        ),
         _economicSummaryJob = EconomicSummaryJob(
           bookingRepository: bookingRepository,
           economicSummaryService: EconomicSummaryService(
@@ -82,6 +89,7 @@ final class BotRunner {
   final StarterBonusReminderJob _starterBonusReminderJob;
   final WelcomeCleanupJob _welcomeCleanupJob;
   final SubscriptionRenewalJob _subscriptionRenewalJob;
+  final TrainingDayPromoJob _trainingDayPromoJob;
   final EconomicSummaryJob _economicSummaryJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
@@ -97,6 +105,7 @@ final class BotRunner {
   Timer? _welcomeCleanupTimer;
   Timer? _economicSummaryTimer;
   Timer? _subscriptionRenewalTimer;
+  Timer? _trainingDayPromoTimer;
 
   Future<void> start() async {
     await _initializeLongPolling();
@@ -143,8 +152,15 @@ final class BotRunner {
       }
       _launchBackgroundJob('subscription renewal', _subscriptionRenewalJob.run);
     });
+    _trainingDayPromoTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (_stopping) {
+        return;
+      }
+      _launchBackgroundJob('training day promo', _trainingDayPromoJob.run);
+    });
     _launchBackgroundJob('economic summary', _economicSummaryJob.run);
     _launchBackgroundJob('subscription renewal', _subscriptionRenewalJob.run);
+    _launchBackgroundJob('training day promo', _trainingDayPromoJob.run);
 
     while (!_stopping) {
       try {
@@ -208,6 +224,7 @@ final class BotRunner {
     _welcomeCleanupTimer?.cancel();
     _economicSummaryTimer?.cancel();
     _subscriptionRenewalTimer?.cancel();
+    _trainingDayPromoTimer?.cancel();
     _closeClient();
     await _waitForIdleOperations();
   }
