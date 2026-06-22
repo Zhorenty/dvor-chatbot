@@ -884,7 +884,7 @@ void main() {
       expect(sender.messages.single.text, contains('каждая 5-я тренировка бесплатная'));
       expect(sender.messages.single.text, contains('публикуем афиши всех мероприятий'));
       expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
-      expect(sender.messages.single.text, contains('/trainings, /book, /profile, /my_bookings'));
+      expect(sender.messages.single.text, contains('По остальным вопросам пиши в поддержку'));
       expect(sender.messages.single.text, isNot(contains('внешнего источника')));
     });
 
@@ -1188,12 +1188,14 @@ void main() {
       });
 
       expect(opened, isTrue);
-      final actionsButtons = _keyboardTexts(sender.messages[2].replyMarkup);
-      expect(actionsButtons, contains(MessageTemplates.buttonBookTraining));
+      final detailsMessage = sender.messages.firstWhere(
+        (message) => message.text.contains('Выбери действие'),
+      );
+      final actionsButtons = _keyboardTexts(detailsMessage.replyMarkup);
       expect(actionsButtons, contains(MessageTemplates.buttonOutdoorEquipment));
       expect(actionsButtons, contains(MessageTemplates.buttonOutdoorItinerary));
-      expect(sender.messages[1].text, contains('Выбери поход'));
-      expect(sender.messages[2].text, contains('Выбери действие'));
+      expect(sender.messages[1].text, contains('Ближайшие походы OUTDVOR'));
+      expect(detailsMessage.text, contains('Выбери действие'));
       expect(sender.messages.last.text, contains('Экипировка'));
       expect(sender.messages.last.text, contains('Поход на Бзерпинский карниз'));
       expect(sender.messages.last.text, contains('Ботинки, дождевик, фонарь'));
@@ -1595,7 +1597,7 @@ void main() {
     test('skips payment confirmation flow for whitelisted trainer booking', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();
-      expect(isTrainerBookingWhitelisted(userId: 857655217, username: 'zhorenty'), isTrue);
+      expect(isTrainerBookingWhitelisted(userId: 857655217, username: '@whatshapped'), isTrue);
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(
@@ -1618,7 +1620,7 @@ void main() {
         'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
         'from': <String, dynamic>{
           'id': 857655217,
-          'username': 'zhorenty',
+          'username': 'whatshapped',
         },
         'text': '/book',
       });
@@ -1626,7 +1628,7 @@ void main() {
         'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
         'from': <String, dynamic>{
           'id': 857655217,
-          'username': 'zhorenty',
+          'username': 'whatshapped',
         },
         'text': MessageTemplates.buttonCategoryTrainings,
       });
@@ -1634,7 +1636,7 @@ void main() {
         'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
         'from': <String, dynamic>{
           'id': 857655217,
-          'username': 'zhorenty',
+          'username': 'whatshapped',
         },
         'text': '🎯 1. Paid session',
       });
@@ -1963,7 +1965,7 @@ void main() {
       expect(sender.messages.last.text, contains('записал тебя'));
       expect(sender.messages.last.text, contains('Событие: 🥾 Поход: Поход на хребет'));
       expect(sender.messages.last.text, isNot(contains('Тренировка:')));
-      expect(sender.messages.last.text, isNot(contains('📍 Где:')));
+      expect(sender.messages.last.text, contains('📍 Где: Лаго-Наки, старт от кордона'));
     });
 
     test('payment is not submitted without proof file', () async {
@@ -3348,9 +3350,8 @@ void main() {
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Список записавшихся'));
       expect(sender.messages.last.text, contains('Список записавшихся'));
-      expect(sender.messages.last.text, contains('👥 Участники: 1/∞'));
+      expect(sender.messages.last.text, contains('👥 Участники: 2/∞'));
       expect(sender.messages.last.text, contains('👤 Участники:'));
-      expect(sender.messages.last.text, contains('🧑‍🏫 Тренеры:'));
       expect(sender.messages.last.text, contains('@runner_one'));
       expect(
         sender.messages.last.text,

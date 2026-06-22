@@ -149,8 +149,7 @@ void main() {
       );
 
       expect(text, contains('Событие: 🥾 Поход: ПИК ЗАКАН'));
-      expect(text, contains('📍 Вершина хребта Магито в Карачаево-Черкесии'));
-      expect(text, isNot(contains('📍 Где:')));
+      expect(text, contains('📍 Где: Вершина хребта Магито в Карачаево-Черкесии'));
       expect(text, isNot(contains('Тренировка:')));
       expect(text, isNot(contains('<a href=')));
       expect(text, isNot(contains('google.com/maps/search')));

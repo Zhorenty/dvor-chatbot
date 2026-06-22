@@ -130,7 +130,7 @@ void main() {
 
       await repository.createPendingBooking(
         userId: 99001,
-        userUsername: '@zhorenty',
+        userUsername: '@whatshapped',
         training: training,
       );
 
