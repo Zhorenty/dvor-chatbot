@@ -6,6 +6,8 @@ import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:http/http.dart' as http;
 
 final class TelegramClient implements MessageSender {
+  static const int _maxTelegramMessageLength = 4096;
+
   TelegramClient({
     required String token,
     http.Client? httpClient,
@@ -119,6 +121,30 @@ final class TelegramClient implements MessageSender {
     Map<String, Object?>? replyMarkup,
     String? parseMode,
   }) async {
+    final chunks = _splitMessageText(text);
+    var lastMessageId = 0;
+    for (var index = 0; index < chunks.length; index++) {
+      final isLastChunk = index == chunks.length - 1;
+      lastMessageId = await _sendMessageChunk(
+        chatId,
+        chunks[index],
+        disableNotification: disableNotification,
+        disableWebPagePreview: disableWebPagePreview,
+        replyMarkup: isLastChunk ? replyMarkup : null,
+        parseMode: parseMode,
+      );
+    }
+    return lastMessageId;
+  }
+
+  Future<int> _sendMessageChunk(
+    int chatId,
+    String text, {
+    required bool disableNotification,
+    required bool disableWebPagePreview,
+    required Map<String, Object?>? replyMarkup,
+    required String? parseMode,
+  }) async {
     final body = <String, Object?>{
       'chat_id': chatId,
       'text': text,
@@ -144,6 +170,80 @@ final class TelegramClient implements MessageSender {
 
     return result['message_id'] as int;
   }
+
+  List<String> _splitMessageText(String text) {
+    return _splitBySeparators(
+      text,
+      separators: const <String>['\n\n', '\n'],
+      maxLength: _maxTelegramMessageLength,
+    );
+  }
+
+  List<String> _splitBySeparators(
+    String text, {
+    required List<String> separators,
+    required int maxLength,
+  }) {
+    if (_textLength(text) <= maxLength) {
+      return <String>[text];
+    }
+    if (separators.isEmpty) {
+      return _hardSplit(text, maxLength);
+    }
+
+    final separator = separators.first;
+    final nextSeparators = separators.sublist(1);
+    final segments = text.split(separator);
+    if (segments.length == 1) {
+      return _splitBySeparators(
+        text,
+        separators: nextSeparators,
+        maxLength: maxLength,
+      );
+    }
+
+    final chunks = <String>[];
+    var current = '';
+    for (final segment in segments) {
+      final candidate = current.isEmpty ? segment : '$current$separator$segment';
+      if (_textLength(candidate) <= maxLength) {
+        current = candidate;
+        continue;
+      }
+      if (current.isNotEmpty) {
+        chunks.add(current);
+      }
+      if (_textLength(segment) <= maxLength) {
+        current = segment;
+        continue;
+      }
+      chunks.addAll(
+        _splitBySeparators(
+          segment,
+          separators: nextSeparators,
+          maxLength: maxLength,
+        ),
+      );
+      current = '';
+    }
+    if (current.isNotEmpty) {
+      chunks.add(current);
+    }
+
+    return chunks.isEmpty ? _hardSplit(text, maxLength) : chunks;
+  }
+
+  List<String> _hardSplit(String text, int maxLength) {
+    final codePoints = text.runes.toList(growable: false);
+    final chunks = <String>[];
+    for (var index = 0; index < codePoints.length; index += maxLength) {
+      final end = (index + maxLength < codePoints.length) ? index + maxLength : codePoints.length;
+      chunks.add(String.fromCharCodes(codePoints.sublist(index, end)));
+    }
+    return chunks.isEmpty ? <String>[text] : chunks;
+  }
+
+  int _textLength(String text) => text.runes.length;
 
   @override
   Future<int> copyMessage(
