@@ -743,6 +743,7 @@ void main() {
           title: 'Invitee completed',
           startsAt: DateTime(2030, 6, 10, 18),
           location: 'Gym A',
+          price: 1200,
         ),
       );
       await repository.updateStatus(inviteeCompleted.booking.id, BookingStatus.paid);
@@ -764,6 +765,62 @@ void main() {
       final progress = await repository.getReferralRewardProgress(6201, now: now);
       expect(progress.qualifiedReferralsCount, 1);
       expect(progress.usedRewardsCount, 1);
+      expect(progress.availableRewardsCount, 0);
+
+      await onboardingRepository.close();
+      await repository.close();
+    });
+
+    test('does not count free or bonus invitee trainings for referral progress', () async {
+      final now = DateTime(2030, 6, 20, 12);
+      final dbPath = '${tmpDir.path}/bookings.sqlite';
+      final repository = SqliteBookingRepository(
+        dbPath: dbPath,
+        nowProvider: () => now,
+      );
+      final onboardingRepository = SqliteOnboardingRepository(dbPath: dbPath);
+      await repository.init();
+      await onboardingRepository.init();
+
+      await onboardingRepository.registerReferralAttribution(
+        inviteeUserId: 6302,
+        inviterUserId: 6301,
+        attributedAt: now.subtract(const Duration(days: 10)),
+      );
+      await onboardingRepository.registerReferralAttribution(
+        inviteeUserId: 6303,
+        inviterUserId: 6301,
+        attributedAt: now.subtract(const Duration(days: 10)),
+      );
+
+      final freeInvitee = await repository.createPendingBooking(
+        userId: 6302,
+        training: TrainingInfo(
+          title: 'Invitee free by price',
+          startsAt: DateTime(2030, 6, 10, 18),
+          location: 'Gym A',
+          price: 0,
+        ),
+      );
+      await repository.updateStatus(freeInvitee.booking.id, BookingStatus.paid);
+
+      final bonusInvitee = await repository.createPendingBooking(
+        userId: 6303,
+        training: TrainingInfo(
+          title: 'Invitee bonus',
+          startsAt: DateTime(2030, 6, 11, 18),
+          location: 'Gym A',
+          price: 1200,
+        ),
+      );
+      await repository.updateStatus(
+        bonusInvitee.booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+      );
+
+      final progress = await repository.getReferralRewardProgress(6301, now: now);
+      expect(progress.qualifiedReferralsCount, 0);
       expect(progress.availableRewardsCount, 0);
 
       await onboardingRepository.close();

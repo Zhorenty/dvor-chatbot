@@ -742,7 +742,7 @@ final class MessageTemplates {
         : '⚡️ <b>Стартовая бесплатная:</b> недоступна';
     final referralHint = availableReferralRewards > 0
         ? '👥 <b>Реферальных бесплатных:</b> <b>$availableReferralRewards</b>'
-        : '👥 <b>Успешных рефералов:</b> <b>$successfulReferralsCount</b>';
+        : '👥 <b>Успешных платных рефералов:</b> <b>$successfulReferralsCount</b>';
     final subscriptionHint = membershipLevel == MembershipLevel.pro
         ? '💎 <b>Абонемент:</b> PRO'
             '${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
@@ -799,12 +799,12 @@ final class MessageTemplates {
     return '👥 <b>Реферальная программа DVOR</b>\n'
         '1) Пригласи друга по своей ссылке.\n'
         '2) Друг должен зайти в бота именно по этой ссылке.\n'
-        '3) После того как друг успешно пройдет первую тренировку, '
+        '3) После того как друг успешно пройдет <b>первую платную тренировку</b>, '
         'тебе начислится 1 бесплатная тренировка.\n\n'
         'Твоя реферальная ссылка:\n'
         '$linkLine\n\n'
         '📊 <b>Твой прогресс</b>\n'
-        '• Успешных рефералов: <b>$successfulReferralsCount</b>\n'
+        '• Успешных платных рефералов: <b>$successfulReferralsCount</b>\n'
         '• Доступно бесплатных по рефералке: <b>$availableReferralRewards</b>\n\n'
         'Используй бесплатную тренировку через обычный сценарий записи '
         'кнопкой «${MessageCopy.buttonUseStarterBonus}».';
