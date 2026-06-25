@@ -87,6 +87,10 @@ final class FakeBookingRepository implements BookingRepository {
     qualifiedTrainingsCount: 0,
     usedRewardsCount: 0,
   );
+  ReferralRewardProgress referralProgress = const ReferralRewardProgress(
+    qualifiedReferralsCount: 0,
+    usedRewardsCount: 0,
+  );
   PaymentReviewResult? paymentReviewResult;
   bool throwAdminUpdateConflict = false;
   final Set<String> sentEconomicReports = <String>{};
@@ -413,6 +417,14 @@ final class FakeBookingRepository implements BookingRepository {
     required DateTime now,
   }) async {
     return everyFifthProgress;
+  }
+
+  @override
+  Future<ReferralRewardProgress> getReferralRewardProgress(
+    int userId, {
+    required DateTime now,
+  }) async {
+    return referralProgress;
   }
 }
 
@@ -798,6 +810,7 @@ final class AnsweredCallback {
 final class FakeOnboardingRepository implements OnboardingRepository {
   final Map<int, _FakeOnboardingState> _stateByUserId = <int, _FakeOnboardingState>{};
   final List<PendingWelcomeMessage> readyForDelete = <PendingWelcomeMessage>[];
+  final Map<int, int> referralInviterByInvitee = <int, int>{};
 
   @override
   Future<void> close() async {}
@@ -947,6 +960,18 @@ final class FakeOnboardingRepository implements OnboardingRepository {
       ),
     );
     state.everyFifthLastNotifiedRewards = rewardsCount;
+  }
+
+  @override
+  Future<void> registerReferralAttribution({
+    required int inviteeUserId,
+    required int inviterUserId,
+    required DateTime attributedAt,
+  }) async {
+    if (inviteeUserId <= 0 || inviterUserId <= 0 || inviteeUserId == inviterUserId) {
+      return;
+    }
+    referralInviterByInvitee.putIfAbsent(inviteeUserId, () => inviterUserId);
   }
 }
 

@@ -10,6 +10,10 @@ import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 final class SqliteBookingRepository implements BookingRepository {
+  static const String _starterBonusPaymentNoteMarker = '__starter_bonus__';
+  static const String _everyFifthBonusPaymentNoteMarker = '__every_fifth_bonus__';
+  static const String _referralBonusPaymentNoteMarker = '__referral_bonus__';
+
   SqliteBookingRepository({
     required String dbPath,
     Duration pendingPaymentTtl = const Duration(hours: 2),
@@ -82,6 +86,17 @@ final class SqliteBookingRepository implements BookingRepository {
     );
     db.execute(
       'CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);',
+    );
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS referral_attributions (
+        invitee_user_id INTEGER PRIMARY KEY,
+        inviter_user_id INTEGER NOT NULL,
+        attributed_at TEXT NOT NULL
+      );
+    ''');
+    db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_referral_attributions_inviter '
+      'ON referral_attributions(inviter_user_id);',
     );
   }
 
@@ -929,8 +944,8 @@ final class SqliteBookingRepository implements BookingRepository {
         userId,
         BookingStatus.paid.dbValue,
         nowIso,
-        '__starter_bonus__',
-        '__every_fifth_bonus__',
+        _starterBonusPaymentNoteMarker,
+        _everyFifthBonusPaymentNoteMarker,
       ],
     );
     final usedResult = db.select(
@@ -947,13 +962,64 @@ final class SqliteBookingRepository implements BookingRepository {
         userId,
         BookingStatus.paid.dbValue,
         nowIso,
-        '__every_fifth_bonus__',
+        _everyFifthBonusPaymentNoteMarker,
       ],
     );
     final qualified = ((qualifiedResult.first['total'] as int?) ?? 0).clamp(0, 1 << 30);
     final used = ((usedResult.first['total'] as int?) ?? 0).clamp(0, 1 << 30);
     return EveryFifthRewardProgress(
       qualifiedTrainingsCount: qualified,
+      usedRewardsCount: used,
+    );
+  }
+
+  @override
+  Future<ReferralRewardProgress> getReferralRewardProgress(
+    int userId, {
+    required DateTime now,
+  }) async {
+    final db = _database;
+    final nowIso = now.toUtc().toIso8601String();
+    final trainingsCondition = _categoryConditionSql(ActivityCategory.trainings);
+    final qualifiedResult = db.select(
+      '''
+      SELECT COUNT(*) AS total
+      FROM referral_attributions AS refs
+      WHERE refs.inviter_user_id = ?
+        AND EXISTS (
+          SELECT 1
+          FROM bookings AS b
+          WHERE b.user_id = refs.invitee_user_id
+            AND b.status IN (?, ?)
+            AND b.starts_at < ?
+            AND ($trainingsCondition)
+        );
+      ''',
+      <Object?>[
+        userId,
+        BookingStatus.paid.dbValue,
+        BookingStatus.freeTraining.dbValue,
+        nowIso,
+      ],
+    );
+    final usedResult = db.select(
+      '''
+      SELECT COUNT(*) AS total
+      FROM bookings
+      WHERE user_id = ?
+        AND status = ?
+        AND payment_note = ?;
+      ''',
+      <Object?>[
+        userId,
+        BookingStatus.paid.dbValue,
+        _referralBonusPaymentNoteMarker,
+      ],
+    );
+    final qualified = ((qualifiedResult.first['total'] as int?) ?? 0).clamp(0, 1 << 30);
+    final used = ((usedResult.first['total'] as int?) ?? 0).clamp(0, 1 << 30);
+    return ReferralRewardProgress(
+      qualifiedReferralsCount: qualified,
       usedRewardsCount: used,
     );
   }

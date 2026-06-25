@@ -271,6 +271,9 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonProfileBookings},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonReferralProgram},
+        ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],
       ],

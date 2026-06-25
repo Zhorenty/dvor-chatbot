@@ -16,6 +16,7 @@ typedef WelcomePinner = Future<void> Function({
   required int chatId,
   required int messageId,
 });
+typedef NowProvider = DateTime Function();
 
 final class PrivateStaticCommands {
   const PrivateStaticCommands();
@@ -34,6 +35,7 @@ final class PrivateStaticCommands {
     required StartCleanup onStartCleanup,
     required EveryFifthNotifier onEveryFifthUnlocked,
     required WelcomePinner onPinWelcomeMessage,
+    required NowProvider nowProvider,
     String? username,
   }) async {
     if (text == null) {
@@ -42,6 +44,14 @@ final class PrivateStaticCommands {
     if (text.startsWith('/start')) {
       var starterBonusAvailable = false;
       if (userId != null) {
+        final referralInviterId = _parseReferralInviterId(text);
+        if (referralInviterId != null) {
+          await onboardingRepository.registerReferralAttribution(
+            inviteeUserId: userId,
+            inviterUserId: referralInviterId,
+            attributedAt: nowProvider(),
+          );
+        }
         flowByUserId.remove(userId);
         await onStartCleanup(userId);
         starterBonusAvailable = await onboardingRepository.hasStarterBonusAvailable(userId);
@@ -140,5 +150,17 @@ final class PrivateStaticCommands {
     }
 
     return false;
+  }
+
+  int? _parseReferralInviterId(String text) {
+    final parts = text.trim().split(RegExp(r'\s+'));
+    if (parts.length < 2) {
+      return null;
+    }
+    final payload = parts[1].trim().toLowerCase();
+    if (!payload.startsWith('ref_')) {
+      return null;
+    }
+    return int.tryParse(payload.substring(4));
   }
 }

@@ -150,6 +150,7 @@ final class PrivateHandlers {
       onStartCleanup: _handleStartCleanup,
       onEveryFifthUnlocked: _maybeNotifyEveryFifthRewardUnlocked,
       onPinWelcomeMessage: _tryPinWelcomeMessage,
+      nowProvider: _nowProvider,
       username: context.from?['username']?.toString(),
     );
     if (handledStaticCommand) {
@@ -915,6 +916,10 @@ final class PrivateHandlers {
         userId,
         now: now,
       );
+      final referralProgress = await _bookingRepository.getReferralRewardProgress(
+        userId,
+        now: now,
+      );
       final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
       final subscriptionSnapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
       final membership = subscriptionSnapshot.membership;
@@ -945,6 +950,8 @@ final class PrivateHandlers {
           cancelledBookings: cancelledBookings,
           completedTrainingsCount: everyFifthProgress.qualifiedTrainingsCount,
           availableEveryFifthRewards: everyFifthProgress.availableRewardsCount,
+          successfulReferralsCount: referralProgress.qualifiedReferralsCount,
+          availableReferralRewards: referralProgress.availableRewardsCount,
           starterBonusAvailable: starterBonusAvailable,
           membershipLevel: membership.level,
           subscriptionActiveUntil: membership.activeUntil,
@@ -959,6 +966,28 @@ final class PrivateHandlers {
         parseMode: 'HTML',
       );
       _flowByUserId.remove(userId);
+      return true;
+    }
+
+    if (text != null &&
+        (text == MessageTemplates.buttonReferralProgram || text.startsWith('/referral'))) {
+      if (userId == null) {
+        return false;
+      }
+      final referralProgress = await _bookingRepository.getReferralRewardProgress(
+        userId,
+        now: _nowProvider(),
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.referralProgramOverview(
+          userId: userId,
+          successfulReferralsCount: referralProgress.qualifiedReferralsCount,
+          availableReferralRewards: referralProgress.availableRewardsCount,
+        ),
+        replyMarkup: _templates.profileActionsKeyboard(),
+        parseMode: 'HTML',
+      );
       return true;
     }
 
@@ -1491,6 +1520,7 @@ final class PrivateHandlers {
       }
       final updated = switch (bonusType) {
         _FreeTrainingBonusType.starter => await _applyStarterBonus(activeBooking, userId),
+        _FreeTrainingBonusType.referral => await _applyReferralBonus(activeBooking),
         _FreeTrainingBonusType.everyFifth => await _applyEveryFifthBonus(activeBooking),
       };
       if (updated == null) {
@@ -1508,6 +1538,8 @@ final class PrivateHandlers {
       final booking = updated;
       if (bonusType == _FreeTrainingBonusType.starter) {
         await _notifyAdminAboutStarterBonusApplied(booking);
+      } else if (bonusType == _FreeTrainingBonusType.referral) {
+        await _notifyAdminAboutReferralBonusApplied(booking);
       } else {
         await _notifyAdminAboutEveryFifthBonusApplied(booking);
       }
@@ -1518,9 +1550,11 @@ final class PrivateHandlers {
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
         chatId,
-        bonusType == _FreeTrainingBonusType.starter
-            ? _templates.starterBonusApplied(booking)
-            : _templates.everyFifthBonusApplied(booking),
+        switch (bonusType) {
+          _FreeTrainingBonusType.starter => _templates.starterBonusApplied(booking),
+          _FreeTrainingBonusType.referral => _templates.referralBonusApplied(booking),
+          _FreeTrainingBonusType.everyFifth => _templates.everyFifthBonusApplied(booking),
+        },
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
       );
       return true;
@@ -3998,9 +4032,31 @@ final class PrivateHandlers {
     }
   }
 
+  Future<void> _notifyAdminAboutReferralBonusApplied(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.referralBonusAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about referral bonus booking: $error', stackTrace);
+    }
+  }
+
   Future<bool> _hasAnyFreeTrainingBonusAvailable(int userId) async {
     final starterAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
     if (starterAvailable) {
+      return true;
+    }
+    final referralProgress = await _bookingRepository.getReferralRewardProgress(
+      userId,
+      now: _nowProvider(),
+    );
+    if (referralProgress.availableRewardsCount > 0) {
       return true;
     }
     final progress = await _bookingRepository.getEveryFifthRewardProgress(
@@ -4093,6 +4149,13 @@ final class PrivateHandlers {
     if (starterAvailable) {
       return _FreeTrainingBonusType.starter;
     }
+    final referralProgress = await _bookingRepository.getReferralRewardProgress(
+      userId,
+      now: _nowProvider(),
+    );
+    if (referralProgress.availableRewardsCount > 0) {
+      return _FreeTrainingBonusType.referral;
+    }
     final progress = await _bookingRepository.getEveryFifthRewardProgress(
       userId,
       now: _nowProvider(),
@@ -4133,6 +4196,14 @@ final class PrivateHandlers {
       booking.id,
       BookingStatus.paid,
       paymentNote: MessageFormatters.everyFifthBonusPaymentNoteMarker,
+    );
+  }
+
+  Future<TrainingBooking?> _applyReferralBonus(TrainingBooking booking) async {
+    return _bookingRepository.updateStatus(
+      booking.id,
+      BookingStatus.paid,
+      paymentNote: MessageFormatters.referralBonusPaymentNoteMarker,
     );
   }
 
@@ -4661,7 +4732,7 @@ typedef _PrivateFlowStep = PrivateFlowStep;
 typedef _ActivityCategory = ActivityCategory;
 typedef _AdminClientNotificationAction = AdminClientNotificationAction;
 
-enum _FreeTrainingBonusType { starter, everyFifth }
+enum _FreeTrainingBonusType { starter, referral, everyFifth }
 
 enum _CapacityGroupNotificationType { lowSpots, noSpots }
 

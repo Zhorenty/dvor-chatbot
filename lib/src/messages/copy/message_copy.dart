@@ -8,6 +8,7 @@ final class MessageCopy {
   static const String buttonSubscription = '💎 Абонемент';
   static const String buttonProfile = '👤 Профиль';
   static const String buttonProfileBookings = '🗂 Мои записи';
+  static const String buttonReferralProgram = '👥 Реферальная программа';
   static const String buttonSubmitPayment = '💸 Я оплатил';
   static const String buttonPayFully = '💯 Оплатил полностью';
   static const String buttonPayPartially = '🟡 Оплатил предоплату';

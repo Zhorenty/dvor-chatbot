@@ -31,6 +31,7 @@ void main() {
             canRepeat: true,
           ),
         ),
+        ..._replyTexts(TelegramKeyboards.profileActionsKeyboard()),
       };
 
       expect(allTexts, contains(MessageCopy.buttonBack));
@@ -42,6 +43,7 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonCancelBooking));
       expect(allTexts, contains(MessageCopy.buttonTrainings));
       expect(allTexts, contains(MessageCopy.buttonBookTraining));
+      expect(allTexts, contains(MessageCopy.buttonReferralProgram));
     });
 
     test('inline callbacks use copy callback prefixes', () {

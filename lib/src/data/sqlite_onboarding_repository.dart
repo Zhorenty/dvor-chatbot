@@ -54,6 +54,17 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
       'CREATE INDEX IF NOT EXISTS idx_onboarding_welcome_cleanup '
       'ON onboarding_users(welcome_deleted_at, welcome_sent_at, started_at);',
     );
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS referral_attributions (
+        invitee_user_id INTEGER PRIMARY KEY,
+        inviter_user_id INTEGER NOT NULL,
+        attributed_at TEXT NOT NULL
+      );
+    ''');
+    db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_referral_attributions_inviter '
+      'ON referral_attributions(inviter_user_id);',
+    );
   }
 
   @override
@@ -335,6 +346,32 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
       WHERE user_id = ?;
       ''',
       <Object?>[rewardsCount, userId],
+    );
+  }
+
+  @override
+  Future<void> registerReferralAttribution({
+    required int inviteeUserId,
+    required int inviterUserId,
+    required DateTime attributedAt,
+  }) async {
+    if (inviteeUserId <= 0 || inviterUserId <= 0 || inviteeUserId == inviterUserId) {
+      return;
+    }
+    final db = _database;
+    db.execute(
+      '''
+      INSERT OR IGNORE INTO referral_attributions (
+        invitee_user_id,
+        inviter_user_id,
+        attributed_at
+      ) VALUES (?, ?, ?);
+      ''',
+      <Object?>[
+        inviteeUserId,
+        inviterUserId,
+        attributedAt.toUtc().toIso8601String(),
+      ],
     );
   }
 

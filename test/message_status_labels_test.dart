@@ -28,6 +28,11 @@ void main() {
         paymentNote: MessageFormatters.everyFifthBonusPaymentNoteMarker,
         trainingPrice: 700,
       );
+      final referralFree = fakeBooking(
+        status: BookingStatus.paid,
+        paymentNote: MessageFormatters.referralBonusPaymentNoteMarker,
+        trainingPrice: 700,
+      );
 
       expect(MessageFormatters.bookingStatusLabel(regularFree), 'Бесплатно 🎁');
       expect(
@@ -37,6 +42,10 @@ void main() {
       expect(
         MessageFormatters.bookingStatusLabel(everyFifthFree),
         'Бесплатно: каждая 5-я тренировка 🎁',
+      );
+      expect(
+        MessageFormatters.bookingStatusLabel(referralFree),
+        'Бесплатно: реферальная тренировка 🎁',
       );
     });
 

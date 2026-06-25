@@ -147,6 +147,28 @@ void main() {
       expect(sender.pinnedMessages.single.messageId, 1);
     });
 
+    test('stores referral attribution from /start payload', () async {
+      final sender = _FakeSender();
+      final onboardingRepository = _FakeOnboardingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        onboardingRepository: onboardingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 112, 'type': 'private'},
+        'from': <String, dynamic>{'id': 112},
+        'text': '/start ref_991',
+      });
+
+      expect(handled, isTrue);
+      expect(onboardingRepository.referralInviterByInvitee[112], 991);
+    });
+
     test('shows only admin buttons in private menu for admin users', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
@@ -474,6 +496,35 @@ void main() {
       expect(sender.messages.single.parseMode, 'HTML');
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonProfileBookings));
+      expect(buttons, contains(MessageTemplates.buttonReferralProgram));
+    });
+
+    test('opens referral program section from profile', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..referralProgress = const ReferralRewardProgress(
+          qualifiedReferralsCount: 2,
+          usedRewardsCount: 1,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(botUsername: 'dvor_test_bot'),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9503, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9503},
+        'text': MessageTemplates.buttonReferralProgram,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('Реферальная программа DVOR'));
+      expect(sender.messages.single.text, contains('https://t.me/dvor_test_bot?start=ref_9503'));
+      expect(sender.messages.single.text, contains('Доступно бесплатных по рефералке: <b>1</b>'));
+      expect(sender.messages.single.parseMode, 'HTML');
     });
 
     test('shows remaining PRO trainings in profile for active subscription', () async {
@@ -1875,6 +1926,61 @@ void main() {
       expect(sender.messages.last.text, contains('каждая 5-я бесплатно'));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100889).text;
       expect(adminMessage, contains('каждая 5-я'));
+    });
+
+    test('applies referral bonus when referral reward is available', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..referralProgress = const ReferralRewardProgress(
+          qualifiedReferralsCount: 2,
+          usedRewardsCount: 1,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Referral reward session',
+              startsAt: DateTime(2026, 7, 15, 19, 0),
+              location: 'Hall',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        onboardingRepository: _FakeOnboardingRepository()..seedUser(userId: 1608),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100445,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608, 'username': 'ref_user'},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608, 'username': 'ref_user'},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608, 'username': 'ref_user'},
+        'text': '🎯 1. Referral reward session',
+      });
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608, 'username': 'ref_user'},
+        'text': MessageTemplates.buttonUseStarterBonus,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Реферальная бесплатная тренировка активирована'));
+      expect(bookingRepository.lastUpdatedPaymentNote,
+          MessageFormatters.referralBonusPaymentNoteMarker);
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100445).text;
+      expect(adminMessage, contains('реферальной программе'));
     });
 
     test('notifies user and admin when every-fifth reward unlocks', () async {

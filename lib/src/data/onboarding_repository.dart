@@ -78,6 +78,12 @@ abstract interface class OnboardingRepository {
     required int rewardsCount,
     required DateTime updatedAt,
   });
+
+  Future<void> registerReferralAttribution({
+    required int inviteeUserId,
+    required int inviterUserId,
+    required DateTime attributedAt,
+  });
 }
 
 final class NoopOnboardingRepository implements OnboardingRepository {
@@ -164,5 +170,12 @@ final class NoopOnboardingRepository implements OnboardingRepository {
     int userId, {
     required int rewardsCount,
     required DateTime updatedAt,
+  }) async {}
+
+  @override
+  Future<void> registerReferralAttribution({
+    required int inviteeUserId,
+    required int inviterUserId,
+    required DateTime attributedAt,
   }) async {}
 }

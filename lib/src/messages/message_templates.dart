@@ -31,6 +31,7 @@ final class MessageTemplates {
   static const String buttonSubscription = MessageCopy.buttonSubscription;
   static const String buttonProfile = MessageCopy.buttonProfile;
   static const String buttonProfileBookings = MessageCopy.buttonProfileBookings;
+  static const String buttonReferralProgram = MessageCopy.buttonReferralProgram;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
   static const String buttonPayFully = MessageCopy.buttonPayFully;
   static const String buttonPayPartially = MessageCopy.buttonPayPartially;
@@ -643,6 +644,15 @@ final class MessageTemplates {
         'Статус: ${_statusLabel(booking.status, booking: booking)}';
   }
 
+  String referralBonusApplied(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Готово! Реферальная бесплатная тренировка активирована 👥\n'
+        'Запись: #${booking.id}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
+  }
+
   String everyFifthBonusUnlockedUser({
     required int completedTrainingsCount,
     required int availableRewardsCount,
@@ -667,6 +677,15 @@ final class MessageTemplates {
   String everyFifthBonusAdminNotification(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     return '🎁 <b>Бесплатная запись по правилу «каждая 5-я»</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Когда: ${formatter.format(booking.startsAt)}';
+  }
+
+  String referralBonusAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '👥 <b>Бесплатная запись по реферальной программе</b>\n'
         'Запись: <b>#${booking.id}</b>\n'
         'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
         'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
@@ -701,6 +720,8 @@ final class MessageTemplates {
     required int cancelledBookings,
     required int completedTrainingsCount,
     required int availableEveryFifthRewards,
+    required int successfulReferralsCount,
+    required int availableReferralRewards,
     required bool starterBonusAvailable,
     required MembershipLevel membershipLevel,
     DateTime? subscriptionActiveUntil,
@@ -719,6 +740,9 @@ final class MessageTemplates {
     final starterHint = starterBonusAvailable
         ? '⚡️ <b>Стартовая бесплатная:</b> доступна'
         : '⚡️ <b>Стартовая бесплатная:</b> недоступна';
+    final referralHint = availableReferralRewards > 0
+        ? '👥 <b>Реферальных бесплатных:</b> <b>$availableReferralRewards</b>'
+        : '👥 <b>Успешных рефералов:</b> <b>$successfulReferralsCount</b>';
     final subscriptionHint = membershipLevel == MembershipLevel.pro
         ? '💎 <b>Абонемент:</b> PRO'
             '${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
@@ -757,8 +781,33 @@ final class MessageTemplates {
         '🏋️ <b>Прогресс лояльности</b>\n'
         '• Тренировок в зачет «каждая 5-я»: <b>$completedTrainingsCount</b>\n'
         '• $rewardsHint\n'
+        '• $referralHint\n'
         '$starterHint\n'
-        'Нажми «${MessageCopy.buttonProfileBookings}», чтобы открыть список записей и управление ими.';
+        'Нажми «${MessageCopy.buttonProfileBookings}», чтобы открыть список записей и управление ими.\n'
+        'Раздел «${MessageCopy.buttonReferralProgram}» — твоя ссылка и условия реферальной программы.';
+  }
+
+  String referralProgramOverview({
+    required int userId,
+    required int successfulReferralsCount,
+    required int availableReferralRewards,
+  }) {
+    final link = _botReferralLink(userId);
+    final linkLine = link == null
+        ? 'Ссылка недоступна: бот пока не смог определить username.'
+        : '<code>$link</code>';
+    return '👥 <b>Реферальная программа DVOR</b>\n'
+        '1) Пригласи друга по своей ссылке.\n'
+        '2) Друг должен зайти в бота именно по этой ссылке.\n'
+        '3) После того как друг успешно пройдет первую тренировку, '
+        'тебе начислится 1 бесплатная тренировка.\n\n'
+        'Твоя реферальная ссылка:\n'
+        '$linkLine\n\n'
+        '📊 <b>Твой прогресс</b>\n'
+        '• Успешных рефералов: <b>$successfulReferralsCount</b>\n'
+        '• Доступно бесплатных по рефералке: <b>$availableReferralRewards</b>\n\n'
+        'Используй бесплатную тренировку через обычный сценарий записи '
+        'кнопкой «${MessageCopy.buttonUseStarterBonus}».';
   }
 
   String subscriptionOverview({
@@ -2017,6 +2066,14 @@ final class MessageTemplates {
       return null;
     }
     return 'https://t.me/$botUsername?start=start';
+  }
+
+  String? _botReferralLink(int userId) {
+    final botUsername = _botUsername;
+    if (botUsername == null || botUsername.isEmpty) {
+      return null;
+    }
+    return 'https://t.me/$botUsername?start=ref_$userId';
   }
 
   String _categoryLabel(ActivityCategory category) {

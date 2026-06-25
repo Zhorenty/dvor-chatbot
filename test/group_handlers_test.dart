@@ -305,6 +305,13 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
   }) async {}
 
   @override
+  Future<void> registerReferralAttribution({
+    required int inviteeUserId,
+    required int inviterUserId,
+    required DateTime attributedAt,
+  }) async {}
+
+  @override
   Future<void> registerGroupWelcome({
     required int userId,
     required int groupChatId,

@@ -16,6 +16,19 @@ final class EveryFifthRewardProgress {
   int get availableRewardsCount => earnedRewardsCount - usedRewardsCount;
 }
 
+final class ReferralRewardProgress {
+  const ReferralRewardProgress({
+    required this.qualifiedReferralsCount,
+    required this.usedRewardsCount,
+  });
+
+  final int qualifiedReferralsCount;
+  final int usedRewardsCount;
+
+  int get earnedRewardsCount => qualifiedReferralsCount;
+  int get availableRewardsCount => earnedRewardsCount - usedRewardsCount;
+}
+
 final class BookingConflictException implements Exception {
   const BookingConflictException(this.message);
 
@@ -161,6 +174,11 @@ abstract interface class BookingRepository {
   Future<TrainingBooking?> adminArchiveBooking(int bookingId);
 
   Future<EveryFifthRewardProgress> getEveryFifthRewardProgress(
+    int userId, {
+    required DateTime now,
+  });
+
+  Future<ReferralRewardProgress> getReferralRewardProgress(
     int userId, {
     required DateTime now,
   });

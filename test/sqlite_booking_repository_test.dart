@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
+import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -711,6 +712,61 @@ void main() {
       expect(progress.earnedRewardsCount, 1);
       expect(progress.availableRewardsCount, 0);
 
+      await repository.close();
+    });
+
+    test('builds referral reward progress from successful invited users', () async {
+      final now = DateTime(2030, 6, 20, 12);
+      final dbPath = '${tmpDir.path}/bookings.sqlite';
+      final repository = SqliteBookingRepository(
+        dbPath: dbPath,
+        nowProvider: () => now,
+      );
+      final onboardingRepository = SqliteOnboardingRepository(dbPath: dbPath);
+      await repository.init();
+      await onboardingRepository.init();
+
+      await onboardingRepository.registerReferralAttribution(
+        inviteeUserId: 6202,
+        inviterUserId: 6201,
+        attributedAt: now.subtract(const Duration(days: 10)),
+      );
+      await onboardingRepository.registerReferralAttribution(
+        inviteeUserId: 6203,
+        inviterUserId: 6201,
+        attributedAt: now.subtract(const Duration(days: 9)),
+      );
+
+      final inviteeCompleted = await repository.createPendingBooking(
+        userId: 6202,
+        training: TrainingInfo(
+          title: 'Invitee completed',
+          startsAt: DateTime(2030, 6, 10, 18),
+          location: 'Gym A',
+        ),
+      );
+      await repository.updateStatus(inviteeCompleted.booking.id, BookingStatus.paid);
+
+      final inviterUsed = await repository.createPendingBooking(
+        userId: 6201,
+        training: TrainingInfo(
+          title: 'Inviter bonus usage',
+          startsAt: DateTime(2030, 6, 12, 18),
+          location: 'Gym A',
+        ),
+      );
+      await repository.updateStatus(
+        inviterUsed.booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.referralBonusPaymentNoteMarker,
+      );
+
+      final progress = await repository.getReferralRewardProgress(6201, now: now);
+      expect(progress.qualifiedReferralsCount, 1);
+      expect(progress.usedRewardsCount, 1);
+      expect(progress.availableRewardsCount, 0);
+
+      await onboardingRepository.close();
       await repository.close();
     });
 

@@ -8,6 +8,7 @@ final class MessageFormatters {
   const MessageFormatters._();
   static const String starterBonusPaymentNoteMarker = '__starter_bonus__';
   static const String everyFifthBonusPaymentNoteMarker = '__every_fifth_bonus__';
+  static const String referralBonusPaymentNoteMarker = '__referral_bonus__';
   static const String proIncludedTrainingPaymentNoteMarker = '__pro_included_training__';
 
   static String statusLabel(BookingStatus status) {
@@ -40,6 +41,9 @@ final class MessageFormatters {
     if (booking.paymentNote == everyFifthBonusPaymentNoteMarker) {
       return 'Бесплатно: каждая 5-я тренировка 🎁';
     }
+    if (booking.paymentNote == referralBonusPaymentNoteMarker) {
+      return 'Бесплатно: реферальная тренировка 🎁';
+    }
     if (booking.paymentNote == proIncludedTrainingPaymentNoteMarker) {
       return 'Включено в PRO (из 8 тренировок) 💎';
     }
@@ -52,7 +56,8 @@ final class MessageFormatters {
 
   static bool isBonusPaymentNote(String? paymentNote) {
     return paymentNote == starterBonusPaymentNoteMarker ||
-        paymentNote == everyFifthBonusPaymentNoteMarker;
+        paymentNote == everyFifthBonusPaymentNoteMarker ||
+        paymentNote == referralBonusPaymentNoteMarker;
   }
 
   static String userTag(TrainingBooking booking) {
