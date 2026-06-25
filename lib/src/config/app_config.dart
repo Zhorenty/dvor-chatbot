@@ -18,6 +18,7 @@ final class AppConfig {
     required this.adminUserIds,
     required this.adminChatId,
     required this.logLevel,
+    this.timezoneOffsetHours = 3,
   });
 
   final String botToken;
@@ -32,6 +33,7 @@ final class AppConfig {
   final Set<int> adminUserIds;
   final int? adminChatId;
   final String logLevel;
+  final int timezoneOffsetHours;
 
   static AppConfig fromArgs(List<String> args) {
     final parser = ArgParser()
@@ -67,6 +69,10 @@ final class AppConfig {
       ..addOption(
         'pending-payment-ttl-minutes',
         help: 'TTL (minutes) before unpaid booking auto-cancel',
+      )
+      ..addOption(
+        'timezone-offset-hours',
+        help: 'Business timezone offset in hours (default: 3)',
       )
       ..addOption('log-level', help: 'Log level: debug/info/warn/error');
 
@@ -130,6 +136,7 @@ final class AppConfig {
     final pendingPaymentTtlRaw =
         resolve('PENDING_PAYMENT_TTL_MINUTES', 'pending-payment-ttl-minutes');
     final logLevel = resolve('LOG_LEVEL', 'log-level', fallbackKey: 'CONFIG_VERBOSE') ?? 'info';
+    final timezoneOffsetRaw = resolve('TIMEZONE_OFFSET_HOURS', 'timezone-offset-hours');
 
     final scheduleSource = _parseScheduleSource(scheduleSourceRaw);
     if (scheduleSource == ScheduleSource.googleSheets &&
@@ -155,6 +162,7 @@ final class AppConfig {
       adminUserIds: _parseIntSet(adminUserIdsRaw),
       adminChatId: int.tryParse(adminChatIdRaw ?? ''),
       logLevel: logLevel,
+      timezoneOffsetHours: int.tryParse(timezoneOffsetRaw ?? '')?.clamp(-12, 14) ?? 3,
     );
   }
 }

@@ -11,17 +11,20 @@ final class TrainingDayPromoJob {
     required MessageSender sender,
     required MessageTemplates templates,
     required int? targetChatId,
+    int timezoneOffsetHours = 3,
     DateTime Function()? nowProvider,
   })  : _scheduleRepository = scheduleRepository,
         _sender = sender,
         _templates = templates,
         _targetChatId = targetChatId,
+        _timezoneOffset = Duration(hours: timezoneOffsetHours),
         _nowProvider = nowProvider ?? DateTime.now;
 
   final TrainingScheduleRepository _scheduleRepository;
   final MessageSender _sender;
   final MessageTemplates _templates;
   final int? _targetChatId;
+  final Duration _timezoneOffset;
   final DateTime Function() _nowProvider;
   final Map<String, DateTime> _sentPromos = <String, DateTime>{};
 
@@ -31,7 +34,7 @@ final class TrainingDayPromoJob {
       return;
     }
     try {
-      final now = _nowProvider().toLocal();
+      final now = _inBusinessTimezone(_nowProvider());
       _cleanupSentPromos(now);
       final upcoming = _scheduleRepository
           .upcoming(now: now.subtract(const Duration(days: 1)), limit: 200)
@@ -41,7 +44,7 @@ final class TrainingDayPromoJob {
           .toList(growable: false);
 
       for (final training in upcoming) {
-        final startsAt = training.startsAt.toLocal();
+        final startsAt = training.startsAt;
         final sendAt = _targetPromoTime(startsAt);
         if (!_isSameMinute(now, sendAt)) {
           continue;
@@ -119,5 +122,9 @@ final class TrainingDayPromoJob {
       dayBefore.day,
       20,
     );
+  }
+
+  DateTime _inBusinessTimezone(DateTime value) {
+    return value.toUtc().add(_timezoneOffset);
   }
 }

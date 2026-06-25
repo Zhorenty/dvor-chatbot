@@ -67,6 +67,7 @@ final class BotRunner {
           sender: sender,
           templates: templates,
           targetChatId: config.targetChatId,
+          timezoneOffsetHours: config.timezoneOffsetHours,
         ),
         _economicSummaryJob = EconomicSummaryJob(
           bookingRepository: bookingRepository,
