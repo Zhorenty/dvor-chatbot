@@ -65,6 +65,8 @@ final class MessageCopy {
   static const String buttonCreateAnotherBooking = '➕ Создать еще';
   static const String buttonConfirmCreateBooking = '✅ Создать';
   static const String buttonCancelCreateBooking = '↩️ Не создавать';
+  static const String buttonNotifyClientYes = '📣 Уведомить клиента';
+  static const String buttonNotifyClientNo = '🔕 Не уведомлять';
   static const String buttonStatusPendingPayment = '⏳ Ожидает оплату';
   static const String buttonStatusPaymentSubmitted = '🧾 На проверке';
   static const String buttonStatusPartialPaid = '🟡 Предоплата внесена';

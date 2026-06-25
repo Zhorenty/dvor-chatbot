@@ -47,6 +47,7 @@ enum PrivateFlowStep {
   enteringAdminCreateUsername,
   selectingAdminCreateStatus,
   confirmingAdminCreate,
+  selectingAdminClientNotificationPreference,
 }
 
 enum PaymentChoice {
@@ -62,6 +63,15 @@ enum OutdoorDetailType {
 enum SubscriptionModerationAction {
   reject,
   cancel,
+}
+
+enum AdminClientNotificationAction {
+  bookingCreated,
+  bookingDeleted,
+  bookingRestored,
+  bookingStatusUpdated,
+  bookingUsernameUpdated,
+  bookingEventUpdated,
 }
 
 final class PrivateFlowState {
@@ -88,6 +98,8 @@ final class PrivateFlowState {
     this.subscriptionModerationReason,
     this.subscriptionSearchQuery,
     this.outdoorDetailType,
+    this.adminClientNotificationAction,
+    this.adminClientNotificationBooking,
   });
 
   final PrivateFlowStep step;
@@ -112,6 +124,8 @@ final class PrivateFlowState {
   final String? subscriptionModerationReason;
   final String? subscriptionSearchQuery;
   final OutdoorDetailType? outdoorDetailType;
+  final AdminClientNotificationAction? adminClientNotificationAction;
+  final TrainingBooking? adminClientNotificationBooking;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -136,6 +150,8 @@ final class PrivateFlowState {
     Object? subscriptionModerationReason = _privateFlowUnset,
     Object? subscriptionSearchQuery = _privateFlowUnset,
     Object? outdoorDetailType = _privateFlowUnset,
+    Object? adminClientNotificationAction = _privateFlowUnset,
+    Object? adminClientNotificationBooking = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -186,6 +202,12 @@ final class PrivateFlowState {
       outdoorDetailType: identical(outdoorDetailType, _privateFlowUnset)
           ? this.outdoorDetailType
           : outdoorDetailType as OutdoorDetailType?,
+      adminClientNotificationAction: identical(adminClientNotificationAction, _privateFlowUnset)
+          ? this.adminClientNotificationAction
+          : adminClientNotificationAction as AdminClientNotificationAction?,
+      adminClientNotificationBooking: identical(adminClientNotificationBooking, _privateFlowUnset)
+          ? this.adminClientNotificationBooking
+          : adminClientNotificationBooking as TrainingBooking?,
     );
   }
 }

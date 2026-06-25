@@ -639,6 +639,7 @@ final class FakeSender implements MessageSender {
   final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
   final List<PinnedMessage> pinnedMessages = <PinnedMessage>[];
   final List<AnsweredCallback> answeredCallbacks = <AnsweredCallback>[];
+  final Map<int, Exception> sendMessageFailuresByChatId = <int, Exception>{};
 
   @override
   Future<int> sendMessage(
@@ -649,6 +650,10 @@ final class FakeSender implements MessageSender {
     Map<String, Object?>? replyMarkup,
     String? parseMode,
   }) async {
+    final failure = sendMessageFailuresByChatId[chatId];
+    if (failure != null) {
+      throw failure;
+    }
     messages.add(
       SentMessage(
         chatId: chatId,

@@ -11,6 +11,7 @@ import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
+import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:test/test.dart';
 
 import 'support/fakes.dart';
@@ -4150,14 +4151,101 @@ void main() {
         'from': <String, dynamic>{'id': 2301},
         'text': MessageTemplates.buttonConfirmDeleteBooking,
       });
+      final notifyHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2301},
+        'text': MessageTemplates.buttonNotifyClientYes,
+      });
 
       expect(handled, isTrue);
+      expect(notifyHandled, isTrue);
       expect(bookingRepository.adminArchiveCalls, 1);
       expect(bookingRepository.lastAdminArchivedBookingId, 501);
       final userNotification = sender.messages.firstWhere((message) => message.chatId == 9001).text;
       expect(userNotification, contains('запись #501 отменил администратор'));
       expect(userNotification, contains('@dvor_support'));
       expect(sender.messages.last.text, contains('переведена в архив'));
+    });
+
+    test('reports client notification failure reason to admin', () async {
+      final sender = _FakeSender()
+        ..sendMessageFailuresByChatId[9001] = const TelegramApiException(
+          'Forbidden: bot was blocked by the user',
+          statusCode: 403,
+        );
+      final bookingRepository = _FakeBookingRepository()
+        ..adminSegmentCounts = (active: 0, archived: 1)
+        ..adminBookings = <TrainingBooking>[
+          _booking(
+            id: 511,
+            userId: 9001,
+            userUsername: 'archived_runner',
+            trainingKey: 'trainings|2026-10-01T10:00:00.000Z|Morning Run|Park',
+            title: 'Morning Run',
+            startsAt: DateTime(2026, 10, 1, 10, 0),
+            location: 'Park',
+            status: BookingStatus.pendingPayment,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2311},
+        nowProvider: () => DateTime(2026, 10, 2, 10, 0),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': MessageTemplates.buttonBookingsList,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': '${MessageTemplates.buttonArchivedBookings} (1)',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': '🧾 #511 Morning Run',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': MessageTemplates.buttonDeleteBooking,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': MessageTemplates.buttonConfirmDeleteBooking,
+      });
+      final notifyHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2311},
+        'text': MessageTemplates.buttonNotifyClientYes,
+      });
+
+      expect(notifyHandled, isTrue);
+      final adminFailureMessage = sender.messages.firstWhere(
+        (message) => message.chatId == 23 && message.text.contains('Клиента уведомить не удалось'),
+      );
+      expect(adminFailureMessage.text, contains('Forbidden: bot was blocked by the user'));
+      expect(
+        sender.messages.where((message) => message.chatId == 9001),
+        isEmpty,
+      );
     });
 
     test('restores archived booking when event is upcoming', () async {
@@ -4215,8 +4303,14 @@ void main() {
         'from': <String, dynamic>{'id': 2303},
         'text': MessageTemplates.buttonRestoreBooking,
       });
+      final notifyHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2303},
+        'text': MessageTemplates.buttonNotifyClientNo,
+      });
 
       expect(handled, isTrue);
+      expect(notifyHandled, isTrue);
       expect(bookingRepository.adminBookings.single.status, BookingStatus.pendingPayment);
       expect(sender.messages.last.text, contains('восстановлена'));
     });
@@ -4343,8 +4437,14 @@ void main() {
         'from': <String, dynamic>{'id': 2302},
         'text': MessageTemplates.buttonConfirmCreateBooking,
       });
+      final notifyHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonNotifyClientNo,
+      });
 
       expect(handled, isTrue);
+      expect(notifyHandled, isTrue);
       expect(bookingRepository.adminBookings, hasLength(1));
       expect(bookingRepository.adminBookings.single.userUsername, 'new_runner');
       expect(bookingRepository.adminBookings.single.status, BookingStatus.freeTraining);

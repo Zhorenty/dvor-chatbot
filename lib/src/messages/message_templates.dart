@@ -91,6 +91,8 @@ final class MessageTemplates {
   static const String buttonCreateAnotherBooking = MessageCopy.buttonCreateAnotherBooking;
   static const String buttonConfirmCreateBooking = MessageCopy.buttonConfirmCreateBooking;
   static const String buttonCancelCreateBooking = MessageCopy.buttonCancelCreateBooking;
+  static const String buttonNotifyClientYes = MessageCopy.buttonNotifyClientYes;
+  static const String buttonNotifyClientNo = MessageCopy.buttonNotifyClientNo;
   static const String buttonStatusPendingPayment = MessageCopy.buttonStatusPendingPayment;
   static const String buttonStatusPaymentSubmitted = MessageCopy.buttonStatusPaymentSubmitted;
   static const String buttonStatusPartialPaid = MessageCopy.buttonStatusPartialPaid;
@@ -354,6 +356,41 @@ final class MessageTemplates {
         'Если есть вопросы, напиши в поддержку: @dvor_support';
   }
 
+  String adminBookingRestoredForUser(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Администратор восстановил твою запись #${booking.id} ✅\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
+  }
+
+  String adminBookingPaymentStatusUpdatedForUser(TrainingBooking booking) {
+    return 'Администратор обновил статус твоей записи #${booking.id}.\n'
+        'Новый статус: ${_statusLabel(booking.status, booking: booking)}';
+  }
+
+  String adminBookingUsernameUpdatedForUser(TrainingBooking booking) {
+    return 'Администратор обновил данные пользователя в записи #${booking.id}.\n'
+        'Теперь запись привязана к: ${_userTag(booking)} (${booking.userId}).';
+  }
+
+  String adminBookingEventUpdatedForUser(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Администратор изменил мероприятие для твоей записи #${booking.id}.\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
+  }
+
+  String adminBookingCreatedForUser(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Администратор создал для тебя запись #${booking.id} ✅\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
+  }
+
   String adminBookingRestored(TrainingBooking booking) {
     return '✅ <b>Запись #${booking.id} восстановлена</b>';
   }
@@ -410,6 +447,14 @@ final class MessageTemplates {
 
   String adminBookingCreated(TrainingBooking booking) {
     return '✅ <b>Запись #${booking.id} создана</b>';
+  }
+
+  String askAdminClientNotificationPreference({
+    required TrainingBooking booking,
+    required String actionLabel,
+  }) {
+    return '📣 <b>Уведомить клиента?</b>\n'
+        'Запись #${booking.id}: $actionLabel';
   }
 
   String clubInfoPrivate() {
@@ -1801,6 +1846,10 @@ final class MessageTemplates {
 
   Map<String, Object?> adminCreateBookingConfirmationKeyboard() {
     return TelegramKeyboards.adminCreateBookingConfirmationKeyboard();
+  }
+
+  Map<String, Object?> adminClientNotificationPreferenceKeyboard() {
+    return TelegramKeyboards.adminClientNotificationPreferenceKeyboard();
   }
 
   Map<String, Object?> bookingPaymentStatusKeyboard() {

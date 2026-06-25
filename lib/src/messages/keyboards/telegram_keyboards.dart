@@ -701,6 +701,21 @@ final class TelegramKeyboards {
     );
   }
 
+  static Map<String, Object?> adminClientNotificationPreferenceKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonNotifyClientYes},
+          <String, String>{'text': MessageCopy.buttonNotifyClientNo},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
   static Map<String, Object?> bookingPaymentStatusKeyboard() {
     return _replyKeyboard(
       <List<Map<String, String>>>[

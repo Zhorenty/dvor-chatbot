@@ -26,6 +26,7 @@ import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:l/l.dart';
 
 final class PrivateHandlers {
@@ -479,6 +480,17 @@ final class PrivateHandlers {
             chatId,
             _templates.chooseCreateBookingPaymentStatus(),
             replyMarkup: _templates.bookingPaymentStatusKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminClientNotificationPreference:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseBookingManagementAction(),
+            replyMarkup: _templates.adminBookingAfterActionKeyboard(),
           );
           return true;
         case null:
@@ -2191,15 +2203,11 @@ final class PrivateHandlers {
           _flowByUserId.remove(userId);
           return true;
         }
-        await _notifyUserAboutAdminBookingDeleted(archived);
-        _flowByUserId[userId] = const _PrivateFlowState(
-          step: _PrivateFlowStep.selectingAdminBookingManagementAction,
-          availableTrainings: <TrainingInfo>[],
-        );
-        await _sendAdminMessage(
-          chatId,
-          _templates.adminBookingDeleted(archived),
-          replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+        await _openAdminClientNotificationStep(
+          chatId: chatId,
+          userId: userId,
+          action: _AdminClientNotificationAction.bookingDeleted,
+          booking: archived,
         );
         return true;
       }
@@ -2250,14 +2258,11 @@ final class PrivateHandlers {
         _flowByUserId.remove(userId);
         return true;
       }
-      _flowByUserId[userId] = const _PrivateFlowState(
-        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
-        availableTrainings: <TrainingInfo>[],
-      );
-      await _sendAdminMessage(
-        chatId,
-        _templates.adminBookingRestored(restored),
-        replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+      await _openAdminClientNotificationStep(
+        chatId: chatId,
+        userId: userId,
+        action: _AdminClientNotificationAction.bookingRestored,
+        booking: restored,
       );
       return true;
     }
@@ -2364,14 +2369,11 @@ final class PrivateHandlers {
         );
         return true;
       }
-      _flowByUserId[userId] = const _PrivateFlowState(
-        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
-        availableTrainings: <TrainingInfo>[],
-      );
-      await _sendAdminMessage(
-        chatId,
-        _templates.adminBookingPaymentStatusUpdated(updated),
-        replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+      await _openAdminClientNotificationStep(
+        chatId: chatId,
+        userId: userId,
+        action: _AdminClientNotificationAction.bookingStatusUpdated,
+        booking: updated,
       );
       return true;
     }
@@ -2423,14 +2425,11 @@ final class PrivateHandlers {
         );
         return true;
       }
-      _flowByUserId[userId] = const _PrivateFlowState(
-        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
-        availableTrainings: <TrainingInfo>[],
-      );
-      await _sendAdminMessage(
-        chatId,
-        _templates.adminBookingUsernameUpdated(updated),
-        replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+      await _openAdminClientNotificationStep(
+        chatId: chatId,
+        userId: userId,
+        action: _AdminClientNotificationAction.bookingUsernameUpdated,
+        booking: updated,
       );
       return true;
     }
@@ -2483,14 +2482,11 @@ final class PrivateHandlers {
         );
         return true;
       }
-      _flowByUserId[userId] = const _PrivateFlowState(
-        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
-        availableTrainings: <TrainingInfo>[],
-      );
-      await _sendAdminMessage(
-        chatId,
-        _templates.adminBookingEventUpdated(updated),
-        replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+      await _openAdminClientNotificationStep(
+        chatId: chatId,
+        userId: userId,
+        action: _AdminClientNotificationAction.bookingEventUpdated,
+        booking: updated,
       );
       return true;
     }
@@ -2642,17 +2638,63 @@ final class PrivateHandlers {
           training: training,
           status: status,
         );
-        _flowByUserId[userId] = const _PrivateFlowState(
-          step: _PrivateFlowStep.selectingAdminBookingManagementAction,
-          availableTrainings: <TrainingInfo>[],
-        );
-        await _sendAdminMessage(
-          chatId,
-          _templates.adminBookingCreated(created),
-          replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+        await _openAdminClientNotificationStep(
+          chatId: chatId,
+          userId: userId,
+          action: _AdminClientNotificationAction.bookingCreated,
+          booking: created,
         );
         return true;
       }
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingAdminClientNotificationPreference &&
+        text != null) {
+      final action = flowState?.adminClientNotificationAction;
+      final booking = flowState?.adminClientNotificationBooking;
+      if (action == null || booking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (text != MessageTemplates.buttonNotifyClientYes &&
+          text != MessageTemplates.buttonNotifyClientNo) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.askAdminClientNotificationPreference(
+            booking: booking,
+            actionLabel: _adminClientNotificationActionLabel(action),
+          ),
+          replyMarkup: _templates.adminClientNotificationPreferenceKeyboard(),
+        );
+        return true;
+      }
+      if (text == MessageTemplates.buttonNotifyClientYes) {
+        final notificationFailureReason =
+            await _notifyUserAboutAdminBookingMutation(action: action, booking: booking);
+        if (notificationFailureReason != null) {
+          await _sendAdminMessage(
+            chatId,
+            '⚠️ <b>Клиента уведомить не удалось</b>\n'
+            'Причина: ${_escapeHtmlForAdmin(notificationFailureReason)}',
+          );
+        }
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sendAdminMessage(
+        chatId,
+        _adminBookingMutationResultText(action: action, booking: booking),
+        replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+      );
+      return true;
     }
 
     if (text != null &&
@@ -3513,6 +3555,56 @@ final class PrivateHandlers {
     return _templates.adminBookingActionsKeyboard(canRestore: _canRestoreBooking(booking));
   }
 
+  Future<void> _openAdminClientNotificationStep({
+    required int chatId,
+    required int userId,
+    required _AdminClientNotificationAction action,
+    required TrainingBooking booking,
+  }) async {
+    _flowByUserId[userId] = _PrivateFlowState(
+      step: _PrivateFlowStep.selectingAdminClientNotificationPreference,
+      availableTrainings: const <TrainingInfo>[],
+      adminClientNotificationAction: action,
+      adminClientNotificationBooking: booking,
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.askAdminClientNotificationPreference(
+        booking: booking,
+        actionLabel: _adminClientNotificationActionLabel(action),
+      ),
+      replyMarkup: _templates.adminClientNotificationPreferenceKeyboard(),
+    );
+  }
+
+  String _adminClientNotificationActionLabel(_AdminClientNotificationAction action) {
+    return switch (action) {
+      _AdminClientNotificationAction.bookingCreated => 'запись создана',
+      _AdminClientNotificationAction.bookingDeleted => 'запись удалена',
+      _AdminClientNotificationAction.bookingRestored => 'запись восстановлена',
+      _AdminClientNotificationAction.bookingStatusUpdated => 'статус оплаты изменен',
+      _AdminClientNotificationAction.bookingUsernameUpdated => 'пользователь обновлен',
+      _AdminClientNotificationAction.bookingEventUpdated => 'мероприятие изменено',
+    };
+  }
+
+  String _adminBookingMutationResultText({
+    required _AdminClientNotificationAction action,
+    required TrainingBooking booking,
+  }) {
+    return switch (action) {
+      _AdminClientNotificationAction.bookingCreated => _templates.adminBookingCreated(booking),
+      _AdminClientNotificationAction.bookingDeleted => _templates.adminBookingDeleted(booking),
+      _AdminClientNotificationAction.bookingRestored => _templates.adminBookingRestored(booking),
+      _AdminClientNotificationAction.bookingStatusUpdated =>
+        _templates.adminBookingPaymentStatusUpdated(booking),
+      _AdminClientNotificationAction.bookingUsernameUpdated =>
+        _templates.adminBookingUsernameUpdated(booking),
+      _AdminClientNotificationAction.bookingEventUpdated =>
+        _templates.adminBookingEventUpdated(booking),
+    };
+  }
+
   bool _canRestoreBooking(TrainingBooking booking) {
     if (booking.status != BookingStatus.cancelled) {
       return false;
@@ -4247,18 +4339,131 @@ final class PrivateHandlers {
     }
   }
 
-  Future<void> _notifyUserAboutAdminBookingDeleted(TrainingBooking booking) async {
+  Future<String?> _notifyUserAboutAdminBookingDeleted(TrainingBooking booking) async {
     if (booking.userId <= 0) {
-      return;
+      return 'Невалидный userId у записи: ${booking.userId}.';
     }
     try {
       await _sender.sendMessage(
         booking.userId,
         _templates.adminBookingDeletedForUser(booking),
       );
+      return null;
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify user about admin booking deletion: $error', stackTrace);
+      return _notificationFailureReason(error);
     }
+  }
+
+  Future<String?> _notifyUserAboutAdminBookingMutation({
+    required _AdminClientNotificationAction action,
+    required TrainingBooking booking,
+  }) async {
+    switch (action) {
+      case _AdminClientNotificationAction.bookingCreated:
+        return _notifyUserAboutAdminBookingCreated(booking);
+      case _AdminClientNotificationAction.bookingDeleted:
+        return _notifyUserAboutAdminBookingDeleted(booking);
+      case _AdminClientNotificationAction.bookingRestored:
+        return _notifyUserAboutAdminBookingRestored(booking);
+      case _AdminClientNotificationAction.bookingStatusUpdated:
+        return _notifyUserAboutAdminBookingStatusUpdated(booking);
+      case _AdminClientNotificationAction.bookingUsernameUpdated:
+        return _notifyUserAboutAdminBookingUsernameUpdated(booking);
+      case _AdminClientNotificationAction.bookingEventUpdated:
+        return _notifyUserAboutAdminBookingEventUpdated(booking);
+    }
+  }
+
+  Future<String?> _notifyUserAboutAdminBookingCreated(TrainingBooking booking) async {
+    if (booking.userId <= 0) {
+      return 'Невалидный userId у записи: ${booking.userId}.';
+    }
+    try {
+      await _sender.sendMessage(
+        booking.userId,
+        _templates.adminBookingCreatedForUser(booking),
+      );
+      return null;
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify user about admin booking creation: $error', stackTrace);
+      return _notificationFailureReason(error);
+    }
+  }
+
+  Future<String?> _notifyUserAboutAdminBookingRestored(TrainingBooking booking) async {
+    if (booking.userId <= 0) {
+      return 'Невалидный userId у записи: ${booking.userId}.';
+    }
+    try {
+      await _sender.sendMessage(
+        booking.userId,
+        _templates.adminBookingRestoredForUser(booking),
+      );
+      return null;
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify user about admin booking restoration: $error', stackTrace);
+      return _notificationFailureReason(error);
+    }
+  }
+
+  Future<String?> _notifyUserAboutAdminBookingStatusUpdated(TrainingBooking booking) async {
+    if (booking.userId <= 0) {
+      return 'Невалидный userId у записи: ${booking.userId}.';
+    }
+    try {
+      await _sender.sendMessage(
+        booking.userId,
+        _templates.adminBookingPaymentStatusUpdatedForUser(booking),
+      );
+      return null;
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify user about admin booking status update: $error', stackTrace);
+      return _notificationFailureReason(error);
+    }
+  }
+
+  Future<String?> _notifyUserAboutAdminBookingUsernameUpdated(TrainingBooking booking) async {
+    if (booking.userId <= 0) {
+      return 'Невалидный userId у записи: ${booking.userId}.';
+    }
+    try {
+      await _sender.sendMessage(
+        booking.userId,
+        _templates.adminBookingUsernameUpdatedForUser(booking),
+      );
+      return null;
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify user about admin booking username update: $error', stackTrace);
+      return _notificationFailureReason(error);
+    }
+  }
+
+  Future<String?> _notifyUserAboutAdminBookingEventUpdated(TrainingBooking booking) async {
+    if (booking.userId <= 0) {
+      return 'Невалидный userId у записи: ${booking.userId}.';
+    }
+    try {
+      await _sender.sendMessage(
+        booking.userId,
+        _templates.adminBookingEventUpdatedForUser(booking),
+      );
+      return null;
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify user about admin booking event update: $error', stackTrace);
+      return _notificationFailureReason(error);
+    }
+  }
+
+  String _notificationFailureReason(Object error) {
+    if (error is TelegramApiException) {
+      return error.message;
+    }
+    return error.toString();
+  }
+
+  String _escapeHtmlForAdmin(String value) {
+    return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
   }
 
   bool _shouldShowOutdoorPaymentTypeChoice(TrainingBooking booking) {
@@ -4454,6 +4659,7 @@ final class PrivateHandlers {
 typedef _PrivateFlowState = PrivateFlowState;
 typedef _PrivateFlowStep = PrivateFlowStep;
 typedef _ActivityCategory = ActivityCategory;
+typedef _AdminClientNotificationAction = AdminClientNotificationAction;
 
 enum _FreeTrainingBonusType { starter, everyFifth }
 
