@@ -3629,7 +3629,7 @@ void main() {
       expect(messageText, contains('🕒 03.07.2026'));
       expect(messageText, isNot(contains('🕒 02.07.2026')));
       expect(RegExp('@mi_harkevich').allMatches(messageText).length, 1);
-      expect(messageText, contains('@hike_cancelled (Отменено ❌)'));
+      expect(messageText, isNot(contains('@hike_cancelled (Отменено ❌)')));
     });
 
     test('merges trail participants when activity date changes', () async {
@@ -3727,7 +3727,7 @@ void main() {
       expect(messageText, contains('🕒 12.08.2026'));
       expect(messageText, isNot(contains('🕒 10.08.2026')));
       expect(RegExp('@trail_runner').allMatches(messageText).length, 1);
-      expect(messageText, contains('@trail_cancelled (Отменено ❌)'));
+      expect(messageText, isNot(contains('@trail_cancelled (Отменено ❌)')));
     });
 
     test('does not display trainers in hikes participants list', () async {
@@ -3892,7 +3892,7 @@ void main() {
       expect(messageText, contains('🕒 02.09.2026 19:00'));
       expect(messageText, isNot(contains('🕒 01.09.2026 19:00')));
       expect(RegExp('@fit_user').allMatches(messageText).length, 1);
-      expect(messageText, contains('@fit_cancelled (Отменено ❌)'));
+      expect(messageText, isNot(contains('@fit_cancelled (Отменено ❌)')));
     });
 
     test('shows nobles list for admin with training counts', () async {

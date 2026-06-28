@@ -2911,11 +2911,13 @@ final class PrivateHandlers {
     for (final candidates in scheduleBySignature.values) {
       candidates.sort((left, right) => left.startsAt.compareTo(right.startsAt));
     }
+    final now = _nowProvider();
     for (final booking in segmentBookings) {
       final targetTrainingKey = _resolveParticipantsTrainingKey(
         booking: booking,
         trainingsByKey: trainingsByKey,
         trainingsBySignature: scheduleBySignature,
+        now: now,
       );
       if (targetTrainingKey != booking.trainingKey ||
           trainingsByKey.containsKey(booking.trainingKey)) {
@@ -2933,7 +2935,6 @@ final class PrivateHandlers {
     }
     final mergedTrainings = trainingsByKey.values.toList(growable: false)
       ..sort((left, right) => left.startsAt.compareTo(right.startsAt));
-    final now = _nowProvider();
     final visibleTrainings = mergedTrainings
         .where((training) => !_isArchivedTrainingAt(training, now: now))
         .toList(growable: false);
@@ -2954,6 +2955,7 @@ final class PrivateHandlers {
         booking: booking,
         trainingsByKey: trainingsByKey,
         trainingsBySignature: scheduleBySignature,
+        now: now,
       );
       byTraining.putIfAbsent(targetTrainingKey, () => <TrainingBooking>[]).add(booking);
     }
@@ -2985,6 +2987,7 @@ final class PrivateHandlers {
     required TrainingBooking booking,
     required Map<String, TrainingInfo> trainingsByKey,
     required Map<String, List<TrainingInfo>> trainingsBySignature,
+    required DateTime now,
   }) {
     if (trainingsByKey.containsKey(booking.trainingKey)) {
       return booking.trainingKey;
@@ -2994,6 +2997,11 @@ final class PrivateHandlers {
       return booking.trainingKey;
     }
     final candidate = _nearestTrainingByStartsAt(candidates, booking.startsAt);
+    final bookingIsArchived = _isArchivedBookingAt(booking, now: now);
+    final candidateIsArchived = _isArchivedTrainingAt(candidate, now: now);
+    if (bookingIsArchived != candidateIsArchived) {
+      return booking.trainingKey;
+    }
     final dayDistance = (candidate.startsAt.difference(booking.startsAt).inHours).abs();
     if (dayDistance > 24 * 21) {
       return booking.trainingKey;
