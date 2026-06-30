@@ -2,13 +2,15 @@
 set -euo pipefail
 
 cd /opt/dvor-chatbot-project
-git pull
+git pull --ff-only
 mkdir -p data
 
 # One-time migration: if DB is still inside container filesystem,
 # copy it to persistent host storage before recreate.
 if [ ! -f data/bookings.sqlite ]; then
-  docker cp dvor-chatbot:/app/data/bookings.sqlite data/bookings.sqlite 2>/dev/null || true
+  if docker container inspect dvor-chatbot >/dev/null 2>&1; then
+    docker cp dvor-chatbot:/app/data/bookings.sqlite data/bookings.sqlite 2>/dev/null || true
+  fi
 fi
 
 docker compose up -d --build
