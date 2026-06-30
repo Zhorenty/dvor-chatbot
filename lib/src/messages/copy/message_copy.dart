@@ -26,7 +26,7 @@ final class MessageCopy {
   static const String buttonCategoryTrails = '🏃 Трейлы';
   static const String buttonOutdoorEquipment = '🎒 Экипировка';
   static const String buttonOutdoorItinerary = '🗺 Расписание похода';
-  static const String buttonRefreshSchedule = '🔄 Обновить Google Docs';
+  static const String buttonRefreshSchedule = '🔄 Обновить Google Sheets';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
   static const String buttonEconomicSummary = '💰 Экономическая сводка';
   static const String buttonSubscriptionsAdmin = '💎 Абонементы';
