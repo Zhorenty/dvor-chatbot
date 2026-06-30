@@ -9,6 +9,7 @@ This is an operational cheat sheet for the production bot on Timeweb Cloud.
 - Container name: `dvor-chatbot`
 - SQLite DB: `/opt/dvor-chatbot-project/data/bookings.sqlite`
 - Backups: `/opt/backups/dvor-chatbot-project`
+- Persistence: `compose.yaml` mounts `./data:/app/data`
 
 ## 1) Daily Health Check
 
@@ -32,6 +33,8 @@ docker compose ps
 ```bash
 cd /opt/dvor-chatbot-project
 git pull
+mkdir -p data
+if [ ! -f data/bookings.sqlite ]; then docker cp dvor-chatbot:/app/data/bookings.sqlite data/bookings.sqlite 2>/dev/null || true; fi
 docker compose up -d --build
 docker logs --tail=200 dvor-chatbot
 ```
@@ -43,6 +46,8 @@ cd /opt/dvor-chatbot-project
 docker compose down
 docker compose up -d
 ```
+
+Do not run `docker compose down -v` in production, otherwise persistent volumes will be removed.
 
 ## 5) Live Logs
 
