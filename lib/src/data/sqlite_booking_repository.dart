@@ -900,6 +900,21 @@ final class SqliteBookingRepository implements BookingRepository {
     if (status != null) {
       columns.add('status = ?');
       args.add(status.dbValue);
+      if (status == BookingStatus.pendingPayment &&
+          existing.status != BookingStatus.pendingPayment) {
+        columns.add('payment_note = ?');
+        args.add(null);
+        columns.add('payment_proof_chat_id = ?');
+        args.add(null);
+        columns.add('payment_proof_message_id = ?');
+        args.add(null);
+        columns.add('reminder_count = ?');
+        args.add(0);
+        columns.add('last_reminder_at = ?');
+        args.add(null);
+        columns.add('created_at = ?');
+        args.add(nowIso);
+      }
     }
     if (columns.isEmpty) {
       return _findBookingById(bookingId);

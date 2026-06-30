@@ -1028,6 +1028,47 @@ void main() {
       await repository.close();
     });
 
+    test('admin restore resets pending-payment lifecycle fields', () async {
+      var now = DateTime(2030, 7, 2, 10, 0);
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => now,
+      );
+      await repository.init();
+
+      final created = await repository.createPendingBooking(
+        userId: 9101,
+        userUsername: 'restore_case',
+        training: TrainingInfo(
+          title: 'Restore flow',
+          startsAt: DateTime(2030, 7, 20, 19),
+          location: 'Gym Restore',
+        ),
+      );
+      final submitted = await repository.submitPaymentForLatestPending(
+        9101,
+        bookingId: created.booking.id,
+        note: 'paid screenshot',
+      );
+      expect(submitted, isNotNull);
+      await repository.updateStatus(created.booking.id, BookingStatus.cancelled);
+
+      now = DateTime(2030, 7, 2, 15, 0);
+      final restored = await repository.adminUpdateBooking(
+        bookingId: created.booking.id,
+        status: BookingStatus.pendingPayment,
+      );
+      expect(restored, isNotNull);
+      expect(restored!.status, BookingStatus.pendingPayment);
+      expect(restored.paymentNote, isNull);
+
+      final userBookings = await repository.listUserBookings(9101, limit: 10);
+      final restoredFromList = userBookings.firstWhere((item) => item.id == created.booking.id);
+      expect(restoredFromList.status, BookingStatus.pendingPayment);
+
+      await repository.close();
+    });
+
     test(
         'stores training price, includes free-training and partial-paid statuses in summary range and marks report once',
         () async {
