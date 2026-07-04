@@ -235,19 +235,14 @@ final class PrivateHandlers {
         case _PrivateFlowStep.selectingTraining:
           final selectedCategory = flowState?.selectedCategory;
           if (selectedCategory != null && flowState?.bookingFromSchedulePreview == true) {
-            await _refreshTrainerDirectoryForSchedule();
             _flowByUserId[userId] = flowState!.copyWith(
-              step: _PrivateFlowStep.viewingScheduleCategory,
+              step: _PrivateFlowStep.selectingScheduleCategory,
               availableTrainings: const <TrainingInfo>[],
             );
             await _sender.sendMessage(
               chatId,
-              _scheduleTextByCategory(selectedCategory),
-              replyMarkup: _templates.scheduleCategoryActionsKeyboard(
-                showOutdoorActions: _isOutdoorCategory(selectedCategory),
-              ),
-              parseMode: 'HTML',
-              disableWebPagePreview: true,
+              _templates.chooseScheduleCategory(),
+              replyMarkup: _templates.categorySelectionKeyboard(),
             );
             return true;
           }
@@ -780,20 +775,19 @@ final class PrivateHandlers {
           replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
         );
       } else {
-        _flowByUserId[userId] = _PrivateFlowState(
-          step: _PrivateFlowStep.viewingScheduleCategory,
-          availableTrainings: const <TrainingInfo>[],
-          selectedCategory: category,
-        );
         await _refreshTrainerDirectoryForSchedule();
         await _sender.sendMessage(
           chatId,
           _scheduleTextByCategory(category),
-          replyMarkup: _templates.scheduleCategoryActionsKeyboard(
-            showOutdoorActions: _isOutdoorCategory(category),
-          ),
           parseMode: 'HTML',
           disableWebPagePreview: true,
+        );
+        await _openBookingByCategory(
+          chatId: chatId,
+          userId: userId,
+          isAdmin: isAdmin,
+          category: category,
+          fromSchedulePreview: true,
         );
       }
       return true;

@@ -698,19 +698,19 @@ void main() {
 
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
-      expect(sender.messages, hasLength(2));
+      expect(sender.messages, hasLength(3));
       expect(sender.messages.first.text, contains('Выбери раздел расписания'));
-      expect(sender.messages.last.text, contains('Ближайшие тренировки'));
-      expect(sender.messages.last.text, contains('Тестовая тренировка'));
+      expect(sender.messages[1].text, contains('Ближайшие тренировки'));
+      expect(sender.messages[1].text, contains('Тестовая тренировка'));
       expect(
-        sender.messages.last.text,
+        sender.messages[1].text,
         contains('<a href="https://maps.example/test-gym">Тестовый зал</a>'),
       );
-      expect(sender.messages.last.text, contains('бесплатная'));
-      expect(sender.messages.last.parseMode, 'HTML');
-      expect(sender.messages.last.disableWebPagePreview, isTrue);
+      expect(sender.messages[1].text, contains('бесплатная'));
+      expect(sender.messages[1].parseMode, 'HTML');
+      expect(sender.messages[1].disableWebPagePreview, isTrue);
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(sender.messages.last.text, contains('выбери мероприятие для записи'));
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
@@ -761,7 +761,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
-      final text = sender.messages.last.text;
+      final text = sender.messages[1].text;
       expect(
         text,
         contains('<a href="https://t.me/alxpetrov">Алексей Петров</a>'),
@@ -772,7 +772,7 @@ void main() {
       );
       expect(text, contains('<a href="https://t.me/guest_coach">гость</a>'));
       expect(text, contains('🧑‍🏫 Тренеры:'));
-      expect(sender.messages.last.parseMode, 'HTML');
+      expect(sender.messages[1].parseMode, 'HTML');
     });
 
     test('handles menu trainings button in private chat', () async {
@@ -806,7 +806,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
-      expect(sender.messages, hasLength(2));
+      expect(sender.messages, hasLength(3));
       expect(sender.messages.last.text, contains('Тренировка из кнопки'));
     });
 
@@ -3538,13 +3538,13 @@ void main() {
       final sender = _FakeSender();
       final oldHike = TrainingInfo(
         title: '🥾 Поход: DVORCAMP',
-        startsAt: DateTime(2026, 7, 2),
+        startsAt: DateTime(2030, 7, 2),
         location: 'Старое описание похода',
         category: ActivityCategory.hikes,
       );
       final newHike = TrainingInfo(
         title: '🥾 Поход: DVORCAMP',
-        startsAt: DateTime(2026, 7, 3),
+        startsAt: DateTime(2030, 7, 3),
         location: 'Новое описание похода',
         category: ActivityCategory.hikes,
       );
@@ -3626,8 +3626,8 @@ void main() {
       expect(categoryHandled, isTrue);
       final messageText = sender.messages.last.text;
       expect(RegExp('🥾 Поход: DVORCAMP').allMatches(messageText).length, 1);
-      expect(messageText, contains('🕒 03.07.2026'));
-      expect(messageText, isNot(contains('🕒 02.07.2026')));
+      expect(messageText, contains('🕒 03.07.2030'));
+      expect(messageText, isNot(contains('🕒 02.07.2030')));
       expect(RegExp('@mi_harkevich').allMatches(messageText).length, 1);
       expect(messageText, isNot(contains('@hike_cancelled (Отменено ❌)')));
     });
