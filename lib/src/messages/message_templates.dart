@@ -1602,10 +1602,7 @@ final class MessageTemplates {
     }
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    final lines = <String>[
-      'Шаг 2/3: выбери мероприятие для записи 👇',
-      'Подсказка: отправь номер из списка или нажми кнопку с событием.',
-    ];
+    final lines = <String>[bookingSelectionPrompt()];
     final eventLines = <String>[];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
@@ -1621,6 +1618,11 @@ final class MessageTemplates {
       ...lines,
       eventLines.join('\n\n'),
     ].join('\n');
+  }
+
+  String bookingSelectionPrompt() {
+    return 'Выбери мероприятие для записи 👇\n'
+        'Подсказка: отправь номер из списка или нажми кнопку с событием.';
   }
 
   String paymentDetailsSent(TrainingBooking booking) {

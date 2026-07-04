@@ -776,18 +776,16 @@ final class PrivateHandlers {
         );
       } else {
         await _refreshTrainerDirectoryForSchedule();
-        await _sender.sendMessage(
-          chatId,
-          _scheduleTextByCategory(category),
-          parseMode: 'HTML',
-          disableWebPagePreview: true,
-        );
         await _openBookingByCategory(
           chatId: chatId,
           userId: userId,
           isAdmin: isAdmin,
           category: category,
           fromSchedulePreview: true,
+          messageText:
+              '${_scheduleTextByCategory(category)}\n\n${_templates.bookingSelectionPrompt()}',
+          parseMode: 'HTML',
+          disableWebPagePreview: true,
         );
       }
       return true;
@@ -3300,6 +3298,9 @@ final class PrivateHandlers {
     required bool isAdmin,
     required _ActivityCategory category,
     required bool fromSchedulePreview,
+    String? messageText,
+    String? parseMode,
+    bool disableWebPagePreview = false,
   }) async {
     final upcoming = _bookableItemsByCategory(category);
     if (upcoming.isEmpty) {
@@ -3319,8 +3320,10 @@ final class PrivateHandlers {
     );
     await _sender.sendMessage(
       chatId,
-      _templates.chooseTrainingForBooking(upcoming),
+      messageText ?? _templates.chooseTrainingForBooking(upcoming),
       replyMarkup: _templates.bookingSelectionKeyboard(upcoming),
+      parseMode: parseMode,
+      disableWebPagePreview: disableWebPagePreview,
     );
   }
 

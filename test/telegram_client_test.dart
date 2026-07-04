@@ -29,7 +29,7 @@ void main() {
       }),
     );
 
-    final header = 'Шаг 2/3: выбери мероприятие для записи 👇';
+    final header = 'Выбери мероприятие для записи 👇';
     final entry1 = _trainingEntry(1, 'A');
     final entry2 = _trainingEntry(2, 'B');
     final entry3 = _trainingEntry(3, 'C');

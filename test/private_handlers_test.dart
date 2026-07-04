@@ -698,19 +698,19 @@ void main() {
 
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
-      expect(sender.messages, hasLength(3));
+      expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Выбери раздел расписания'));
-      expect(sender.messages[1].text, contains('Ближайшие тренировки'));
-      expect(sender.messages[1].text, contains('Тестовая тренировка'));
+      expect(sender.messages.last.text, contains('Ближайшие тренировки'));
+      expect(sender.messages.last.text, contains('Тестовая тренировка'));
       expect(
-        sender.messages[1].text,
+        sender.messages.last.text,
         contains('<a href="https://maps.example/test-gym">Тестовый зал</a>'),
       );
-      expect(sender.messages[1].text, contains('бесплатная'));
-      expect(sender.messages[1].parseMode, 'HTML');
-      expect(sender.messages[1].disableWebPagePreview, isTrue);
+      expect(sender.messages.last.text, contains('бесплатная'));
+      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
+      expect(sender.messages.last.parseMode, 'HTML');
+      expect(sender.messages.last.disableWebPagePreview, isTrue);
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(sender.messages.last.text, contains('выбери мероприятие для записи'));
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
@@ -761,7 +761,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
-      final text = sender.messages[1].text;
+      final text = sender.messages.last.text;
       expect(
         text,
         contains('<a href="https://t.me/alxpetrov">Алексей Петров</a>'),
@@ -772,7 +772,7 @@ void main() {
       );
       expect(text, contains('<a href="https://t.me/guest_coach">гость</a>'));
       expect(text, contains('🧑‍🏫 Тренеры:'));
-      expect(sender.messages[1].parseMode, 'HTML');
+      expect(sender.messages.last.parseMode, 'HTML');
     });
 
     test('handles menu trainings button in private chat', () async {
@@ -806,7 +806,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
-      expect(sender.messages, hasLength(3));
+      expect(sender.messages, hasLength(2));
       expect(sender.messages.last.text, contains('Тренировка из кнопки'));
     });
 
@@ -2048,7 +2048,7 @@ void main() {
         'text': MessageTemplates.buttonCategoryHikes,
       });
       final chooseActivityText = sender.messages.last.text;
-      expect(chooseActivityText, contains('выбери мероприятие для записи'));
+      expect(chooseActivityText, contains('Выбери мероприятие для записи'));
       expect(chooseActivityText, contains('🥾 Поход: Поход на хребет'));
       expect(chooseActivityText, contains('🕒 13.07.2026'));
       expect(chooseActivityText, isNot(contains('13.07.2026 00:00')));
@@ -4981,7 +4981,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Шаг 2/3: выбери мероприятие для записи'));
+      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
       expect(sender.messages.last.text, contains('🥾 Поход: Архыз выходные'));
     });
 
