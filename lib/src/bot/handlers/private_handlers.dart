@@ -782,7 +782,7 @@ final class PrivateHandlers {
           isAdmin: isAdmin,
           category: category,
           fromSchedulePreview: true,
-          messageText: '${_scheduleTextByCategory(category)}\n\n'
+          messageText: '${_scheduleTextByCategory(category)}\n\n\n'
               '<b>Что дальше:</b>\n'
               '${_templates.bookingSelectionPrompt()}',
           parseMode: 'HTML',
