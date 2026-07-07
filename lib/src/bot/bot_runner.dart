@@ -95,7 +95,11 @@ final class BotRunner {
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
 
+  static const int _maxConflictRetries = 3;
+
   bool _stopping = false;
+  int _exitCode = 0;
+  int _conflictRetries = 0;
   int _offset = 0;
   bool _clientClosed = false;
   int _activeOperations = 0;
@@ -107,6 +111,8 @@ final class BotRunner {
   Timer? _economicSummaryTimer;
   Timer? _subscriptionRenewalTimer;
   Timer? _trainingDayPromoTimer;
+
+  int get exitCode => _exitCode;
 
   Future<void> start() async {
     await _initializeLongPolling();
@@ -177,21 +183,35 @@ final class BotRunner {
           final updateId = update['update_id'];
           try {
             await _runTracked(() => _handleUpdate(update));
+          } on Object catch (error, stackTrace) {
+            l.e('Failed to handle update (update_id=$updateId): $error', stackTrace);
+          } finally {
             if (updateId is int) {
               _offset = updateId + 1;
             }
-          } on Object catch (error, stackTrace) {
-            l.e('Failed to handle update (update_id=$updateId): $error', stackTrace);
           }
         }
       } on TelegramApiException catch (error, stackTrace) {
         if (error.statusCode == 409) {
-          l.e(
-            'Polling conflict (409): another bot instance is likely running. Stopping current instance.',
+          _conflictRetries += 1;
+          if (_conflictRetries > _maxConflictRetries) {
+            l.e(
+              'Polling conflict (409) persists after $_maxConflictRetries retries. '
+              'Stopping with error exit so the process can be restarted.',
+              stackTrace,
+            );
+            _exitCode = 1;
+            _stopping = true;
+            break;
+          }
+          final delaySeconds = _conflictRetries * 15;
+          l.w(
+            'Polling conflict (409): another instance may be running. '
+            'Retry $_conflictRetries/$_maxConflictRetries in ${delaySeconds}s.',
             stackTrace,
           );
-          _stopping = true;
-          break;
+          await Future<void>.delayed(Duration(seconds: delaySeconds));
+          continue;
         }
         l.w('Telegram API error in polling loop: $error', stackTrace);
         await Future<void>.delayed(const Duration(seconds: 2));
@@ -263,8 +283,17 @@ final class BotRunner {
     if (_activeOperations == 0) {
       return;
     }
+    const timeout = Duration(seconds: 15);
     final completer = _idleCompleter ??= Completer<void>();
-    await completer.future;
+    await completer.future.timeout(
+      timeout,
+      onTimeout: () {
+        l.w(
+          'Timed out after ${timeout.inSeconds}s waiting for '
+          '$_activeOperations active operation(s); proceeding with shutdown.',
+        );
+      },
+    );
   }
 
   void _closeClient() {
