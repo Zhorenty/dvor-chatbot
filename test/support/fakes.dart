@@ -93,6 +93,7 @@ final class FakeBookingRepository implements BookingRepository {
   );
   PaymentReviewResult? paymentReviewResult;
   bool throwAdminUpdateConflict = false;
+  bool throwAdminCreateConflict = false;
   final Set<String> sentEconomicReports = <String>{};
 
   @override
@@ -358,6 +359,9 @@ final class FakeBookingRepository implements BookingRepository {
     required TrainingInfo training,
     required BookingStatus status,
   }) async {
+    if (throwAdminCreateConflict) {
+      throw const BookingConflictException('conflict');
+    }
     final created = fakeBooking(
       id: 777,
       userId: userId,

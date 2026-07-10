@@ -1148,5 +1148,67 @@ void main() {
 
       await repository.close();
     });
+
+    test('admin can set freeTraining status on paid activity (status-only update)', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final created = await repository.adminCreateBooking(
+        userUsername: 'trainer_free',
+        training: TrainingInfo(
+          title: 'Paid training',
+          startsAt: DateTime(2030, 8, 1, 19),
+          location: 'Hall A',
+          price: 1800,
+        ),
+        status: BookingStatus.pendingPayment,
+      );
+
+      final updated = await repository.adminUpdateBooking(
+        bookingId: created.id,
+        status: BookingStatus.freeTraining,
+      );
+
+      expect(updated, isNotNull);
+      expect(updated!.status, BookingStatus.freeTraining);
+      expect(updated.trainingPrice, 1800);
+
+      await repository.close();
+    });
+
+    test('admin update blocks moving freeTraining booking to paid activity', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final created = await repository.adminCreateBooking(
+        userUsername: 'trainer_move',
+        training: TrainingInfo(
+          title: 'Free activity',
+          startsAt: DateTime(2030, 8, 2, 19),
+          location: 'Outdoors',
+          price: 0,
+        ),
+        status: BookingStatus.freeTraining,
+      );
+
+      expect(
+        () => repository.adminUpdateBooking(
+          bookingId: created.id,
+          training: TrainingInfo(
+            title: 'Paid event',
+            startsAt: DateTime(2030, 8, 3, 19),
+            location: 'Hall B',
+            price: 2600,
+          ),
+        ),
+        throwsA(isA<BookingConflictException>()),
+      );
+
+      await repository.close();
+    });
   });
 }

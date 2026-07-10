@@ -869,7 +869,11 @@ final class SqliteBookingRepository implements BookingRepository {
     final targetTrainingKey = training?.sessionKey ?? existing.trainingKey;
     final targetTrainingPrice = training?.price ?? existing.trainingPrice;
     final targetStatus = status ?? existing.status;
-    if (_isFreeStatus(targetStatus) && _isPaidActivityPrice(targetTrainingPrice)) {
+    // Prevent silently moving a free-training booking onto a paid activity;
+    // but allow admin to explicitly grant free status on any existing activity.
+    if (training != null &&
+        _isFreeStatus(targetStatus) &&
+        _isPaidActivityPrice(targetTrainingPrice)) {
       throw const BookingConflictException('Free status is not allowed for paid activity.');
     }
     final conflicting = _findBookingByUserAndTraining(targetUserId, targetTrainingKey);

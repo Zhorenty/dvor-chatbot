@@ -4,9 +4,6 @@ const Set<String> trainerBookingWhitelistUsernames = <String>{
   /// Катя
   '@k_morozzovaa',
 
-  /// Света
-  '@pro_svet_lena',
-
   /// Даша
   '@whatshapped',
 
@@ -24,6 +21,12 @@ const Set<String> trainerBookingWhitelistUsernames = <String>{
 
   /// Родя
   '@oh_rodya',
+
+  /// Денчик
+  '@nudden',
+
+  /// Жора
+  '@zhorenty',
 };
 
 final Set<String> _normalizedTrainerBookingWhitelistUsernames =

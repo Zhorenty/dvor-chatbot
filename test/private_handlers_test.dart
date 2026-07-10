@@ -3457,9 +3457,10 @@ void main() {
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Список записавшихся'));
       expect(sender.messages.last.text, contains('Список записавшихся'));
-      expect(sender.messages.last.text, contains('👥 Участники: 2/∞'));
+      expect(sender.messages.last.text, contains('👥 Участники: 1/∞'));
       expect(sender.messages.last.text, contains('👤 Участники:'));
       expect(sender.messages.last.text, contains('@runner_one'));
+      expect(sender.messages.last.text, contains('🧑‍🏫 Тренеры:'));
       expect(
         sender.messages.last.text,
         contains('@zhorenty (Бесплатно: стартовая тренировка 🎁)'),
@@ -4555,6 +4556,64 @@ void main() {
       expect(bookingRepository.adminBookings.single.userUsername, 'new_runner');
       expect(bookingRepository.adminBookings.single.status, BookingStatus.freeTraining);
       expect(sender.messages.last.text, contains('создана'));
+    });
+
+    test('shows conflict message when admin create booking throws', () async {
+      final sender = _FakeSender();
+      final training = TrainingInfo(
+        title: 'Paid Bootcamp',
+        startsAt: DateTime(2026, 9, 18, 19, 0),
+        location: 'Main Hall',
+        price: 1800,
+      );
+      final bookingRepository = _FakeBookingRepository()..throwAdminCreateConflict = true;
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[training]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2302},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonManageBookings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonCreateBooking,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': '🎯 1. Paid Bootcamp',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': '@trainer_user',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonStatusFreeTraining,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 23, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2302},
+        'text': MessageTemplates.buttonConfirmCreateBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.adminBookings, isEmpty);
+      expect(sender.messages.last.text, contains('уже есть запись на выбранное мероприятие'));
     });
 
     test('notifies user and admin chat on approve payment', () async {

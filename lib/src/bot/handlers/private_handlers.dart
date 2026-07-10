@@ -2660,11 +2660,20 @@ final class PrivateHandlers {
           _flowByUserId.remove(userId);
           return true;
         }
-        final created = await _bookingRepository.adminCreateBooking(
-          userUsername: username,
-          training: training,
-          status: status,
-        );
+        final TrainingBooking created;
+        try {
+          created = await _bookingRepository.adminCreateBooking(
+            userUsername: username,
+            training: training,
+            status: status,
+          );
+        } on BookingConflictException {
+          await _sendAdminMessage(
+            chatId,
+            _templates.adminBookingUpdateConflict(),
+          );
+          return true;
+        }
         await _openAdminClientNotificationStep(
           chatId: chatId,
           userId: userId,
