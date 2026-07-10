@@ -423,8 +423,9 @@ final class MessageTemplates {
 
   String createBookingAskUsername() {
     return '👤 <b>Username для новой записи</b>\n'
-        'Введи username пользователя '
-        '(можно с @ или без).';
+        'Введи username пользователя (можно с @ или без).\n'
+        'Чтобы записать несколько человек сразу, перечисли username через запятую: '
+        '<code>user1, user2, user3</code>';
   }
 
   String chooseCreateBookingPaymentStatus() {
@@ -434,16 +435,43 @@ final class MessageTemplates {
 
   String createBookingPreview({
     required TrainingInfo training,
-    required String username,
+    required List<String> usernames,
     required BookingStatus status,
   }) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return '🔍 <b>Проверь данные новой записи</b>\n'
-        'Пользователь: @${_escapeHtml(username)}\n'
+    final usersLine = usernames.length == 1
+        ? '@${_escapeHtml(usernames.first)}'
+        : usernames.map((u) => '@${_escapeHtml(u)}').join(', ');
+    final header = usernames.length == 1
+        ? '🔍 <b>Проверь данные новой записи</b>'
+        : '🔍 <b>Проверь данные новых записей (${usernames.length} чел.)</b>';
+    return '$header\n'
+        'Пользователи: $usersLine\n'
         'Событие: ${_escapeHtml(training.title)}\n'
         'Дата: ${formatter.format(training.startsAt)}\n'
         'Локация: ${_escapeHtml(training.location)}\n'
         'Статус: ${_escapeHtml(_statusLabel(status))}';
+  }
+
+  String adminBookingsCreatedBatch({
+    required List<TrainingBooking> created,
+    required List<String> conflicts,
+  }) {
+    final buffer = StringBuffer();
+    if (created.isNotEmpty) {
+      buffer.write('✅ <b>Записи созданы (${created.length} чел.)</b>\n');
+      for (final b in created) {
+        buffer.write('#${b.id} — ${_escapeHtml(_userTag(b))}\n');
+      }
+    }
+    if (conflicts.isNotEmpty) {
+      if (buffer.isNotEmpty) buffer.write('\n');
+      buffer.write('⚠️ <b>Конфликт (уже записаны): ${conflicts.length} чел.</b>\n');
+      for (final u in conflicts) {
+        buffer.write('@${_escapeHtml(u)}\n');
+      }
+    }
+    return buffer.toString().trimRight();
   }
 
   String adminBookingCreated(TrainingBooking booking) {

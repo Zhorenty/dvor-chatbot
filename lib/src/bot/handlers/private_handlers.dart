@@ -2584,8 +2584,8 @@ final class PrivateHandlers {
         flowState?.step == _PrivateFlowStep.enteringAdminCreateUsername &&
         text != null &&
         !text.startsWith('/')) {
-      final normalizedUsername = _normalizeUsernameInput(text);
-      if (normalizedUsername == null) {
+      final usernames = _parseUsernameListInput(text);
+      if (usernames == null) {
         await _sendAdminMessage(
           chatId,
           _templates.invalidUsernameInput(),
@@ -2595,7 +2595,7 @@ final class PrivateHandlers {
       }
       _flowByUserId[userId] = flowState!.copyWith(
         step: _PrivateFlowStep.selectingAdminCreateStatus,
-        adminCreateUsername: normalizedUsername,
+        adminCreateUsernames: usernames,
       );
       await _sendAdminMessage(
         chatId,
@@ -2611,8 +2611,8 @@ final class PrivateHandlers {
         !text.startsWith('/')) {
       final status = _parsePaymentStatusSelection(text);
       final training = flowState?.adminCreateTraining;
-      final username = flowState?.adminCreateUsername;
-      if (status == null || training == null || username == null) {
+      final usernames = flowState?.adminCreateUsernames;
+      if (status == null || training == null || usernames == null || usernames.isEmpty) {
         await _sendAdminMessage(
           chatId,
           _templates.chooseCreateBookingPaymentStatus(),
@@ -2626,7 +2626,7 @@ final class PrivateHandlers {
       );
       await _sendAdminMessage(
         chatId,
-        _templates.createBookingPreview(training: training, username: username, status: status),
+        _templates.createBookingPreview(training: training, usernames: usernames, status: status),
         replyMarkup: _templates.adminCreateBookingConfirmationKeyboard(),
       );
       return true;
@@ -2649,9 +2649,9 @@ final class PrivateHandlers {
       }
       if (text == MessageTemplates.buttonConfirmCreateBooking) {
         final training = flowState?.adminCreateTraining;
-        final username = flowState?.adminCreateUsername;
+        final usernames = flowState?.adminCreateUsernames;
         final status = flowState?.adminCreateStatus;
-        if (training == null || username == null || status == null) {
+        if (training == null || usernames == null || usernames.isEmpty || status == null) {
           await _sender.sendMessage(
             chatId,
             _templates.privateFallback(),
@@ -2660,26 +2660,52 @@ final class PrivateHandlers {
           _flowByUserId.remove(userId);
           return true;
         }
-        final TrainingBooking created;
-        try {
-          created = await _bookingRepository.adminCreateBooking(
-            userUsername: username,
-            training: training,
-            status: status,
+        if (usernames.length == 1) {
+          final TrainingBooking created;
+          try {
+            created = await _bookingRepository.adminCreateBooking(
+              userUsername: usernames.first,
+              training: training,
+              status: status,
+            );
+          } on BookingConflictException {
+            await _sendAdminMessage(
+              chatId,
+              _templates.adminBookingUpdateConflict(),
+            );
+            return true;
+          }
+          await _openAdminClientNotificationStep(
+            chatId: chatId,
+            userId: userId,
+            action: _AdminClientNotificationAction.bookingCreated,
+            booking: created,
           );
-        } on BookingConflictException {
+        } else {
+          final List<TrainingBooking> created = [];
+          final List<String> conflicts = [];
+          for (final username in usernames) {
+            try {
+              final booking = await _bookingRepository.adminCreateBooking(
+                userUsername: username,
+                training: training,
+                status: status,
+              );
+              created.add(booking);
+            } on BookingConflictException {
+              conflicts.add(username);
+            }
+          }
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminBookingManagementAction,
+            availableTrainings: <TrainingInfo>[],
+          );
           await _sendAdminMessage(
             chatId,
-            _templates.adminBookingUpdateConflict(),
+            _templates.adminBookingsCreatedBatch(created: created, conflicts: conflicts),
+            replyMarkup: _templates.adminBookingAfterActionKeyboard(),
           );
-          return true;
         }
-        await _openAdminClientNotificationStep(
-          chatId: chatId,
-          userId: userId,
-          action: _AdminClientNotificationAction.bookingCreated,
-          booking: created,
-        );
         return true;
       }
     }
@@ -3414,6 +3440,20 @@ final class PrivateHandlers {
       return null;
     }
     return trimmed.startsWith('@') ? trimmed.substring(1) : trimmed;
+  }
+
+  /// Parses a comma-separated list of usernames (with or without @).
+  /// Returns null if the input is empty or any entry contains spaces.
+  List<String>? _parseUsernameListInput(String text) {
+    final parts = text
+        .split(',')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .map((e) => e.startsWith('@') ? e.substring(1) : e)
+        .toList();
+    if (parts.isEmpty) return null;
+    if (parts.any((u) => u.contains(' '))) return null;
+    return parts;
   }
 
   Future<void> _openMyBookingListSegment({

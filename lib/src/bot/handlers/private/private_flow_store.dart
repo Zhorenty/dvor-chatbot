@@ -88,7 +88,7 @@ final class PrivateFlowState {
     this.starterBonusOffered = false,
     this.adminViewingArchived = false,
     this.adminCreateStatus,
-    this.adminCreateUsername,
+    this.adminCreateUsernames,
     this.adminCreateTraining,
     this.paymentChoice,
     this.adminBookingsPage = 0,
@@ -114,7 +114,7 @@ final class PrivateFlowState {
   final bool starterBonusOffered;
   final bool adminViewingArchived;
   final BookingStatus? adminCreateStatus;
-  final String? adminCreateUsername;
+  final List<String>? adminCreateUsernames;
   final TrainingInfo? adminCreateTraining;
   final PaymentChoice? paymentChoice;
   final int adminBookingsPage;
@@ -140,7 +140,7 @@ final class PrivateFlowState {
     bool? starterBonusOffered,
     bool? adminViewingArchived,
     Object? adminCreateStatus = _privateFlowUnset,
-    Object? adminCreateUsername = _privateFlowUnset,
+    Object? adminCreateUsernames = _privateFlowUnset,
     Object? adminCreateTraining = _privateFlowUnset,
     Object? paymentChoice = _privateFlowUnset,
     int? adminBookingsPage,
@@ -176,9 +176,9 @@ final class PrivateFlowState {
       adminCreateStatus: identical(adminCreateStatus, _privateFlowUnset)
           ? this.adminCreateStatus
           : adminCreateStatus as BookingStatus?,
-      adminCreateUsername: identical(adminCreateUsername, _privateFlowUnset)
-          ? this.adminCreateUsername
-          : adminCreateUsername as String?,
+      adminCreateUsernames: identical(adminCreateUsernames, _privateFlowUnset)
+          ? this.adminCreateUsernames
+          : adminCreateUsernames as List<String>?,
       adminCreateTraining: identical(adminCreateTraining, _privateFlowUnset)
           ? this.adminCreateTraining
           : adminCreateTraining as TrainingInfo?,
