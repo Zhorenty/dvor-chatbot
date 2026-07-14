@@ -64,6 +64,7 @@ final class PrivateStaticCommands {
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
         ),
+        parseMode: 'HTML',
       );
       await onPinWelcomeMessage(chatId: chatId, messageId: welcomeMessageId);
       if (starterBonusAvailable) {

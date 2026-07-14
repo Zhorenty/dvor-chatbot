@@ -137,6 +137,7 @@ final class ActivityCatalogService {
       category: category,
       price: item.price,
       participantsLimit: item.participantsLimit,
+      includeTrainersInParticipants: true,
       notes: 'Даты: ${dateRangeLabel(item)}',
     );
   }

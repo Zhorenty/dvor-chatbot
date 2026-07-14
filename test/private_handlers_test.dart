@@ -3731,7 +3731,7 @@ void main() {
       expect(messageText, isNot(contains('@trail_cancelled (Отменено ❌)')));
     });
 
-    test('does not display trainers in hikes participants list', () async {
+    test('displays trainers in hikes participants list', () async {
       final sender = _FakeSender();
       final hike = TrainingInfo(
         title: '🥾 Поход: Эльбрус',
@@ -3807,8 +3807,8 @@ void main() {
       expect(categoryHandled, isTrue);
       final messageText = sender.messages.last.text;
       expect(messageText, contains('@hike_user'));
-      expect(messageText, isNot(contains('🧑‍🏫 Тренеры:')));
-      expect(messageText, isNot(contains('@whatshapped')));
+      expect(messageText, contains('🧑‍🏫 Тренеры:'));
+      expect(messageText, contains('@whatshapped'));
     });
 
     test('merges training participants when session date changes', () async {

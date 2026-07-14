@@ -3002,7 +3002,7 @@ final class PrivateHandlers {
         title: copy.title,
         emptyText: copy.emptyText,
         isTrainerBooking: _isWhitelistedTrainerBookingByBooking,
-        showTrainers: !_isOutdoorCategory(category),
+        showTrainers: true,
       ),
       replyMarkup: _templates.privateMenuKeyboard(
         isAdmin: isAdmin,
