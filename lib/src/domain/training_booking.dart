@@ -16,6 +16,8 @@ final class TrainingBooking {
     this.paymentNote,
     this.paymentProofChatId,
     this.paymentProofMessageId,
+    this.promoCode,
+    this.promoDiscountPercent,
   });
 
   final int id;
@@ -30,6 +32,8 @@ final class TrainingBooking {
   final String? paymentNote;
   final int? paymentProofChatId;
   final int? paymentProofMessageId;
+  final String? promoCode;
+  final int? promoDiscountPercent;
   final DateTime createdAt;
   final DateTime updatedAt;
 }

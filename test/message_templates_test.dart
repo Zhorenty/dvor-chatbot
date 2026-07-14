@@ -213,6 +213,86 @@ void main() {
     });
   });
 
+  group('MessageTemplates promo code copy', () {
+    const templates = MessageTemplates();
+
+    test('shows discounted amount in requisites when promo code applied', () {
+      final text = templates.paymentInstructions(
+        _booking(
+          trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
+          trainingTitle: '🏋️ Кроссфит',
+          location: 'Зал DVOR',
+          trainingPrice: 750,
+          promoCode: 'SUMMER50',
+          promoDiscountPercent: 50,
+        ),
+      );
+
+      expect(text, contains('К оплате: <b>750 ₽</b>'));
+      expect(text, contains('SUMMER50'));
+      expect(text, contains('−50%'));
+    });
+
+    test('does not show promo line when no promo code applied', () {
+      final text = templates.paymentInstructions(
+        _booking(
+          trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
+          trainingTitle: '🏋️ Кроссфит',
+          location: 'Зал DVOR',
+        ),
+      );
+
+      expect(text, isNot(contains('промокод')));
+    });
+
+    test('promoCodeApplied shows old and new price with discount percent', () {
+      final booking = _booking(
+        trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
+        trainingTitle: '🏋️ Кроссфит',
+        location: 'Зал DVOR',
+        trainingPrice: 750,
+        promoCode: 'SUMMER50',
+        promoDiscountPercent: 50,
+      );
+
+      final text = templates.promoCodeApplied(booking, originalPrice: 1500);
+
+      expect(text, contains('SUMMER50'));
+      expect(text, contains('−50%'));
+      expect(text, contains('1500 ₽'));
+      expect(text, contains('750 ₽'));
+    });
+
+    test('promoCodeAppliedFree announces free booking without payment', () {
+      final booking = _booking(
+        trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
+        trainingTitle: '🏋️ Кроссфит',
+        location: 'Зал DVOR',
+        trainingPrice: 0,
+        promoCode: 'FREEDAY',
+        promoDiscountPercent: 100,
+        status: BookingStatus.paid,
+      );
+
+      final text = templates.promoCodeAppliedFree(booking, originalPrice: 1500);
+
+      expect(text, contains('FREEDAY'));
+      expect(text, contains('−100%'));
+      expect(text, contains('бесплатна'));
+    });
+
+    test('promoCodeInvalid and promoCodeNotApplicableToCategory return distinct messages', () {
+      expect(templates.promoCodeInvalid(),
+          isNot(equals(templates.promoCodeNotApplicableToCategory())));
+      expect(templates.promoCodeInvalid(), isNotEmpty);
+      expect(templates.promoCodeNotApplicableToCategory(), isNotEmpty);
+    });
+
+    test('promoCodeEntryPrompt mentions the back button', () {
+      expect(templates.promoCodeEntryPrompt(), contains(MessageTemplates.buttonBack));
+    });
+  });
+
   group('MessageTemplates outdoor details copy', () {
     const templates = MessageTemplates();
 
@@ -298,6 +378,10 @@ TrainingBooking _booking({
   required String trainingKey,
   required String trainingTitle,
   required String location,
+  int? trainingPrice,
+  String? promoCode,
+  int? promoDiscountPercent,
+  BookingStatus status = BookingStatus.pendingPayment,
 }) {
   final now = DateTime(2026, 6, 1, 12, 0);
   return TrainingBooking(
@@ -308,8 +392,10 @@ TrainingBooking _booking({
     trainingTitle: trainingTitle,
     startsAt: DateTime(2026, 6, 14, 10, 0),
     location: location,
-    status: BookingStatus.pendingPayment,
-    trainingPrice: 1500,
+    status: status,
+    trainingPrice: trainingPrice ?? 1500,
+    promoCode: promoCode,
+    promoDiscountPercent: promoDiscountPercent,
     createdAt: now,
     updatedAt: now,
   );

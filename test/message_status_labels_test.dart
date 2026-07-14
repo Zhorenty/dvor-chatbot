@@ -49,6 +49,28 @@ void main() {
       );
     });
 
+    test('maps promo code full discount booking to promo label', () {
+      final promoFree = fakeBooking(
+        status: BookingStatus.paid,
+        trainingPrice: 0,
+        promoCode: 'FREEDAY',
+        promoDiscountPercent: 100,
+      );
+
+      expect(MessageFormatters.bookingStatusLabel(promoFree), 'Бесплатно: промокод FREEDAY 🎟');
+    });
+
+    test('keeps regular paid label for partial promo discount', () {
+      final promoPartial = fakeBooking(
+        status: BookingStatus.pendingPayment,
+        trainingPrice: 750,
+        promoCode: 'SUMMER50',
+        promoDiscountPercent: 50,
+      );
+
+      expect(MessageFormatters.bookingStatusLabel(promoPartial), 'Ожидает оплату ⏳');
+    });
+
     test('keeps paid label when price is unknown', () {
       final paidUnknownPrice = fakeBooking(
         status: BookingStatus.paid,

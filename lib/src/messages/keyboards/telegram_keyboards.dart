@@ -211,12 +211,20 @@ final class TelegramKeyboards {
     required bool showStarterBonus,
     bool showCancelBooking = false,
     bool showOutdoorPaymentTypeChoice = false,
+    bool showPromoCodeEntry = false,
   }) {
     final rows = <List<Map<String, String>>>[];
     if (showStarterBonus) {
       rows.add(
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonUseStarterBonus},
+        ],
+      );
+    }
+    if (showPromoCodeEntry) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonEnterPromoCode},
         ],
       );
     }

@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/promo_code.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -22,6 +23,7 @@ typedef _FakeOnboardingRepository = FakeOnboardingRepository;
 typedef _FakeSubscriptionRepository = FakeSubscriptionRepository;
 typedef _FakeSender = FakeSender;
 typedef _FakeTrainerDirectoryRepository = FakeTrainerDirectoryRepository;
+typedef _FakePromoCodeRepository = FakePromoCodeRepository;
 
 TrainingBooking _booking({
   int id = 10,
@@ -5124,6 +5126,259 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages.single.text, contains('за текущий месяц'));
+    });
+  });
+
+  group('PrivateHandlers promo code flow', () {
+    Future<PrivateHandlers> openPaymentConfirmation({
+      required _FakeSender sender,
+      required _FakeBookingRepository bookingRepository,
+      required _FakePromoCodeRepository promoCodeRepository,
+      required int chatId,
+      required int userId,
+      int price = 1500,
+      int? adminChatId,
+    }) async {
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Promo session',
+              startsAt: DateTime(2026, 7, 20, 19, 0),
+              location: 'Hall',
+              price: price,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        promoCodeRepository: promoCodeRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: adminChatId,
+      );
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+        'from': <String, dynamic>{'id': userId},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+        'from': <String, dynamic>{'id': userId},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+        'from': <String, dynamic>{'id': userId},
+        'text': '🎯 1. Promo session',
+      });
+      return handlers;
+    }
+
+    test('shows promo code button when booking price is positive', () async {
+      final sender = _FakeSender();
+      await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: _FakeBookingRepository(),
+        promoCodeRepository: _FakePromoCodeRepository(const <PromoCode>[]),
+        chatId: 2101,
+        userId: 3101,
+      );
+
+      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(keyboard, contains(MessageTemplates.buttonEnterPromoCode));
+    });
+
+    test('entering promo code button asks for the code text', () async {
+      final sender = _FakeSender();
+      final handlers = await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: _FakeBookingRepository(),
+        promoCodeRepository: _FakePromoCodeRepository(const <PromoCode>[]),
+        chatId: 2102,
+        userId: 3102,
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2102, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3102},
+        'text': MessageTemplates.buttonEnterPromoCode,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Введи текст промокода'));
+      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(keyboard, contains(MessageTemplates.buttonBack));
+    });
+
+    test('applies partial discount promo code and shows new amount', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final promoCodeRepository = _FakePromoCodeRepository(const <PromoCode>[
+        PromoCode(code: 'SUMMER50', discountPercent: 50),
+      ]);
+      final handlers = await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: bookingRepository,
+        promoCodeRepository: promoCodeRepository,
+        chatId: 2103,
+        userId: 3103,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2103, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3103},
+        'text': MessageTemplates.buttonEnterPromoCode,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2103, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3103},
+        'text': 'summer50',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.applyPromoCodeCalls, 1);
+      expect(bookingRepository.lastPromoCode, 'SUMMER50');
+      expect(bookingRepository.lastPromoDiscountPercent, 50);
+      expect(bookingRepository.lastPromoDiscountedPrice, 750);
+      expect(sender.messages.last.text, contains('SUMMER50'));
+      expect(sender.messages.last.text, contains('−50%'));
+
+      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(keyboard, isNot(contains(MessageTemplates.buttonEnterPromoCode)));
+    });
+
+    test('applies full discount promo code and marks booking free', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final promoCodeRepository = _FakePromoCodeRepository(const <PromoCode>[
+        PromoCode(code: 'FREEDAY', discountPercent: 100),
+      ]);
+      final handlers = await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: bookingRepository,
+        promoCodeRepository: promoCodeRepository,
+        chatId: 2104,
+        userId: 3104,
+        adminChatId: -100999,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2104, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3104},
+        'text': MessageTemplates.buttonEnterPromoCode,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2104, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3104},
+        'text': 'FREEDAY',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.lastPromoDiscountedPrice, 0);
+      expect(sender.messages.last.text, contains('бесплатна'));
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100999).text;
+      expect(adminMessage, contains('Применен промокод'));
+    });
+
+    test('rejects unknown promo code and returns to payment confirmation', () async {
+      final sender = _FakeSender();
+      final handlers = await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: _FakeBookingRepository(),
+        promoCodeRepository: _FakePromoCodeRepository(const <PromoCode>[]),
+        chatId: 2105,
+        userId: 3105,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2105, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3105},
+        'text': MessageTemplates.buttonEnterPromoCode,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2105, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3105},
+        'text': 'DOES_NOT_EXIST',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Такого промокода не нашел'));
+      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(keyboard, contains(MessageTemplates.buttonEnterPromoCode));
+    });
+
+    test('rejects promo code that does not apply to booking category', () async {
+      final sender = _FakeSender();
+      final promoCodeRepository = _FakePromoCodeRepository(const <PromoCode>[
+        PromoCode(
+          code: 'YOGAONLY',
+          discountPercent: 20,
+          categories: <ActivityCategory>{ActivityCategory.yoga},
+        ),
+      ]);
+      final handlers = await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: _FakeBookingRepository(),
+        promoCodeRepository: promoCodeRepository,
+        chatId: 2106,
+        userId: 3106,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2106, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3106},
+        'text': MessageTemplates.buttonEnterPromoCode,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2106, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3106},
+        'text': 'YOGAONLY',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('не действует для выбранного типа'));
+    });
+
+    test('back button from promo code entry returns to payment confirmation', () async {
+      final sender = _FakeSender();
+      final handlers = await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: _FakeBookingRepository(),
+        promoCodeRepository: _FakePromoCodeRepository(const <PromoCode>[]),
+        chatId: 2107,
+        userId: 3107,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2107, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3107},
+        'text': MessageTemplates.buttonEnterPromoCode,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2107, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3107},
+        'text': MessageTemplates.buttonBack,
+      });
+
+      expect(handled, isTrue);
+      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(keyboard, contains(MessageTemplates.buttonEnterPromoCode));
+    });
+
+    test('does not show promo code button once booking is free', () async {
+      final sender = _FakeSender();
+      await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: _FakeBookingRepository(),
+        promoCodeRepository: _FakePromoCodeRepository(const <PromoCode>[]),
+        chatId: 2108,
+        userId: 3108,
+        price: 0,
+      );
+
+      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(keyboard, isNot(contains(MessageTemplates.buttonEnterPromoCode)));
     });
   });
 }

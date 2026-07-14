@@ -112,6 +112,13 @@ abstract interface class BookingRepository {
     String? paymentNote,
   });
 
+  Future<TrainingBooking?> applyPromoCode({
+    required int bookingId,
+    required String code,
+    required int discountPercent,
+    required int discountedPrice,
+  });
+
   Future<PaymentReviewResult> reviewSubmittedPayment({
     required int bookingId,
     required BookingStatus status,

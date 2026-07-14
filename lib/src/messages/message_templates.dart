@@ -36,6 +36,7 @@ final class MessageTemplates {
   static const String buttonPayFully = MessageCopy.buttonPayFully;
   static const String buttonPayPartially = MessageCopy.buttonPayPartially;
   static const String buttonUseStarterBonus = MessageCopy.buttonUseStarterBonus;
+  static const String buttonEnterPromoCode = MessageCopy.buttonEnterPromoCode;
   static const String buttonRescheduleBooking = MessageCopy.buttonRescheduleBooking;
   static const String buttonRepeatBooking = MessageCopy.buttonRepeatBooking;
   static const String buttonCompletePayment = MessageCopy.buttonCompletePayment;
@@ -663,6 +664,42 @@ final class MessageTemplates {
     return 'Стартовый бонус уже недоступен. Продолжай запись по стандартному сценарию оплаты 💪';
   }
 
+  String promoCodeEntryPrompt() {
+    return 'Введи текст промокода 🎟\n'
+        'Отправь его следующим сообщением или нажми «${MessageCopy.buttonBack}», чтобы отменить.';
+  }
+
+  String promoCodeUnavailable() {
+    return 'Промокод сейчас недоступен для этой записи.';
+  }
+
+  String promoCodeInvalid() {
+    return 'Такого промокода не нашел или он больше не действует 🤔\n'
+        'Проверь текст и попробуй еще раз, либо продолжи оплату без промокода.';
+  }
+
+  String promoCodeNotApplicableToCategory() {
+    return 'Этот промокод не действует для выбранного типа мероприятий.\n'
+        'Проверь условия промокода или продолжи оплату без него.';
+  }
+
+  String promoCodeApplied(TrainingBooking booking, {required int originalPrice}) {
+    final percent = booking.promoDiscountPercent ?? 0;
+    final newPrice = booking.trainingPrice ?? 0;
+    return 'Промокод <b>${_escapeHtml(booking.promoCode ?? '')}</b> применен ✅\n'
+        'Скидка: −$percent%\n'
+        'Было: ${_trainingPriceLabel(originalPrice)}\n'
+        'К оплате: <b>${_trainingPriceLabel(newPrice)}</b>\n\n'
+        '${paymentDetailsSent(booking)}';
+  }
+
+  String promoCodeAppliedFree(TrainingBooking booking, {required int originalPrice}) {
+    return 'Промокод <b>${_escapeHtml(booking.promoCode ?? '')}</b> применен ✅\n'
+        'Скидка: −100%\n'
+        'Было: ${_trainingPriceLabel(originalPrice)}\n'
+        'Запись #${booking.id} бесплатна, подтверждение оплаты не нужно 🎉';
+  }
+
   String everyFifthBonusApplied(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
     return 'Готово! Тренировка по бонусу «каждая 5-я бесплатно» активирована 🎉\n'
@@ -734,6 +771,17 @@ final class MessageTemplates {
         'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
         'Когда: ${formatter.format(booking.startsAt)}\n'
         'Формат: бесплатная тренировка за старт';
+  }
+
+  String promoCodeAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '🎟 <b>Применен промокод</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Когда: ${formatter.format(booking.startsAt)}\n'
+        'Промокод: ${_escapeHtml(booking.promoCode ?? '')} (−${booking.promoDiscountPercent ?? 0}%)\n'
+        'Сумма к оплате: ${_trainingPriceLabel(booking.trainingPrice)}';
   }
 
   String noPendingPayment() {
@@ -1486,11 +1534,13 @@ final class MessageTemplates {
 
   String paymentInstructions(TrainingBooking booking) {
     final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
+    final promoAmountLine = _promoAmountLine(booking);
     if (MessageFormatters.isYogaBooking(booking)) {
       return 'Реквизиты для оплаты:\n'
           '• Получатель: Елена П.\n'
           '• Банк: 🟨 Т-БАНК 🟨\n'
           '• Номер телефона: +7(961)313-11-44\n'
+          '$promoAmountLine'
           '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
           '• После отмены нужно записаться заново.';
     }
@@ -1508,8 +1558,17 @@ final class MessageTemplates {
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
         '• Номер телефона: +7(995)122-06-15\n'
+        '$promoAmountLine'
         '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
         '• После отмены нужно записаться заново.';
+  }
+
+  String _promoAmountLine(TrainingBooking booking) {
+    if (booking.promoCode == null) {
+      return '';
+    }
+    return '• К оплате: <b>${_trainingPriceLabel(booking.trainingPrice)}</b> '
+        '(промокод ${_escapeHtml(booking.promoCode!)}, −${booking.promoDiscountPercent ?? 0}%)\n';
   }
 
   String outdoorBookingRule(TrainingBooking booking) {
@@ -1801,11 +1860,13 @@ final class MessageTemplates {
     required bool showStarterBonus,
     bool showCancelBooking = false,
     bool showOutdoorPaymentTypeChoice = false,
+    bool showPromoCodeEntry = false,
   }) {
     return TelegramKeyboards.paymentConfirmationKeyboard(
       showStarterBonus: showStarterBonus,
       showCancelBooking: showCancelBooking,
       showOutdoorPaymentTypeChoice: showOutdoorPaymentTypeChoice,
+      showPromoCodeEntry: showPromoCodeEntry,
     );
   }
 

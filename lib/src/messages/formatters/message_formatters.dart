@@ -49,6 +49,10 @@ final class MessageFormatters {
     }
     final price = booking.trainingPrice;
     if (price != null && price <= 0) {
+      final promoCode = booking.promoCode;
+      if (promoCode != null && promoCode.isNotEmpty) {
+        return 'Бесплатно: промокод $promoCode 🎟';
+      }
       return 'Бесплатно 🎁';
     }
     return statusLabel(booking.status);

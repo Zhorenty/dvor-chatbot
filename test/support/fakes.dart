@@ -1,11 +1,13 @@
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/promo_code.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -95,6 +97,11 @@ final class FakeBookingRepository implements BookingRepository {
   bool throwAdminUpdateConflict = false;
   bool throwAdminCreateConflict = false;
   final Set<String> sentEconomicReports = <String>{};
+  int? lastPromoCodeBookingId;
+  String? lastPromoCode;
+  int? lastPromoDiscountPercent;
+  int? lastPromoDiscountedPrice;
+  int applyPromoCodeCalls = 0;
 
   @override
   Future<BookingCreateResult> createPendingBooking({
@@ -249,6 +256,31 @@ final class FakeBookingRepository implements BookingRepository {
       startsAt: training?.startsAt,
       location: training?.location ?? 'Hall',
       trainingPrice: training?.price,
+    );
+  }
+
+  @override
+  Future<TrainingBooking?> applyPromoCode({
+    required int bookingId,
+    required String code,
+    required int discountPercent,
+    required int discountedPrice,
+  }) async {
+    applyPromoCodeCalls += 1;
+    lastPromoCodeBookingId = bookingId;
+    lastPromoCode = code;
+    lastPromoDiscountPercent = discountPercent;
+    lastPromoDiscountedPrice = discountedPrice;
+    final training = lastCreatedTraining;
+    return fakeBooking(
+      id: bookingId,
+      status: discountPercent >= 100 ? BookingStatus.paid : BookingStatus.pendingPayment,
+      title: training?.title ?? 'Training',
+      startsAt: training?.startsAt,
+      location: training?.location ?? 'Hall',
+      trainingPrice: discountedPrice,
+      promoCode: code,
+      promoDiscountPercent: discountPercent,
     );
   }
 
@@ -594,6 +626,37 @@ final class FakeSubscriptionRepository implements SubscriptionRepository {
   }) async {}
 }
 
+final class FakePromoCodeRepository implements PromoCodeRepository {
+  FakePromoCodeRepository(
+    this.items, {
+    this.refreshResult = true,
+  });
+
+  List<PromoCode> items;
+  final bool refreshResult;
+  int refreshCalls = 0;
+
+  @override
+  List<PromoCode> all() => items;
+
+  @override
+  PromoCode? findByCode(String code) {
+    final normalized = code.trim().toUpperCase();
+    for (final item in items) {
+      if (item.code.trim().toUpperCase() == normalized) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<bool> refresh({bool force = false}) async {
+    refreshCalls += 1;
+    return refreshResult;
+  }
+}
+
 final class FakeTrainerDirectoryRepository implements TrainerDirectoryRepository {
   FakeTrainerDirectoryRepository(
     this.items, {
@@ -627,6 +690,8 @@ TrainingBooking fakeBooking({
   BookingStatus status = BookingStatus.pendingPayment,
   int? trainingPrice,
   String? paymentNote,
+  String? promoCode,
+  int? promoDiscountPercent,
   DateTime? createdAt,
   DateTime? updatedAt,
 }) {
@@ -644,6 +709,8 @@ TrainingBooking fakeBooking({
     paymentNote: paymentNote,
     paymentProofChatId: paymentProofChatId,
     paymentProofMessageId: paymentProofMessageId,
+    promoCode: promoCode,
+    promoDiscountPercent: promoDiscountPercent,
     createdAt: createdAt ?? now,
     updatedAt: updatedAt ?? now,
   );

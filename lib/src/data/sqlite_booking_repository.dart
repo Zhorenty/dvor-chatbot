@@ -73,6 +73,8 @@ final class SqliteBookingRepository implements BookingRepository {
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN payment_proof_chat_id INTEGER;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN payment_proof_message_id INTEGER;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN training_price INTEGER;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN promo_code TEXT;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN promo_discount_percent INTEGER;');
     db.execute('''
       CREATE TABLE IF NOT EXISTS economic_report_dispatches (
         report_type TEXT NOT NULL,
@@ -496,6 +498,39 @@ final class SqliteBookingRepository implements BookingRepository {
         <Object?>[status.dbValue, paymentNote, nowIso, bookingId],
       );
     }
+    return _findBookingById(bookingId);
+  }
+
+  @override
+  Future<TrainingBooking?> applyPromoCode({
+    required int bookingId,
+    required String code,
+    required int discountPercent,
+    required int discountedPrice,
+  }) async {
+    final db = _database;
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    final columns = <String>[
+      'promo_code = ?',
+      'promo_discount_percent = ?',
+      'training_price = ?',
+    ];
+    final args = <Object?>[code, discountPercent, discountedPrice];
+    if (discountPercent >= 100) {
+      columns.add('status = ?');
+      args.add(BookingStatus.paid.dbValue);
+    }
+    columns.add('updated_at = ?');
+    args.add(nowIso);
+    args.add(bookingId);
+    db.execute(
+      '''
+      UPDATE bookings
+      SET ${columns.join(', ')}
+      WHERE id = ?;
+      ''',
+      args,
+    );
     return _findBookingById(bookingId);
   }
 
@@ -1157,6 +1192,8 @@ final class SqliteBookingRepository implements BookingRepository {
       paymentNote: row['payment_note'] as String?,
       paymentProofChatId: row['payment_proof_chat_id'] as int?,
       paymentProofMessageId: row['payment_proof_message_id'] as int?,
+      promoCode: row['promo_code'] as String?,
+      promoDiscountPercent: row['promo_discount_percent'] as int?,
       createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
       updatedAt: DateTime.parse(row['updated_at'] as String).toLocal(),
     );

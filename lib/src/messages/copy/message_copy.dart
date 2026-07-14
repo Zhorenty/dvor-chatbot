@@ -13,6 +13,7 @@ final class MessageCopy {
   static const String buttonPayFully = '💯 Оплатил полностью';
   static const String buttonPayPartially = '🟡 Оплатил предоплату';
   static const String buttonUseStarterBonus = '🎁 Использовать бесплатную тренировку';
+  static const String buttonEnterPromoCode = '🎟 Ввести промокод';
   static const String buttonRescheduleBooking = '🔁 Перенести запись';
   static const String buttonRepeatBooking = '🔂 Повторить запись';
   static const String buttonCompletePayment = '💳 Доплатить';

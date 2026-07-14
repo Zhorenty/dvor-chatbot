@@ -1210,5 +1210,71 @@ void main() {
 
       await repository.close();
     });
+
+    test('applyPromoCode discounts price and keeps status for partial discount', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Functional',
+        startsAt: DateTime(2030, 6, 10, 19),
+        location: 'Gym A',
+        price: 1500,
+      );
+      final created = await repository.createPendingBooking(
+        userId: 2001,
+        training: training,
+      );
+
+      final updated = await repository.applyPromoCode(
+        bookingId: created.booking.id,
+        code: 'SUMMER50',
+        discountPercent: 50,
+        discountedPrice: 750,
+      );
+
+      expect(updated, isNotNull);
+      expect(updated!.trainingPrice, 750);
+      expect(updated.promoCode, 'SUMMER50');
+      expect(updated.promoDiscountPercent, 50);
+      expect(updated.status, BookingStatus.pendingPayment);
+
+      await repository.close();
+    });
+
+    test('applyPromoCode marks booking as paid for full discount', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Functional',
+        startsAt: DateTime(2030, 6, 10, 19),
+        location: 'Gym A',
+        price: 1500,
+      );
+      final created = await repository.createPendingBooking(
+        userId: 2002,
+        training: training,
+      );
+
+      final updated = await repository.applyPromoCode(
+        bookingId: created.booking.id,
+        code: 'FREEDAY',
+        discountPercent: 100,
+        discountedPrice: 0,
+      );
+
+      expect(updated, isNotNull);
+      expect(updated!.trainingPrice, 0);
+      expect(updated.promoCode, 'FREEDAY');
+      expect(updated.promoDiscountPercent, 100);
+      expect(updated.status, BookingStatus.paid);
+
+      await repository.close();
+    });
   });
 }

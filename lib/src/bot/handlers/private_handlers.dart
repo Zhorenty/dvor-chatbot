@@ -14,6 +14,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
@@ -44,6 +45,7 @@ final class PrivateHandlers {
     SubscriptionRepository subscriptionRepository = const NoopSubscriptionRepository(),
     OnboardingRepository onboardingRepository = const NoopOnboardingRepository(),
     TrainerDirectoryRepository trainerDirectoryRepository = const NoopTrainerDirectoryRepository(),
+    PromoCodeRepository promoCodeRepository = const NoopPromoCodeRepository(),
     required MessageTemplates templates,
     required Set<int> adminUserIds,
     int? adminChatId,
@@ -55,6 +57,7 @@ final class PrivateHandlers {
         _subscriptionRepository = subscriptionRepository,
         _onboardingRepository = onboardingRepository,
         _trainerDirectoryRepository = trainerDirectoryRepository,
+        _promoCodeRepository = promoCodeRepository,
         _templates = templates,
         _adminUserIds = adminUserIds,
         _adminChatId = adminChatId,
@@ -67,6 +70,7 @@ final class PrivateHandlers {
   final SubscriptionRepository _subscriptionRepository;
   final OnboardingRepository _onboardingRepository;
   final TrainerDirectoryRepository _trainerDirectoryRepository;
+  final PromoCodeRepository _promoCodeRepository;
   final MessageTemplates _templates;
   final Set<int> _adminUserIds;
   final int? _adminChatId;
@@ -263,6 +267,29 @@ final class PrivateHandlers {
             chatId,
             _templates.chooseTrainingForBooking(items),
             replyMarkup: _templates.bookingSelectionKeyboard(items),
+          );
+          return true;
+        case _PrivateFlowStep.enteringPromoCode:
+          final activeBooking = flowState!.activeBooking;
+          if (activeBooking == null) {
+            _flowByUserId.remove(userId);
+            await _sender.sendMessage(
+              chatId,
+              'Вернул в главное меню 👇',
+              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            );
+            return true;
+          }
+          _flowByUserId[userId] = flowState.copyWith(step: _PrivateFlowStep.paymentConfirmation);
+          await _sender.sendMessage(
+            chatId,
+            _templates.paymentProofRequired(),
+            replyMarkup: _templates.paymentConfirmationKeyboard(
+              showStarterBonus: flowState.starterBonusOffered,
+              showCancelBooking: _canCancelBookingByPolicy(activeBooking),
+              showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+              showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
+            ),
           );
           return true;
         case _PrivateFlowStep.confirmingSubscriptionPayment:
@@ -1367,6 +1394,7 @@ final class PrivateHandlers {
             showCancelBooking: booking != null && _canCancelBookingByPolicy(booking),
             showOutdoorPaymentTypeChoice:
                 booking != null && _shouldShowOutdoorPaymentTypeChoice(booking),
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
           ),
         );
         return true;
@@ -1381,6 +1409,7 @@ final class PrivateHandlers {
           showStarterBonus: currentFlow.starterBonusOffered,
           showCancelBooking: _canCancelBookingByPolicy(booking),
           showOutdoorPaymentTypeChoice: true,
+          showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
         ),
       );
       return true;
@@ -1494,6 +1523,7 @@ final class PrivateHandlers {
             showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
             showOutdoorPaymentTypeChoice:
                 activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
           ),
         );
         return true;
@@ -1507,6 +1537,7 @@ final class PrivateHandlers {
             showStarterBonus: flowState.starterBonusOffered,
             showCancelBooking: _canCancelBookingByPolicy(activeBooking),
             showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
           ),
         );
         return true;
@@ -1524,6 +1555,7 @@ final class PrivateHandlers {
             showStarterBonus: flowState.starterBonusOffered,
             showCancelBooking: _canCancelBookingByPolicy(activeBooking),
             showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
           ),
         );
         return true;
@@ -1643,6 +1675,131 @@ final class PrivateHandlers {
           showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
           showOutdoorPaymentTypeChoice:
               activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+          showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
+        ),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.paymentConfirmation &&
+        text != null &&
+        text == MessageTemplates.buttonEnterPromoCode) {
+      if (flowState == null) {
+        return false;
+      }
+      final activeBooking = flowState.activeBooking;
+      if (!_shouldShowPromoCodeEntry(activeBooking)) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.promoCodeUnavailable(),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: flowState.starterBonusOffered,
+            showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
+            showOutdoorPaymentTypeChoice:
+                activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
+          ),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = flowState.copyWith(step: _PrivateFlowStep.enteringPromoCode);
+      await _sender.sendMessage(
+        chatId,
+        _templates.promoCodeEntryPrompt(),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringPromoCode &&
+        text != null &&
+        !text.startsWith('/') &&
+        text != MessageTemplates.buttonBack &&
+        text != MessageTemplates.buttonMainMenu) {
+      final currentFlow = flowState!;
+      final activeBooking = currentFlow.activeBooking;
+      if (activeBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.noPendingPayment(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      await _promoCodeRepository.refresh();
+      final promo = _promoCodeRepository.findByCode(text.trim());
+      final category = _catalogService.categoryForBooking(activeBooking);
+      if (promo == null || !promo.appliesTo(category)) {
+        _flowByUserId[userId] = currentFlow.copyWith(step: _PrivateFlowStep.paymentConfirmation);
+        await _sender.sendMessage(
+          chatId,
+          promo == null
+              ? _templates.promoCodeInvalid()
+              : _templates.promoCodeNotApplicableToCategory(),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: currentFlow.starterBonusOffered,
+            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
+            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
+          ),
+        );
+        return true;
+      }
+      final originalPrice = activeBooking.trainingPrice ?? 0;
+      final discountedPrice = promo.discountPercent >= 100
+          ? 0
+          : (originalPrice * (100 - promo.discountPercent) / 100).round();
+      final updatedBooking = await _bookingRepository.applyPromoCode(
+        bookingId: activeBooking.id,
+        code: promo.code,
+        discountPercent: promo.discountPercent,
+        discountedPrice: discountedPrice,
+      );
+      if (updatedBooking == null) {
+        _flowByUserId[userId] = currentFlow.copyWith(step: _PrivateFlowStep.paymentConfirmation);
+        await _sender.sendMessage(
+          chatId,
+          _templates.promoCodeInvalid(),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: currentFlow.starterBonusOffered,
+            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
+            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
+          ),
+        );
+        return true;
+      }
+      await _notifyAdminAboutPromoCodeApplied(updatedBooking);
+      if (promo.discountPercent >= 100) {
+        await _maybeNotifyGroupAboutCapacity(
+          _trainingInfoFromBooking(updatedBooking),
+          bookingStatus: updatedBooking.status,
+        );
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.promoCodeAppliedFree(updatedBooking, originalPrice: originalPrice),
+          parseMode: 'HTML',
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = currentFlow.copyWith(
+        step: _PrivateFlowStep.paymentConfirmation,
+        activeBooking: updatedBooking,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.promoCodeApplied(updatedBooking, originalPrice: originalPrice),
+        parseMode: 'HTML',
+        replyMarkup: _templates.paymentConfirmationKeyboard(
+          showStarterBonus: currentFlow.starterBonusOffered,
+          showCancelBooking: _canCancelBookingByPolicy(updatedBooking),
+          showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(updatedBooking),
+          showPromoCodeEntry: _shouldShowPromoCodeEntry(updatedBooking),
         ),
       );
       return true;
@@ -1667,6 +1824,7 @@ final class PrivateHandlers {
           showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
           showOutdoorPaymentTypeChoice:
               activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+          showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
         ),
       );
       return true;
@@ -1687,7 +1845,11 @@ final class PrivateHandlers {
       if (!trainersRefreshOk) {
         l.w('Trainer directory refresh failed during /refresh_schedule.');
       }
-      final refreshOk = scheduleRefreshOk && trainersRefreshOk;
+      final promoCodesRefreshOk = await _promoCodeRepository.refresh(force: true);
+      if (!promoCodesRefreshOk) {
+        l.w('Promo codes refresh failed during /refresh_schedule.');
+      }
+      final refreshOk = scheduleRefreshOk && trainersRefreshOk && promoCodesRefreshOk;
       await _sendAdminMessage(
         chatId,
         refreshOk ? _templates.scheduleRefreshDone() : _templates.scheduleRefreshFailed(),
@@ -3323,6 +3485,7 @@ final class PrivateHandlers {
         showStarterBonus: starterBonusOffered,
         showCancelBooking: _canCancelBookingByPolicy(result.booking),
         showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(result.booking),
+        showPromoCodeEntry: _shouldShowPromoCodeEntry(result.booking),
       ),
       parseMode: 'HTML',
     );
@@ -4102,6 +4265,21 @@ final class PrivateHandlers {
     }
   }
 
+  Future<void> _notifyAdminAboutPromoCodeApplied(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.promoCodeAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about promo code booking: $error', stackTrace);
+    }
+  }
+
   Future<bool> _hasAnyFreeTrainingBonusAvailable(int userId) async {
     final starterAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
     if (starterAvailable) {
@@ -4596,6 +4774,14 @@ final class PrivateHandlers {
     return _bookingPolicyService.shouldShowOutdoorPaymentTypeChoice(booking);
   }
 
+  bool _shouldShowPromoCodeEntry(TrainingBooking? booking) {
+    if (booking == null || booking.promoCode != null) {
+      return false;
+    }
+    final price = booking.trainingPrice;
+    return price != null && price > 0;
+  }
+
   String? _composePaymentNote({
     required String? caption,
     required PaymentChoice? choice,
@@ -4685,10 +4871,12 @@ final class PrivateHandlers {
     await _sender.sendMessage(
       chatId,
       _templates.paymentDetailsSent(booking),
+      parseMode: 'HTML',
       replyMarkup: _templates.paymentConfirmationKeyboard(
         showStarterBonus: starterBonusOffered,
         showCancelBooking: _canCancelBookingByPolicy(booking),
         showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(booking),
+        showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
       ),
     );
   }
