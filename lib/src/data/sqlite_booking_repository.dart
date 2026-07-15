@@ -535,17 +535,18 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
-  Future<bool> isPromoCodeUsed(String code) async {
+  Future<bool> isPromoCodeUsed(String code, int userId) async {
     final db = _database;
     final normalized = code.trim().toUpperCase();
     final rows = db.select(
       '''
       SELECT 1 FROM bookings
       WHERE UPPER(TRIM(promo_code)) = ?
+        AND user_id = ?
         AND status != ?
       LIMIT 1;
       ''',
-      <Object?>[normalized, BookingStatus.cancelled.dbValue],
+      <Object?>[normalized, userId, BookingStatus.cancelled.dbValue],
     );
     return rows.isNotEmpty;
   }

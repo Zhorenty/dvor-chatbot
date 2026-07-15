@@ -286,7 +286,7 @@ final class FakeBookingRepository implements BookingRepository {
   }
 
   @override
-  Future<bool> isPromoCodeUsed(String code) async => promoCodeAlreadyUsed;
+  Future<bool> isPromoCodeUsed(String code, int userId) async => promoCodeAlreadyUsed;
 
   @override
   Future<PaymentReviewResult> reviewSubmittedPayment({

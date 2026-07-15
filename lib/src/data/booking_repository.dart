@@ -119,9 +119,9 @@ abstract interface class BookingRepository {
     required int discountedPrice,
   });
 
-  /// Returns true if the promo [code] has already been applied to any
-  /// non-cancelled booking.  Used to enforce single-use promo codes.
-  Future<bool> isPromoCodeUsed(String code);
+  /// Returns true if [userId] has already applied promo [code] to any
+  /// non-cancelled booking.  Used to enforce per-user single-use promo codes.
+  Future<bool> isPromoCodeUsed(String code, int userId);
 
   Future<PaymentReviewResult> reviewSubmittedPayment({
     required int bookingId,

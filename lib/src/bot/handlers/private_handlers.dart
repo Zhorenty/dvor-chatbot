@@ -1756,7 +1756,7 @@ final class PrivateHandlers {
         );
         return true;
       }
-      if (promo.singleUse && await _bookingRepository.isPromoCodeUsed(promo.code)) {
+      if (promo.singleUse && await _bookingRepository.isPromoCodeUsed(promo.code, userId)) {
         _flowByUserId[userId] = currentFlow.copyWith(step: _PrivateFlowStep.paymentConfirmation);
         await _sender.sendMessage(
           chatId,
