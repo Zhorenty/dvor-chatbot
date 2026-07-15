@@ -535,6 +535,22 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<bool> isPromoCodeUsed(String code) async {
+    final db = _database;
+    final normalized = code.trim().toUpperCase();
+    final rows = db.select(
+      '''
+      SELECT 1 FROM bookings
+      WHERE UPPER(TRIM(promo_code)) = ?
+        AND status != ?
+      LIMIT 1;
+      ''',
+      <Object?>[normalized, BookingStatus.cancelled.dbValue],
+    );
+    return rows.isNotEmpty;
+  }
+
+  @override
   Future<PaymentReviewResult> reviewSubmittedPayment({
     required int bookingId,
     required BookingStatus status,

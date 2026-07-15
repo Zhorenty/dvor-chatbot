@@ -5,6 +5,7 @@ final class PromoCode {
     required this.code,
     required this.discountPercent,
     this.categories = const <ActivityCategory>{},
+    this.singleUse = false,
   });
 
   final String code;
@@ -13,6 +14,10 @@ final class PromoCode {
   /// Categories this promo code applies to. An empty set means it applies
   /// to all categories.
   final Set<ActivityCategory> categories;
+
+  /// If true the promo code may only be applied to one booking globally.
+  /// Subsequent attempts to apply it will be rejected.
+  final bool singleUse;
 
   bool appliesTo(ActivityCategory category) {
     return categories.isEmpty || categories.contains(category);
@@ -24,6 +29,7 @@ final class PromoCode {
         other is PromoCode &&
             other.code == code &&
             other.discountPercent == discountPercent &&
+            other.singleUse == singleUse &&
             other.categories.length == categories.length &&
             other.categories.containsAll(categories);
   }
@@ -31,6 +37,6 @@ final class PromoCode {
   @override
   int get hashCode {
     final categoriesHash = categories.fold<int>(0, (acc, item) => acc ^ item.hashCode);
-    return Object.hash(code, discountPercent, categoriesHash);
+    return Object.hash(code, discountPercent, singleUse, categoriesHash);
   }
 }

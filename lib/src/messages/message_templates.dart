@@ -684,6 +684,11 @@ final class MessageTemplates {
         'Проверь условия промокода или продолжи оплату без него.';
   }
 
+  String promoCodeAlreadyUsed() {
+    return 'Этот промокод уже был использован и больше не действует 🙅\n'
+        'Попробуй другой промокод или продолжи оплату без него.';
+  }
+
   String promoCodeApplied(TrainingBooking booking, {required int originalPrice}) {
     final percent = booking.promoDiscountPercent ?? 0;
     final newPrice = booking.trainingPrice ?? 0;

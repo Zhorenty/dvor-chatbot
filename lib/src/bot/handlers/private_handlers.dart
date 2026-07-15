@@ -1756,6 +1756,20 @@ final class PrivateHandlers {
         );
         return true;
       }
+      if (promo.singleUse && await _bookingRepository.isPromoCodeUsed(promo.code)) {
+        _flowByUserId[userId] = currentFlow.copyWith(step: _PrivateFlowStep.paymentConfirmation);
+        await _sender.sendMessage(
+          chatId,
+          _templates.promoCodeAlreadyUsed(),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: currentFlow.starterBonusOffered,
+            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
+            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
+          ),
+        );
+        return true;
+      }
       final originalPrice = activeBooking.trainingPrice ?? 0;
       final discountedPrice = promo.discountPercent >= 100
           ? 0

@@ -102,6 +102,7 @@ final class FakeBookingRepository implements BookingRepository {
   int? lastPromoDiscountPercent;
   int? lastPromoDiscountedPrice;
   int applyPromoCodeCalls = 0;
+  bool promoCodeAlreadyUsed = false;
 
   @override
   Future<BookingCreateResult> createPendingBooking({
@@ -283,6 +284,9 @@ final class FakeBookingRepository implements BookingRepository {
       promoDiscountPercent: discountPercent,
     );
   }
+
+  @override
+  Future<bool> isPromoCodeUsed(String code) async => promoCodeAlreadyUsed;
 
   @override
   Future<PaymentReviewResult> reviewSubmittedPayment({

@@ -175,6 +175,62 @@ void main() {
       expect(repository.findByCode('summer10'), isNotNull);
       expect(repository.findByCode('  SuMmEr10  '.trim()), isNotNull);
     });
+
+    test('parses single_use column — "да" and "true" treated as single-use', () async {
+      final repository = GoogleSheetsPromoCodeRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'code,discount_percent,single_use\n'
+            'ONCE,10,да\n'
+            'MULTI,10,нет\n'
+            'BOOL,10,true\n'
+            'NOVAL,10,',
+            200,
+            headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+          );
+        }),
+      );
+
+      await repository.refresh(force: true);
+      expect(repository.findByCode('ONCE')!.singleUse, isTrue);
+      expect(repository.findByCode('MULTI')!.singleUse, isFalse);
+      expect(repository.findByCode('BOOL')!.singleUse, isTrue);
+      expect(repository.findByCode('NOVAL')!.singleUse, isFalse);
+    });
+
+    test('parses Russian alias одноразовый for single_use column', () async {
+      final repository = GoogleSheetsPromoCodeRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'промокод,скидка,одноразовый\n'
+            'VIP50,50,да',
+            200,
+            headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+          );
+        }),
+      );
+
+      await repository.refresh(force: true);
+      expect(repository.findByCode('VIP50')!.singleUse, isTrue);
+    });
+
+    test('singleUse defaults to false when column is absent', () async {
+      final repository = GoogleSheetsPromoCodeRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'code,discount_percent\n'
+            'OLD,20',
+            200,
+          );
+        }),
+      );
+
+      await repository.refresh(force: true);
+      expect(repository.findByCode('OLD')!.singleUse, isFalse);
+    });
   });
 
   group('PromoCode', () {

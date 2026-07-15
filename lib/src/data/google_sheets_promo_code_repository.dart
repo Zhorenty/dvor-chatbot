@@ -100,6 +100,17 @@ final class GoogleSheetsPromoCodeRepository implements PromoCodeRepository {
         'мероприятия',
       ],
     );
+    final singleUseIndex = _firstExistingHeaderIndex(
+      headers,
+      const <String>[
+        'single_use',
+        'singleuse',
+        'одноразовый',
+        'одноразовая',
+        'одноразовое',
+        'одноразовый_промокод',
+      ],
+    );
 
     if (codeIndex < 0 || discountIndex < 0) {
       l.w('Promo codes CSV must contain code and discount_percent columns. Skipping sync.');
@@ -119,10 +130,12 @@ final class GoogleSheetsPromoCodeRepository implements PromoCodeRepository {
         continue;
       }
       final categoriesRaw = categoriesIndex < 0 ? '' : _cell(row, categoriesIndex);
+      final singleUseRaw = singleUseIndex < 0 ? '' : _cell(row, singleUseIndex);
       byCode[code.trim().toUpperCase()] = PromoCode(
         code: code.trim(),
         discountPercent: discountPercent,
         categories: _parseCategories(categoriesRaw),
+        singleUse: _parseSingleUse(singleUseRaw),
       );
     }
     return byCode.values.toList(growable: false);
@@ -159,6 +172,16 @@ final class GoogleSheetsPromoCodeRepository implements PromoCodeRepository {
       }
     }
     return categories;
+  }
+
+  bool _parseSingleUse(String raw) {
+    final normalized = raw.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    return normalized == 'true' ||
+        normalized == 'yes' ||
+        normalized == 'да' ||
+        normalized == '1' ||
+        normalized.startsWith('однораз');
   }
 
   int _firstExistingHeaderIndex(List<String> headers, List<String> candidates) {

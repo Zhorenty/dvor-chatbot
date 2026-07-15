@@ -5380,5 +5380,67 @@ void main() {
       final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(keyboard, isNot(contains(MessageTemplates.buttonEnterPromoCode)));
     });
+
+    test('rejects single-use promo code that has already been used', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()..promoCodeAlreadyUsed = true;
+      final promoCodeRepository = _FakePromoCodeRepository(const <PromoCode>[
+        PromoCode(code: 'ONCE', discountPercent: 50, singleUse: true),
+      ]);
+      final handlers = await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: bookingRepository,
+        promoCodeRepository: promoCodeRepository,
+        chatId: 2109,
+        userId: 3109,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2109, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3109},
+        'text': MessageTemplates.buttonEnterPromoCode,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2109, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3109},
+        'text': 'ONCE',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.applyPromoCodeCalls, 0);
+      expect(sender.messages.last.text, contains('уже был использован'));
+      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(keyboard, contains(MessageTemplates.buttonEnterPromoCode));
+    });
+
+    test('allows single-use promo code when not yet used', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()..promoCodeAlreadyUsed = false;
+      final promoCodeRepository = _FakePromoCodeRepository(const <PromoCode>[
+        PromoCode(code: 'ONCE', discountPercent: 50, singleUse: true),
+      ]);
+      final handlers = await openPaymentConfirmation(
+        sender: sender,
+        bookingRepository: bookingRepository,
+        promoCodeRepository: promoCodeRepository,
+        chatId: 2110,
+        userId: 3110,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2110, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3110},
+        'text': MessageTemplates.buttonEnterPromoCode,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2110, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3110},
+        'text': 'ONCE',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.applyPromoCodeCalls, 1);
+      expect(sender.messages.last.text, contains('ONCE'));
+    });
   });
 }
