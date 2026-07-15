@@ -100,6 +100,19 @@ final class ActivityCatalogService {
     return null;
   }
 
+  /// Returns the [TrainingInfo] from the current schedule that matches [booking],
+  /// or null if the training is no longer in the schedule cache.
+  TrainingInfo? trainingInfoForBooking(TrainingBooking booking) {
+    final category = categoryForBooking(booking);
+    final items = bookableItems(category, limit: 20);
+    for (final item in items) {
+      if (item.sessionKey == booking.trainingKey) {
+        return item;
+      }
+    }
+    return null;
+  }
+
   ActivityCategory categoryForBooking(TrainingBooking booking) {
     final keyPrefix = booking.trainingKey.split('|').firstOrNull;
     if (keyPrefix != null) {

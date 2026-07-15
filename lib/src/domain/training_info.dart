@@ -12,6 +12,7 @@ final class TrainingInfo {
     this.includeTrainersInParticipants = false,
     this.coach,
     this.notes,
+    this.promoRestricted = false,
   });
 
   final String title;
@@ -24,6 +25,10 @@ final class TrainingInfo {
   final bool includeTrainersInParticipants;
   final String? coach;
   final String? notes;
+
+  /// When true, promo codes and free-training bonuses cannot be applied
+  /// to bookings for this training.
+  final bool promoRestricted;
 
   String get sessionKey =>
       '${category.name}|${startsAt.toUtc().toIso8601String()}|$title|$location';

@@ -204,6 +204,17 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
       ],
     );
     final notesIndex = headers.indexOf('notes');
+    final promoRestrictedIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'promo_restricted',
+        'no_promo',
+        'restrict_promo',
+        'without_promo',
+        'без_промокода',
+        'без_скидок',
+      ],
+    );
     final hasStartsAt = startsAtIndex >= 0;
     final hasDateAndTime = dateIndex >= 0 && timeIndex >= 0;
     if (titleIndex < 0 || locationIndex < 0 || (!hasStartsAt && !hasDateAndTime)) {
@@ -247,6 +258,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
               _parseBoolFlag(_optionalCell(row, includeTrainersInParticipantsIndex)),
           coach: _optionalCell(row, coachIndex),
           notes: _optionalCell(row, notesIndex),
+          promoRestricted: _parseBoolFlag(_optionalCell(row, promoRestrictedIndex)),
         ),
       );
     }

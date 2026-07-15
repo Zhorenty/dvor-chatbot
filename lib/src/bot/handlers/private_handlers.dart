@@ -3575,6 +3575,7 @@ final class PrivateHandlers {
       return;
     }
     final starterBonusOffered = selectedTraining.category == _ActivityCategory.trainings &&
+        !selectedTraining.promoRestricted &&
         await _hasAnyFreeTrainingBonusAvailable(userId);
     _flowByUserId[userId] = flowState.copyWith(
       step: _PrivateFlowStep.paymentConfirmation,
@@ -4892,7 +4893,9 @@ final class PrivateHandlers {
       return false;
     }
     final price = booking.trainingPrice;
-    return price != null && price > 0;
+    if (price == null || price <= 0) return false;
+    final training = _catalogService.trainingInfoForBooking(booking);
+    return training?.promoRestricted != true;
   }
 
   String? _composePaymentNote({
@@ -4973,6 +4976,7 @@ final class PrivateHandlers {
   }) async {
     final starterBonusOffered =
         _catalogService.categoryForBooking(booking) == _ActivityCategory.trainings &&
+            !(_catalogService.trainingInfoForBooking(booking)?.promoRestricted ?? false) &&
             await _hasAnyFreeTrainingBonusAvailable(userId);
     _flowByUserId[userId] = _PrivateFlowState(
       step: _PrivateFlowStep.paymentConfirmation,

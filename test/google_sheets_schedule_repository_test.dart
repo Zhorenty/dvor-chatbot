@@ -68,6 +68,35 @@ void main() {
       expect(upcoming.last.locationUrl, 'https://maps.example/functional');
     });
 
+    test('parses promo_restricted flag from csv', () async {
+      final repository = GoogleSheetsScheduleRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          final gid = request.url.queryParameters['gid'];
+          if (gid == null || gid == '0') {
+            return http.Response(
+              'title,starts_at,location,price,promo_restricted\n'
+              'Open,2030-06-02 18:30,Stadium B,500,\n'
+              'Restricted,2030-06-04 19:00,Gym A,700,yes\n'
+              'AlsoOpen,2030-06-06 10:00,Park C,400,no',
+              200,
+            );
+          }
+          return _mockCsvResponse(request);
+        }),
+      );
+
+      await repository.refresh(force: true);
+      final upcoming = repository.upcoming(now: DateTime(2030, 6, 1), limit: 5);
+      expect(upcoming, hasLength(3));
+      final open = upcoming.firstWhere((t) => t.title == 'Open');
+      final restricted = upcoming.firstWhere((t) => t.title == 'Restricted');
+      final alsoOpen = upcoming.firstWhere((t) => t.title == 'AlsoOpen');
+      expect(open.promoRestricted, isFalse);
+      expect(restricted.promoRestricted, isTrue);
+      expect(alsoOpen.promoRestricted, isFalse);
+    });
+
     test('keeps previous cache when refresh fails', () async {
       var requestCount = 0;
       final repository = GoogleSheetsScheduleRepository(
