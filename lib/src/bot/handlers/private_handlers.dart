@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
+import 'package:dvor_chatbot/src/application/broadcast_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
 import 'package:dvor_chatbot/src/application/payment_review_service.dart';
@@ -98,6 +99,11 @@ final class PrivateHandlers {
     bookingRepository: _bookingRepository,
     catalogService: _catalogService,
     nowProvider: _nowProvider,
+  );
+  late final BroadcastService _broadcastService = BroadcastService(
+    sender: _sender,
+    onboardingRepository: _onboardingRepository,
+    groupChatId: _targetChatId,
   );
   final PrivateUpdateRouter _updateRouter = const PrivateUpdateRouter();
   final ScheduleHandler _scheduleHandler = const ScheduleHandler();
@@ -352,6 +358,8 @@ final class PrivateHandlers {
         case _PrivateFlowStep.enteringAdminSubscriptionSearchQuery:
         case _PrivateFlowStep.selectingAdminSubscriptionReasonTemplate:
         case _PrivateFlowStep.enteringAdminSubscriptionReasonComment:
+        case _PrivateFlowStep.enteringAdminBroadcastText:
+        case _PrivateFlowStep.selectingAdminBroadcastTarget:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
             chatId,
@@ -2035,6 +2043,111 @@ final class PrivateHandlers {
         replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
       );
       return true;
+    }
+
+    if (text != null && text == MessageTemplates.buttonBroadcast) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (userId == null) {
+        return false;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.enteringAdminBroadcastText,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminBroadcastPrompt(),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringAdminBroadcastText &&
+        text != null &&
+        !text.startsWith('/')) {
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingAdminBroadcastTarget,
+        adminBroadcastText: text,
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminBroadcastPreview(text),
+        replyMarkup: _templates.broadcastTargetKeyboard(hasGroup: _broadcastService.hasGroup),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        text != null &&
+        (text == '/broadcast_users' ||
+            text == '/broadcast_group' ||
+            text == '/broadcast_users_and_group' ||
+            text == '/broadcast_cancel')) {
+      if (!canRunAdminAction) {
+        return false;
+      }
+      if (flowState?.step != _PrivateFlowStep.selectingAdminBroadcastTarget) {
+        return false;
+      }
+      final broadcastText = flowState?.adminBroadcastText;
+      _flowByUserId.remove(userId);
+
+      if (text == '/broadcast_cancel' || broadcastText == null) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminBroadcastCancelled(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+
+      if (text == '/broadcast_group') {
+        final sent = await _broadcastService.broadcastToGroup(broadcastText);
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminBroadcastGroupOnly(groupSent: sent),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+
+      if (text == '/broadcast_users') {
+        final result = await _broadcastService.broadcastToUsers(broadcastText);
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminBroadcastSent(
+            sent: result.sent,
+            failed: result.failed,
+            total: result.total,
+            groupSent: false,
+          ),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+
+      if (text == '/broadcast_users_and_group') {
+        final result = await _broadcastService.broadcastToUsersAndGroup(broadcastText);
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminBroadcastSent(
+            sent: result.sent,
+            failed: result.failed,
+            total: result.total,
+            groupSent: _broadcastService.hasGroup,
+          ),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
     }
 
     if (userId != null &&

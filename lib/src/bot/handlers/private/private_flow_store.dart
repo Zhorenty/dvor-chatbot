@@ -49,6 +49,8 @@ enum PrivateFlowStep {
   selectingAdminCreateStatus,
   confirmingAdminCreate,
   selectingAdminClientNotificationPreference,
+  enteringAdminBroadcastText,
+  selectingAdminBroadcastTarget,
 }
 
 enum PaymentChoice {
@@ -101,6 +103,7 @@ final class PrivateFlowState {
     this.outdoorDetailType,
     this.adminClientNotificationAction,
     this.adminClientNotificationBooking,
+    this.adminBroadcastText,
   });
 
   final PrivateFlowStep step;
@@ -127,6 +130,7 @@ final class PrivateFlowState {
   final OutdoorDetailType? outdoorDetailType;
   final AdminClientNotificationAction? adminClientNotificationAction;
   final TrainingBooking? adminClientNotificationBooking;
+  final String? adminBroadcastText;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -153,6 +157,7 @@ final class PrivateFlowState {
     Object? outdoorDetailType = _privateFlowUnset,
     Object? adminClientNotificationAction = _privateFlowUnset,
     Object? adminClientNotificationBooking = _privateFlowUnset,
+    Object? adminBroadcastText = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -209,6 +214,9 @@ final class PrivateFlowState {
       adminClientNotificationBooking: identical(adminClientNotificationBooking, _privateFlowUnset)
           ? this.adminClientNotificationBooking
           : adminClientNotificationBooking as TrainingBooking?,
+      adminBroadcastText: identical(adminBroadcastText, _privateFlowUnset)
+          ? this.adminBroadcastText
+          : adminBroadcastText as String?,
     );
   }
 }

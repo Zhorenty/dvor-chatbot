@@ -326,6 +326,9 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
       ),
     );
   }
+
+  @override
+  Future<List<int>> getAllStartedUserIds() async => const <int>[];
 }
 
 final class _WelcomeRecord {

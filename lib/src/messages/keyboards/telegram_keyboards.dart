@@ -37,6 +37,9 @@ final class TelegramKeyboards {
           <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonSubscriptionsAdmin},
           ],
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonBroadcast},
+          ],
         ],
       );
     }
@@ -767,5 +770,44 @@ final class TelegramKeyboards {
         ],
       ],
     );
+  }
+
+  static Map<String, Object?> broadcastTargetKeyboard({required bool hasGroup}) {
+    final rows = <List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonBroadcastToUsers,
+          'callback_data': MessageCopy.callbackBroadcastToUsers,
+        },
+      ],
+    ];
+    if (hasGroup) {
+      rows
+        ..add(
+          <Map<String, String>>[
+            <String, String>{
+              'text': MessageCopy.buttonBroadcastToUsersAndGroup,
+              'callback_data': MessageCopy.callbackBroadcastToUsersAndGroup,
+            },
+          ],
+        )
+        ..add(
+          <Map<String, String>>[
+            <String, String>{
+              'text': MessageCopy.buttonBroadcastToGroup,
+              'callback_data': MessageCopy.callbackBroadcastToGroup,
+            },
+          ],
+        );
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonBroadcastCancel,
+          'callback_data': MessageCopy.callbackBroadcastCancel,
+        },
+      ],
+    );
+    return <String, Object?>{'inline_keyboard': rows};
   }
 }

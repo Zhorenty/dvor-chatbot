@@ -72,6 +72,7 @@ final class MessageTemplates {
   static const String buttonReasonDuplicate = MessageCopy.buttonReasonDuplicate;
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
+  static const String buttonBroadcast = MessageCopy.buttonBroadcast;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;
   static const String buttonBookingsList = MessageCopy.buttonBookingsList;
   static const String buttonCreateBooking = MessageCopy.buttonCreateBooking;
@@ -1798,6 +1799,57 @@ final class MessageTemplates {
 
   String chooseEconomicSummaryPeriod() {
     return '📅 <b>Выбери период для экономической сводки</b>';
+  }
+
+  String adminBroadcastPrompt() {
+    return '📢 <b>Рассылка</b>\n\n'
+        'Введи текст сообщения для рассылки.\n'
+        'Поддерживается HTML-форматирование: '
+        '<code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;code&gt;</code> и т.д.\n\n'
+        'Нажми «${MessageCopy.buttonMainMenu}», чтобы отменить.';
+  }
+
+  String adminBroadcastPreview(String text) {
+    return '👁 <b>Предпросмотр сообщения:</b>\n\n$text\n\n'
+        '📌 Выбери, куда отправить рассылку:';
+  }
+
+  String adminBroadcastSent({
+    required int sent,
+    required int failed,
+    required int total,
+    required bool groupSent,
+  }) {
+    final buffer = StringBuffer('✅ <b>Рассылка завершена</b>\n\n');
+    buffer.write('👥 Пользователям: <b>$sent</b> из <b>$total</b> доставлено');
+    if (failed > 0) {
+      buffer.write(', не доставлено: <b>$failed</b>');
+    }
+    buffer.writeln('.');
+    if (groupSent) {
+      buffer.writeln('💬 В группу: отправлено.');
+    }
+    return buffer.toString();
+  }
+
+  String adminBroadcastGroupOnly({required bool groupSent}) {
+    if (groupSent) {
+      return '✅ <b>Сообщение отправлено в группу.</b>';
+    }
+    return '⚠️ Группа не настроена или не удалось отправить сообщение в группу.';
+  }
+
+  String adminBroadcastCancelled() {
+    return '🚫 Рассылка отменена.';
+  }
+
+  String adminBroadcastNoUsers() {
+    return '⚠️ Нет пользователей для рассылки.\n'
+        'Только пользователи, начавшие диалог с ботом (/start), получат сообщения.';
+  }
+
+  Map<String, Object?> broadcastTargetKeyboard({required bool hasGroup}) {
+    return TelegramKeyboards.broadcastTargetKeyboard(hasGroup: hasGroup);
   }
 
   Map<String, Object?> privateMenuKeyboard({

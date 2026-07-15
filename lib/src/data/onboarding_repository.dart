@@ -84,6 +84,10 @@ abstract interface class OnboardingRepository {
     required int inviterUserId,
     required DateTime attributedAt,
   });
+
+  /// Returns IDs of all users who have started the bot (sent /start).
+  /// Only these users can receive proactive DMs.
+  Future<List<int>> getAllStartedUserIds();
 }
 
 final class NoopOnboardingRepository implements OnboardingRepository {
@@ -178,4 +182,7 @@ final class NoopOnboardingRepository implements OnboardingRepository {
     required int inviterUserId,
     required DateTime attributedAt,
   }) async {}
+
+  @override
+  Future<List<int>> getAllStartedUserIds() async => const <int>[];
 }

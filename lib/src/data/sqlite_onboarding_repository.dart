@@ -425,6 +425,15 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
     }
   }
 
+  @override
+  Future<List<int>> getAllStartedUserIds() async {
+    final db = _database;
+    final rows = db.select(
+      'SELECT user_id FROM onboarding_users WHERE started_at IS NOT NULL;',
+    );
+    return rows.map((row) => row['user_id'] as int).toList();
+  }
+
   void _ensureUserRow(int userId, {required String nowIso}) {
     final db = _database;
     db.execute(

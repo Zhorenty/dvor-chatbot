@@ -80,6 +80,12 @@ final class MessageCopy {
   static const String buttonSummaryCurrentMonth = '📆 Текущий месяц';
   static const String buttonSummaryPreviousMonth = '🗓 Прошлый месяц';
 
+  static const String buttonBroadcast = '📢 Рассылка';
+  static const String buttonBroadcastToUsers = '👥 Только пользователям';
+  static const String buttonBroadcastToGroup = '💬 Только в группу';
+  static const String buttonBroadcastToUsersAndGroup = '📢 Пользователям и в группу';
+  static const String buttonBroadcastCancel = '✖️ Отменить';
+
   static const String callbackApprovePaymentPrefix = 'payment:approve:';
   static const String callbackApprovePartialPaymentPrefix = 'payment:approve_partial:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';
@@ -87,6 +93,10 @@ final class MessageCopy {
   static const String callbackApproveSubscriptionPrefix = 'subscription:approve:';
   static const String callbackRejectSubscriptionPrefix = 'subscription:reject:';
   static const String callbackCancelSubscriptionPrefix = 'subscription:cancel:';
+  static const String callbackBroadcastToUsers = 'broadcast:users';
+  static const String callbackBroadcastToGroup = 'broadcast:group';
+  static const String callbackBroadcastToUsersAndGroup = 'broadcast:users_and_group';
+  static const String callbackBroadcastCancel = 'broadcast:cancel';
 
   static const String scheduleDocumentUrl =
       'https://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';

@@ -1044,6 +1044,11 @@ final class FakeOnboardingRepository implements OnboardingRepository {
     }
     referralInviterByInvitee.putIfAbsent(inviteeUserId, () => inviterUserId);
   }
+
+  @override
+  Future<List<int>> getAllStartedUserIds() async {
+    return _stateByUserId.keys.toList();
+  }
 }
 
 final class _FakeOnboardingState {

@@ -146,5 +146,17 @@ String? callbackToCommandText(String? callbackData) {
     final requestId = int.tryParse(rawId);
     return requestId == null ? null : '/cancel_subscription $requestId';
   }
+  if (callbackData == MessageCopy.callbackBroadcastToUsers) {
+    return '/broadcast_users';
+  }
+  if (callbackData == MessageCopy.callbackBroadcastToGroup) {
+    return '/broadcast_group';
+  }
+  if (callbackData == MessageCopy.callbackBroadcastToUsersAndGroup) {
+    return '/broadcast_users_and_group';
+  }
+  if (callbackData == MessageCopy.callbackBroadcastCancel) {
+    return '/broadcast_cancel';
+  }
   return null;
 }
