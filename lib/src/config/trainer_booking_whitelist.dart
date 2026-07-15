@@ -24,9 +24,6 @@ const Set<String> trainerBookingWhitelistUsernames = <String>{
 
   /// Денчик
   '@nudden',
-
-  /// Жора
-  '@zhorenty',
 };
 
 final Set<String> _normalizedTrainerBookingWhitelistUsernames =
