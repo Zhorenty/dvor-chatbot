@@ -40,6 +40,9 @@ final class TelegramKeyboards {
           <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonBroadcast},
           ],
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonAdminUserSearch},
+          ],
         ],
       );
     }

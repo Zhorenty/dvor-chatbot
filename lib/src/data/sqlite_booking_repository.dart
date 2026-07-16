@@ -1408,6 +1408,25 @@ final class SqliteBookingRepository implements BookingRepository {
     return result.first['user_id'] as int?;
   }
 
+  @override
+  Future<List<TrainingBooking>> adminSearchBookingsByUsername(
+    String username, {
+    int limit = 200,
+  }) async {
+    final normalized = _normalizeUsername(username) ?? username;
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE user_username = ? COLLATE NOCASE
+      ORDER BY starts_at DESC
+      LIMIT ?;
+      ''',
+      <Object?>[normalized, limit],
+    );
+    return result.map(_rowToBooking).toList();
+  }
+
   bool _isFreeBooking(TrainingBooking booking) {
     if (booking.status == BookingStatus.freeTraining) {
       return true;

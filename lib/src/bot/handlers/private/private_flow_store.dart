@@ -51,6 +51,7 @@ enum PrivateFlowStep {
   selectingAdminClientNotificationPreference,
   enteringAdminBroadcastText,
   selectingAdminBroadcastTarget,
+  enteringAdminUserSearchQuery,
 }
 
 enum PaymentChoice {

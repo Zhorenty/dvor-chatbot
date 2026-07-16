@@ -44,6 +44,14 @@ final class BookingPolicyService {
     return isOutdoorCategory(category) || isYogaCategory(category);
   }
 
+  bool supportsCancellationForBooking(TrainingBooking booking) {
+    final category = categoryForBooking(booking);
+    if (supportsCancellation(category)) {
+      return true;
+    }
+    return category == ActivityCategory.trainings && _isFreeBooking(booking);
+  }
+
   bool canReschedule(TrainingBooking booking) {
     final category = categoryForBooking(booking);
     return category == ActivityCategory.trainings || category == ActivityCategory.yoga;
@@ -75,10 +83,10 @@ final class BookingPolicyService {
   }
 
   bool canCancel(TrainingBooking booking, {required DateTime now}) {
-    final category = categoryForBooking(booking);
-    if (!supportsCancellation(category)) {
+    if (!supportsCancellationForBooking(booking)) {
       return false;
     }
+    final category = categoryForBooking(booking);
     if (isOutdoorCategory(category)) {
       return booking.startsAt.difference(now) >= const Duration(days: 7);
     }

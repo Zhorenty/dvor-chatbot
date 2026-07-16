@@ -360,6 +360,7 @@ final class PrivateHandlers {
         case _PrivateFlowStep.enteringAdminSubscriptionReasonComment:
         case _PrivateFlowStep.enteringAdminBroadcastText:
         case _PrivateFlowStep.selectingAdminBroadcastTarget:
+        case _PrivateFlowStep.enteringAdminUserSearchQuery:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
             chatId,
@@ -1197,7 +1198,7 @@ final class PrivateHandlers {
           selectedBooking == null ? null : _catalogService.categoryForBooking(selectedBooking);
       if (selectedBooking == null ||
           category == null ||
-          !_bookingPolicyService.supportsCancellation(category)) {
+          !_bookingPolicyService.supportsCancellationForBooking(selectedBooking)) {
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelNotAvailable(selectedBooking),
@@ -1609,7 +1610,7 @@ final class PrivateHandlers {
         return true;
       }
       final category = _catalogService.categoryForBooking(targetBooking);
-      if (!_bookingPolicyService.supportsCancellation(category)) {
+      if (!_bookingPolicyService.supportsCancellationForBooking(targetBooking)) {
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelNotAvailable(targetBooking),
@@ -2162,6 +2163,48 @@ final class PrivateHandlers {
         );
         return true;
       }
+    }
+
+    if (text != null && text == MessageTemplates.buttonAdminUserSearch) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (userId == null) {
+        return false;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.enteringAdminUserSearchQuery,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminUserSearchPrompt(),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringAdminUserSearchQuery &&
+        text != null &&
+        !text.startsWith('/')) {
+      final bookings = await _bookingRepository.adminSearchBookingsByUsername(text);
+      _flowByUserId.remove(userId);
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminUserSearchResults(
+          bookings,
+          query: text,
+          now: _nowProvider(),
+        ),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      );
+      return true;
     }
 
     if (userId != null &&
@@ -5052,6 +5095,9 @@ final class PrivateHandlers {
   }) {
     if (category == _ActivityCategory.yoga) {
       return _templates.yogaCancellationTooLate(booking);
+    }
+    if (category == _ActivityCategory.trainings) {
+      return _templates.freeTrainingCancellationTooLate(booking);
     }
     return _templates.outdoorCancellationTooLate(booking);
   }

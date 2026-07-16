@@ -73,6 +73,7 @@ final class MessageTemplates {
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
   static const String buttonBroadcast = MessageCopy.buttonBroadcast;
+  static const String buttonAdminUserSearch = MessageCopy.buttonAdminUserSearch;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;
   static const String buttonBookingsList = MessageCopy.buttonBookingsList;
   static const String buttonCreateBooking = MessageCopy.buttonCreateBooking;
@@ -939,7 +940,7 @@ final class MessageTemplates {
         'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
-        '• Номер телефона: +7(995)122-06-15\n\n'
+        '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи <b>3990 ₽</b>.\n\n'
         'После оплаты отправь в этот чат файл с подтверждением (документ/фото чека).';
   }
 
@@ -1245,8 +1246,16 @@ final class MessageTemplates {
     if (booking == null) {
       return 'Не нашел запись для отмены. Выбери запись заново.';
     }
-    return 'Отмена доступна только для йоги, походов и трейлов.\n'
+    return 'Отмена доступна для бесплатных тренировок, йоги, походов и трейлов.\n'
         'Для записи #${booking.id} используй другие действия.';
+  }
+
+  String freeTrainingCancellationTooLate(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
+        'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
+        'осталось меньше 24 часов.';
   }
 
   String bookingActions(TrainingBooking booking) {
@@ -1477,6 +1486,76 @@ final class MessageTemplates {
     return 'Это действие доступно только администраторам 🔒';
   }
 
+  String adminUserSearchPrompt() {
+    return '🔍 <b>Поиск по пользователю</b>\n\nВведи никнейм (с @ или без):';
+  }
+
+  String adminUserSearchResults(
+    List<TrainingBooking> bookings, {
+    required String query,
+    required DateTime now,
+  }) {
+    if (bookings.isEmpty) {
+      return '🔍 По запросу «${_escapeHtml(query)}» записей не найдено.';
+    }
+    final dateFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+
+    final total = bookings.length;
+    final cancelled = bookings.where((b) => b.status == BookingStatus.cancelled).length;
+    final rejected = bookings.where((b) => b.status == BookingStatus.paymentRejected).length;
+    final active = bookings
+        .where(
+          (b) =>
+              b.status != BookingStatus.cancelled &&
+              b.status != BookingStatus.paymentRejected &&
+              !b.startsAt.isBefore(now),
+        )
+        .length;
+    final past = bookings
+        .where(
+          (b) =>
+              b.status != BookingStatus.cancelled &&
+              b.status != BookingStatus.paymentRejected &&
+              b.startsAt.isBefore(now),
+        )
+        .length;
+
+    final username = bookings.first.userUsername ?? query;
+    final sb = StringBuffer();
+    sb.writeln('🔍 <b>Пользователь: @${_escapeHtml(username)}</b>\n');
+    sb.writeln('📊 <b>Статистика:</b>');
+    sb.writeln('• Всего записей: <b>$total</b>');
+    if (active > 0) sb.writeln('• Предстоящие: <b>$active</b>');
+    if (past > 0) sb.writeln('• Прошедшие: <b>$past</b>');
+    if (cancelled > 0) sb.writeln('• Отмененные: <b>$cancelled</b>');
+    if (rejected > 0) sb.writeln('• Отклоненные: <b>$rejected</b>');
+    sb.writeln();
+    sb.writeln('📋 <b>Записи:</b>');
+
+    for (final booking in bookings) {
+      final dateLabel = _bookingDateLabel(booking, dateFormatter, dateOnlyFormatter);
+      final statusEmoji = _bookingStatusEmoji(booking.status);
+      sb.writeln('$statusEmoji #${booking.id} — ${_escapeHtml(booking.trainingTitle)} '
+          '($dateLabel)');
+      sb.writeln('   ${_statusLabel(booking.status, booking: booking)}');
+    }
+
+    return sb.toString().trimRight();
+  }
+
+  String _bookingStatusEmoji(BookingStatus status) {
+    return switch (status) {
+      BookingStatus.paid => '✅',
+      BookingStatus.freeTraining => '🎁',
+      BookingStatus.partialPaid => '🟡',
+      BookingStatus.pendingPayment => '⏳',
+      BookingStatus.paymentSubmitted => '🧾',
+      BookingStatus.paymentRejected => '❌',
+      BookingStatus.cancelled => '🚫',
+    };
+  }
+
   String paymentActionUsage() {
     return '📘 <b>Использование команд модерации:</b>\n'
         '<code>/approve_payment &lt;id&gt;</code>\n'
@@ -1538,10 +1617,13 @@ final class MessageTemplates {
     return 'Не удалось сохранить изменения: для этого пользователя уже есть запись на выбранное мероприятие.';
   }
 
+  static const String _sbpPaymentLink =
+      'https://finance.ozon.ru/apps/sbp/ozonbankpay/019dcdcb-4af8-7579-9c1b-4a388fd85d6c';
+
   String paymentInstructions(TrainingBooking booking) {
     final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
-    final promoAmountLine = _promoAmountLine(booking);
     if (MessageFormatters.isYogaBooking(booking)) {
+      final promoAmountLine = _promoAmountLine(booking);
       return 'Реквизиты для оплаты:\n'
           '• Получатель: Елена П.\n'
           '• Банк: 🟨 Т-БАНК 🟨\n'
@@ -1554,19 +1636,28 @@ final class MessageTemplates {
       return '💳 <b>Реквизиты OUTDVOR</b>\n'
           '• Получатель: <b>Денис Р.</b>\n'
           '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
-          '• Номер телефона: <code>+7(995)122-06-15</code>\n'
           '• К оплате сейчас: <b>${_outdoorPrepaymentAmountLabel(booking)}</b> (50% предоплата)\n'
           '• Остальные 50% — $outdoorFinalPaymentAfter.\n'
+          '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n'
           '• ⏳ Если не оплатить в течение <b>120 минут</b>, запись отменится автоматически.\n'
           '• После отмены нужно записаться заново.';
     }
+    final amountLine = _amountLine(booking);
     return 'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
-        '• Номер телефона: +7(995)122-06-15\n'
-        '$promoAmountLine'
+        '$amountLine'
+        '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n'
         '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
         '• После отмены нужно записаться заново.';
+  }
+
+  String _amountLine(TrainingBooking booking) {
+    if (booking.promoCode != null) {
+      return '• К оплате: <b>${_trainingPriceLabel(booking.trainingPrice)}</b> '
+          '(промокод ${_escapeHtml(booking.promoCode!)}, −${booking.promoDiscountPercent ?? 0}%)\n';
+    }
+    return '• К оплате: <b>${_trainingPriceLabel(booking.trainingPrice)}</b>\n';
   }
 
   String _promoAmountLine(TrainingBooking booking) {

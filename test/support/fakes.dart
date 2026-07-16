@@ -452,6 +452,14 @@ final class FakeBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<TrainingBooking>> adminSearchBookingsByUsername(
+    String username, {
+    int limit = 200,
+  }) async {
+    return queue.where((b) => b.userUsername == username).toList();
+  }
+
+  @override
   Future<EveryFifthRewardProgress> getEveryFifthRewardProgress(
     int userId, {
     required DateTime now,

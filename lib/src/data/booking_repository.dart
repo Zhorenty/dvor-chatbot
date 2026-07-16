@@ -184,6 +184,8 @@ abstract interface class BookingRepository {
 
   Future<TrainingBooking?> adminArchiveBooking(int bookingId);
 
+  Future<List<TrainingBooking>> adminSearchBookingsByUsername(String username, {int limit = 200});
+
   Future<EveryFifthRewardProgress> getEveryFifthRewardProgress(
     int userId, {
     required DateTime now,
