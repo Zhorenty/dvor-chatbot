@@ -558,11 +558,7 @@ final class MessageTemplates {
         '${_bookingTitleLine(booking)}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
-        '${paymentDetailsSent(booking)}\n\n'
-        'Что дальше:\n'
-        '1) Оплати по реквизитам выше.\n'
-        '2) Нажми «${MessageCopy.buttonSubmitPayment}».\n'
-        '3) Отправь файл чека (документ/фото) в этот чат.';
+        '${paymentDetailsSent(booking)}';
   }
 
   String bookingCreatedWithoutPayment(TrainingBooking booking) {
@@ -1624,13 +1620,12 @@ final class MessageTemplates {
     final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
     if (MessageFormatters.isYogaBooking(booking)) {
       final promoAmountLine = _promoAmountLine(booking);
-      return 'Реквизиты для оплаты:\n'
-          '• Получатель: Елена П.\n'
-          '• Банк: 🟨 Т-БАНК 🟨\n'
-          '• Номер телефона: +7(961)313-11-44\n'
-          '$promoAmountLine'
-          '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
-          '• После отмены нужно записаться заново.';
+      return '💳 <b>Реквизиты для оплаты</b>\n'
+          '• Получатель: <b>Елена П.</b>\n'
+          '• Банк: <b>🟨 Т-БАНК 🟨</b>\n'
+          '• Номер телефона: <b>+7(961)313-11-44</b>\n'
+          '$promoAmountLine\n'
+          '⏳ Если не оплатить в течение <b>120 минут</b> — запись отменится автоматически. После отмены нужно записаться заново.';
     }
     if (MessageFormatters.isOutdoorBooking(booking)) {
       return '💳 <b>Реквизиты OUTDVOR</b>\n'
@@ -1638,18 +1633,16 @@ final class MessageTemplates {
           '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
           '• К оплате сейчас: <b>${_outdoorPrepaymentAmountLabel(booking)}</b> (50% предоплата)\n'
           '• Остальные 50% — $outdoorFinalPaymentAfter.\n'
-          '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n'
-          '• ⏳ Если не оплатить в течение <b>120 минут</b>, запись отменится автоматически.\n'
-          '• После отмены нужно записаться заново.';
+          '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n\n'
+          '⏳ Если не оплатить в течение <b>120 минут</b> — запись отменится автоматически. После отмены нужно записаться заново.';
     }
     final amountLine = _amountLine(booking);
-    return 'Реквизиты для оплаты:\n'
-        '• Получатель: Денис Р.\n'
-        '• Банк: 🟦 OZON БАНК 🟦\n'
+    return '💳 <b>Реквизиты для оплаты</b>\n'
+        '• Получатель: <b>Денис Р.</b>\n'
+        '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
         '$amountLine'
-        '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n'
-        '• ⏳ Если не оплатить в течение 120 минут, запись отменится автоматически.\n'
-        '• После отмены нужно записаться заново.';
+        '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n\n'
+        '⏳ Если не оплатить в течение <b>120 минут</b> — запись отменится автоматически. После отмены нужно записаться заново.';
   }
 
   String _amountLine(TrainingBooking booking) {
@@ -1821,16 +1814,18 @@ final class MessageTemplates {
     if (!MessageFormatters.isOutdoorBooking(booking)) {
       final yogaHint = MessageFormatters.isYogaBooking(booking) ? '\n\n${_yogaContactsHint()}' : '';
       return '${paymentInstructions(booking)}\n\n'
-          'Когда переведешь оплату, нажми «${MessageCopy.buttonSubmitPayment}» '
-          'и отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
-          'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.'
+          '<b>Что дальше:</b>\n'
+          '1) Оплати по реквизитам выше.\n'
+          '2) Нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека (документ/фото) в этот чат 📎\n\n'
+          '⚠️ <b>Важно:</b> без файла подтверждения заявка не уйдёт на проверку.'
           '$yogaHint';
     }
 
     return '${paymentInstructions(booking)}\n\n'
-        'Когда переведешь оплату, нажми «${MessageCopy.buttonSubmitPayment}» '
-        'и отправь в этот чат файл с подтверждением (чек/скрин) 📎\n\n'
-        'ВАЖНО: без файла подтверждения мы не сможем отправить заявку на проверку.';
+        '<b>Что дальше:</b>\n'
+        '1) Оплати по реквизитам выше.\n'
+        '2) Нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека (документ/фото) в этот чат 📎\n\n'
+        '⚠️ <b>Важно:</b> без файла подтверждения заявка не уйдёт на проверку.';
   }
 
   String _yogaContactsHint() {
