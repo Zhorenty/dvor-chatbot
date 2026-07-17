@@ -367,6 +367,50 @@ void main() {
       await repository.close();
     });
 
+    test('falls back to any pending booking when pinned bookingId is no longer payable', () async {
+      // Simulate the corner case where the in-memory flow holds a stale
+      // activeBooking.id (e.g. cancelled by TTL or admin) while a different
+      // pending booking still exists for the same user.
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final stale = await repository.createPendingBooking(
+        userId: 3301,
+        training: TrainingInfo(
+          title: 'Stale booking',
+          startsAt: DateTime(2030, 7, 1, 10),
+          location: 'Track A',
+        ),
+      );
+      // Move stale booking to a non-payable status (e.g. cancelled by TTL).
+      await repository.updateStatus(stale.booking.id, BookingStatus.cancelled);
+
+      final active = await repository.createPendingBooking(
+        userId: 3301,
+        training: TrainingInfo(
+          title: 'Active booking',
+          startsAt: DateTime(2030, 7, 2, 10),
+          location: 'Track B',
+        ),
+      );
+
+      // Pass the stale booking id (as the flow would) — must fall back to
+      // the active booking rather than returning null.
+      final submitted = await repository.submitPaymentForLatestPending(
+        3301,
+        bookingId: stale.booking.id,
+        note: 'proof',
+      );
+
+      expect(submitted, isNotNull);
+      expect(submitted!.id, active.booking.id);
+      expect(submitted.status, BookingStatus.paymentSubmitted);
+
+      await repository.close();
+    });
+
     test('submits payment for partial paid booking id', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',

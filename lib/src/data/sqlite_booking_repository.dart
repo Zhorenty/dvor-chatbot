@@ -363,36 +363,37 @@ final class SqliteBookingRepository implements BookingRepository {
   }) async {
     _expireOverduePendingBookings();
     final db = _database;
-    final result = bookingId == null
-        ? db.select(
-            '''
-            SELECT id FROM bookings
-            WHERE user_id = ?
-              AND status IN (?, ?)
-            ORDER BY starts_at ASC,
-                     CASE status WHEN ? THEN 0 ELSE 1 END ASC
-            LIMIT 1;
-            ''',
-            <Object?>[
-              userId,
-              BookingStatus.pendingPayment.dbValue,
-              BookingStatus.partialPaid.dbValue,
-              BookingStatus.partialPaid.dbValue,
-            ],
-          )
-        : db.select(
-            '''
-            SELECT id FROM bookings
-            WHERE id = ? AND user_id = ? AND status IN (?, ?)
-            LIMIT 1;
-            ''',
-            <Object?>[
-              bookingId,
-              userId,
-              BookingStatus.pendingPayment.dbValue,
-              BookingStatus.partialPaid.dbValue,
-            ],
-          );
+
+    // When a specific bookingId is pinned (from the in-memory flow), query it
+    // first. If that booking is no longer in a payable status (e.g. cancelled
+    // by TTL, or status changed by admin while the user was in the confirmation
+    // flow), fall back to any pending booking for this user so that a
+    // legitimate payment file is never rejected with a false "no pending
+    // booking" error.
+    ResultSet result;
+    if (bookingId != null) {
+      result = db.select(
+        '''
+        SELECT id FROM bookings
+        WHERE id = ? AND user_id = ? AND status IN (?, ?)
+        LIMIT 1;
+        ''',
+        <Object?>[
+          bookingId,
+          userId,
+          BookingStatus.pendingPayment.dbValue,
+          BookingStatus.partialPaid.dbValue,
+        ],
+      );
+    } else {
+      result = _selectAnyPendingBooking(db, userId);
+    }
+
+    // Pinned booking not found in a payable status — try any pending booking.
+    if (result.isEmpty && bookingId != null) {
+      result = _selectAnyPendingBooking(db, userId);
+    }
+
     if (result.isEmpty) {
       return null;
     }
@@ -1109,6 +1110,25 @@ final class SqliteBookingRepository implements BookingRepository {
       database: db,
       cutoffIsoUtc: cutoff,
       nowIsoUtc: nowIso,
+    );
+  }
+
+  ResultSet _selectAnyPendingBooking(Database db, int userId) {
+    return db.select(
+      '''
+      SELECT id FROM bookings
+      WHERE user_id = ?
+        AND status IN (?, ?)
+      ORDER BY starts_at ASC,
+               CASE status WHEN ? THEN 0 ELSE 1 END ASC
+      LIMIT 1;
+      ''',
+      <Object?>[
+        userId,
+        BookingStatus.pendingPayment.dbValue,
+        BookingStatus.partialPaid.dbValue,
+        BookingStatus.partialPaid.dbValue,
+      ],
     );
   }
 
