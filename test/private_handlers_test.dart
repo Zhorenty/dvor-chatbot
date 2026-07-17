@@ -3357,6 +3357,134 @@ void main() {
       expect(sender.messages.last.text, contains('@dvor_support'));
     });
 
+    test('cancels free training even when less than 24 hours left', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          fakeBooking(
+            id: 405,
+            userId: 2405,
+            trainingKey: 'trainings|2026-06-02T10:30:00.000Z|Free session|Hall A',
+            title: 'Free session',
+            startsAt: now.add(const Duration(hours: 2)),
+            location: 'Hall A',
+            status: BookingStatus.freeTraining,
+            trainingPrice: 0,
+          ),
+        ]
+        ..cancelResult = BookingActionResult(
+          outcome: BookingActionOutcome.success,
+          booking: fakeBooking(
+            id: 405,
+            userId: 2405,
+            trainingKey: 'trainings|2026-06-02T10:30:00.000Z|Free session|Hall A',
+            title: 'Free session',
+            startsAt: now.add(const Duration(hours: 2)),
+            location: 'Hall A',
+            status: BookingStatus.cancelled,
+            trainingPrice: 0,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2405, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2405},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2405, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2405},
+        'text': '🧾 #405 Free session',
+      });
+      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(actionButtons, contains(MessageTemplates.buttonCancelBooking));
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2405, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2405},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 1);
+      expect(bookingRepository.lastCancelledBookingId, 405);
+      expect(sender.messages.last.text, contains('отменена'));
+    });
+
+    test('cancels bonus free training even when less than 24 hours left', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          fakeBooking(
+            id: 406,
+            userId: 2406,
+            trainingKey: 'trainings|2026-06-02T10:30:00.000Z|Bonus session|Hall B',
+            title: 'Bonus session',
+            startsAt: now.add(const Duration(hours: 3)),
+            location: 'Hall B',
+            status: BookingStatus.paid,
+            trainingPrice: 2500,
+            paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+          ),
+        ]
+        ..cancelResult = BookingActionResult(
+          outcome: BookingActionOutcome.success,
+          booking: fakeBooking(
+            id: 406,
+            userId: 2406,
+            trainingKey: 'trainings|2026-06-02T10:30:00.000Z|Bonus session|Hall B',
+            title: 'Bonus session',
+            startsAt: now.add(const Duration(hours: 3)),
+            location: 'Hall B',
+            status: BookingStatus.cancelled,
+            trainingPrice: 2500,
+            paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2406, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2406},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2406, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2406},
+        'text': '🧾 #406 Bonus session',
+      });
+      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(actionButtons, contains(MessageTemplates.buttonCancelBooking));
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2406, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2406},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 1);
+      expect(bookingRepository.lastCancelledBookingId, 406);
+      expect(sender.messages.last.text, contains('отменена'));
+    });
+
     test('shows participants list for selected admin category', () async {
       final sender = _FakeSender();
       final training = TrainingInfo(

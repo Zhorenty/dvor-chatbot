@@ -1247,11 +1247,8 @@ final class MessageTemplates {
   }
 
   String freeTrainingCancellationTooLate(TrainingBooking booking) {
-    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
-    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
-        'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
-        'осталось меньше 24 часов.';
+        'Если проблема остаётся — напиши @dvor_support.';
   }
 
   String bookingActions(TrainingBooking booking) {

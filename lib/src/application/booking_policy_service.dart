@@ -3,6 +3,7 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
+import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 
 enum ReschedulePaymentTypeViolation {
   freeToPaid,
@@ -49,7 +50,7 @@ final class BookingPolicyService {
     if (supportsCancellation(category)) {
       return true;
     }
-    return category == ActivityCategory.trainings && _isFreeBooking(booking);
+    return category == ActivityCategory.trainings && _isCancellableFreeTraining(booking);
   }
 
   bool canReschedule(TrainingBooking booking) {
@@ -87,6 +88,10 @@ final class BookingPolicyService {
       return false;
     }
     final category = categoryForBooking(booking);
+    // Free trainings (incl. bonus/promo) can be cancelled at any time.
+    if (category == ActivityCategory.trainings && _isCancellableFreeTraining(booking)) {
+      return true;
+    }
     if (isOutdoorCategory(category)) {
       return booking.startsAt.difference(now) >= const Duration(days: 7);
     }
@@ -109,6 +114,10 @@ final class BookingPolicyService {
     }
     final price = booking.trainingPrice;
     return price != null && price <= 0;
+  }
+
+  bool _isCancellableFreeTraining(TrainingBooking booking) {
+    return _isFreeBooking(booking) || MessageFormatters.isBonusPaymentNote(booking.paymentNote);
   }
 
   int? _normalizedBookingPrice(TrainingBooking booking) {
