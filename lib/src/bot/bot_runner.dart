@@ -12,6 +12,8 @@ import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
+import 'package:dvor_chatbot/src/jobs/referral_broadcast_job.dart';
+import 'package:dvor_chatbot/src/jobs/schedule_broadcast_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
 import 'package:dvor_chatbot/src/jobs/starter_bonus_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/subscription_renewal_job.dart';
@@ -69,6 +71,19 @@ final class BotRunner {
           targetChatId: config.targetChatId,
           timezoneOffsetHours: config.timezoneOffsetHours,
         ),
+        _scheduleBroadcastJob = ScheduleBroadcastJob(
+          scheduleRepository: scheduleRepository,
+          sender: sender,
+          templates: templates,
+          targetChatId: config.targetChatId,
+          timezoneOffsetHours: config.timezoneOffsetHours,
+        ),
+        _referralBroadcastJob = ReferralBroadcastJob(
+          sender: sender,
+          templates: templates,
+          targetChatId: config.targetChatId,
+          timezoneOffsetHours: config.timezoneOffsetHours,
+        ),
         _economicSummaryJob = EconomicSummaryJob(
           bookingRepository: bookingRepository,
           economicSummaryService: EconomicSummaryService(
@@ -91,6 +106,8 @@ final class BotRunner {
   final WelcomeCleanupJob _welcomeCleanupJob;
   final SubscriptionRenewalJob _subscriptionRenewalJob;
   final TrainingDayPromoJob _trainingDayPromoJob;
+  final ScheduleBroadcastJob _scheduleBroadcastJob;
+  final ReferralBroadcastJob _referralBroadcastJob;
   final EconomicSummaryJob _economicSummaryJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
@@ -111,6 +128,8 @@ final class BotRunner {
   Timer? _economicSummaryTimer;
   Timer? _subscriptionRenewalTimer;
   Timer? _trainingDayPromoTimer;
+  Timer? _scheduleBroadcastTimer;
+  Timer? _referralBroadcastTimer;
 
   int get exitCode => _exitCode;
 
@@ -165,9 +184,23 @@ final class BotRunner {
       }
       _launchBackgroundJob('training day promo', _trainingDayPromoJob.run);
     });
+    _scheduleBroadcastTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (_stopping) {
+        return;
+      }
+      _launchBackgroundJob('schedule broadcast', _scheduleBroadcastJob.run);
+    });
+    _referralBroadcastTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (_stopping) {
+        return;
+      }
+      _launchBackgroundJob('referral broadcast', _referralBroadcastJob.run);
+    });
     _launchBackgroundJob('economic summary', _economicSummaryJob.run);
     _launchBackgroundJob('subscription renewal', _subscriptionRenewalJob.run);
     _launchBackgroundJob('training day promo', _trainingDayPromoJob.run);
+    _launchBackgroundJob('schedule broadcast', _scheduleBroadcastJob.run);
+    _launchBackgroundJob('referral broadcast', _referralBroadcastJob.run);
 
     while (!_stopping) {
       try {
@@ -246,6 +279,8 @@ final class BotRunner {
     _economicSummaryTimer?.cancel();
     _subscriptionRenewalTimer?.cancel();
     _trainingDayPromoTimer?.cancel();
+    _scheduleBroadcastTimer?.cancel();
+    _referralBroadcastTimer?.cancel();
     _closeClient();
     await _waitForIdleOperations();
   }

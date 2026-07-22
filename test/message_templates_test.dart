@@ -134,6 +134,38 @@ void main() {
 
       expect(text, contains('📝 Возьми воду и полотенце'));
     });
+
+    test('builds schedule broadcast with weekday-aware headline and list', () {
+      final text = templates.groupScheduleBroadcast(
+        trainings: <TrainingInfo>[
+          TrainingInfo(
+            title: 'Силовая + растяжка',
+            startsAt: DateTime(2026, 7, 21, 19, 30),
+            location: 'Стадион Кубань',
+            category: ActivityCategory.trainings,
+            price: 0,
+            coach: 'Дарья Данченко',
+          ),
+        ],
+        weekday: DateTime.tuesday,
+      );
+
+      expect(text, contains('Середина недели'));
+      expect(text, contains('Силовая + растяжка'));
+      expect(text, contains('вт, 21.07.2026 19:30'));
+      expect(text, contains('бесплатная'));
+      expect(text, contains('Дарья Данченко'));
+      expect(text, contains('https://t.me/dvor_chatbot?start=start'));
+    });
+
+    test('builds referral broadcast with program steps', () {
+      final text = templates.groupReferralBroadcast();
+
+      expect(text, contains('Приведи друга'));
+      expect(text, contains('Реферальная программа'));
+      expect(text, contains('первую платную тренировку'));
+      expect(text, contains('https://t.me/dvor_chatbot?start=start'));
+    });
   });
 
   group('MessageTemplates booking location formatting', () {
@@ -171,7 +203,7 @@ void main() {
   group('MessageTemplates payment lifecycle copy', () {
     const templates = MessageTemplates();
 
-    test('includes 120-minute payment ttl in requisites', () {
+    test('includes 30-minute payment ttl in requisites', () {
       final text = templates.paymentInstructions(
         _booking(
           trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
@@ -180,7 +212,7 @@ void main() {
         ),
       );
 
-      expect(text, contains('120 минут'));
+      expect(text, contains('30 минут'));
       expect(text, contains('запись отменится автоматически'));
     });
 

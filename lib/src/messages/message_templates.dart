@@ -529,6 +529,20 @@ final class MessageTemplates {
         '${_groupBookingCta()}';
   }
 
+  String groupScheduleBroadcast({
+    required List<TrainingInfo> trainings,
+    required int weekday,
+  }) {
+    return _groupTemplates.groupScheduleBroadcast(
+      trainings: trainings,
+      weekday: weekday,
+    );
+  }
+
+  String groupReferralBroadcast() {
+    return _groupTemplates.groupReferralBroadcast();
+  }
+
   String scheduleRefreshDone() {
     return _scheduleTemplates.scheduleRefreshDone();
   }
