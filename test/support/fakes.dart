@@ -732,6 +732,7 @@ final class FakeSender implements MessageSender {
   final List<SentMessage> messages = <SentMessage>[];
   final List<CopiedMessage> copiedMessages = <CopiedMessage>[];
   final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
+  final List<BannedMember> bannedMembers = <BannedMember>[];
   final List<PinnedMessage> pinnedMessages = <PinnedMessage>[];
   final List<AnsweredCallback> answeredCallbacks = <AnsweredCallback>[];
   final Map<int, Exception> sendMessageFailuresByChatId = <int, Exception>{};
@@ -789,6 +790,21 @@ final class FakeSender implements MessageSender {
       DeletedMessage(
         chatId: chatId,
         messageId: messageId,
+      ),
+    );
+  }
+
+  @override
+  Future<void> banChatMember(
+    int chatId, {
+    required int userId,
+    bool revokeMessages = true,
+  }) async {
+    bannedMembers.add(
+      BannedMember(
+        chatId: chatId,
+        userId: userId,
+        revokeMessages: revokeMessages,
       ),
     );
   }
@@ -864,6 +880,18 @@ final class DeletedMessage {
 
   final int chatId;
   final int messageId;
+}
+
+final class BannedMember {
+  const BannedMember({
+    required this.chatId,
+    required this.userId,
+    required this.revokeMessages,
+  });
+
+  final int chatId;
+  final int userId;
+  final bool revokeMessages;
 }
 
 final class PinnedMessage {

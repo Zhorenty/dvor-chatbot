@@ -112,6 +112,13 @@ final class _FlakySender implements MessageSender {
   }) async {}
 
   @override
+  Future<void> banChatMember(
+    int chatId, {
+    required int userId,
+    bool revokeMessages = true,
+  }) async {}
+
+  @override
   Future<void> pinMessage(
     int chatId, {
     required int messageId,

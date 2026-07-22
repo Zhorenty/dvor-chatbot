@@ -19,6 +19,7 @@ final class AppConfig {
     required this.adminChatId,
     required this.logLevel,
     this.timezoneOffsetHours = 3,
+    this.antiSpamEnabled = true,
   });
 
   final String botToken;
@@ -34,6 +35,7 @@ final class AppConfig {
   final int? adminChatId;
   final String logLevel;
   final int timezoneOffsetHours;
+  final bool antiSpamEnabled;
 
   static AppConfig fromArgs(List<String> args) {
     final parser = ArgParser()
@@ -73,6 +75,10 @@ final class AppConfig {
       ..addOption(
         'timezone-offset-hours',
         help: 'Business timezone offset in hours (default: 3)',
+      )
+      ..addOption(
+        'anti-spam-enabled',
+        help: 'Delete spam ads in group and ban senders (default: true)',
       )
       ..addOption('log-level', help: 'Log level: debug/info/warn/error');
 
@@ -137,6 +143,7 @@ final class AppConfig {
         resolve('PENDING_PAYMENT_TTL_MINUTES', 'pending-payment-ttl-minutes');
     final logLevel = resolve('LOG_LEVEL', 'log-level', fallbackKey: 'CONFIG_VERBOSE') ?? 'info';
     final timezoneOffsetRaw = resolve('TIMEZONE_OFFSET_HOURS', 'timezone-offset-hours');
+    final antiSpamEnabledRaw = resolve('ANTISPAM_ENABLED', 'anti-spam-enabled');
 
     final scheduleSource = _parseScheduleSource(scheduleSourceRaw);
     if (scheduleSource == ScheduleSource.googleSheets &&
@@ -163,6 +170,7 @@ final class AppConfig {
       adminChatId: int.tryParse(adminChatIdRaw ?? ''),
       logLevel: logLevel,
       timezoneOffsetHours: int.tryParse(timezoneOffsetRaw ?? '')?.clamp(-12, 14) ?? 3,
+      antiSpamEnabled: _toBool(antiSpamEnabledRaw, defaultValue: true),
     );
   }
 }

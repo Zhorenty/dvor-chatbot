@@ -43,6 +43,18 @@ void main() {
       expect(config.bookingsDbPath, 'tmp/bookings.sqlite');
       expect(config.pendingPaymentTtlMinutes, 180);
       expect(config.logLevel, 'debug');
+      expect(config.antiSpamEnabled, isTrue);
+    });
+
+    test('parses anti-spam disable flag', () {
+      final config = AppConfig.fromArgs(<String>[
+        '--token',
+        'cli-token',
+        '--anti-spam-enabled',
+        'false',
+      ]);
+
+      expect(config.antiSpamEnabled, isFalse);
     });
 
     test('uses defaults and clamps invalid values', () {

@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('GroupHandlers', () {
-    test('sends DM to each new non-bot member', () async {
+    test('sends welcome to each new non-bot member', () async {
       final sender = _FakeSender();
       final onboarding = _FakeOnboardingRepository();
       final handlers = GroupHandlers(
@@ -152,11 +152,145 @@ void main() {
       expect(sender.messages, isEmpty);
       expect(onboarding.records, isEmpty);
     });
+
+    test('deletes earnings spam and bans sender', () async {
+      final sender = _FakeSender();
+      final handlers = GroupHandlers(
+        sender: sender,
+        templates: const MessageTemplates(),
+        targetChatId: -100123,
+        adminChatId: -200,
+      );
+
+      final handled = await handlers.handle(
+        <String, dynamic>{
+          'message_id': 55,
+          'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
+          'from': <String, Object?>{
+            'id': 9001,
+            'is_bot': false,
+            'username': 'spam_bot_user',
+          },
+          'text': '''
+Набираем людей в команду!
+Удобный график - можно совмещать вместе с основной работой
+Заработок от 100 € в день
+Бесплатное обучение
+Хочешь узнать больше?
+Писать в личные сообщения
+''',
+        },
+      );
+
+      expect(handled, isTrue);
+      expect(sender.deletedMessages, hasLength(1));
+      expect(sender.deletedMessages.single.messageId, 55);
+      expect(sender.bannedMembers, hasLength(1));
+      expect(sender.bannedMembers.single.userId, 9001);
+      expect(sender.bannedMembers.single.revokeMessages, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.chatId, -200);
+      expect(sender.messages.single.text, contains('Антиспам'));
+      expect(sender.messages.single.text, contains('@spam_bot_user'));
+    });
+
+    test('deletes remote job spam with dm invite', () async {
+      final sender = _FakeSender();
+      final handlers = GroupHandlers(
+        sender: sender,
+        templates: const MessageTemplates(),
+        targetChatId: -100123,
+      );
+
+      final handled = await handlers.handle(
+        <String, dynamic>{
+          'message_id': 56,
+          'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
+          'from': <String, Object?>{'id': 9002, 'is_bot': false},
+          'text':
+              'Ищу желающих на удаленную занятость. Подходит для старта без опыта. За деталями пишите в лс.',
+        },
+      );
+
+      expect(handled, isTrue);
+      expect(sender.deletedMessages.single.messageId, 56);
+      expect(sender.bannedMembers.single.userId, 9002);
+    });
+
+    test('does not ban configured admins for matching text', () async {
+      final sender = _FakeSender();
+      final handlers = GroupHandlers(
+        sender: sender,
+        templates: const MessageTemplates(),
+        targetChatId: -100123,
+        adminUserIds: const <int>{42},
+      );
+
+      final handled = await handlers.handle(
+        <String, dynamic>{
+          'message_id': 57,
+          'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
+          'from': <String, Object?>{'id': 42, 'is_bot': false},
+          'text': 'Заработок от 100 € в день. Писать в личные сообщения',
+        },
+      );
+
+      expect(handled, isFalse);
+      expect(sender.deletedMessages, isEmpty);
+      expect(sender.bannedMembers, isEmpty);
+    });
+
+    test('keeps normal group chatter', () async {
+      final sender = _FakeSender();
+      final handlers = GroupHandlers(
+        sender: sender,
+        templates: const MessageTemplates(),
+        targetChatId: -100123,
+      );
+
+      final handled = await handlers.handle(
+        <String, dynamic>{
+          'message_id': 58,
+          'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
+          'from': <String, Object?>{'id': 11, 'is_bot': false},
+          'text': 'Кто завтра на тренировку в 19:00?',
+        },
+      );
+
+      expect(handled, isFalse);
+      expect(sender.deletedMessages, isEmpty);
+      expect(sender.bannedMembers, isEmpty);
+    });
+
+    test('skips anti-spam when disabled', () async {
+      final sender = _FakeSender();
+      final handlers = GroupHandlers(
+        sender: sender,
+        templates: const MessageTemplates(),
+        targetChatId: -100123,
+        antiSpamEnabled: false,
+      );
+
+      final handled = await handlers.handle(
+        <String, dynamic>{
+          'message_id': 59,
+          'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
+          'from': <String, Object?>{'id': 9003, 'is_bot': false},
+          'text': 'Заработок от 100 € в день. Писать в личные сообщения',
+        },
+      );
+
+      expect(handled, isFalse);
+      expect(sender.deletedMessages, isEmpty);
+      expect(sender.bannedMembers, isEmpty);
+    });
   });
 }
 
 final class _FakeSender implements MessageSender {
   final List<_SentMessage> messages = <_SentMessage>[];
+  final List<_DeletedMessage> deletedMessages = <_DeletedMessage>[];
+  final List<_BannedMember> bannedMembers = <_BannedMember>[];
 
   @override
   Future<int> sendMessage(
@@ -192,7 +326,24 @@ final class _FakeSender implements MessageSender {
     int chatId, {
     required int messageId,
   }) async {
-    throw UnimplementedError('deleteMessage is not used in group handlers tests');
+    deletedMessages.add(
+      _DeletedMessage(chatId: chatId, messageId: messageId),
+    );
+  }
+
+  @override
+  Future<void> banChatMember(
+    int chatId, {
+    required int userId,
+    bool revokeMessages = true,
+  }) async {
+    bannedMembers.add(
+      _BannedMember(
+        chatId: chatId,
+        userId: userId,
+        revokeMessages: revokeMessages,
+      ),
+    );
   }
 
   @override
@@ -224,6 +375,28 @@ final class _SentMessage {
   final int chatId;
   final String text;
   final bool disableNotification;
+}
+
+final class _DeletedMessage {
+  const _DeletedMessage({
+    required this.chatId,
+    required this.messageId,
+  });
+
+  final int chatId;
+  final int messageId;
+}
+
+final class _BannedMember {
+  const _BannedMember({
+    required this.chatId,
+    required this.userId,
+    required this.revokeMessages,
+  });
+
+  final int chatId;
+  final int userId;
+  final bool revokeMessages;
 }
 
 final class _FakeOnboardingRepository implements OnboardingRepository {

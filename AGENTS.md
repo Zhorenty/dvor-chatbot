@@ -19,6 +19,8 @@ Project guidance for AI/code agents in this repository.
 - Handlers:
   - `lib/src/bot/handlers/private_handlers.dart`
   - `lib/src/bot/handlers/group_handlers.dart`
+- Anti-spam:
+  - `lib/src/application/group_spam_detector.dart`
 - Trainings domain/data:
   - `lib/src/domain/training_info.dart`
   - `lib/src/data/training_schedule_repository.dart`
@@ -62,6 +64,8 @@ Project guidance for AI/code agents in this repository.
   - `TARGET_CHAT_ID`
   - `SEND_GROUP_FALLBACK`
   - `POLL_TIMEOUT_SECONDS`
+  - `ADMIN_USER_IDS` / `ADMIN_CHAT_ID`
+  - `ANTISPAM_ENABLED`
   - `LOG_LEVEL`
 
 ## Reliability Baseline

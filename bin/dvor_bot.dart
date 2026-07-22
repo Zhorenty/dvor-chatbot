@@ -74,6 +74,9 @@ void main(List<String> args) {
           onboardingRepository: onboardingRepository,
           templates: templates,
           targetChatId: config.targetChatId,
+          adminUserIds: config.adminUserIds,
+          adminChatId: config.adminChatId,
+          antiSpamEnabled: config.antiSpamEnabled,
         ),
       );
 
@@ -83,6 +86,7 @@ void main(List<String> args) {
         'scheduleSource=${config.scheduleSource.name}, '
         'targetChatId=${config.targetChatId}, '
         'admins=${config.adminUserIds.length}, '
+        'antiSpam=${config.antiSpamEnabled}, '
         'pendingPaymentTtlMinutes=${config.pendingPaymentTtlMinutes}, '
         'logLevel=${config.logLevel}',
       );

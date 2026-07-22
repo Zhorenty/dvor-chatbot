@@ -20,6 +20,12 @@ abstract interface class MessageSender {
     required int messageId,
   });
 
+  Future<void> banChatMember(
+    int chatId, {
+    required int userId,
+    bool revokeMessages = true,
+  });
+
   Future<void> pinMessage(
     int chatId, {
     required int messageId,

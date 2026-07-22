@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/application/group_spam_detector.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
@@ -9,17 +10,29 @@ final class GroupHandlers {
     OnboardingRepository onboardingRepository = const NoopOnboardingRepository(),
     required MessageTemplates templates,
     required int? targetChatId,
+    Set<int> adminUserIds = const <int>{},
+    int? adminChatId,
+    bool antiSpamEnabled = true,
+    GroupSpamDetector spamDetector = const GroupSpamDetector(),
     DateTime Function()? nowProvider,
   })  : _sender = sender,
         _onboardingRepository = onboardingRepository,
         _templates = templates,
         _targetChatId = targetChatId,
+        _adminUserIds = adminUserIds,
+        _adminChatId = adminChatId,
+        _antiSpamEnabled = antiSpamEnabled,
+        _spamDetector = spamDetector,
         _nowProvider = nowProvider ?? DateTime.now;
 
   final MessageSender _sender;
   final OnboardingRepository _onboardingRepository;
   final MessageTemplates _templates;
   final int? _targetChatId;
+  final Set<int> _adminUserIds;
+  final int? _adminChatId;
+  final bool _antiSpamEnabled;
+  final GroupSpamDetector _spamDetector;
   final DateTime Function() _nowProvider;
 
   Future<bool> handleUpdate(Map<String, dynamic> update) async {
@@ -61,6 +74,10 @@ final class GroupHandlers {
       return false;
     }
 
+    if (_antiSpamEnabled && await _tryHandleSpam(chatId: chatId, message: message)) {
+      return true;
+    }
+
     final newMembers = message['new_chat_members'];
     if (newMembers is! List) {
       return false;
@@ -76,6 +93,152 @@ final class GroupHandlers {
     }
 
     return true;
+  }
+
+  Future<bool> _tryHandleSpam({
+    required int chatId,
+    required Map<String, dynamic> message,
+  }) async {
+    if (_isServiceMessage(message)) {
+      return false;
+    }
+
+    final from = message['from'];
+    if (from is! Map) {
+      return false;
+    }
+    if (from['is_bot'] == true) {
+      return false;
+    }
+
+    final userId = from['id'];
+    if (userId is! int) {
+      return false;
+    }
+    if (_adminUserIds.contains(userId)) {
+      return false;
+    }
+
+    final text = _extractMessageText(message);
+    final detection = _spamDetector.evaluate(text);
+    if (!detection.isSpam) {
+      return false;
+    }
+
+    final messageId = message['message_id'];
+    if (messageId is! int) {
+      return false;
+    }
+
+    l.w(
+      'Anti-spam hit: chatId=$chatId userId=$userId '
+      'score=${detection.score} reasons=${detection.reasons.join(",")}',
+    );
+
+    try {
+      await _sender.deleteMessage(chatId, messageId: messageId);
+    } on Object catch (error) {
+      l.w('Failed to delete spam message $messageId in chat $chatId: $error');
+    }
+
+    try {
+      await _sender.banChatMember(chatId, userId: userId, revokeMessages: true);
+    } on Object catch (error) {
+      l.w('Failed to ban spam user $userId in chat $chatId: $error');
+    }
+
+    await _notifyAdminsAboutSpam(
+      chatId: chatId,
+      userId: userId,
+      username: from['username']?.toString(),
+      firstName: from['first_name']?.toString(),
+      detection: detection,
+      sampleText: text,
+    );
+    return true;
+  }
+
+  Future<void> _notifyAdminsAboutSpam({
+    required int chatId,
+    required int userId,
+    required String? username,
+    required String? firstName,
+    required SpamDetectionResult detection,
+    required String? sampleText,
+  }) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+
+    final who = username != null && username.isNotEmpty
+        ? '@$username'
+        : (firstName != null && firstName.isNotEmpty ? firstName : 'id:$userId');
+    final preview = (sampleText ?? '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    final clipped = preview.length > 180 ? '${preview.substring(0, 180)}…' : preview;
+    final text = StringBuffer()
+      ..writeln('🛡 Антиспам: сообщение удалено, пользователь забанен.')
+      ..writeln('Чат: $chatId')
+      ..writeln('Кто: $who ($userId)')
+      ..writeln('Причины: ${detection.reasons.join(', ')} (score=${detection.score})');
+    if (clipped.isNotEmpty) {
+      text.writeln('Текст: $clipped');
+    }
+
+    try {
+      await _sender.sendMessage(
+        adminChatId,
+        text.toString().trimRight(),
+        disableNotification: true,
+      );
+    } on Object catch (error) {
+      l.w('Failed to notify admins about spam from $userId: $error');
+    }
+  }
+
+  bool _isServiceMessage(Map<String, dynamic> message) {
+    const serviceKeys = <String>{
+      'new_chat_members',
+      'left_chat_member',
+      'new_chat_title',
+      'new_chat_photo',
+      'delete_chat_photo',
+      'group_chat_created',
+      'supergroup_chat_created',
+      'channel_chat_created',
+      'message_auto_delete_timer_changed',
+      'migrate_to_chat_id',
+      'migrate_from_chat_id',
+      'pinned_message',
+      'forum_topic_created',
+      'forum_topic_closed',
+      'forum_topic_reopened',
+      'forum_topic_edited',
+      'general_forum_topic_hidden',
+      'general_forum_topic_unhidden',
+      'video_chat_scheduled',
+      'video_chat_started',
+      'video_chat_ended',
+      'video_chat_participants_invited',
+    };
+    for (final key in serviceKeys) {
+      if (message.containsKey(key)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  String? _extractMessageText(Map<String, dynamic> message) {
+    final text = message['text']?.toString();
+    if (text != null && text.trim().isNotEmpty) {
+      return text;
+    }
+    final caption = message['caption']?.toString();
+    if (caption != null && caption.trim().isNotEmpty) {
+      return caption;
+    }
+    return null;
   }
 
   Future<bool> _handleChatMember(Map<String, dynamic> chatMember) async {

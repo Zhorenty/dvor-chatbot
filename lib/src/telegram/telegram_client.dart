@@ -289,6 +289,26 @@ final class TelegramClient implements MessageSender {
   }
 
   @override
+  Future<void> banChatMember(
+    int chatId, {
+    required int userId,
+    bool revokeMessages = true,
+  }) async {
+    final payload = await _post(
+      'banChatMember',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'user_id': userId,
+        'revoke_messages': revokeMessages,
+      },
+    );
+    final result = payload['result'];
+    if (result != true) {
+      throw const TelegramApiException('Telegram did not confirm chat member ban');
+    }
+  }
+
+  @override
   Future<void> pinMessage(
     int chatId, {
     required int messageId,
