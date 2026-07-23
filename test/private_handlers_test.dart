@@ -222,38 +222,40 @@ void main() {
 
       expect(handled, isTrue);
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
-      expect(buttons.first, MessageTemplates.buttonDvorXFrank);
+      // TODO(dvor-x-frank): вернуть expect(buttons.first, MessageTemplates.buttonDvorXFrank).
+      expect(buttons, isNot(contains(MessageTemplates.buttonDvorXFrank)));
       expect(buttons, contains(MessageTemplates.buttonCoachingStaff));
       expect(buttons, contains(MessageTemplates.buttonTrainings));
       expect(buttons, contains(MessageTemplates.buttonProfile));
       expect(buttons, contains(MessageTemplates.buttonSubscription));
     });
 
-    test('opens DVOR x FRANK promo teaser for regular users', () async {
-      final sender = _FakeSender();
-      final handlers = PrivateHandlers(
-        sender: sender,
-        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
-        bookingRepository: _FakeBookingRepository(),
-        templates: const MessageTemplates(),
-        adminUserIds: const <int>{},
-      );
-
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 9101, 'type': 'private'},
-        'from': <String, dynamic>{'id': 9101},
-        'text': MessageTemplates.buttonDvorXFrank,
-      });
-
-      expect(handled, isTrue);
-      expect(sender.messages.single.text, contains('DVOR x FRANK by БАСТА'));
-      expect(sender.messages.single.text, contains('Здесь скоро будет что-то интересное'));
-      expect(sender.messages.single.parseMode, 'HTML');
-      expect(
-        _keyboardTexts(sender.messages.single.replyMarkup),
-        contains(MessageTemplates.buttonDvorXFrank),
-      );
-    });
+    // TODO(dvor-x-frank): вернуть тест после включения промо-кнопки в меню.
+    // test('opens DVOR x FRANK promo teaser for regular users', () async {
+    //   final sender = _FakeSender();
+    //   final handlers = PrivateHandlers(
+    //     sender: sender,
+    //     scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+    //     bookingRepository: _FakeBookingRepository(),
+    //     templates: const MessageTemplates(),
+    //     adminUserIds: const <int>{},
+    //   );
+    //
+    //   final handled = await handlers.handle(<String, dynamic>{
+    //     'chat': <String, dynamic>{'id': 9101, 'type': 'private'},
+    //     'from': <String, dynamic>{'id': 9101},
+    //     'text': MessageTemplates.buttonDvorXFrank,
+    //   });
+    //
+    //   expect(handled, isTrue);
+    //   expect(sender.messages.single.text, contains('DVOR x FRANK by БАСТА'));
+    //   expect(sender.messages.single.text, contains('Здесь скоро будет что-то интересное'));
+    //   expect(sender.messages.single.parseMode, 'HTML');
+    //   expect(
+    //     _keyboardTexts(sender.messages.single.replyMarkup),
+    //     contains(MessageTemplates.buttonDvorXFrank),
+    //   );
+    // });
 
     test('shows participants button in private menu for yoga trainer role', () async {
       final sender = _FakeSender();
