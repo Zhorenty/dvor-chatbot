@@ -10,12 +10,14 @@ import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
+import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:test/test.dart';
 
 import 'support/fakes.dart';
+import 'support/telegram_fixtures.dart';
 
 typedef _FakeScheduleRepository = FakeScheduleRepository;
 typedef _FakeBookingRepository = FakeBookingRepository;
@@ -5599,6 +5601,117 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.applyPromoCodeCalls, 1);
       expect(sender.messages.last.text, contains('ONCE'));
+    });
+  });
+
+  group('admin broadcast with photos', () {
+    test('broadcasts a single photo via copyMessage', () async {
+      final sender = _FakeSender();
+      final onboarding = _FakeOnboardingRepository()
+        ..seedUser(userId: 501)
+        ..seedUser(userId: 502);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        onboardingRepository: onboarding,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{9001},
+        targetChatId: -1009001,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9001, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9001},
+        'text': MessageTemplates.buttonBroadcast,
+      });
+      await handlers.handle(
+        privatePhotoMessageUpdate(
+          chatId: 9001,
+          userId: 9001,
+          messageId: 77,
+          caption: 'Анонс',
+        ),
+      );
+      final handled = await handlers.handle(
+        privateCallbackUpdate(
+          callbackId: 'cb-broadcast-users',
+          chatId: 9001,
+          userId: 9001,
+          data: MessageCopy.callbackBroadcastToUsers,
+        ),
+      );
+
+      expect(handled, isTrue);
+      expect(sender.copiedMessages, hasLength(2));
+      expect(
+        sender.copiedMessages.map((item) => item.toChatId).toSet(),
+        <int>{501, 502},
+      );
+      expect(
+        sender.copiedMessages.every(
+          (item) => item.fromChatId == 9001 && item.messageId == 77,
+        ),
+        isTrue,
+      );
+      expect(sender.messages.last.text, contains('Рассылка завершена'));
+    });
+
+    test('broadcasts a photo album after media group is collected', () async {
+      final sender = _FakeSender();
+      final onboarding = _FakeOnboardingRepository()..seedUser(userId: 601);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        onboardingRepository: onboarding,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{9002},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9002, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9002},
+        'text': MessageTemplates.buttonBroadcast,
+      });
+      await handlers.handle(
+        privatePhotoMessageUpdate(
+          chatId: 9002,
+          userId: 9002,
+          messageId: 11,
+          mediaGroupId: 'album-1',
+        ),
+      );
+      await handlers.handle(
+        privatePhotoMessageUpdate(
+          chatId: 9002,
+          userId: 9002,
+          messageId: 12,
+          mediaGroupId: 'album-1',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 900));
+
+      expect(
+        sender.messages.any((item) => item.text.contains('Предпросмотр рассылки')),
+        isTrue,
+      );
+
+      final handled = await handlers.handle(
+        privateCallbackUpdate(
+          callbackId: 'cb-broadcast-album',
+          chatId: 9002,
+          userId: 9002,
+          data: MessageCopy.callbackBroadcastToUsers,
+        ),
+      );
+
+      expect(handled, isTrue);
+      expect(sender.copiedMessages, hasLength(2));
+      expect(
+        sender.copiedMessages.map((item) => item.messageId).toList(),
+        <int>[11, 12],
+      );
     });
   });
 }

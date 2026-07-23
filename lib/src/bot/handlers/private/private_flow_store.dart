@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/application/broadcast_service.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
@@ -105,6 +106,7 @@ final class PrivateFlowState {
     this.adminClientNotificationAction,
     this.adminClientNotificationBooking,
     this.adminBroadcastText,
+    this.adminBroadcastSourceMessages = const <BroadcastMessageRef>[],
   });
 
   final PrivateFlowStep step;
@@ -132,6 +134,7 @@ final class PrivateFlowState {
   final AdminClientNotificationAction? adminClientNotificationAction;
   final TrainingBooking? adminClientNotificationBooking;
   final String? adminBroadcastText;
+  final List<BroadcastMessageRef> adminBroadcastSourceMessages;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -159,6 +162,7 @@ final class PrivateFlowState {
     Object? adminClientNotificationAction = _privateFlowUnset,
     Object? adminClientNotificationBooking = _privateFlowUnset,
     Object? adminBroadcastText = _privateFlowUnset,
+    List<BroadcastMessageRef>? adminBroadcastSourceMessages,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -218,6 +222,8 @@ final class PrivateFlowState {
       adminBroadcastText: identical(adminBroadcastText, _privateFlowUnset)
           ? this.adminBroadcastText
           : adminBroadcastText as String?,
+      adminBroadcastSourceMessages:
+          adminBroadcastSourceMessages ?? this.adminBroadcastSourceMessages,
     );
   }
 }

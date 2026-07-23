@@ -1910,8 +1910,9 @@ final class MessageTemplates {
 
   String adminBroadcastPrompt() {
     return '📢 <b>Рассылка</b>\n\n'
-        'Введи текст сообщения для рассылки.\n'
-        'Поддерживается HTML-форматирование: '
+        'Отправь текст и/или фото для рассылки.\n'
+        'Можно прислать одно фото или альбом (несколько фото).\n'
+        'Подпись к фото сохранится. Для текста поддерживается HTML: '
         '<code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;code&gt;</code> и т.д.\n\n'
         'Нажми «${MessageCopy.buttonMainMenu}», чтобы отменить.';
   }
@@ -1919,6 +1920,21 @@ final class MessageTemplates {
   String adminBroadcastPreview(String text) {
     return '👁 <b>Предпросмотр сообщения:</b>\n\n$text\n\n'
         '📌 Выбери, куда отправить рассылку:';
+  }
+
+  String adminBroadcastMediaPreview({required int photoCount}) {
+    final photosLabel = photoCount == 1 ? '1 фото' : '$photoCount фото';
+    return '👁 <b>Предпросмотр рассылки</b>\n\n'
+        'Будет отправлено: <b>$photosLabel</b> '
+        '(как в сообщении выше, с подписью если она была).\n\n'
+        '📌 Выбери, куда отправить рассылку:';
+  }
+
+  String adminBroadcastMediaCollecting({required int photoCount}) {
+    final photosLabel = photoCount == 1 ? '1 фото' : '$photoCount фото';
+    return '🖼 Получено: <b>$photosLabel</b>.\n'
+        'Если это альбом — дождись загрузки всех фото, '
+        'затем появится выбор получателей.';
   }
 
   String adminBroadcastSent({

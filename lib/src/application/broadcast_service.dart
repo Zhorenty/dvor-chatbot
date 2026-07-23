@@ -15,6 +15,29 @@ final class BroadcastResult {
   final int total;
 }
 
+/// Reference to a Telegram message that should be copied during broadcast.
+final class BroadcastMessageRef {
+  const BroadcastMessageRef({
+    required this.fromChatId,
+    required this.messageId,
+  });
+
+  final int fromChatId;
+  final int messageId;
+}
+
+/// Content for an admin broadcast: either HTML text or media messages to copy.
+final class BroadcastContent {
+  const BroadcastContent.text(this.htmlText) : sourceMessages = const <BroadcastMessageRef>[];
+
+  const BroadcastContent.media(this.sourceMessages) : htmlText = null;
+
+  final String? htmlText;
+  final List<BroadcastMessageRef> sourceMessages;
+
+  bool get hasMedia => sourceMessages.isNotEmpty;
+}
+
 final class BroadcastService {
   BroadcastService({
     required MessageSender sender,
@@ -28,14 +51,14 @@ final class BroadcastService {
   final OnboardingRepository _onboardingRepository;
   final int? _groupChatId;
 
-  /// Sends [htmlText] as an HTML message to all users who have started the bot.
-  Future<BroadcastResult> broadcastToUsers(String htmlText) async {
+  /// Sends [content] to all users who have started the bot.
+  Future<BroadcastResult> broadcastToUsers(BroadcastContent content) async {
     final userIds = await _onboardingRepository.getAllStartedUserIds();
     var sent = 0;
     var failed = 0;
     for (final userId in userIds) {
       try {
-        await _sender.sendMessage(userId, htmlText, parseMode: 'HTML');
+        await _deliver(userId, content);
         sent++;
       } on TelegramApiException catch (error) {
         failed++;
@@ -48,15 +71,15 @@ final class BroadcastService {
     return BroadcastResult(sent: sent, failed: failed, total: userIds.length);
   }
 
-  /// Sends [htmlText] as an HTML message to the configured group chat.
+  /// Sends [content] to the configured group chat.
   /// Returns [true] if sent successfully.
-  Future<bool> broadcastToGroup(String htmlText) async {
+  Future<bool> broadcastToGroup(BroadcastContent content) async {
     final chatId = _groupChatId;
     if (chatId == null) {
       return false;
     }
     try {
-      await _sender.sendMessage(chatId, htmlText, parseMode: 'HTML');
+      await _deliver(chatId, content);
       return true;
     } on TelegramApiException catch (error) {
       l.w('Broadcast: failed to send message to group $chatId: $error');
@@ -67,12 +90,30 @@ final class BroadcastService {
     }
   }
 
-  /// Sends [htmlText] to all started users and to the configured group chat.
-  Future<BroadcastResult> broadcastToUsersAndGroup(String htmlText) async {
-    final result = await broadcastToUsers(htmlText);
-    await broadcastToGroup(htmlText);
+  /// Sends [content] to all started users and to the configured group chat.
+  Future<BroadcastResult> broadcastToUsersAndGroup(BroadcastContent content) async {
+    final result = await broadcastToUsers(content);
+    await broadcastToGroup(content);
     return result;
   }
 
   bool get hasGroup => _groupChatId != null;
+
+  Future<void> _deliver(int chatId, BroadcastContent content) async {
+    if (content.hasMedia) {
+      for (final ref in content.sourceMessages) {
+        await _sender.copyMessage(
+          chatId,
+          fromChatId: ref.fromChatId,
+          messageId: ref.messageId,
+        );
+      }
+      return;
+    }
+    final htmlText = content.htmlText;
+    if (htmlText == null || htmlText.isEmpty) {
+      throw const TelegramApiException('Broadcast content is empty');
+    }
+    await _sender.sendMessage(chatId, htmlText, parseMode: 'HTML');
+  }
 }

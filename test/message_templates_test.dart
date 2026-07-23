@@ -168,6 +168,21 @@ void main() {
     });
   });
 
+  group('MessageTemplates admin broadcast', () {
+    const templates = MessageTemplates();
+
+    test('prompt mentions photos and albums', () {
+      final text = templates.adminBroadcastPrompt();
+      expect(text, contains('фото'));
+      expect(text, contains('альбом'));
+    });
+
+    test('media preview includes photo count', () {
+      expect(templates.adminBroadcastMediaPreview(photoCount: 1), contains('1 фото'));
+      expect(templates.adminBroadcastMediaPreview(photoCount: 3), contains('3 фото'));
+    });
+  });
+
   group('MessageTemplates booking location formatting', () {
     const templates = MessageTemplates();
 

@@ -109,6 +109,35 @@ PaymentProof? extractPaymentProof(Map<String, dynamic>? message) {
   );
 }
 
+/// Extracts a photo message suitable for admin broadcast (photo only, not documents).
+({int fromChatId, int messageId, String? mediaGroupId})? extractBroadcastPhoto(
+  Map<String, dynamic>? message,
+) {
+  if (message == null) {
+    return null;
+  }
+  final messageId = message['message_id'];
+  final chatRaw = message['chat'];
+  if (messageId is! int || chatRaw is! Map) {
+    return null;
+  }
+  final chat = Map<String, dynamic>.from(chatRaw);
+  final fromChatId = chat['id'];
+  if (fromChatId is! int) {
+    return null;
+  }
+  final hasPhoto = message['photo'] is List && (message['photo'] as List).isNotEmpty;
+  if (!hasPhoto) {
+    return null;
+  }
+  final mediaGroupId = message['media_group_id']?.toString();
+  return (
+    fromChatId: fromChatId,
+    messageId: messageId,
+    mediaGroupId: mediaGroupId == null || mediaGroupId.isEmpty ? null : mediaGroupId,
+  );
+}
+
 String? callbackToCommandText(String? callbackData) {
   if (callbackData == null) {
     return null;

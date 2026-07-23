@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/application/broadcast_service.dart';
@@ -78,6 +80,8 @@ final class PrivateHandlers {
   final int? _targetChatId;
   final DateTime Function() _nowProvider;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
+  final Map<int, Timer> _broadcastMediaFinalizeTimers = <int, Timer>{};
+  final Map<int, String> _broadcastActiveMediaGroupIds = <int, String>{};
   final Set<String> _lowCapacityNotifiedTrainingKeys = <String>{};
   final Set<String> _fullCapacityNotifiedTrainingKeys = <String>{};
   int? _lastCapacityGroupMessageId;
@@ -144,6 +148,9 @@ final class PrivateHandlers {
     final paymentProof = extractPaymentProof(context.message);
     if (_isIgnorableServiceMessage(context.message)) {
       return true;
+    }
+    if (userId != null && text == MessageTemplates.buttonMainMenu) {
+      _cancelBroadcastMediaCollection(userId);
     }
 
     final handledStaticCommand = await _staticCommands.handle(
@@ -361,6 +368,7 @@ final class PrivateHandlers {
         case _PrivateFlowStep.enteringAdminBroadcastText:
         case _PrivateFlowStep.selectingAdminBroadcastTarget:
         case _PrivateFlowStep.enteringAdminUserSearchQuery:
+          _cancelBroadcastMediaCollection(userId);
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
             chatId,
@@ -2072,6 +2080,7 @@ final class PrivateHandlers {
       if (userId == null) {
         return false;
       }
+      _cancelBroadcastMediaCollection(userId);
       _flowByUserId[userId] = const _PrivateFlowState(
         step: _PrivateFlowStep.enteringAdminBroadcastText,
         availableTrainings: <TrainingInfo>[],
@@ -2086,11 +2095,28 @@ final class PrivateHandlers {
 
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.enteringAdminBroadcastText &&
+        canRunAdminAction) {
+      final broadcastPhoto = extractBroadcastPhoto(context.message);
+      if (broadcastPhoto != null) {
+        await _handleAdminBroadcastPhoto(
+          chatId: chatId,
+          userId: userId,
+          flowState: flowState!,
+          photo: broadcastPhoto,
+        );
+        return true;
+      }
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringAdminBroadcastText &&
         text != null &&
         !text.startsWith('/')) {
+      _cancelBroadcastMediaCollection(userId);
       _flowByUserId[userId] = flowState!.copyWith(
         step: _PrivateFlowStep.selectingAdminBroadcastTarget,
         adminBroadcastText: text,
+        adminBroadcastSourceMessages: const <BroadcastMessageRef>[],
       );
       await _sendAdminMessage(
         chatId,
@@ -2112,10 +2138,11 @@ final class PrivateHandlers {
       if (flowState?.step != _PrivateFlowStep.selectingAdminBroadcastTarget) {
         return false;
       }
-      final broadcastText = flowState?.adminBroadcastText;
+      final broadcastContent = _broadcastContentFromFlow(flowState!);
+      _cancelBroadcastMediaCollection(userId);
       _flowByUserId.remove(userId);
 
-      if (text == '/broadcast_cancel' || broadcastText == null) {
+      if (text == '/broadcast_cancel' || broadcastContent == null) {
         await _sendAdminMessage(
           chatId,
           _templates.adminBroadcastCancelled(),
@@ -2125,7 +2152,7 @@ final class PrivateHandlers {
       }
 
       if (text == '/broadcast_group') {
-        final sent = await _broadcastService.broadcastToGroup(broadcastText);
+        final sent = await _broadcastService.broadcastToGroup(broadcastContent);
         await _sendAdminMessage(
           chatId,
           _templates.adminBroadcastGroupOnly(groupSent: sent),
@@ -2135,7 +2162,7 @@ final class PrivateHandlers {
       }
 
       if (text == '/broadcast_users') {
-        final result = await _broadcastService.broadcastToUsers(broadcastText);
+        final result = await _broadcastService.broadcastToUsers(broadcastContent);
         await _sendAdminMessage(
           chatId,
           _templates.adminBroadcastSent(
@@ -2150,7 +2177,7 @@ final class PrivateHandlers {
       }
 
       if (text == '/broadcast_users_and_group') {
-        final result = await _broadcastService.broadcastToUsersAndGroup(broadcastText);
+        final result = await _broadcastService.broadcastToUsersAndGroup(broadcastContent);
         await _sendAdminMessage(
           chatId,
           _templates.adminBroadcastSent(
@@ -5144,6 +5171,113 @@ final class PrivateHandlers {
       return _EconomicSummaryRange.previousMonth;
     }
     return null;
+  }
+
+  BroadcastContent? _broadcastContentFromFlow(_PrivateFlowState flowState) {
+    final sourceMessages = flowState.adminBroadcastSourceMessages;
+    if (sourceMessages.isNotEmpty) {
+      final sorted = List<BroadcastMessageRef>.from(sourceMessages)
+        ..sort((left, right) => left.messageId.compareTo(right.messageId));
+      return BroadcastContent.media(sorted);
+    }
+    final text = flowState.adminBroadcastText?.trim();
+    if (text == null || text.isEmpty) {
+      return null;
+    }
+    return BroadcastContent.text(text);
+  }
+
+  Future<void> _handleAdminBroadcastPhoto({
+    required int chatId,
+    required int userId,
+    required _PrivateFlowState flowState,
+    required ({int fromChatId, int messageId, String? mediaGroupId}) photo,
+  }) async {
+    final mediaGroupId = photo.mediaGroupId;
+    final nextRef = BroadcastMessageRef(
+      fromChatId: photo.fromChatId,
+      messageId: photo.messageId,
+    );
+
+    if (mediaGroupId == null) {
+      _cancelBroadcastMediaCollection(userId);
+      _flowByUserId[userId] = flowState.copyWith(
+        step: _PrivateFlowStep.selectingAdminBroadcastTarget,
+        adminBroadcastText: null,
+        adminBroadcastSourceMessages: <BroadcastMessageRef>[nextRef],
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminBroadcastMediaPreview(photoCount: 1),
+        replyMarkup: _templates.broadcastTargetKeyboard(hasGroup: _broadcastService.hasGroup),
+      );
+      return;
+    }
+
+    final activeGroupId = _broadcastActiveMediaGroupIds[userId];
+    final isNewGroup = activeGroupId != mediaGroupId;
+    final existing = isNewGroup
+        ? <BroadcastMessageRef>[]
+        : List<BroadcastMessageRef>.from(flowState.adminBroadcastSourceMessages);
+    if (!existing.any((item) => item.messageId == nextRef.messageId)) {
+      existing.add(nextRef);
+    }
+    _broadcastActiveMediaGroupIds[userId] = mediaGroupId;
+    _flowByUserId[userId] = flowState.copyWith(
+      step: _PrivateFlowStep.enteringAdminBroadcastText,
+      adminBroadcastText: null,
+      adminBroadcastSourceMessages: existing,
+    );
+
+    _broadcastMediaFinalizeTimers[userId]?.cancel();
+    _broadcastMediaFinalizeTimers[userId] = Timer(const Duration(milliseconds: 700), () {
+      unawaited(
+        _finalizeAdminBroadcastMedia(
+          chatId: chatId,
+          userId: userId,
+        ),
+      );
+    });
+
+    if (isNewGroup) {
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminBroadcastMediaCollecting(photoCount: existing.length),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+    }
+  }
+
+  Future<void> _finalizeAdminBroadcastMedia({
+    required int chatId,
+    required int userId,
+  }) async {
+    _broadcastMediaFinalizeTimers.remove(userId);
+    _broadcastActiveMediaGroupIds.remove(userId);
+    final flowState = _flowByUserId[userId];
+    if (flowState == null || flowState.step != _PrivateFlowStep.enteringAdminBroadcastText) {
+      return;
+    }
+    final sourceMessages = List<BroadcastMessageRef>.from(flowState.adminBroadcastSourceMessages)
+      ..sort((left, right) => left.messageId.compareTo(right.messageId));
+    if (sourceMessages.isEmpty) {
+      return;
+    }
+    _flowByUserId[userId] = flowState.copyWith(
+      step: _PrivateFlowStep.selectingAdminBroadcastTarget,
+      adminBroadcastText: null,
+      adminBroadcastSourceMessages: sourceMessages,
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.adminBroadcastMediaPreview(photoCount: sourceMessages.length),
+      replyMarkup: _templates.broadcastTargetKeyboard(hasGroup: _broadcastService.hasGroup),
+    );
+  }
+
+  void _cancelBroadcastMediaCollection(int userId) {
+    _broadcastMediaFinalizeTimers.remove(userId)?.cancel();
+    _broadcastActiveMediaGroupIds.remove(userId);
   }
 }
 
