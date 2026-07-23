@@ -8,6 +8,14 @@ void main() {
       final allTexts = <String>{
         ..._replyTexts(TelegramKeyboards.privateMenuKeyboard(isAdmin: true)),
         ..._replyTexts(TelegramKeyboards.privateMenuKeyboard(isAdmin: false)),
+        ..._replyTexts(
+          TelegramKeyboards.privateMenuKeyboard(
+            isAdmin: false,
+            showReturnToAdminMenu: true,
+          ),
+        ),
+        ..._replyTexts(TelegramKeyboards.adminToolsKeyboard()),
+        ..._replyTexts(TelegramKeyboards.adminSubscriptionFilterKeyboard()),
         ..._replyTexts(TelegramKeyboards.categorySelectionKeyboard()),
         ..._replyTexts(TelegramKeyboards.scheduleCategoryActionsKeyboard()),
         ..._replyTexts(
@@ -36,6 +44,10 @@ void main() {
 
       expect(allTexts, contains(MessageCopy.buttonBack));
       expect(allTexts, contains(MessageCopy.buttonMainMenu));
+      expect(allTexts, contains(MessageCopy.buttonAdminTools));
+      expect(allTexts, contains(MessageCopy.buttonClientMenu));
+      expect(allTexts, contains(MessageCopy.buttonAdminMenu));
+      expect(allTexts, contains(MessageCopy.buttonSubscriptionsSearch));
       expect(allTexts, contains(MessageCopy.buttonSubmitPayment));
       expect(allTexts, isNot(contains(MessageCopy.buttonPayFully)));
       expect(allTexts, contains(MessageCopy.buttonPayPartially));

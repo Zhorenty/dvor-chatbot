@@ -150,14 +150,14 @@ final class PrivateStaticCommands {
       return true;
     }
 
-    if (text == MessageTemplates.buttonMainMenu) {
+    if (text == MessageTemplates.buttonMainMenu || text == MessageTemplates.buttonAdminMenu) {
       if (userId == null) {
         return false;
       }
       flowByUserId.remove(userId);
       await sender.sendMessage(
         chatId,
-        'Главное меню 👇',
+        text == MessageTemplates.buttonAdminMenu ? 'Админ-меню 👇' : 'Главное меню 👇',
         replyMarkup: templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,

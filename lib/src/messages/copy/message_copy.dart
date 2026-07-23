@@ -82,6 +82,9 @@ final class MessageCopy {
   static const String buttonSummaryPreviousMonth = '🗓 Прошлый месяц';
 
   static const String buttonBroadcast = '📢 Рассылка';
+  static const String buttonAdminTools = '🧰 Инструменты';
+  static const String buttonClientMenu = '👤 Клиентское меню';
+  static const String buttonAdminMenu = '🛡 Админ-меню';
   static const String buttonAdminUserSearch = '🔍 Поиск по пользователю';
   static const String buttonBroadcastToUsers = '👥 Только пользователям';
   static const String buttonBroadcastToGroup = '💬 Только в группу';

@@ -74,6 +74,9 @@ final class MessageTemplates {
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
   static const String buttonBroadcast = MessageCopy.buttonBroadcast;
+  static const String buttonAdminTools = MessageCopy.buttonAdminTools;
+  static const String buttonClientMenu = MessageCopy.buttonClientMenu;
+  static const String buttonAdminMenu = MessageCopy.buttonAdminMenu;
   static const String buttonAdminUserSearch = MessageCopy.buttonAdminUserSearch;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;
   static const String buttonBookingsList = MessageCopy.buttonBookingsList;
@@ -982,8 +985,18 @@ final class MessageTemplates {
   }
 
   String chooseAdminSubscriptionsAction() {
-    return '💎 <b>Управление абонементами</b>\n'
-        'Выбери раздел ниже: фильтры, очередь модерации или поиск.';
+    return subscriptionFilterPrompt();
+  }
+
+  String chooseAdminToolsAction() {
+    return '🧰 <b>Инструменты</b>\n'
+        'Синхронизация, сводки, списки и клиентское меню 👇';
+  }
+
+  String adminClientMenuOpened() {
+    return '👤 <b>Клиентское меню</b>\n'
+        'Можно пользоваться ботом как обычный пользователь.\n'
+        'Вернуться: «${MessageCopy.buttonAdminMenu}» или «${MessageCopy.buttonMainMenu}».';
   }
 
   String subscriptionsList(List<SubscriptionRequest> items, {required DateTime now}) {
@@ -1056,7 +1069,7 @@ final class MessageTemplates {
     final status =
         request.status == SubscriptionRequestStatus.active ? 'PRO активирован' : 'Отклонено';
     final nextStep = remaining > 0
-        ? 'Осталось заявок: $remaining. Открой «${MessageCopy.buttonSubscribersManagement}», чтобы проверить следующую.'
+        ? 'Осталось заявок: $remaining. Открой «${MessageCopy.buttonSubscriptionsAdmin}» → «${MessageCopy.buttonSubscriptionsFilterPending}», чтобы проверить следующую.'
         : 'Очередь пустая.';
     return '✅ <b>Заявка #${request.id} обработана</b>\n'
         '$status\n'
@@ -1094,8 +1107,8 @@ final class MessageTemplates {
   }
 
   String subscriptionFilterPrompt() {
-    return '📋 <b>Фильтры абонементов</b>\n'
-        'Выбери нужный сегмент: активные, скоро истекают, на проверке или отмененные.';
+    return '💎 <b>Абонементы</b>\n'
+        'Выбери фильтр или поиск. «${MessageCopy.buttonSubscriptionsFilterPending}» — очередь на модерацию.';
   }
 
   String subscriptionSearchPrompt() {
@@ -1978,11 +1991,17 @@ final class MessageTemplates {
   Map<String, Object?> privateMenuKeyboard({
     required bool isAdmin,
     bool canViewParticipantsList = false,
+    bool showReturnToAdminMenu = false,
   }) {
     return TelegramKeyboards.privateMenuKeyboard(
       isAdmin: isAdmin,
       canViewParticipantsList: canViewParticipantsList,
+      showReturnToAdminMenu: showReturnToAdminMenu,
     );
+  }
+
+  Map<String, Object?> adminToolsKeyboard() {
+    return TelegramKeyboards.adminToolsKeyboard();
   }
 
   Map<String, Object?> bookingSelectionKeyboard(List<TrainingInfo> items) {

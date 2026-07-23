@@ -191,19 +191,92 @@ void main() {
 
       expect(handled, isTrue);
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
-      expect(buttons, contains(MessageTemplates.buttonRefreshSchedule));
       expect(buttons, contains(MessageTemplates.buttonPaymentsQueue));
-      expect(buttons, contains(MessageTemplates.buttonEconomicSummary));
-      expect(buttons, contains(MessageTemplates.buttonParticipantsList));
-      expect(buttons, contains(MessageTemplates.buttonNoblesList));
       expect(buttons, contains(MessageTemplates.buttonManageBookings));
       expect(buttons, contains(MessageTemplates.buttonSubscriptionsAdmin));
+      expect(buttons, contains(MessageTemplates.buttonBroadcast));
+      expect(buttons, contains(MessageTemplates.buttonAdminTools));
+      expect(buttons, isNot(contains(MessageTemplates.buttonRefreshSchedule)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonEconomicSummary)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonParticipantsList)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonNoblesList)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonAdminUserSearch)));
       expect(buttons, isNot(contains(MessageTemplates.buttonDvorXFrank)));
       expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
       expect(buttons, isNot(contains(MessageTemplates.buttonCoachingStaff)));
       expect(buttons, isNot(contains(MessageTemplates.buttonProfile)));
       expect(buttons, isNot(contains(MessageTemplates.buttonHelp)));
+    });
+
+    test('opens admin tools and client menu with return to admin', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{9100},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100},
+        'text': MessageTemplates.buttonAdminTools,
+      });
+      final toolsButtons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(toolsButtons, contains(MessageTemplates.buttonRefreshSchedule));
+      expect(toolsButtons, contains(MessageTemplates.buttonEconomicSummary));
+      expect(toolsButtons, contains(MessageTemplates.buttonParticipantsList));
+      expect(toolsButtons, contains(MessageTemplates.buttonNoblesList));
+      expect(toolsButtons, contains(MessageTemplates.buttonAdminUserSearch));
+      expect(toolsButtons, contains(MessageTemplates.buttonClientMenu));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100},
+        'text': MessageTemplates.buttonClientMenu,
+      });
+      final clientButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(clientButtons, contains(MessageTemplates.buttonTrainings));
+      expect(clientButtons, contains(MessageTemplates.buttonProfile));
+      expect(clientButtons, contains(MessageTemplates.buttonAdminMenu));
+      expect(clientButtons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100},
+        'text': MessageTemplates.buttonAdminMenu,
+      });
+      final adminButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(adminButtons, contains(MessageTemplates.buttonAdminTools));
+      expect(adminButtons, contains(MessageTemplates.buttonPaymentsQueue));
+      expect(adminButtons, isNot(contains(MessageTemplates.buttonTrainings)));
+    });
+
+    test('opens subscriptions filters directly for admin', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{9100},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100},
+        'text': MessageTemplates.buttonSubscriptionsAdmin,
+      });
+
+      expect(handled, isTrue);
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonSubscriptionsFilterActive));
+      expect(buttons, contains(MessageTemplates.buttonSubscriptionsFilterPending));
+      expect(buttons, contains(MessageTemplates.buttonSubscriptionsSearch));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubscriptionsList)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubscribersManagement)));
     });
 
     test('shows coaching staff button for regular users in private menu', () async {

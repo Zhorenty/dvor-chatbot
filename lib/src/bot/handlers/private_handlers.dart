@@ -360,6 +360,7 @@ final class PrivateHandlers {
           );
           return true;
         case _PrivateFlowStep.selectingAdminBookingManagementAction:
+        case _PrivateFlowStep.selectingAdminToolsAction:
         case _PrivateFlowStep.selectingAdminSubscriptionsAction:
         case _PrivateFlowStep.selectingAdminSubscriptionFilter:
         case _PrivateFlowStep.enteringAdminSubscriptionSearchQuery:
@@ -2057,13 +2058,60 @@ final class PrivateHandlers {
         return false;
       }
       _flowByUserId[userId] = const _PrivateFlowState(
-        step: _PrivateFlowStep.selectingAdminSubscriptionsAction,
+        step: _PrivateFlowStep.selectingAdminSubscriptionFilter,
         availableTrainings: <TrainingInfo>[],
       );
       await _sendAdminMessage(
         chatId,
-        _templates.chooseAdminSubscriptionsAction(),
-        replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
+        _templates.subscriptionFilterPrompt(),
+        replyMarkup: _templates.adminSubscriptionFilterKeyboard(),
+      );
+      return true;
+    }
+
+    if (text != null && text == MessageTemplates.buttonAdminTools) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (userId == null) {
+        return false;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminToolsAction,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.chooseAdminToolsAction(),
+        replyMarkup: _templates.adminToolsKeyboard(),
+      );
+      return true;
+    }
+
+    if (text != null && text == MessageTemplates.buttonClientMenu) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        );
+        return true;
+      }
+      if (userId != null) {
+        _flowByUserId.remove(userId);
+      }
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminClientMenuOpened(),
+        replyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: false,
+          showReturnToAdminMenu: true,
+        ),
       );
       return true;
     }
@@ -2235,23 +2283,8 @@ final class PrivateHandlers {
     }
 
     if (userId != null &&
-        flowState?.step == _PrivateFlowStep.selectingAdminSubscriptionsAction &&
+        flowState?.step == _PrivateFlowStep.selectingAdminSubscriptionFilter &&
         text != null) {
-      if (text == MessageTemplates.buttonSubscriptionsList) {
-        _flowByUserId[userId] = flowState!.copyWith(
-          step: _PrivateFlowStep.selectingAdminSubscriptionFilter,
-        );
-        await _sendAdminMessage(
-          chatId,
-          _templates.subscriptionFilterPrompt(),
-          replyMarkup: _templates.adminSubscriptionFilterKeyboard(),
-        );
-        return true;
-      }
-      if (text == MessageTemplates.buttonSubscribersManagement) {
-        await _sendAdminSubscriptionPendingQueue(chatId: chatId);
-        return true;
-      }
       if (text == MessageTemplates.buttonSubscriptionsSearch) {
         _flowByUserId[userId] = flowState!.copyWith(
           step: _PrivateFlowStep.enteringAdminSubscriptionSearchQuery,
@@ -2263,11 +2296,6 @@ final class PrivateHandlers {
         );
         return true;
       }
-    }
-
-    if (userId != null &&
-        flowState?.step == _PrivateFlowStep.selectingAdminSubscriptionFilter &&
-        text != null) {
       final filter = switch (text) {
         MessageTemplates.buttonSubscriptionsFilterActive => SubscriptionListFilter.active,
         MessageTemplates.buttonSubscriptionsFilterExpiring => SubscriptionListFilter.expiringSoon,
@@ -2303,7 +2331,11 @@ final class PrivateHandlers {
       await _sendAdminMessage(
         chatId,
         _templates.subscriptionsList(items, now: _nowProvider()),
-        replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
+        replyMarkup: _templates.adminSubscriptionFilterKeyboard(),
+      );
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminSubscriptionFilter,
+        availableTrainings: <TrainingInfo>[],
       );
       return true;
     }
@@ -2348,11 +2380,14 @@ final class PrivateHandlers {
       final requestId = flowState?.subscriptionModerationRequestId;
       final reason = flowState?.subscriptionModerationReason;
       if (action == null || requestId == null || reason == null) {
-        _flowByUserId.remove(userId);
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminSubscriptionFilter,
+          availableTrainings: <TrainingInfo>[],
+        );
         await _sendAdminMessage(
           chatId,
-          _templates.chooseAdminSubscriptionsAction(),
-          replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
+          _templates.subscriptionFilterPrompt(),
+          replyMarkup: _templates.adminSubscriptionFilterKeyboard(),
         );
         return true;
       }
@@ -2369,10 +2404,7 @@ final class PrivateHandlers {
         comment: comment,
         isAdmin: isAdmin,
       );
-      _flowByUserId[userId] = const _PrivateFlowState(
-        step: _PrivateFlowStep.selectingAdminSubscriptionsAction,
-        availableTrainings: <TrainingInfo>[],
-      );
+      _flowByUserId.remove(userId);
       return true;
     }
 
@@ -4127,14 +4159,14 @@ final class PrivateHandlers {
       await _sendAdminMessage(
         chatId,
         _templates.subscriptionPendingQueueEmpty(),
-        replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
+        replyMarkup: _templates.adminSubscriptionFilterKeyboard(),
       );
       return;
     }
     await _sendAdminMessage(
       chatId,
       _templates.subscriptionPendingQueueIntro(queue.length),
-      replyMarkup: _templates.adminSubscriptionsMenuKeyboard(),
+      replyMarkup: _templates.adminSubscriptionFilterKeyboard(),
     );
     for (final request in queue) {
       await _sendAdminMessage(

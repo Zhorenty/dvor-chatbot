@@ -30,6 +30,7 @@ enum PrivateFlowStep {
   selectingBookingAction,
   selectingRescheduleTraining,
   selectingAdminBookingManagementAction,
+  selectingAdminToolsAction,
   selectingAdminSubscriptionsAction,
   selectingAdminSubscriptionFilter,
   enteringAdminSubscriptionSearchQuery,

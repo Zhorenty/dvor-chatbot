@@ -18,30 +18,21 @@ final class TelegramKeyboards {
   static Map<String, Object?> privateMenuKeyboard({
     required bool isAdmin,
     bool canViewParticipantsList = false,
+    bool showReturnToAdminMenu = false,
   }) {
     if (isAdmin) {
       return _replyKeyboard(
         <List<Map<String, String>>>[
           <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonRefreshSchedule},
             <String, String>{'text': MessageCopy.buttonPaymentsQueue},
-          ],
-          <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonManageBookings},
-            <String, String>{'text': MessageCopy.buttonParticipantsList},
-          ],
-          <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonEconomicSummary},
-            <String, String>{'text': MessageCopy.buttonNoblesList},
           ],
           <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonSubscriptionsAdmin},
-          ],
-          <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonBroadcast},
           ],
           <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonAdminUserSearch},
+            <String, String>{'text': MessageCopy.buttonAdminTools},
           ],
         ],
       );
@@ -71,7 +62,39 @@ final class TelegramKeyboards {
         ],
       );
     }
+    if (showReturnToAdminMenu) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonAdminMenu},
+        ],
+      );
+    }
     return _replyKeyboard(rows);
+  }
+
+  static Map<String, Object?> adminToolsKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonRefreshSchedule},
+          <String, String>{'text': MessageCopy.buttonEconomicSummary},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonParticipantsList},
+          <String, String>{'text': MessageCopy.buttonNoblesList},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonAdminUserSearch},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonClientMenu},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
   }
 
   static Map<String, Object?> bookingSelectionKeyboard(List<TrainingInfo> items) {
@@ -486,21 +509,7 @@ final class TelegramKeyboards {
   }
 
   static Map<String, Object?> adminSubscriptionsMenuKeyboard() {
-    return _replyKeyboard(
-      <List<Map<String, String>>>[
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonSubscriptionsList},
-          <String, String>{'text': MessageCopy.buttonSubscribersManagement},
-        ],
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonSubscriptionsSearch},
-        ],
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonBack},
-          <String, String>{'text': MessageCopy.buttonMainMenu},
-        ],
-      ],
-    );
+    return adminSubscriptionFilterKeyboard();
   }
 
   static Map<String, Object?> adminSubscriptionFilterKeyboard() {
@@ -513,6 +522,9 @@ final class TelegramKeyboards {
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonSubscriptionsFilterPending},
           <String, String>{'text': MessageCopy.buttonSubscriptionsFilterCancelled},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSubscriptionsSearch},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
