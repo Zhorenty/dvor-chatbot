@@ -990,7 +990,7 @@ final class MessageTemplates {
 
   String chooseAdminToolsAction() {
     return '🧰 <b>Инструменты</b>\n'
-        'Синхронизация, сводки, списки и клиентское меню 👇';
+        'Синхронизация, сводки, абонементы и клиентское меню 👇';
   }
 
   String adminClientMenuOpened() {

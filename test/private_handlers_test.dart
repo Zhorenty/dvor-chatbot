@@ -193,12 +193,12 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPaymentsQueue));
       expect(buttons, contains(MessageTemplates.buttonManageBookings));
-      expect(buttons, contains(MessageTemplates.buttonSubscriptionsAdmin));
+      expect(buttons, contains(MessageTemplates.buttonParticipantsList));
       expect(buttons, contains(MessageTemplates.buttonBroadcast));
       expect(buttons, contains(MessageTemplates.buttonAdminTools));
       expect(buttons, isNot(contains(MessageTemplates.buttonRefreshSchedule)));
       expect(buttons, isNot(contains(MessageTemplates.buttonEconomicSummary)));
-      expect(buttons, isNot(contains(MessageTemplates.buttonParticipantsList)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubscriptionsAdmin)));
       expect(buttons, isNot(contains(MessageTemplates.buttonNoblesList)));
       expect(buttons, isNot(contains(MessageTemplates.buttonAdminUserSearch)));
       expect(buttons, isNot(contains(MessageTemplates.buttonDvorXFrank)));
@@ -227,10 +227,11 @@ void main() {
       final toolsButtons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(toolsButtons, contains(MessageTemplates.buttonRefreshSchedule));
       expect(toolsButtons, contains(MessageTemplates.buttonEconomicSummary));
-      expect(toolsButtons, contains(MessageTemplates.buttonParticipantsList));
+      expect(toolsButtons, contains(MessageTemplates.buttonSubscriptionsAdmin));
       expect(toolsButtons, contains(MessageTemplates.buttonNoblesList));
       expect(toolsButtons, contains(MessageTemplates.buttonAdminUserSearch));
       expect(toolsButtons, contains(MessageTemplates.buttonClientMenu));
+      expect(toolsButtons, isNot(contains(MessageTemplates.buttonParticipantsList)));
 
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
