@@ -1,6 +1,7 @@
 final class MessageCopy {
   const MessageCopy._();
 
+  static const String buttonDvorXFrank = 'DVOR x FRANK by БАСТА 🟥';
   static const String buttonTrainings = '📅 Расписание';
   static const String buttonCoachingStaff = '🧑‍🏫 Тренерский штаб';
   static const String buttonCoachDetails = '📖 Подробнее о тренере';

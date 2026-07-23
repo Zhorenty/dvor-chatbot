@@ -119,6 +119,22 @@ final class PrivateStaticCommands {
       return true;
     }
 
+    if (text == MessageTemplates.buttonDvorXFrank) {
+      if (userId != null) {
+        flowByUserId.remove(userId);
+      }
+      await sender.sendMessage(
+        chatId,
+        templates.dvorXFrankPromo(),
+        replyMarkup: templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          canViewParticipantsList: canViewParticipantsList,
+        ),
+        parseMode: 'HTML',
+      );
+      return true;
+    }
+
     if (text == MessageTemplates.buttonHelp) {
       if (userId != null) {
         flowByUserId.remove(userId);

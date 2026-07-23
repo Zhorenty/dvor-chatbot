@@ -41,6 +41,7 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonPayPartially));
       expect(allTexts, contains(MessageCopy.buttonUseStarterBonus));
       expect(allTexts, contains(MessageCopy.buttonCancelBooking));
+      expect(allTexts, contains(MessageCopy.buttonDvorXFrank));
       expect(allTexts, contains(MessageCopy.buttonTrainings));
       expect(allTexts, contains(MessageCopy.buttonBookTraining));
       expect(allTexts, contains(MessageCopy.buttonReferralProgram));

@@ -45,6 +45,14 @@ final class PrivateNavigationTemplates {
         'По остальным вопросам пиши в поддержку: @dvor_support 💬';
   }
 
+  String dvorXFrankPromo() {
+    return '🟥 <b>DVOR x FRANK by БАСТА</b>\n\n'
+        'Здесь скоро будет что-то интересное 👀✨\n\n'
+        'Готовим спецпроект — будет жарко 🔥\n'
+        'Следи за обновлениями, чтобы ничего не пропустить 🚀🔔\n\n'
+        'Stay tuned 😉';
+  }
+
   String privateFallback() {
     return 'Пока не понял сообщение 🤔\n'
         'Используй кнопки меню ниже.\n'
