@@ -303,9 +303,10 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonDvorXFrank)));
       expect(buttons, contains(MessageTemplates.buttonCoachingStaff));
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, contains(MessageTemplates.buttonBookFriend));
       expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(buttons, contains(MessageTemplates.buttonProfile));
-      expect(buttons, contains(MessageTemplates.buttonSubscription));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubscription)));
     });
 
     // TODO(dvor-x-frank): вернуть тест после включения промо-кнопки в меню.
@@ -355,8 +356,9 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, contains(MessageTemplates.buttonBookFriend));
       expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
-      expect(buttons, contains(MessageTemplates.buttonSubscription));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubscription)));
       expect(buttons, isNot(contains(MessageTemplates.buttonRefreshSchedule)));
       expect(buttons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
       expect(buttons, isNot(contains(MessageTemplates.buttonEconomicSummary)));

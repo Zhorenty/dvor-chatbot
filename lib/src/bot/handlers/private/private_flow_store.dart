@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/application/broadcast_service.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
@@ -17,6 +18,11 @@ enum PrivateFlowStep {
   selectingOutdoorDetailEvent,
   selectingOutdoorDetailType,
   selectingBookingCategory,
+  selectingBookFriendCategory,
+  selectingBookFriendEvent,
+  buildingBookingParty,
+  enteringPartyFriendUsername,
+  enteringPartyGuestName,
   selectingParticipantsCategory,
   selectingPaymentsQueueCategory,
   selectingEconomicSummaryPeriod,
@@ -109,6 +115,9 @@ final class PrivateFlowState {
     this.adminClientNotificationBooking,
     this.adminBroadcastText,
     this.adminBroadcastSourceMessages = const <BroadcastMessageRef>[],
+    this.partyParticipants = const <BookingParticipantDraft>[],
+    this.partyTraining,
+    this.activePaymentGroupId,
   });
 
   final PrivateFlowStep step;
@@ -137,6 +146,9 @@ final class PrivateFlowState {
   final TrainingBooking? adminClientNotificationBooking;
   final String? adminBroadcastText;
   final List<BroadcastMessageRef> adminBroadcastSourceMessages;
+  final List<BookingParticipantDraft> partyParticipants;
+  final TrainingInfo? partyTraining;
+  final String? activePaymentGroupId;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -165,6 +177,9 @@ final class PrivateFlowState {
     Object? adminClientNotificationBooking = _privateFlowUnset,
     Object? adminBroadcastText = _privateFlowUnset,
     List<BroadcastMessageRef>? adminBroadcastSourceMessages,
+    List<BookingParticipantDraft>? partyParticipants,
+    Object? partyTraining = _privateFlowUnset,
+    Object? activePaymentGroupId = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -226,6 +241,13 @@ final class PrivateFlowState {
           : adminBroadcastText as String?,
       adminBroadcastSourceMessages:
           adminBroadcastSourceMessages ?? this.adminBroadcastSourceMessages,
+      partyParticipants: partyParticipants ?? this.partyParticipants,
+      partyTraining: identical(partyTraining, _privateFlowUnset)
+          ? this.partyTraining
+          : partyTraining as TrainingInfo?,
+      activePaymentGroupId: identical(activePaymentGroupId, _privateFlowUnset)
+          ? this.activePaymentGroupId
+          : activePaymentGroupId as String?,
     );
   }
 }

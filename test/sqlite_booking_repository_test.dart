@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -1317,6 +1318,98 @@ void main() {
       expect(updated.promoCode, 'FREEDAY');
       expect(updated.promoDiscountPercent, 100);
       expect(updated.status, BookingStatus.paid);
+
+      await repository.close();
+    });
+
+    test('creates managed booking group for friend and guest with shared payment group', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => DateTime(2030, 7, 1, 12),
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Functional',
+        startsAt: DateTime(2030, 6, 10, 19),
+        location: 'Gym A',
+        price: 1500,
+        participantsLimit: 10,
+      );
+
+      final group = await repository.createPendingBookingGroup(
+        managerUserId: 3001,
+        managerUsername: 'organizer',
+        training: training,
+        participants: const <BookingParticipantDraft>[
+          BookingParticipantDraft.telegram(username: 'friend_one'),
+          BookingParticipantDraft.guest(name: 'Бабушка Мария'),
+        ],
+      );
+
+      expect(group.bookings, hasLength(2));
+      expect(group.totalPrice, 3000);
+      expect(group.bookings.every((b) => b.paymentGroupId == group.paymentGroupId), isTrue);
+      expect(group.bookings.every((b) => b.managerUserId == 3001), isTrue);
+      expect(group.bookings[0].participantType, BookingParticipantType.telegram);
+      expect(group.bookings[1].participantType, BookingParticipantType.guest);
+
+      final listed = await repository.listUserBookings(3001);
+      expect(listed.where((b) => b.paymentGroupId == group.paymentGroupId), hasLength(2));
+
+      final submitted = await repository.submitPaymentForLatestPending(
+        3001,
+        bookingId: group.bookings.first.id,
+        note: 'group pay',
+      );
+      expect(submitted, isNotNull);
+      final afterSubmit = await repository.listBookingsByPaymentGroup(group.paymentGroupId);
+      expect(
+        afterSubmit.every((b) => b.status == BookingStatus.paymentSubmitted),
+        isTrue,
+      );
+
+      final reviewed = await repository.reviewSubmittedPayment(
+        bookingId: group.bookings.first.id,
+        status: BookingStatus.paid,
+      );
+      expect(reviewed.outcome, PaymentReviewOutcome.success);
+      final afterReview = await repository.listBookingsByPaymentGroup(group.paymentGroupId);
+      expect(afterReview.every((b) => b.status == BookingStatus.paid), isTrue);
+
+      await repository.close();
+    });
+
+    test('rejects duplicate friend in managed booking group', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Functional',
+        startsAt: DateTime(2030, 6, 10, 19),
+        location: 'Gym A',
+        price: 1500,
+      );
+
+      await repository.createPendingBooking(
+        userId: 4002,
+        userUsername: 'already_booked',
+        training: training,
+      );
+
+      expect(
+        () => repository.createPendingBookingGroup(
+          managerUserId: 4001,
+          managerUsername: 'organizer',
+          training: training,
+          participants: const <BookingParticipantDraft>[
+            BookingParticipantDraft.telegram(username: 'already_booked'),
+          ],
+        ),
+        throwsA(isA<BookingParticipantConflictException>()),
+      );
 
       await repository.close();
     });

@@ -60,7 +60,9 @@ void main() {
       // TODO(dvor-x-frank): вернуть expect на MessageCopy.buttonDvorXFrank после включения кнопки.
       expect(allTexts, isNot(contains(MessageCopy.buttonTrainings)));
       expect(allTexts, contains(MessageCopy.buttonBookTraining));
+      expect(allTexts, contains(MessageCopy.buttonBookFriend));
       expect(allTexts, contains(MessageCopy.buttonReferralProgram));
+      expect(allTexts, contains(MessageCopy.buttonSubscription));
     });
 
     test('inline callbacks use copy callback prefixes', () {

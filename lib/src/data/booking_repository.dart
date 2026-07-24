@@ -1,7 +1,26 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
+
+final class BookingManagerLimitExceededException implements Exception {
+  const BookingManagerLimitExceededException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'BookingManagerLimitExceededException: $message';
+}
+
+final class BookingParticipantConflictException implements Exception {
+  const BookingParticipantConflictException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'BookingParticipantConflictException: $message';
+}
 
 final class EveryFifthRewardProgress {
   const EveryFifthRewardProgress({
@@ -73,6 +92,17 @@ abstract interface class BookingRepository {
     String? userUsername,
     required TrainingInfo training,
   });
+
+  /// Creates a managed booking group (friend/guest party). All rows share
+  /// [BookingGroupCreateResult.paymentGroupId] and are owned by [managerUserId].
+  Future<BookingGroupCreateResult> createPendingBookingGroup({
+    required int managerUserId,
+    String? managerUsername,
+    required TrainingInfo training,
+    required List<BookingParticipantDraft> participants,
+  });
+
+  Future<List<TrainingBooking>> listBookingsByPaymentGroup(String paymentGroupId);
 
   Future<List<TrainingBooking>> listUserBookings(int userId, {int limit = 10});
 

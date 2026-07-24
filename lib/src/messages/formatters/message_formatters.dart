@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -65,7 +66,18 @@ final class MessageFormatters {
   }
 
   static String userTag(TrainingBooking booking) {
-    return userTagById(booking.userId, username: booking.userUsername);
+    if (booking.participantType == BookingParticipantType.guest) {
+      return booking.participantDisplayLabel;
+    }
+    final participantUsername = booking.participantUsername ?? booking.userUsername;
+    final participantUserId = booking.participantUserId ?? booking.userId;
+    final tag = userTagById(participantUserId, username: participantUsername);
+    if (booking.isManagedForOther &&
+        booking.managerUserId != (booking.participantUserId ?? booking.managerUserId)) {
+      final managerTag = userTagById(booking.managerUserId, username: booking.userUsername);
+      return '$tag (через $managerTag)';
+    }
+    return tag;
   }
 
   static String userTagById(int userId, {String? username}) {

@@ -21,7 +21,7 @@ final class PaymentReviewService {
       BookingStatus.paymentSubmitted,
       limit: _queueFetchLimit,
     );
-    return queue
+    return _dedupePaymentGroups(queue)
         .where((booking) => _catalogService.categoryForBooking(booking) == category)
         .toList(growable: false);
   }
@@ -31,11 +31,12 @@ final class PaymentReviewService {
       BookingStatus.paymentSubmitted,
       limit: _queueFetchLimit,
     );
+    final deduped = _dedupePaymentGroups(queue);
     var trainings = 0;
     var yoga = 0;
     var hikes = 0;
     var trails = 0;
-    for (final booking in queue) {
+    for (final booking in deduped) {
       switch (_catalogService.categoryForBooking(booking)) {
         case ActivityCategory.trainings:
           trainings++;
@@ -48,12 +49,27 @@ final class PaymentReviewService {
       }
     }
     return PaymentQueueCounters(
-      total: queue.length,
+      total: deduped.length,
       trainings: trainings,
       yoga: yoga,
       hikes: hikes,
       trails: trails,
     );
+  }
+
+  List<TrainingBooking> _dedupePaymentGroups(List<TrainingBooking> queue) {
+    final seenGroups = <String>{};
+    final result = <TrainingBooking>[];
+    for (final booking in queue) {
+      final groupId = booking.paymentGroupId?.trim();
+      if (groupId != null && groupId.isNotEmpty) {
+        if (!seenGroups.add(groupId)) {
+          continue;
+        }
+      }
+      result.add(booking);
+    }
+    return result;
   }
 }
 

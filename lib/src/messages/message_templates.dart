@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
@@ -29,10 +30,15 @@ final class MessageTemplates {
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
   static const String buttonCoachDetails = MessageCopy.buttonCoachDetails;
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
+  static const String buttonBookFriend = MessageCopy.buttonBookFriend;
   static const String buttonSubscription = MessageCopy.buttonSubscription;
   static const String buttonProfile = MessageCopy.buttonProfile;
   static const String buttonProfileBookings = MessageCopy.buttonProfileBookings;
   static const String buttonReferralProgram = MessageCopy.buttonReferralProgram;
+  static const String buttonPartyAddFriend = MessageCopy.buttonPartyAddFriend;
+  static const String buttonPartyAddGuest = MessageCopy.buttonPartyAddGuest;
+  static const String buttonPartyAddSelf = MessageCopy.buttonPartyAddSelf;
+  static const String buttonPartyReady = MessageCopy.buttonPartyReady;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
   static const String buttonPayFully = MessageCopy.buttonPayFully;
   static const String buttonPayPartially = MessageCopy.buttonPayPartially;
@@ -1178,6 +1184,7 @@ final class MessageTemplates {
       for (final booking in upcoming) {
         lines.add(
           '\n🧩 <b>#${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>\n'
+          '${_myBookingParticipantLine(booking)}'
           '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
           '💳 <b>${_escapeHtml(_statusLabel(booking.status, booking: booking))}</b>',
         );
@@ -1189,6 +1196,7 @@ final class MessageTemplates {
       for (final booking in past) {
         lines.add(
           '\n🧩 <b>#${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>\n'
+          '${_myBookingParticipantLine(booking)}'
           '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
           '💳 <b>${_escapeHtml(_statusLabel(booking.status, booking: booking))}</b>',
         );
@@ -1223,6 +1231,7 @@ final class MessageTemplates {
       lines.addAll(<String>[
         '',
         '🧩 <b>${index + 1}. #${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>',
+        if (booking.isManagedForOther) '👤 ${_escapeHtml(booking.participantDisplayLabel)}',
         '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}',
         '💳 ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
       ]);
@@ -1431,13 +1440,21 @@ final class MessageTemplates {
     final paymentType = _paymentTypeLabelFromNote(booking.paymentNote);
     final cleanNote = _cleanPaymentNote(booking.paymentNote);
     final note = cleanNote == null ? '' : '\nКомментарий: ${_escapeHtml(cleanNote)}';
+    final participantLine = booking.isManagedForOther
+        ? '\nУчастник: ${_escapeHtml(booking.participantDisplayLabel)}'
+        : '';
+    final groupHint = (booking.paymentGroupId?.trim().isNotEmpty ?? false)
+        ? '\nГруппа оплаты: подтверждение закроет все записи пакета.'
+        : '';
     return '🧾 <b>Заявка #${booking.id}</b>\n'
-        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Организатор: ${_escapeHtml(_userTagById(booking.managerUserId, username: booking.userUsername))} (${booking.managerUserId})'
+        '$participantLine\n'
         'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 ${_escapeHtml(booking.location)}'
         '${paymentType == null ? '' : '\nТип оплаты: ${_escapeHtml(paymentType)}'}'
-        '$note\n\n'
+        '$note'
+        '$groupHint\n\n'
         'Подтверди или отклони оплату кнопками ниже.\n'
         'После решения можно сразу открыть следующую заявку.';
   }
@@ -2078,6 +2095,136 @@ final class MessageTemplates {
     return TelegramKeyboards.profileActionsKeyboard();
   }
 
+  Map<String, Object?> partyBuilderKeyboard({
+    required bool canAddSelf,
+    required bool canFinish,
+  }) {
+    return TelegramKeyboards.partyBuilderKeyboard(
+      canAddSelf: canAddSelf,
+      canFinish: canFinish,
+    );
+  }
+
+  String chooseBookFriendCategory() {
+    return '👥 <b>Записать друга</b>\n'
+        'Выбери категорию мероприятия 👇';
+  }
+
+  String chooseBookFriendEvent(List<TrainingInfo> items) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>[
+      '👥 <b>Записать друга</b>',
+      'Выбери мероприятие 👇',
+    ];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final price = item.price == null ? '' : ' · ${_trainingPriceLabel(item.price)}';
+      lines.add(
+        '${index + 1}. <b>${_escapeHtml(item.title)}</b> — ${formatter.format(item.startsAt)}'
+        ' (${_escapeHtml(item.location)}$price)',
+      );
+    }
+    return lines.join('\n');
+  }
+
+  String partyBuilderStatus({
+    required TrainingInfo training,
+    required List<BookingParticipantDraft> participants,
+  }) {
+    final unitPrice = training.price ?? 0;
+    final count = participants.length;
+    final total = unitPrice * count;
+    final buffer = StringBuffer()
+      ..writeln('👥 <b>Состав участников</b>')
+      ..writeln('Событие: <b>${_escapeHtml(training.title)}</b>')
+      ..writeln('');
+    if (participants.isEmpty) {
+      buffer.writeln('Пока никого. Добавь друга или гостя.');
+    } else {
+      for (var index = 0; index < participants.length; index++) {
+        buffer.writeln('${index + 1}. ${_escapeHtml(participants[index].displayLabel)}');
+      }
+    }
+    buffer
+      ..writeln('')
+      ..writeln(
+        'Сумма: <b>$count × ${_trainingPriceLabel(unitPrice)} = ${_trainingPriceLabel(total)}</b>',
+      )
+      ..writeln('Можно добавить до 3 участников (включая себя).');
+    return buffer.toString().trimRight();
+  }
+
+  String askPartyFriendUsername() {
+    return '👤 <b>Username друга</b>\n'
+        'Введи Telegram username (с @ или без).';
+  }
+
+  String askPartyGuestName() {
+    return '👤 <b>Имя гостя</b>\n'
+        'Как записать человека без Telegram? Например: <code>Бабушка Мария</code>.';
+  }
+
+  String invalidPartyGuestName() {
+    return 'Имя гостя должно быть от 1 до 40 символов. Попробуй ещё раз.';
+  }
+
+  String partyParticipantConflict(String label) {
+    return '⚠️ ${_escapeHtml(label)} уже записан(а) на это мероприятие.';
+  }
+
+  String partyManagerLimitExceeded() {
+    return '⚠️ На одно мероприятие можно записать не больше 3 человек (включая себя).';
+  }
+
+  String partyDuplicateParticipant(String label) {
+    return '⚠️ ${_escapeHtml(label)} уже есть в текущем составе.';
+  }
+
+  String bookingGroupCreated({
+    required List<TrainingBooking> bookings,
+    required int unitPrice,
+    required int totalPrice,
+  }) {
+    final first = bookings.first;
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final buffer = StringBuffer()
+      ..writeln('✅ <b>Записи созданы (${bookings.length} чел.)</b>')
+      ..writeln('Событие: ${_escapeHtml(first.trainingTitle)}')
+      ..writeln('Дата: ${formatter.format(first.startsAt)}')
+      ..writeln('Локация: ${_escapeHtml(first.location)}')
+      ..writeln('')
+      ..writeln('<b>Участники:</b>');
+    for (final booking in bookings) {
+      buffer.writeln('• ${_escapeHtml(booking.participantDisplayLabel)}');
+    }
+    buffer
+      ..writeln('')
+      ..writeln(
+        'К оплате: <b>${bookings.length} × ${_trainingPriceLabel(unitPrice)} = '
+        '${_trainingPriceLabel(totalPrice)}</b>',
+      );
+    return buffer.toString().trimRight();
+  }
+
+  String paymentInstructionsForGroup({
+    required TrainingBooking booking,
+    required int participantsCount,
+    required int unitPrice,
+    required int totalPrice,
+  }) {
+    final base = paymentInstructions(booking);
+    final totalLine =
+        '• К оплате за группу: <b>$participantsCount × ${_trainingPriceLabel(unitPrice)} = '
+        '${_trainingPriceLabel(totalPrice)}</b>\n';
+    if (base.contains('• К оплате:')) {
+      return base.replaceFirst(RegExp(r'• К оплате:.*\n'), totalLine);
+    }
+    if (base.contains('• К оплате сейчас:')) {
+      return '$totalLine$base';
+    }
+    return '$totalLine$base';
+  }
+
   Map<String, Object?> subscriptionOverviewKeyboard({
     required bool canApply,
     bool isRenewal = false,
@@ -2243,6 +2390,13 @@ final class MessageTemplates {
       dateTimeFormatter,
       dateOnlyFormatter,
     );
+  }
+
+  String _myBookingParticipantLine(TrainingBooking booking) {
+    if (!booking.isManagedForOther) {
+      return '';
+    }
+    return '👤 ${_escapeHtml(booking.participantDisplayLabel)}\n';
   }
 
   String _bookingDateLabel(

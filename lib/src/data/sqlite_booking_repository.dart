@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/pending_payment_expiry_policy.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -14,6 +16,7 @@ final class SqliteBookingRepository implements BookingRepository {
   static const String _everyFifthBonusPaymentNoteMarker = '__every_fifth_bonus__';
   static const String _referralBonusPaymentNoteMarker = '__referral_bonus__';
   static const String _proIncludedTrainingPaymentNoteMarker = '__pro_included_training__';
+  static const int _maxManagedParticipantsPerEvent = 3;
 
   SqliteBookingRepository({
     required String dbPath,
@@ -75,6 +78,7 @@ final class SqliteBookingRepository implements BookingRepository {
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN training_price INTEGER;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN promo_code TEXT;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN promo_discount_percent INTEGER;');
+    _migrateBookingsParticipantModel(db);
     db.execute('''
       CREATE TABLE IF NOT EXISTS economic_report_dispatches (
         report_type TEXT NOT NULL,
@@ -89,6 +93,12 @@ final class SqliteBookingRepository implements BookingRepository {
     );
     db.execute(
       'CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);',
+    );
+    db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_bookings_payment_group_id ON bookings(payment_group_id);',
+    );
+    db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_bookings_manager_user_id ON bookings(manager_user_id);',
     );
     db.execute('''
       CREATE TABLE IF NOT EXISTS referral_attributions (
@@ -194,9 +204,15 @@ final class SqliteBookingRepository implements BookingRepository {
           training_price,
           status,
           payment_note,
+          manager_user_id,
+          participant_type,
+          participant_user_id,
+          participant_username,
+          participant_name,
+          payment_group_id,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           userId,
@@ -207,6 +223,12 @@ final class SqliteBookingRepository implements BookingRepository {
           training.location,
           training.price,
           BookingStatus.pendingPayment.dbValue,
+          null,
+          userId,
+          BookingParticipantType.self.dbValue,
+          userId,
+          normalizedUsername,
+          null,
           null,
           nowIso,
           nowIso,
@@ -244,6 +266,169 @@ final class SqliteBookingRepository implements BookingRepository {
       }
       return BookingCreateResult(booking: existing, created: false);
     }
+  }
+
+  @override
+  Future<BookingGroupCreateResult> createPendingBookingGroup({
+    required int managerUserId,
+    String? managerUsername,
+    required TrainingInfo training,
+    required List<BookingParticipantDraft> participants,
+  }) async {
+    _expireOverduePendingBookings();
+    if (participants.isEmpty) {
+      throw ArgumentError.value(participants, 'participants', 'must not be empty');
+    }
+    if (participants.length > _maxManagedParticipantsPerEvent) {
+      throw const BookingManagerLimitExceededException(
+        'Too many participants for one manager on a single event.',
+      );
+    }
+
+    final normalizedManagerUsername = _normalizeUsername(managerUsername);
+    final key = training.sessionKey;
+    final normalizedParticipants = <BookingParticipantDraft>[];
+    final seenKeys = <String>{};
+    for (final draft in participants) {
+      final normalized = _normalizeParticipantDraft(draft);
+      final dedupeKey = _participantDedupeKey(normalized, managerUserId: managerUserId);
+      if (!seenKeys.add(dedupeKey)) {
+        throw BookingParticipantConflictException(
+          'Duplicate participant in group: ${normalized.displayLabel}',
+        );
+      }
+      normalizedParticipants.add(normalized);
+    }
+
+    final existingManaged = _countActiveManagedBookings(
+      managerUserId: managerUserId,
+      trainingKey: key,
+    );
+    if (existingManaged + normalizedParticipants.length > _maxManagedParticipantsPerEvent) {
+      throw const BookingManagerLimitExceededException(
+        'Manager participant limit reached for selected training.',
+      );
+    }
+
+    for (final draft in normalizedParticipants) {
+      final conflict = _findActiveParticipantConflict(
+        trainingKey: key,
+        draft: draft,
+        managerUserId: managerUserId,
+      );
+      if (conflict != null) {
+        throw BookingParticipantConflictException(
+          'Participant already booked: ${draft.displayLabel}',
+        );
+      }
+    }
+
+    _assertParticipantsLimitAllowsAdditional(
+      training,
+      additionalCount: normalizedParticipants.length,
+      userId: managerUserId,
+      userUsername: normalizedManagerUsername,
+    );
+
+    final paymentGroupId = _newPaymentGroupId();
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    final db = _database;
+    final created = <TrainingBooking>[];
+    try {
+      db.execute('BEGIN IMMEDIATE;');
+      for (final draft in normalizedParticipants) {
+        final participantUserId = _resolveParticipantUserId(
+          draft: draft,
+          managerUserId: managerUserId,
+        );
+        final participantUsername = draft.type == BookingParticipantType.telegram
+            ? _normalizeUsername(draft.username)
+            : (draft.type == BookingParticipantType.self ? normalizedManagerUsername : null);
+        final participantName =
+            draft.type == BookingParticipantType.guest ? draft.name?.trim() : null;
+        db.execute(
+          '''
+          INSERT INTO bookings (
+            user_id,
+            user_username,
+            training_key,
+            training_title,
+            starts_at,
+            location,
+            training_price,
+            status,
+            payment_note,
+            manager_user_id,
+            participant_type,
+            participant_user_id,
+            participant_username,
+            participant_name,
+            payment_group_id,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          ''',
+          <Object?>[
+            managerUserId,
+            normalizedManagerUsername,
+            key,
+            training.title,
+            training.startsAt.toUtc().toIso8601String(),
+            training.location,
+            training.price,
+            BookingStatus.pendingPayment.dbValue,
+            null,
+            managerUserId,
+            draft.type.dbValue,
+            participantUserId,
+            participantUsername,
+            participantName,
+            paymentGroupId,
+            nowIso,
+            nowIso,
+          ],
+        );
+        final inserted = _findLatestBookingByManagerGroup(
+          managerUserId: managerUserId,
+          paymentGroupId: paymentGroupId,
+          participantType: draft.type,
+          participantUserId: participantUserId,
+          participantName: participantName,
+        );
+        if (inserted == null) {
+          throw StateError('Inserted group booking is missing in database.');
+        }
+        created.add(inserted);
+      }
+      db.execute('COMMIT;');
+    } on Object {
+      db.execute('ROLLBACK;');
+      rethrow;
+    }
+
+    return BookingGroupCreateResult(
+      paymentGroupId: paymentGroupId,
+      bookings: created,
+    );
+  }
+
+  @override
+  Future<List<TrainingBooking>> listBookingsByPaymentGroup(String paymentGroupId) async {
+    _expireOverduePendingBookings();
+    final normalized = paymentGroupId.trim();
+    if (normalized.isEmpty) {
+      return const <TrainingBooking>[];
+    }
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE payment_group_id = ?
+      ORDER BY id ASC;
+      ''',
+      <Object?>[normalized],
+    );
+    return result.map(_rowToBooking).toList(growable: false);
   }
 
   @override
@@ -398,26 +583,57 @@ final class SqliteBookingRepository implements BookingRepository {
       return null;
     }
     final selectedBookingId = result.first['id'] as int;
+    final selected = _findBookingById(selectedBookingId);
+    if (selected == null) {
+      return null;
+    }
     final nowIso = _nowProvider().toUtc().toIso8601String();
-    db.execute(
-      '''
-      UPDATE bookings
-      SET status = ?,
-          payment_note = ?,
-          payment_proof_chat_id = ?,
-          payment_proof_message_id = ?,
-          updated_at = ?
-      WHERE id = ?;
-      ''',
-      <Object?>[
-        BookingStatus.paymentSubmitted.dbValue,
-        note?.trim().isEmpty == true ? null : note?.trim(),
-        paymentProofChatId,
-        paymentProofMessageId,
-        nowIso,
-        selectedBookingId,
-      ],
-    );
+    final normalizedNote = note?.trim().isEmpty == true ? null : note?.trim();
+    final groupId = selected.paymentGroupId?.trim();
+    if (groupId != null && groupId.isNotEmpty) {
+      db.execute(
+        '''
+        UPDATE bookings
+        SET status = ?,
+            payment_note = ?,
+            payment_proof_chat_id = ?,
+            payment_proof_message_id = ?,
+            updated_at = ?
+        WHERE payment_group_id = ?
+          AND status IN (?, ?);
+        ''',
+        <Object?>[
+          BookingStatus.paymentSubmitted.dbValue,
+          normalizedNote,
+          paymentProofChatId,
+          paymentProofMessageId,
+          nowIso,
+          groupId,
+          BookingStatus.pendingPayment.dbValue,
+          BookingStatus.partialPaid.dbValue,
+        ],
+      );
+    } else {
+      db.execute(
+        '''
+        UPDATE bookings
+        SET status = ?,
+            payment_note = ?,
+            payment_proof_chat_id = ?,
+            payment_proof_message_id = ?,
+            updated_at = ?
+        WHERE id = ?;
+        ''',
+        <Object?>[
+          BookingStatus.paymentSubmitted.dbValue,
+          normalizedNote,
+          paymentProofChatId,
+          paymentProofMessageId,
+          nowIso,
+          selectedBookingId,
+        ],
+      );
+    }
     return _findBookingById(selectedBookingId);
   }
 
@@ -566,19 +782,36 @@ final class SqliteBookingRepository implements BookingRepository {
       return const PaymentReviewResult(outcome: PaymentReviewOutcome.invalidStatus);
     }
     final nowIso = _nowProvider().toUtc().toIso8601String();
-    db.execute(
-      '''
-      UPDATE bookings
-      SET status = ?, updated_at = ?
-      WHERE id = ? AND status = ?;
-      ''',
-      <Object?>[
-        status.dbValue,
-        nowIso,
-        bookingId,
-        BookingStatus.paymentSubmitted.dbValue,
-      ],
-    );
+    final groupId = existing.paymentGroupId?.trim();
+    if (groupId != null && groupId.isNotEmpty) {
+      db.execute(
+        '''
+        UPDATE bookings
+        SET status = ?, updated_at = ?
+        WHERE payment_group_id = ? AND status = ?;
+        ''',
+        <Object?>[
+          status.dbValue,
+          nowIso,
+          groupId,
+          BookingStatus.paymentSubmitted.dbValue,
+        ],
+      );
+    } else {
+      db.execute(
+        '''
+        UPDATE bookings
+        SET status = ?, updated_at = ?
+        WHERE id = ? AND status = ?;
+        ''',
+        <Object?>[
+          status.dbValue,
+          nowIso,
+          bookingId,
+          BookingStatus.paymentSubmitted.dbValue,
+        ],
+      );
+    }
     if (db.updatedRows == 0) {
       return const PaymentReviewResult(outcome: PaymentReviewOutcome.invalidStatus);
     }
@@ -857,9 +1090,15 @@ final class SqliteBookingRepository implements BookingRepository {
           training_price,
           status,
           payment_note,
+          manager_user_id,
+          participant_type,
+          participant_user_id,
+          participant_username,
+          participant_name,
+          payment_group_id,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           effectiveUserId,
@@ -870,6 +1109,12 @@ final class SqliteBookingRepository implements BookingRepository {
           training.location,
           training.price,
           status.dbValue,
+          null,
+          effectiveUserId,
+          BookingParticipantType.self.dbValue,
+          effectiveUserId,
+          normalizedUsername,
+          null,
           null,
           nowIso,
           nowIso,
@@ -937,9 +1182,17 @@ final class SqliteBookingRepository implements BookingRepository {
     if (normalizedUsername != null) {
       columns.add('user_username = ?');
       args.add(normalizedUsername);
+      columns.add('participant_username = ?');
+      args.add(normalizedUsername);
       if (targetUserId != existing.userId) {
         columns.add('user_id = ?');
         args.add(targetUserId);
+        columns.add('manager_user_id = ?');
+        args.add(targetUserId);
+        columns.add('participant_user_id = ?');
+        args.add(targetUserId);
+        columns.add('participant_type = ?');
+        args.add(BookingParticipantType.self.dbValue);
       }
     }
     if (training != null) {
@@ -1008,6 +1261,7 @@ final class SqliteBookingRepository implements BookingRepository {
       SELECT COUNT(*) AS total
       FROM bookings
       WHERE user_id = ?
+        AND participant_type = ?
         AND status = ?
         AND starts_at < ?
         AND ($trainingsCondition)
@@ -1015,6 +1269,7 @@ final class SqliteBookingRepository implements BookingRepository {
       ''',
       <Object?>[
         userId,
+        BookingParticipantType.self.dbValue,
         BookingStatus.paid.dbValue,
         nowIso,
         _starterBonusPaymentNoteMarker,
@@ -1026,6 +1281,7 @@ final class SqliteBookingRepository implements BookingRepository {
       SELECT COUNT(*) AS total
       FROM bookings
       WHERE user_id = ?
+        AND participant_type = ?
         AND status = ?
         AND starts_at < ?
         AND ($trainingsCondition)
@@ -1033,6 +1289,7 @@ final class SqliteBookingRepository implements BookingRepository {
       ''',
       <Object?>[
         userId,
+        BookingParticipantType.self.dbValue,
         BookingStatus.paid.dbValue,
         nowIso,
         _everyFifthBonusPaymentNoteMarker,
@@ -1063,6 +1320,7 @@ final class SqliteBookingRepository implements BookingRepository {
           SELECT 1
           FROM bookings AS b
           WHERE b.user_id = refs.invitee_user_id
+            AND b.participant_type = 'self'
             AND b.status = ?
             AND b.starts_at < ?
             AND b.training_price > 0
@@ -1134,13 +1392,37 @@ final class SqliteBookingRepository implements BookingRepository {
 
   TrainingBooking? _findBookingByUserAndTraining(int userId, String trainingKey) {
     final db = _database;
+    // Prefer the manager's own seat so friend/guest rows under the same
+    // manager_user_id do not shadow self bookings.
+    final selfResult = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE training_key = ?
+        AND participant_type = ?
+        AND (
+          participant_user_id = ?
+          OR (participant_user_id IS NULL AND user_id = ?)
+        )
+      LIMIT 1;
+      ''',
+      <Object?>[
+        trainingKey,
+        BookingParticipantType.self.dbValue,
+        userId,
+        userId,
+      ],
+    );
+    if (selfResult.isNotEmpty) {
+      return _rowToBooking(selfResult.first);
+    }
     final result = db.select(
       '''
       SELECT * FROM bookings
       WHERE user_id = ? AND training_key = ?
+      ORDER BY CASE participant_type WHEN ? THEN 0 ELSE 1 END ASC, id ASC
       LIMIT 1;
       ''',
-      <Object?>[userId, trainingKey],
+      <Object?>[userId, trainingKey, BookingParticipantType.self.dbValue],
     );
     if (result.isEmpty) {
       return null;
@@ -1182,10 +1464,18 @@ final class SqliteBookingRepository implements BookingRepository {
       UPDATE bookings
       SET user_id = ?,
           user_username = ?,
+          manager_user_id = ?,
+          participant_type = ?,
+          participant_user_id = ?,
+          participant_username = ?,
           updated_at = ?
       WHERE id = ? AND user_id <= 0;
       ''',
       <Object?>[
+        userId,
+        userUsername,
+        userId,
+        BookingParticipantType.self.dbValue,
         userId,
         userUsername,
         nowIso,
@@ -1216,9 +1506,13 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   TrainingBooking _rowToBooking(Row row) {
+    final userId = row['user_id'] as int;
+    final participantType = BookingParticipantType.fromDbValue(
+      _optionalStringColumn(row, 'participant_type'),
+    );
     return TrainingBooking(
       id: row['id'] as int,
-      userId: row['user_id'] as int,
+      userId: userId,
       userUsername: row['user_username'] as String?,
       trainingKey: row['training_key'] as String,
       trainingTitle: row['training_title'] as String,
@@ -1233,7 +1527,29 @@ final class SqliteBookingRepository implements BookingRepository {
       promoDiscountPercent: row['promo_discount_percent'] as int?,
       createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
       updatedAt: DateTime.parse(row['updated_at'] as String).toLocal(),
+      managerUserId: (_optionalIntColumn(row, 'manager_user_id') ?? userId),
+      participantType: participantType,
+      participantUserId: _optionalIntColumn(row, 'participant_user_id'),
+      participantUsername: _optionalStringColumn(row, 'participant_username'),
+      participantName: _optionalStringColumn(row, 'participant_name'),
+      paymentGroupId: _optionalStringColumn(row, 'payment_group_id'),
     );
+  }
+
+  int? _optionalIntColumn(Row row, String column) {
+    try {
+      return row[column] as int?;
+    } on ArgumentError {
+      return null;
+    }
+  }
+
+  String? _optionalStringColumn(Row row, String column) {
+    try {
+      return row[column] as String?;
+    } on ArgumentError {
+      return null;
+    }
   }
 
   void _addColumnIfMissing(Database db, String sql) {
@@ -1244,6 +1560,372 @@ final class SqliteBookingRepository implements BookingRepository {
         rethrow;
       }
     }
+  }
+
+  void _migrateBookingsParticipantModel(Database db) {
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN manager_user_id INTEGER;');
+    _addColumnIfMissing(
+        db, "ALTER TABLE bookings ADD COLUMN participant_type TEXT NOT NULL DEFAULT 'self';");
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN participant_user_id INTEGER;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN participant_username TEXT;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN participant_name TEXT;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN payment_group_id TEXT;');
+    db.execute('''
+      UPDATE bookings
+      SET manager_user_id = user_id
+      WHERE manager_user_id IS NULL;
+    ''');
+    db.execute('''
+      UPDATE bookings
+      SET participant_type = 'self'
+      WHERE participant_type IS NULL OR TRIM(participant_type) = '';
+    ''');
+    db.execute('''
+      UPDATE bookings
+      SET participant_user_id = user_id
+      WHERE participant_user_id IS NULL
+        AND (participant_type = 'self' OR participant_type = 'telegram');
+    ''');
+    db.execute('''
+      UPDATE bookings
+      SET participant_username = user_username
+      WHERE participant_username IS NULL
+        AND user_username IS NOT NULL
+        AND (participant_type = 'self' OR participant_type = 'telegram');
+    ''');
+
+    final tableSqlRows = db.select(
+      "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'bookings';",
+    );
+    final tableSql = tableSqlRows.isEmpty ? '' : (tableSqlRows.first['sql'] as String? ?? '');
+    final hasLegacyUnique = tableSql.contains('UNIQUE(user_id, training_key)');
+    if (!hasLegacyUnique) {
+      _ensureParticipantUniqueIndexes(db);
+      return;
+    }
+
+    db.execute('''
+      CREATE TABLE bookings_participant_migrated (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        user_username TEXT,
+        training_key TEXT NOT NULL,
+        training_title TEXT NOT NULL,
+        starts_at TEXT NOT NULL,
+        location TEXT NOT NULL,
+        training_price INTEGER,
+        status TEXT NOT NULL,
+        payment_note TEXT,
+        payment_proof_chat_id INTEGER,
+        payment_proof_message_id INTEGER,
+        reminder_count INTEGER NOT NULL DEFAULT 0,
+        last_reminder_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        promo_code TEXT,
+        promo_discount_percent INTEGER,
+        manager_user_id INTEGER NOT NULL,
+        participant_type TEXT NOT NULL DEFAULT 'self',
+        participant_user_id INTEGER,
+        participant_username TEXT,
+        participant_name TEXT,
+        payment_group_id TEXT
+      );
+    ''');
+    db.execute('''
+      INSERT INTO bookings_participant_migrated (
+        id, user_id, user_username, training_key, training_title, starts_at, location,
+        training_price, status, payment_note, payment_proof_chat_id, payment_proof_message_id,
+        reminder_count, last_reminder_at, created_at, updated_at, promo_code, promo_discount_percent,
+        manager_user_id, participant_type, participant_user_id, participant_username,
+        participant_name, payment_group_id
+      )
+      SELECT
+        id, user_id, user_username, training_key, training_title, starts_at, location,
+        training_price, status, payment_note, payment_proof_chat_id, payment_proof_message_id,
+        COALESCE(reminder_count, 0), last_reminder_at, created_at, updated_at, promo_code,
+        promo_discount_percent,
+        COALESCE(manager_user_id, user_id),
+        COALESCE(NULLIF(TRIM(participant_type), ''), 'self'),
+        COALESCE(participant_user_id, user_id),
+        COALESCE(participant_username, user_username),
+        participant_name,
+        payment_group_id
+      FROM bookings;
+    ''');
+    db.execute('DROP TABLE bookings;');
+    db.execute('ALTER TABLE bookings_participant_migrated RENAME TO bookings;');
+    _ensureParticipantUniqueIndexes(db);
+  }
+
+  void _ensureParticipantUniqueIndexes(Database db) {
+    db.execute('''
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_participant_user_unique
+      ON bookings(training_key, participant_user_id)
+      WHERE participant_user_id IS NOT NULL;
+    ''');
+    db.execute('''
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_bookings_guest_participant_unique
+      ON bookings(training_key, manager_user_id, participant_name COLLATE NOCASE)
+      WHERE participant_type = 'guest' AND participant_name IS NOT NULL;
+    ''');
+  }
+
+  BookingParticipantDraft _normalizeParticipantDraft(BookingParticipantDraft draft) {
+    switch (draft.type) {
+      case BookingParticipantType.self:
+        return const BookingParticipantDraft.self();
+      case BookingParticipantType.telegram:
+        final username = _normalizeUsername(draft.username);
+        if (username == null) {
+          throw ArgumentError.value(draft.username, 'username', 'must not be empty');
+        }
+        return BookingParticipantDraft.telegram(username: username);
+      case BookingParticipantType.guest:
+        final name = draft.name?.trim() ?? '';
+        if (name.isEmpty || name.length > 40) {
+          throw ArgumentError.value(draft.name, 'name', 'must be 1..40 chars');
+        }
+        return BookingParticipantDraft.guest(name: name);
+    }
+  }
+
+  String _participantDedupeKey(
+    BookingParticipantDraft draft, {
+    required int managerUserId,
+  }) {
+    return switch (draft.type) {
+      BookingParticipantType.self => 'self:$managerUserId',
+      BookingParticipantType.telegram =>
+        'tg:${(_normalizeUsername(draft.username) ?? '').toLowerCase()}',
+      BookingParticipantType.guest => 'guest:${(draft.name ?? '').trim().toLowerCase()}',
+    };
+  }
+
+  int _countActiveManagedBookings({
+    required int managerUserId,
+    required String trainingKey,
+  }) {
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT COUNT(*) AS total
+      FROM bookings
+      WHERE manager_user_id = ?
+        AND training_key = ?
+        AND status != ?
+        AND status != ?;
+      ''',
+      <Object?>[
+        managerUserId,
+        trainingKey,
+        BookingStatus.cancelled.dbValue,
+        BookingStatus.paymentRejected.dbValue,
+      ],
+    );
+    return (result.first['total'] as int?) ?? 0;
+  }
+
+  TrainingBooking? _findActiveParticipantConflict({
+    required String trainingKey,
+    required BookingParticipantDraft draft,
+    required int managerUserId,
+  }) {
+    final db = _database;
+    final ResultSet result;
+    switch (draft.type) {
+      case BookingParticipantType.self:
+        result = db.select(
+          '''
+          SELECT * FROM bookings
+          WHERE training_key = ?
+            AND participant_type = ?
+            AND participant_user_id = ?
+            AND status != ?
+            AND status != ?
+          LIMIT 1;
+          ''',
+          <Object?>[
+            trainingKey,
+            BookingParticipantType.self.dbValue,
+            managerUserId,
+            BookingStatus.cancelled.dbValue,
+            BookingStatus.paymentRejected.dbValue,
+          ],
+        );
+      case BookingParticipantType.telegram:
+        final username = _normalizeUsername(draft.username);
+        if (username == null) {
+          throw ArgumentError.value(draft.username, 'username', 'must not be empty');
+        }
+        final participantUserId = _resolveUserIdByUsername(username);
+        result = db.select(
+          '''
+          SELECT * FROM bookings
+          WHERE training_key = ?
+            AND status != ?
+            AND status != ?
+            AND (
+              participant_user_id = ?
+              OR (
+                participant_username = ? COLLATE NOCASE
+                AND participant_type = ?
+              )
+            )
+          LIMIT 1;
+          ''',
+          <Object?>[
+            trainingKey,
+            BookingStatus.cancelled.dbValue,
+            BookingStatus.paymentRejected.dbValue,
+            participantUserId,
+            username,
+            BookingParticipantType.telegram.dbValue,
+          ],
+        );
+      case BookingParticipantType.guest:
+        final name = draft.name?.trim() ?? '';
+        if (name.isEmpty) {
+          throw ArgumentError.value(draft.name, 'name', 'must not be empty');
+        }
+        result = db.select(
+          '''
+          SELECT * FROM bookings
+          WHERE training_key = ?
+            AND manager_user_id = ?
+            AND participant_type = ?
+            AND participant_name = ? COLLATE NOCASE
+            AND status != ?
+            AND status != ?
+          LIMIT 1;
+          ''',
+          <Object?>[
+            trainingKey,
+            managerUserId,
+            BookingParticipantType.guest.dbValue,
+            name,
+            BookingStatus.cancelled.dbValue,
+            BookingStatus.paymentRejected.dbValue,
+          ],
+        );
+    }
+    if (result.isEmpty) {
+      return null;
+    }
+    return _rowToBooking(result.first);
+  }
+
+  int? _resolveParticipantUserId({
+    required BookingParticipantDraft draft,
+    required int managerUserId,
+  }) {
+    return switch (draft.type) {
+      BookingParticipantType.self => managerUserId,
+      BookingParticipantType.telegram =>
+        _resolveUserIdByUsername(_normalizeUsername(draft.username) ?? ''),
+      BookingParticipantType.guest => null,
+    };
+  }
+
+  void _assertParticipantsLimitAllowsAdditional(
+    TrainingInfo training, {
+    required int additionalCount,
+    required int userId,
+    required String? userUsername,
+  }) {
+    final participantsLimit = training.participantsLimit;
+    if (participantsLimit == null || participantsLimit <= 0 || additionalCount <= 0) {
+      return;
+    }
+    final includeTrainers = training.includeTrainersInParticipants;
+    if (!includeTrainers && isTrainerBookingWhitelisted(userId: userId, username: userUsername)) {
+      return;
+    }
+    final excludedUserIds = includeTrainers ? const <int>{} : trainerBookingWhitelistUserIds;
+    final excludedUsernames = includeTrainers
+        ? const <String>{}
+        : trainerBookingWhitelistUsernames
+            .map(normalizeTelegramUsername)
+            .whereType<String>()
+            .toSet();
+    final exclusionClauses = <String>[];
+    final args = <Object?>[
+      training.sessionKey,
+      BookingStatus.cancelled.dbValue,
+      BookingStatus.paymentRejected.dbValue,
+    ];
+    if (excludedUserIds.isNotEmpty) {
+      final placeholders = List<String>.filled(excludedUserIds.length, '?').join(', ');
+      exclusionClauses.add('user_id IN ($placeholders)');
+      args.addAll(excludedUserIds);
+    }
+    if (excludedUsernames.isNotEmpty) {
+      final placeholders = List<String>.filled(excludedUsernames.length, '?').join(', ');
+      exclusionClauses.add('LOWER(user_username) IN ($placeholders)');
+      args.addAll(excludedUsernames);
+    }
+    final excludedSql =
+        exclusionClauses.isEmpty ? '' : '\n        AND NOT (${exclusionClauses.join(' OR ')})';
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT COUNT(*) AS total
+      FROM bookings
+      WHERE training_key = ?
+        AND status != ?
+        AND status != ?$excludedSql;
+      ''',
+      args,
+    );
+    final total = (result.first['total'] as int?) ?? 0;
+    if (total + additionalCount > participantsLimit) {
+      throw const BookingParticipantsLimitExceededException(
+        'Participants limit reached for selected training.',
+      );
+    }
+  }
+
+  TrainingBooking? _findLatestBookingByManagerGroup({
+    required int managerUserId,
+    required String paymentGroupId,
+    required BookingParticipantType participantType,
+    required int? participantUserId,
+    required String? participantName,
+  }) {
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE manager_user_id = ?
+        AND payment_group_id = ?
+        AND participant_type = ?
+        AND (
+          (? IS NOT NULL AND participant_user_id = ?)
+          OR (? IS NOT NULL AND participant_name = ? COLLATE NOCASE)
+        )
+      ORDER BY id DESC
+      LIMIT 1;
+      ''',
+      <Object?>[
+        managerUserId,
+        paymentGroupId,
+        participantType.dbValue,
+        participantUserId,
+        participantUserId,
+        participantName,
+        participantName,
+      ],
+    );
+    if (result.isEmpty) {
+      return null;
+    }
+    return _rowToBooking(result.first);
+  }
+
+  String _newPaymentGroupId() {
+    final now = _nowProvider().toUtc().microsecondsSinceEpoch;
+    final random = Random(now).nextInt(1 << 32).toRadixString(16);
+    return 'pg_${now}_$random';
   }
 
   String? _normalizeUsername(String? username) {

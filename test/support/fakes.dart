@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/promo_code.dart';
@@ -129,6 +130,47 @@ final class FakeBookingRepository implements BookingRepository {
       ),
       created: true,
     );
+  }
+
+  @override
+  Future<BookingGroupCreateResult> createPendingBookingGroup({
+    required int managerUserId,
+    String? managerUsername,
+    required TrainingInfo training,
+    required List<BookingParticipantDraft> participants,
+  }) async {
+    createCalls += 1;
+    lastCreatedTraining = training;
+    lastCreatedUsername = managerUsername;
+    final configuredException = createException;
+    if (configuredException != null) {
+      throw configuredException;
+    }
+    final groupId = 'pg_fake_$managerUserId';
+    final bookings = <TrainingBooking>[
+      for (var index = 0; index < participants.length; index++)
+        fakeBooking(
+          id: 900 + index,
+          userId: managerUserId,
+          userUsername: managerUsername,
+          title: training.title,
+          startsAt: training.startsAt,
+          location: training.location,
+          trainingPrice: training.price,
+          paymentGroupId: groupId,
+          participantType: participants[index].type,
+          participantUsername: participants[index].username,
+          participantName: participants[index].name,
+        ),
+    ];
+    return BookingGroupCreateResult(paymentGroupId: groupId, bookings: bookings);
+  }
+
+  @override
+  Future<List<TrainingBooking>> listBookingsByPaymentGroup(String paymentGroupId) async {
+    return userBookings
+        .where((booking) => booking.paymentGroupId == paymentGroupId)
+        .toList(growable: false);
   }
 
   @override
@@ -706,6 +748,10 @@ TrainingBooking fakeBooking({
   int? promoDiscountPercent,
   DateTime? createdAt,
   DateTime? updatedAt,
+  BookingParticipantType participantType = BookingParticipantType.self,
+  String? participantUsername,
+  String? participantName,
+  String? paymentGroupId,
 }) {
   final now = DateTime(2026, 1, 1, 10);
   return TrainingBooking(
@@ -725,6 +771,12 @@ TrainingBooking fakeBooking({
     promoDiscountPercent: promoDiscountPercent,
     createdAt: createdAt ?? now,
     updatedAt: updatedAt ?? now,
+    managerUserId: userId,
+    participantType: participantType,
+    participantUserId: participantType == BookingParticipantType.guest ? null : userId,
+    participantUsername: participantUsername ?? userUsername,
+    participantName: participantName,
+    paymentGroupId: paymentGroupId,
   );
 }
 
