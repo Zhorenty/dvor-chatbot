@@ -296,7 +296,7 @@ final class MessageTemplates {
       lines.addAll(<String>[
         '',
         '🧩 <b>${index + 1}. #${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>',
-        '👤 ${_escapeHtml(_userTag(booking))} (${booking.userId})',
+        ..._adminBookingIdentityLines(booking),
         '🕒 ${dateFormatter.format(booking.startsAt)}',
         '💳 ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
       ]);
@@ -311,8 +311,9 @@ final class MessageTemplates {
 
   String adminBookingActions(TrainingBooking booking) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final identity = _adminBookingIdentityLines(booking).join('\n');
     return '🧩 <b>Запись #${booking.id}</b>\n'
-        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        '$identity\n'
         'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
         'Дата: ${formatter.format(booking.startsAt)}\n'
         'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n\n'
@@ -671,9 +672,15 @@ final class MessageTemplates {
   }
 
   String paymentSubmittedAdminNotification(TrainingBooking booking) {
+    final identity = _adminBookingIdentityLines(booking).join('\n');
+    final groupHint = (booking.paymentGroupId?.trim().isNotEmpty ?? false)
+        ? '\nПакетная оплата: подтверждение закроет все записи группы.'
+        : '';
     return '💸 <b>Новое подтверждение оплаты</b>\n\n'
         'Пришла новая заявка на проверку оплаты.\n'
         'Мероприятие: ${_escapeHtml(booking.trainingTitle)}\n'
+        '$identity'
+        '$groupHint\n'
         'Нажми кнопку ниже, чтобы открыть очередь заявок 👇';
   }
 
@@ -1435,15 +1442,12 @@ final class MessageTemplates {
     final paymentType = _paymentTypeLabelFromNote(booking.paymentNote);
     final cleanNote = _cleanPaymentNote(booking.paymentNote);
     final note = cleanNote == null ? '' : '\nКомментарий: ${_escapeHtml(cleanNote)}';
-    final participantLine = booking.isManagedForOther
-        ? '\nУчастник: ${_escapeHtml(booking.participantDisplayLabel)}'
-        : '';
+    final identity = _adminBookingIdentityLines(booking).join('\n');
     final groupHint = (booking.paymentGroupId?.trim().isNotEmpty ?? false)
         ? '\nГруппа оплаты: подтверждение закроет все записи пакета.'
         : '';
     return '🧾 <b>Заявка #${booking.id}</b>\n'
-        'Организатор: ${_escapeHtml(_userTagById(booking.managerUserId, username: booking.userUsername))} (${booking.managerUserId})'
-        '$participantLine\n'
+        '$identity\n'
         'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 ${_escapeHtml(booking.location)}'
@@ -1785,10 +1789,41 @@ final class MessageTemplates {
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return '🎁 <b>Операционное событие: новая бесплатная запись</b>\n'
         'Запись: <b>#${booking.id}</b>\n'
-        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        '${_adminBookingIdentityLines(booking).join('\n')}\n'
         'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
         'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
+  }
+
+  String bookingGroupCreatedAdminNotification({
+    required List<TrainingBooking> bookings,
+    required int unitPrice,
+    required int totalPrice,
+  }) {
+    final first = bookings.first;
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final organizer = _userTagById(first.managerUserId, username: first.userUsername);
+    final buffer = StringBuffer()
+      ..writeln('👥 <b>Операционное событие: запись друга/гостей</b>')
+      ..writeln(
+        'Организатор: ${_escapeHtml(organizer)} (${first.managerUserId})',
+      )
+      ..writeln('Событие: ${_escapeHtml(first.trainingTitle)}')
+      ..writeln('Дата: ${_bookingDateLabel(first, dateTimeFormatter, dateOnlyFormatter)}')
+      ..writeln('Участников: <b>${bookings.length}</b>')
+      ..writeln('<b>Участники:</b>');
+    for (final booking in bookings) {
+      buffer.writeln(
+        '• #${booking.id} ${_escapeHtml(booking.participantDisplayLabel)} '
+        '(${_escapeHtml(_statusLabel(booking.status, booking: booking))})',
+      );
+    }
+    buffer.writeln(
+      'К оплате: <b>${bookings.length} × ${_trainingPriceLabel(unitPrice)} = '
+      '${_trainingPriceLabel(totalPrice)}</b>',
+    );
+    return buffer.toString().trimRight();
   }
 
   String trainerBookingCreatedAdminNotification(TrainingBooking booking) {
@@ -2122,14 +2157,14 @@ final class MessageTemplates {
         '• <code>@anna, @ivan</code>\n'
         '• <code>Бабушка Мария, Дедушка Пётр</code>\n'
         '• <code>@anna, Бабушка Мария</code>\n\n'
-        'Можно записать до 3 человек.';
+        'Можно записать до 5 человек.';
   }
 
   String invalidPartyParticipantsInput() {
     return 'Не понял список участников 🤔\n'
         'Напиши username или ФИО через запятую.\n'
         'Пример: <code>@anna, Бабушка Мария</code>\n'
-        'До 3 человек за раз.';
+        'До 5 человек за раз.';
   }
 
   String partyParticipantConflict(String label) {
@@ -2137,7 +2172,8 @@ final class MessageTemplates {
   }
 
   String partyManagerLimitExceeded() {
-    return '⚠️ На одно мероприятие можно записать не больше 3 человек.';
+    return '⚠️ На одно мероприятие можно записать не больше 5 друзей/гостей '
+        '(своя запись через «Записаться» не входит в этот лимит).';
   }
 
   String partyDuplicateParticipant(String label) {
@@ -2361,6 +2397,22 @@ final class MessageTemplates {
       return '';
     }
     return '👤 ${_escapeHtml(booking.participantDisplayLabel)}\n';
+  }
+
+  List<String> _adminBookingIdentityLines(TrainingBooking booking) {
+    final organizerTag = _userTagById(
+      booking.managerUserId,
+      username: booking.userUsername,
+    );
+    if (!booking.isManagedForOther) {
+      return <String>[
+        '👤 ${_escapeHtml(organizerTag)} (${booking.managerUserId})',
+      ];
+    }
+    return <String>[
+      '👤 Организатор: ${_escapeHtml(organizerTag)} (${booking.managerUserId})',
+      '👥 Участник: ${_escapeHtml(booking.participantDisplayLabel)}',
+    ];
   }
 
   String _bookingDateLabel(

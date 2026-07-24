@@ -16,7 +16,6 @@ final class SqliteBookingRepository implements BookingRepository {
   static const String _everyFifthBonusPaymentNoteMarker = '__every_fifth_bonus__';
   static const String _referralBonusPaymentNoteMarker = '__referral_bonus__';
   static const String _proIncludedTrainingPaymentNoteMarker = '__pro_included_training__';
-  static const int _maxManagedParticipantsPerEvent = 3;
 
   SqliteBookingRepository({
     required String dbPath,
@@ -279,7 +278,7 @@ final class SqliteBookingRepository implements BookingRepository {
     if (participants.isEmpty) {
       throw ArgumentError.value(participants, 'participants', 'must not be empty');
     }
-    if (participants.length > _maxManagedParticipantsPerEvent) {
+    if (participants.length > maxManagedGuestsPerEvent) {
       throw const BookingManagerLimitExceededException(
         'Too many participants for one manager on a single event.',
       );
@@ -300,11 +299,11 @@ final class SqliteBookingRepository implements BookingRepository {
       normalizedParticipants.add(normalized);
     }
 
-    final existingManaged = _countActiveManagedBookings(
+    final existingManagedGuests = _countActiveManagedGuestBookings(
       managerUserId: managerUserId,
       trainingKey: key,
     );
-    if (existingManaged + normalizedParticipants.length > _maxManagedParticipantsPerEvent) {
+    if (existingManagedGuests + normalizedParticipants.length > maxManagedGuestsPerEvent) {
       throw const BookingManagerLimitExceededException(
         'Manager participant limit reached for selected training.',
       );
@@ -1702,7 +1701,7 @@ final class SqliteBookingRepository implements BookingRepository {
     };
   }
 
-  int _countActiveManagedBookings({
+  int _countActiveManagedGuestBookings({
     required int managerUserId,
     required String trainingKey,
   }) {
@@ -1713,12 +1712,14 @@ final class SqliteBookingRepository implements BookingRepository {
       FROM bookings
       WHERE manager_user_id = ?
         AND training_key = ?
+        AND participant_type != ?
         AND status != ?
         AND status != ?;
       ''',
       <Object?>[
         managerUserId,
         trainingKey,
+        BookingParticipantType.self.dbValue,
         BookingStatus.cancelled.dbValue,
         BookingStatus.paymentRejected.dbValue,
       ],

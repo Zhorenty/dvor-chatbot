@@ -1,3 +1,6 @@
+/// Max friends/guests one manager can book on a single event (self is separate).
+const int maxManagedGuestsPerEvent = 5;
+
 enum BookingParticipantType {
   self,
   telegram,

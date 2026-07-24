@@ -1123,7 +1123,7 @@ final class PrivateHandlers {
         );
         return true;
       }
-      if (participants.length > 3) {
+      if (participants.length > maxManagedGuestsPerEvent) {
         await _sender.sendMessage(
           chatId,
           _templates.partyManagerLimitExceeded(),
@@ -3988,7 +3988,7 @@ final class PrivateHandlers {
         .map((part) => part.trim())
         .where((part) => part.isNotEmpty)
         .toList(growable: false);
-    if (parts.isEmpty || parts.length > 3) {
+    if (parts.isEmpty || parts.length > maxManagedGuestsPerEvent) {
       return null;
     }
     final drafts = <BookingParticipantDraft>[];
@@ -4096,18 +4096,25 @@ final class PrivateHandlers {
     final first = group.bookings.first;
 
     if (_isFreeActivity(training) || totalPrice <= 0) {
+      final paidBookings = <TrainingBooking>[];
       for (final booking in group.bookings) {
-        await _bookingRepository.updateStatus(booking.id, BookingStatus.paid);
+        final paid = await _bookingRepository.updateStatus(booking.id, BookingStatus.paid);
+        paidBookings.add(paid ?? booking);
       }
       await _maybeNotifyGroupAboutCapacity(
         training,
         bookingStatus: BookingStatus.paid,
       );
+      await _notifyAdminAboutBookingGroupCreated(
+        bookings: paidBookings,
+        unitPrice: unitPrice,
+        totalPrice: 0,
+      );
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
         chatId,
         _templates.bookingGroupCreated(
-          bookings: group.bookings,
+          bookings: paidBookings,
           unitPrice: unitPrice,
           totalPrice: 0,
         ),
@@ -4116,6 +4123,12 @@ final class PrivateHandlers {
       );
       return;
     }
+
+    await _notifyAdminAboutBookingGroupCreated(
+      bookings: group.bookings,
+      unitPrice: unitPrice,
+      totalPrice: totalPrice,
+    );
 
     _flowByUserId[userId] = flowState.copyWith(
       step: _PrivateFlowStep.paymentConfirmation,
@@ -5336,6 +5349,29 @@ final class PrivateHandlers {
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about free booking creation: $error', stackTrace);
+    }
+  }
+
+  Future<void> _notifyAdminAboutBookingGroupCreated({
+    required List<TrainingBooking> bookings,
+    required int unitPrice,
+    required int totalPrice,
+  }) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null || bookings.isEmpty) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.bookingGroupCreatedAdminNotification(
+          bookings: bookings,
+          unitPrice: unitPrice,
+          totalPrice: totalPrice,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about booking group creation: $error', stackTrace);
     }
   }
 
