@@ -17,8 +17,11 @@ final class MessageCopy {
   static const String buttonEnterPromoCode = '🎟 Ввести промокод';
   static const String buttonRescheduleBooking = '🔁 Перенести запись';
   static const String buttonRepeatBooking = '🔂 Повторить запись';
+  static const String buttonContinuePayment = '💸 Продолжить оплату';
   static const String buttonCompletePayment = '💳 Доплатить';
   static const String buttonCancelBooking = '❌ Отменить запись';
+  static const String buttonConfirmCancelBooking = '✅ Да, отменить';
+  static const String buttonKeepBooking = '↩️ Оставить запись';
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';
   static const String buttonHelp = '🆘 Помощь';
@@ -38,7 +41,7 @@ final class MessageCopy {
   static const String buttonRenewSubscription = '🔄 Продлить PRO';
   static const String buttonSubscriptionsFilterActive = '🟢 Активные';
   static const String buttonSubscriptionsFilterExpiring = '⏳ Скоро истекают';
-  static const String buttonSubscriptionsFilterPending = '🧾 На проверке';
+  static const String buttonSubscriptionsFilterPending = 'На проверке 🧾';
   static const String buttonSubscriptionsFilterCancelled = '🚫 Отмененные';
   static const String buttonSubscriptionsSearch = '🔎 Поиск';
   static const String buttonSkipComment = '⏭ Без комментария';
@@ -50,8 +53,8 @@ final class MessageCopy {
   static const String buttonManageBookings = '🛠 Управление записями';
   static const String buttonBookingsList = '📋 Список записей';
   static const String buttonCreateBooking = '📝 Создать запись';
-  static const String buttonActiveBookings = '🟢 Активные';
-  static const String buttonArchivedBookings = '📦 Архивные';
+  static const String buttonActiveBookings = '🟢 Актуальные';
+  static const String buttonArchivedBookings = '🗃 Прошедшие';
   static const String buttonEditBooking = '✏️ Редактировать';
   static const String buttonDeleteBooking = '🗑 Удалить';
   static const String buttonRestoreBooking = '♻️ Восстановить';
@@ -71,7 +74,7 @@ final class MessageCopy {
   static const String buttonNotifyClientYes = '📣 Уведомить клиента';
   static const String buttonNotifyClientNo = '🔕 Не уведомлять';
   static const String buttonStatusPendingPayment = '⏳ Ожидает оплату';
-  static const String buttonStatusPaymentSubmitted = '🧾 На проверке';
+  static const String buttonStatusPaymentSubmitted = 'На проверке 🧾';
   static const String buttonStatusPartialPaid = '🟡 Предоплата внесена';
   static const String buttonStatusPaid = '✅ Оплачено';
   static const String buttonStatusFreeTraining = '🎁 Бесплатная тренировка';
@@ -95,6 +98,7 @@ final class MessageCopy {
   static const String callbackApprovePartialPaymentPrefix = 'payment:approve_partial:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';
   static const String callbackOpenPaymentsQueue = 'payment:open_queue';
+  static const String callbackNextPaymentInQueuePrefix = 'payment:next:';
   static const String callbackApproveSubscriptionPrefix = 'subscription:approve:';
   static const String callbackRejectSubscriptionPrefix = 'subscription:reject:';
   static const String callbackCancelSubscriptionPrefix = 'subscription:cancel:';

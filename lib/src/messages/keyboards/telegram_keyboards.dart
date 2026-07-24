@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -44,14 +45,15 @@ final class TelegramKeyboards {
       //   <String, String>{'text': MessageCopy.buttonDvorXFrank},
       // ],
       <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonBookTraining},
         <String, String>{'text': MessageCopy.buttonTrainings},
-        <String, String>{'text': MessageCopy.buttonSubscription},
       ],
       <Map<String, String>>[
-        <String, String>{'text': MessageCopy.buttonCoachingStaff},
+        <String, String>{'text': MessageCopy.buttonSubscription},
         <String, String>{'text': MessageCopy.buttonProfile},
       ],
       <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonCoachingStaff},
         <String, String>{'text': MessageCopy.buttonHelp},
       ],
     ];
@@ -265,16 +267,15 @@ final class TelegramKeyboards {
       rows.add(
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonPayPartially},
+          <String, String>{'text': MessageCopy.buttonPayFully},
         ],
       );
     }
-    if (!showOutdoorPaymentTypeChoice) {
-      rows.add(
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonSubmitPayment},
-        ],
-      );
-    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonSubmitPayment},
+      ],
+    );
     if (showCancelBooking) {
       rows.add(
         <Map<String, String>>[
@@ -306,15 +307,14 @@ final class TelegramKeyboards {
     return _replyKeyboard(
       <List<Map<String, String>>>[
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonSubscription},
-        ],
-        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonProfileBookings},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSubscription},
           <String, String>{'text': MessageCopy.buttonReferralProgram},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],
       ],
@@ -323,14 +323,20 @@ final class TelegramKeyboards {
 
   static Map<String, Object?> subscriptionOverviewKeyboard({
     required bool canApply,
+    bool isRenewal = false,
   }) {
     return _replyKeyboard(
       <List<Map<String, String>>>[
         if (canApply)
           <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonSubscribeApply},
+            <String, String>{
+              'text': isRenewal
+                  ? MessageCopy.buttonRenewSubscription
+                  : MessageCopy.buttonSubscribeApply,
+            },
           ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],
       ],
@@ -394,8 +400,16 @@ final class TelegramKeyboards {
     required bool canCancel,
     required bool canRepeat,
     bool canCompletePayment = false,
+    bool canContinuePayment = false,
   }) {
     final rows = <List<Map<String, String>>>[];
+    if (canContinuePayment) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonContinuePayment},
+        ],
+      );
+    }
     if (canReschedule) {
       rows.add(
         <Map<String, String>>[
@@ -431,6 +445,21 @@ final class TelegramKeyboards {
       ],
     );
     return _replyKeyboard(rows);
+  }
+
+  static Map<String, Object?> bookingCancelConfirmKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonConfirmCancelBooking},
+          <String, String>{'text': MessageCopy.buttonKeepBooking},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
   }
 
   static Map<String, Object?> paymentDecisionInlineKeyboard(
@@ -469,6 +498,28 @@ final class TelegramKeyboards {
           <String, String>{
             'text': buttonLabel,
             'callback_data': MessageCopy.callbackOpenPaymentsQueue,
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> nextPaymentInQueueInlineKeyboard({
+    required ActivityCategory category,
+    required int remaining,
+  }) {
+    final categoryKey = switch (category) {
+      ActivityCategory.trainings => 'trainings',
+      ActivityCategory.yoga => 'yoga',
+      ActivityCategory.hikes => 'hikes',
+      ActivityCategory.trails => 'trails',
+    };
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': '➡️ Следующая заявка ($remaining)',
+            'callback_data': '${MessageCopy.callbackNextPaymentInQueuePrefix}$categoryKey',
           },
         ],
       ],

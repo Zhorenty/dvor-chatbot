@@ -8,15 +8,16 @@ final class GroupTemplates {
   final String? _botUsername;
 
   String clubInfoPrivate() {
-    return 'Добро пожаловать в спортивное объединение DVOR! 🎉\n\n'
-        'Мы регулярно проводим тренировки, делимся расписанием и новостями клуба.\n'
-        'Хочешь посмотреть ближайшие занятия? Отправь /trainings 👌';
+    return 'Добро пожаловать в DVOR 🤝\n\n'
+        'В боте можно посмотреть расписание, записаться на мероприятия '
+        'и получить подарок за старт.\n'
+        'Нажми /start или «Записаться», чтобы начать 👌';
   }
 
   String groupFallback({required String? botUsername}) {
     final botLink = botUsername == null || botUsername.isEmpty
-        ? 'Напишите боту в личку и нажмите Start 🙌'
-        : 'Откройте личку с ботом: https://t.me/$botUsername и нажмите Start 🙌';
+        ? 'Напиши боту в личку и нажми Start 🙌'
+        : 'Открой личку с ботом: https://t.me/$botUsername и нажми Start 🙌';
     return 'Не удалось отправить личное сообщение новому участнику 😕 $botLink';
   }
 
@@ -29,12 +30,12 @@ final class GroupTemplates {
     final botLink = _botDeepLink();
     final botPrompt = botLink == null
         ? '🤖 Чат с ботом: напиши боту в личку и нажми Start'
-        : '🤖 Чат с ботом: <a href="$botLink">нажми, чтобы открыть</a>';
+        : '🤖 Чат с ботом: <a href="$botLink">нажми, чтобы открыть и записаться</a>';
     return 'Привет, $mention! 🏃\n'
-        'Ты уже в игре!\n'
-        'Переходи в бота «Двор» - там твой первый шаг к победе и подарок за старт.\n'
+        'Добро пожаловать в DVOR.\n'
+        'В боте — расписание, запись на мероприятия и подарок за старт.\n'
         '$botPrompt\n'
-        'Вперёд, чемпион! 🏆';
+        'Вперёд! 🏆';
   }
 
   String groupScheduleBroadcast({
@@ -121,7 +122,7 @@ final class GroupTemplates {
     if (botUsername == null || botUsername.isEmpty) {
       return null;
     }
-    return 'https://t.me/$botUsername?start=start';
+    return 'https://t.me/$botUsername?start=book';
   }
 
   String _groupBookingCta() {

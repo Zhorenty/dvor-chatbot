@@ -80,6 +80,7 @@ final class PrivateHandlers {
   final int? _targetChatId;
   final DateTime Function() _nowProvider;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
+  final Set<int> _adminsInClientMode = <int>{};
   final Map<int, Timer> _broadcastMediaFinalizeTimers = <int, Timer>{};
   final Map<int, String> _broadcastActiveMediaGroupIds = <int, String>{};
   final Set<String> _lowCapacityNotifiedTrainingKeys = <String>{};
@@ -140,7 +141,14 @@ final class PrivateHandlers {
     final rawUserId = context.from?['id'];
     final userId = rawUserId is int ? rawUserId : null;
     final isConfiguredAdmin = userId != null && _adminUserIds.contains(userId);
-    final isAdmin = isConfiguredAdmin;
+    if (userId != null && text != null && text.startsWith('/start')) {
+      _adminsInClientMode.remove(userId);
+    }
+    if (userId != null && text == MessageTemplates.buttonAdminMenu) {
+      _adminsInClientMode.remove(userId);
+    }
+    final isAdmin = userId != null && isConfiguredAdmin && !_adminsInClientMode.contains(userId);
+    final showReturnToAdminMenu = isConfiguredAdmin && !isAdmin;
     final isYogaTrainer = userId == _yogaTrainerUserId;
     final canRunAdminAction = _adminHandler.canRunAdminAction(isAdmin: isConfiguredAdmin);
     final canRunParticipantsAction = canRunAdminAction || isYogaTrainer;
@@ -158,6 +166,7 @@ final class PrivateHandlers {
       chatId: chatId,
       userId: userId,
       isAdmin: isAdmin,
+      showReturnToAdminMenu: showReturnToAdminMenu,
       flowByUserId: _flowByUserId,
       trainerDirectoryRepository: _trainerDirectoryRepository,
       onboardingRepository: _onboardingRepository,
@@ -191,7 +200,8 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             'Вернул в главное меню 👇',
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
         case _PrivateFlowStep.selectingTrainerProfile:
@@ -224,7 +234,8 @@ final class PrivateHandlers {
             await _sender.sendMessage(
               chatId,
               'Вернул в главное меню 👇',
-              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+              replyMarkup: _templates.privateMenuKeyboard(
+                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
             return true;
           }
@@ -289,7 +300,8 @@ final class PrivateHandlers {
             await _sender.sendMessage(
               chatId,
               'Вернул в главное меню 👇',
-              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+              replyMarkup: _templates.privateMenuKeyboard(
+                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
             return true;
           }
@@ -326,7 +338,10 @@ final class PrivateHandlers {
               activeUntil: membership.activeUntil,
               remainingProTrainings: remainingProTrainings,
             ),
-            replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: true),
+            replyMarkup: _templates.subscriptionOverviewKeyboard(
+              canApply: true,
+              isRenewal: membership.level == MembershipLevel.pro,
+            ),
             parseMode: 'HTML',
           );
           return true;
@@ -336,6 +351,26 @@ final class PrivateHandlers {
             selectedBooking: null,
           );
           await _sendMyBookingListPage(chatId: chatId, userId: userId);
+          return true;
+        case _PrivateFlowStep.confirmingBookingCancel:
+          final selectedBooking = flowState?.selectedBooking;
+          if (selectedBooking == null) {
+            _flowByUserId.remove(userId);
+            await _sender.sendMessage(
+              chatId,
+              'Вернул в главное меню 👇',
+              replyMarkup: _templates.privateMenuKeyboard(
+                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            );
+            return true;
+          }
+          _flowByUserId[userId] =
+              flowState!.copyWith(step: _PrivateFlowStep.selectingBookingAction);
+          await _sender.sendMessage(
+            chatId,
+            _templates.bookingActions(selectedBooking),
+            replyMarkup: _bookingActionsKeyboard(selectedBooking),
+          );
           return true;
         case _PrivateFlowStep.selectingBookingToManage:
           await _openMyBookingListSegment(chatId: chatId, userId: userId);
@@ -347,7 +382,8 @@ final class PrivateHandlers {
             await _sender.sendMessage(
               chatId,
               'Вернул в главное меню 👇',
-              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+              replyMarkup: _templates.privateMenuKeyboard(
+                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
             return true;
           }
@@ -374,7 +410,8 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             'Вернул в главное меню 👇',
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
         case _PrivateFlowStep.selectingAdminBookingListSegment:
@@ -421,7 +458,8 @@ final class PrivateHandlers {
             await _sender.sendMessage(
               chatId,
               'Вернул в главное меню 👇',
-              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+              replyMarkup: _templates.privateMenuKeyboard(
+                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
             return true;
           }
@@ -442,7 +480,8 @@ final class PrivateHandlers {
             await _sender.sendMessage(
               chatId,
               'Вернул в главное меню 👇',
-              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+              replyMarkup: _templates.privateMenuKeyboard(
+                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
             return true;
           }
@@ -461,7 +500,8 @@ final class PrivateHandlers {
             await _sender.sendMessage(
               chatId,
               'Вернул в главное меню 👇',
-              replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+              replyMarkup: _templates.privateMenuKeyboard(
+                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
             return true;
           }
@@ -511,7 +551,8 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.createBookingAskUsername(),
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
         case _PrivateFlowStep.confirmingAdminCreate:
@@ -538,7 +579,8 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             'Ты уже в главном меню 👇',
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
       }
@@ -593,8 +635,7 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text == MessageTemplates.buttonSubscription ||
-        text == MessageTemplates.buttonRenewSubscription) {
+    if (text == MessageTemplates.buttonSubscription) {
       if (userId == null) {
         return false;
       }
@@ -607,6 +648,9 @@ final class PrivateHandlers {
         userId: userId,
         membership: membership,
       );
+      final snapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
+      final canApply = snapshot.latestPending == null;
+      final isRenewal = membership.level == MembershipLevel.pro;
       _flowByUserId[userId] = const _PrivateFlowState(
         step: _PrivateFlowStep.viewingSubscriptionOverview,
         availableTrainings: <TrainingInfo>[],
@@ -618,7 +662,10 @@ final class PrivateHandlers {
           activeUntil: membership.activeUntil,
           remainingProTrainings: remainingProTrainings,
         ),
-        replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: true),
+        replyMarkup: _templates.subscriptionOverviewKeyboard(
+          canApply: canApply,
+          isRenewal: isRenewal,
+        ),
         parseMode: 'HTML',
       );
       return true;
@@ -633,7 +680,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.coachingStaff(trainers),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           parseMode: 'HTML',
           disableWebPagePreview: true,
         );
@@ -1182,7 +1230,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.chooseTrainingForReschedule(const <TrainingInfo>[], booking: selectedBooking),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         _flowByUserId.remove(userId);
         return true;
@@ -1211,12 +1260,7 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelNotAvailable(selectedBooking),
-          replyMarkup: _templates.bookingActionsKeyboard(
-            canReschedule:
-                selectedBooking != null && _bookingPolicyService.canReschedule(selectedBooking),
-            canCancel: false,
-            canRepeat: selectedBooking != null,
-          ),
+          replyMarkup: _bookingActionsKeyboard(selectedBooking),
         );
         return true;
       }
@@ -1224,7 +1268,72 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _cancellationTooLateText(selectedBooking, category: category),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        _flowByUserId.remove(userId);
+        return true;
+      }
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.confirmingBookingCancel,
+        selectedBooking: selectedBooking,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.bookingCancelConfirm(selectedBooking),
+        replyMarkup: _templates.bookingCancelConfirmKeyboard(),
+        parseMode: 'HTML',
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.confirmingBookingCancel &&
+        text == MessageTemplates.buttonKeepBooking) {
+      final selectedBooking = flowState?.selectedBooking;
+      if (selectedBooking == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = flowState!.copyWith(
+        step: _PrivateFlowStep.selectingBookingAction,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.bookingActions(selectedBooking),
+        replyMarkup: _bookingActionsKeyboard(selectedBooking),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.confirmingBookingCancel &&
+        text == MessageTemplates.buttonConfirmCancelBooking) {
+      final selectedBooking = flowState?.selectedBooking;
+      final category =
+          selectedBooking == null ? null : _catalogService.categoryForBooking(selectedBooking);
+      if (selectedBooking == null || category == null) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (!_canCancelBookingByPolicy(selectedBooking)) {
+        await _sender.sendMessage(
+          chatId,
+          _cancellationTooLateText(selectedBooking, category: category),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         _flowByUserId.remove(userId);
         return true;
@@ -1241,14 +1350,17 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelled(cancelResult.booking!),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
       await _sender.sendMessage(
         chatId,
         _templates.bookingNotFound(selectedBooking.id),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        parseMode: 'HTML',
       );
       return true;
     }
@@ -1264,7 +1376,8 @@ final class PrivateHandlers {
               ? _templates.privateFallback()
               : _templates.bookingActions(selectedBooking),
           replyMarkup: selectedBooking == null
-              ? _templates.privateMenuKeyboard(isAdmin: isAdmin)
+              ? _templates.privateMenuKeyboard(
+                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu)
               : _bookingActionsKeyboard(selectedBooking),
         );
         return true;
@@ -1279,17 +1392,20 @@ final class PrivateHandlers {
 
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.selectingBookingAction &&
-        text == MessageTemplates.buttonRepeatBooking) {
+        (text == MessageTemplates.buttonRepeatBooking ||
+            text == MessageTemplates.buttonContinuePayment)) {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
         await _sender.sendMessage(
           chatId,
           _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
-      if (selectedBooking.status == BookingStatus.pendingPayment ||
+      if (text == MessageTemplates.buttonContinuePayment ||
+          selectedBooking.status == BookingStatus.pendingPayment ||
           selectedBooking.status == BookingStatus.partialPaid) {
         await _openPaymentFlowForBooking(
           chatId: chatId,
@@ -1319,7 +1435,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           'Вернул в главное меню 👇',
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -1376,7 +1493,8 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.bookingRescheduled(from: before, to: after),
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
         case BookingRescheduleOutcome.notFound:
@@ -1384,7 +1502,8 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.bookingNotFound(selectedBooking.id),
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
         case BookingRescheduleOutcome.conflict:
@@ -1433,7 +1552,8 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text == MessageTemplates.buttonSubscribeApply) {
+    if (text == MessageTemplates.buttonSubscribeApply ||
+        text == MessageTemplates.buttonRenewSubscription) {
       if (userId == null) {
         return false;
       }
@@ -1471,14 +1591,16 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.subscriptionPaymentSubmitted(),
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
         case SubmitSubscriptionRequestOutcome.alreadyPending:
           await _sender.sendMessage(
             chatId,
             _templates.subscriptionAlreadyPending(),
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
       }
@@ -1517,7 +1639,8 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         booking == null ? _templates.noPendingPayment() : _templates.paymentSubmitted(booking),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
       );
       return true;
     }
@@ -1598,7 +1721,8 @@ final class PrivateHandlers {
           _FreeTrainingBonusType.referral => _templates.referralBonusApplied(booking),
           _FreeTrainingBonusType.everyFifth => _templates.everyFifthBonusApplied(booking),
         },
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
       );
       return true;
     }
@@ -1614,7 +1738,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.noPendingPayment(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -1623,7 +1748,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelNotAvailable(targetBooking),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -1631,30 +1757,26 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _cancellationTooLateText(targetBooking, category: category),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
-      final cancelResult = await _bookingRepository.cancelBooking(
-        userId: userId,
-        bookingId: targetBooking.id,
+      _flowByUserId[userId] = (flowState ??
+              const _PrivateFlowState(
+                step: _PrivateFlowStep.confirmingBookingCancel,
+                availableTrainings: <TrainingInfo>[],
+              ))
+          .copyWith(
+        step: _PrivateFlowStep.confirmingBookingCancel,
+        selectedBooking: targetBooking,
+        activeBooking: targetBooking,
       );
-      _flowByUserId.remove(userId);
-      if (cancelResult.outcome == BookingActionOutcome.success && cancelResult.booking != null) {
-        if (_shouldNotifyAdminAboutBookingCancellation(targetBooking)) {
-          await _notifyAdminAboutBookingCancelled(targetBooking);
-        }
-        await _sender.sendMessage(
-          chatId,
-          _templates.bookingCancelled(cancelResult.booking!),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
-        );
-        return true;
-      }
       await _sender.sendMessage(
         chatId,
-        _templates.bookingNotFound(targetBooking.id),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        _templates.bookingCancelConfirm(targetBooking),
+        replyMarkup: _templates.bookingCancelConfirmKeyboard(),
+        parseMode: 'HTML',
       );
       return true;
     }
@@ -1673,7 +1795,8 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.noPendingPayment(),
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
         }
         return true;
@@ -1743,7 +1866,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.noPendingPayment(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -1815,7 +1939,8 @@ final class PrivateHandlers {
           chatId,
           _templates.promoCodeAppliedFree(updatedBooking, originalPrice: originalPrice),
           parseMode: 'HTML',
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -1868,7 +1993,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.scheduleRefreshForbidden(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -1885,7 +2011,8 @@ final class PrivateHandlers {
       await _sendAdminMessage(
         chatId,
         refreshOk ? _templates.scheduleRefreshDone() : _templates.scheduleRefreshFailed(),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
       );
       await _sendAdminMessage(chatId, _templates.scheduleDocumentLink());
       return true;
@@ -1897,7 +2024,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -1928,7 +2056,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -1977,7 +2106,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2012,7 +2142,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2025,7 +2156,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2050,7 +2182,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2074,7 +2207,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2098,12 +2232,14 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
       if (userId != null) {
         _flowByUserId.remove(userId);
+        _adminsInClientMode.add(userId);
       }
       await _sendAdminMessage(
         chatId,
@@ -2121,7 +2257,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2194,7 +2331,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBroadcastCancelled(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2204,7 +2342,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBroadcastGroupOnly(groupSent: sent),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2219,7 +2358,8 @@ final class PrivateHandlers {
             total: result.total,
             groupSent: false,
           ),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2234,7 +2374,8 @@ final class PrivateHandlers {
             total: result.total,
             groupSent: _broadcastService.hasGroup,
           ),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2245,7 +2386,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2277,7 +2419,8 @@ final class PrivateHandlers {
           query: text,
           now: _nowProvider(),
         ),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
       );
       return true;
     }
@@ -2549,7 +2692,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2572,7 +2716,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2595,7 +2740,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2616,7 +2762,8 @@ final class PrivateHandlers {
           await _sendAdminMessage(
             chatId,
             _templates.bookingNotFound(selectedBooking.id),
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           _flowByUserId.remove(userId);
           return true;
@@ -2640,7 +2787,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2662,7 +2810,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBookingUpdateConflict(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         _flowByUserId.remove(userId);
         return true;
@@ -2671,7 +2820,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.bookingNotFound(selectedBooking.id),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         _flowByUserId.remove(userId);
         return true;
@@ -2694,7 +2844,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2755,7 +2906,8 @@ final class PrivateHandlers {
               ? _templates.privateFallback()
               : _templates.chooseAdminBookingPaymentStatus(selectedBooking),
           replyMarkup: selectedBooking == null
-              ? _templates.privateMenuKeyboard(isAdmin: isAdmin)
+              ? _templates.privateMenuKeyboard(
+                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu)
               : _templates.bookingPaymentStatusKeyboard(),
         );
         if (selectedBooking == null) {
@@ -2773,7 +2925,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBookingUpdateConflict(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         _flowByUserId.remove(userId);
         return true;
@@ -2783,7 +2936,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.bookingNotFound(selectedBooking.id),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2806,7 +2960,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2829,7 +2984,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBookingUpdateConflict(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         _flowByUserId.remove(userId);
         return true;
@@ -2839,7 +2995,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.bookingNotFound(selectedBooking.id),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2862,7 +3019,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -2886,7 +3044,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBookingUpdateConflict(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         _flowByUserId.remove(userId);
         return true;
@@ -2896,7 +3055,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.bookingNotFound(selectedBooking.id),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -3046,7 +3206,8 @@ final class PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.privateFallback(),
-            replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           _flowByUserId.remove(userId);
           return true;
@@ -3111,7 +3272,8 @@ final class PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.privateFallback(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -3158,7 +3320,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -3167,7 +3330,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.paymentActionUsage(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -3182,6 +3346,9 @@ final class PrivateHandlers {
       );
       final booking = reviewResult.booking;
       final queueCounters = await _paymentReviewService.queueCounters();
+      final category = booking == null ? null : _catalogService.categoryForBooking(booking);
+      final remainingInCategory =
+          category == null ? 0 : (await _paymentReviewService.queueByCategory(category)).length;
       if (reviewResult.outcome == PaymentReviewOutcome.success && booking != null) {
         await _notifyAboutPaymentReview(
           booking,
@@ -3198,14 +3365,63 @@ final class PrivateHandlers {
         switch (reviewResult.outcome) {
           PaymentReviewOutcome.success => _templates.paymentReviewResultWithNextStep(
               booking: booking!,
-              remaining: queueCounters.total,
+              remaining: remainingInCategory,
             ),
           PaymentReviewOutcome.notFound => _templates.bookingNotFound(bookingId),
           PaymentReviewOutcome.invalidStatus => _templates.paymentAlreadyReviewed(bookingId),
         },
-        replyMarkup: reviewResult.outcome == PaymentReviewOutcome.success
-            ? _templates.openPaymentsQueueInlineKeyboard(total: queueCounters.total)
-            : _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: reviewResult.outcome == PaymentReviewOutcome.success &&
+                remainingInCategory > 0 &&
+                category != null
+            ? _templates.nextPaymentInQueueInlineKeyboard(
+                category: category,
+                remaining: remainingInCategory,
+              )
+            : reviewResult.outcome == PaymentReviewOutcome.success
+                ? _templates.openPaymentsQueueInlineKeyboard(total: queueCounters.total)
+                : _templates.privateMenuKeyboard(
+                    isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+      );
+      return true;
+    }
+
+    if (text != null && text.startsWith('/payments_queue_next')) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      final parts = text.trim().split(RegExp(r'\s+'));
+      final categoryKey = parts.length >= 2 ? parts[1].trim().toLowerCase() : '';
+      final category = switch (categoryKey) {
+        'trainings' => ActivityCategory.trainings,
+        'yoga' => ActivityCategory.yoga,
+        'hikes' => ActivityCategory.hikes,
+        'trails' => ActivityCategory.trails,
+        _ => null,
+      };
+      if (category == null) {
+        final counters = await _paymentReviewService.queueCounters();
+        await _sendAdminMessage(
+          chatId,
+          _templates.choosePaymentsQueueCategory(),
+          replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
+            trainings: counters.trainings,
+            yoga: counters.yoga,
+            hikes: counters.hikes,
+            trails: counters.trails,
+          ),
+        );
+        return true;
+      }
+      await _sendPaymentsQueueByCategory(
+        chatId: chatId,
+        category: category,
+        isAdmin: isAdmin,
       );
       return true;
     }
@@ -3218,7 +3434,8 @@ final class PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -3230,7 +3447,8 @@ final class PrivateHandlers {
           '<code>/approve_subscription &lt;id&gt;</code>\n'
           '<code>/reject_subscription &lt;id&gt;</code>\n'
           '<code>/cancel_subscription &lt;id&gt;</code>',
-          replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
         return true;
       }
@@ -3277,7 +3495,8 @@ final class PrivateHandlers {
     await _sender.sendMessage(
       chatId,
       _templates.privateFallback(),
-      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      replyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
     );
     return true;
   }
@@ -3398,6 +3617,7 @@ final class PrivateHandlers {
       replyMarkup: _templates.privateMenuKeyboard(
         isAdmin: isAdmin,
         canViewParticipantsList: canViewParticipantsList,
+        showReturnToAdminMenu: false,
       ),
     );
   }
@@ -3518,7 +3738,7 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.paymentsQueueEmpty(),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
       );
       return;
     }
@@ -3527,33 +3747,38 @@ final class PrivateHandlers {
       chatId,
       _templates.paymentsQueueIntro(filtered.length, category: category),
     );
-    for (final booking in filtered) {
-      final proofChatId = booking.paymentProofChatId;
-      final proofMessageId = booking.paymentProofMessageId;
-      if (proofChatId != null && proofMessageId != null) {
-        try {
-          await _sender.copyMessage(
-            chatId,
-            fromChatId: proofChatId,
-            messageId: proofMessageId,
-          );
-        } on Object catch (error, stackTrace) {
-          l.w('Failed to copy payment proof for booking ${booking.id}: $error', stackTrace);
-          await _sendAdminMessage(
-            chatId,
-            _templates.paymentProofUnavailableHint(booking),
-          );
-        }
+    await _sendPaymentsQueueItem(chatId: chatId, booking: filtered.first);
+  }
+
+  Future<void> _sendPaymentsQueueItem({
+    required int chatId,
+    required TrainingBooking booking,
+  }) async {
+    final proofChatId = booking.paymentProofChatId;
+    final proofMessageId = booking.paymentProofMessageId;
+    if (proofChatId != null && proofMessageId != null) {
+      try {
+        await _sender.copyMessage(
+          chatId,
+          fromChatId: proofChatId,
+          messageId: proofMessageId,
+        );
+      } on Object catch (error, stackTrace) {
+        l.w('Failed to copy payment proof for booking ${booking.id}: $error', stackTrace);
+        await _sendAdminMessage(
+          chatId,
+          _templates.paymentProofUnavailableHint(booking),
+        );
       }
-      await _sendAdminMessage(
-        chatId,
-        _templates.paymentsQueueItem(booking),
-        replyMarkup: _templates.paymentDecisionInlineKeyboard(
-          booking.id,
-          approvePartial: _hasPartialPaymentChoice(booking.paymentNote),
-        ),
-      );
     }
+    await _sendAdminMessage(
+      chatId,
+      _templates.paymentsQueueItem(booking),
+      replyMarkup: _templates.paymentDecisionInlineKeyboard(
+        booking.id,
+        approvePartial: _hasPartialPaymentChoice(booking.paymentNote),
+      ),
+    );
   }
 
   Future<void> _sendNoblesList({
@@ -3564,7 +3789,7 @@ final class PrivateHandlers {
     await _sendAdminMessage(
       chatId,
       _templates.noblesList(result.users, totalTrainings: result.totalTrainings),
-      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
     );
   }
 
@@ -3586,7 +3811,7 @@ final class PrivateHandlers {
     await _sendAdminMessage(
       chatId,
       _templates.economicSummary(summary, periodLabel: range.label),
-      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
     );
   }
 
@@ -3632,7 +3857,7 @@ final class PrivateHandlers {
         result.created
             ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
             : _templates.bookingAlreadyExists(bookingForResponse),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
         parseMode: 'HTML',
       );
       return;
@@ -3655,7 +3880,7 @@ final class PrivateHandlers {
         result.created
             ? _templates.bookingCreatedForWhitelistedTrainer(bookingForResponse)
             : _templates.bookingAlreadyExists(bookingForResponse),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
         parseMode: 'HTML',
       );
       return;
@@ -3685,7 +3910,7 @@ final class PrivateHandlers {
         result.created
             ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
             : _templates.bookingAlreadyExists(bookingForResponse),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
         parseMode: 'HTML',
       );
       return;
@@ -3737,7 +3962,7 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.noUpcomingForBooking(),
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
       );
       return;
     }
@@ -3782,10 +4007,10 @@ final class PrivateHandlers {
 
   bool? _parseBookingSegmentSelection(String text) {
     final normalized = text.trim().toLowerCase();
-    if (normalized.contains('актив')) {
+    if (normalized.contains('актуал') || normalized.contains('актив')) {
       return false;
     }
-    if (normalized.contains('архив')) {
+    if (normalized.contains('прошед') || normalized.contains('архив')) {
       return true;
     }
     return null;
@@ -4024,12 +4249,17 @@ final class PrivateHandlers {
     return _bookingPolicyService.isOutdoorCategory(category);
   }
 
-  Map<String, Object?> _bookingActionsKeyboard(TrainingBooking booking) {
+  Map<String, Object?> _bookingActionsKeyboard(TrainingBooking? booking) {
+    if (booking == null) {
+      return _templates.simpleNavigationKeyboard();
+    }
+    final canContinuePayment = booking.status == BookingStatus.pendingPayment;
     return _templates.bookingActionsKeyboard(
       canReschedule: _bookingPolicyService.canReschedule(booking),
       canCancel: _canCancelBookingByPolicy(booking),
-      canRepeat: true,
+      canRepeat: !canContinuePayment && booking.status != BookingStatus.partialPaid,
       canCompletePayment: booking.status == BookingStatus.partialPaid,
+      canContinuePayment: canContinuePayment,
     );
   }
 
@@ -4261,7 +4491,7 @@ final class PrivateHandlers {
           ReviewSubscriptionRequestOutcome.invalidStatus =>
             'ℹ️ <b>Заявка #$requestId уже обработана</b>',
         },
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
       );
       if (review.outcome == ReviewSubscriptionRequestOutcome.success && review.request != null) {
         await _notifyUserAboutSubscriptionDecision(review.request!);
@@ -4290,7 +4520,7 @@ final class PrivateHandlers {
           ReviewSubscriptionRequestOutcome.invalidStatus =>
             'ℹ️ <b>Заявка #$requestId уже обработана</b>',
         },
-        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
       );
       if (review.outcome == ReviewSubscriptionRequestOutcome.success && review.request != null) {
         await _notifyUserAboutSubscriptionDecision(review.request!);
@@ -4312,7 +4542,7 @@ final class PrivateHandlers {
         CancelSubscriptionOutcome.notFound => '😕 <b>Абонемент #$requestId не найден</b>',
         CancelSubscriptionOutcome.invalidStatus => 'ℹ️ <b>Абонемент #$requestId уже не активен</b>',
       },
-      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin),
+      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
     );
     if (cancelResult.outcome == CancelSubscriptionOutcome.success && cancelResult.request != null) {
       try {

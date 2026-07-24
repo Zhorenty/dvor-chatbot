@@ -37,8 +37,10 @@ void main() {
             canReschedule: true,
             canCancel: true,
             canRepeat: true,
+            canContinuePayment: true,
           ),
         ),
+        ..._replyTexts(TelegramKeyboards.bookingCancelConfirmKeyboard()),
         ..._replyTexts(TelegramKeyboards.profileActionsKeyboard()),
       };
 
@@ -49,10 +51,12 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonAdminMenu));
       expect(allTexts, contains(MessageCopy.buttonSubscriptionsSearch));
       expect(allTexts, contains(MessageCopy.buttonSubmitPayment));
-      expect(allTexts, isNot(contains(MessageCopy.buttonPayFully)));
+      expect(allTexts, contains(MessageCopy.buttonPayFully));
       expect(allTexts, contains(MessageCopy.buttonPayPartially));
       expect(allTexts, contains(MessageCopy.buttonUseStarterBonus));
       expect(allTexts, contains(MessageCopy.buttonCancelBooking));
+      expect(allTexts, contains(MessageCopy.buttonContinuePayment));
+      expect(allTexts, contains(MessageCopy.buttonConfirmCancelBooking));
       // TODO(dvor-x-frank): вернуть expect на MessageCopy.buttonDvorXFrank после включения кнопки.
       expect(allTexts, contains(MessageCopy.buttonTrainings));
       expect(allTexts, contains(MessageCopy.buttonBookTraining));

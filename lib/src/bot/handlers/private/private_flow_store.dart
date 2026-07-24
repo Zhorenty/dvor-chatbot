@@ -28,6 +28,7 @@ enum PrivateFlowStep {
   enteringPromoCode,
   selectingBookingToManage,
   selectingBookingAction,
+  confirmingBookingCancel,
   selectingRescheduleTraining,
   selectingAdminBookingManagementAction,
   selectingAdminToolsAction,

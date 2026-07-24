@@ -234,13 +234,13 @@ final class ScheduleTemplates {
   String unknownTrainerSelection() => 'Не смог распознать тренера. Выбери кнопку из списка 👇';
 
   String scheduleRefreshDone() =>
-      'Готово! Google Docs обновил ✅\nОбновил расписание и список тренеров.';
+      'Готово! Google Sheets обновлён ✅\nОбновил расписание и список тренеров.';
 
   String scheduleRefreshFailed() =>
-      'Не получилось обновить Google Docs 😔 Использую последние сохраненные данные.';
+      'Не получилось обновить Google Sheets 😔 Использую последние сохраненные данные.';
 
   String scheduleDocumentLink() =>
-      'Актуальный Google Docs:\nhttps://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';
+      'Актуальный Google Sheets:\nhttps://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';
 
   String _outdoorActivitiesList({
     required String title,

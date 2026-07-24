@@ -160,6 +160,11 @@ String? callbackToCommandText(String? callbackData) {
   if (callbackData == MessageCopy.callbackOpenPaymentsQueue) {
     return '/payments_queue';
   }
+  if (callbackData.startsWith(MessageCopy.callbackNextPaymentInQueuePrefix)) {
+    final categoryKey =
+        callbackData.substring(MessageCopy.callbackNextPaymentInQueuePrefix.length).trim();
+    return '/payments_queue_next $categoryKey';
+  }
   if (callbackData.startsWith(MessageCopy.callbackApproveSubscriptionPrefix)) {
     final rawId = callbackData.substring(MessageCopy.callbackApproveSubscriptionPrefix.length);
     final requestId = int.tryParse(rawId);

@@ -36,7 +36,7 @@ void main() {
     expect(sender.messages.single.parseMode, 'HTML');
     expect(sender.messages.single.text, contains('Новая неделя DVOR уже в расписании'));
     expect(sender.messages.single.text, contains('Функциональная тренировка'));
-    expect(sender.messages.single.text, contains('https://t.me/dvor_chatbot?start=start'));
+    expect(sender.messages.single.text, contains('https://t.me/dvor_chatbot?start=book'));
   });
 
   test('sends schedule broadcast on Tuesday 10:00', () async {

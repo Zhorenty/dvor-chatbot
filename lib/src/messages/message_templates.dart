@@ -40,8 +40,11 @@ final class MessageTemplates {
   static const String buttonEnterPromoCode = MessageCopy.buttonEnterPromoCode;
   static const String buttonRescheduleBooking = MessageCopy.buttonRescheduleBooking;
   static const String buttonRepeatBooking = MessageCopy.buttonRepeatBooking;
+  static const String buttonContinuePayment = MessageCopy.buttonContinuePayment;
   static const String buttonCompletePayment = MessageCopy.buttonCompletePayment;
   static const String buttonCancelBooking = MessageCopy.buttonCancelBooking;
+  static const String buttonConfirmCancelBooking = MessageCopy.buttonConfirmCancelBooking;
+  static const String buttonKeepBooking = MessageCopy.buttonKeepBooking;
   static const String buttonBack = MessageCopy.buttonBack;
   static const String buttonMainMenu = MessageCopy.buttonMainMenu;
   static const String buttonHelp = MessageCopy.buttonHelp;
@@ -116,6 +119,8 @@ final class MessageTemplates {
       MessageCopy.callbackApprovePartialPaymentPrefix;
   static const String callbackRejectPaymentPrefix = MessageCopy.callbackRejectPaymentPrefix;
   static const String callbackOpenPaymentsQueue = MessageCopy.callbackOpenPaymentsQueue;
+  static const String callbackNextPaymentInQueuePrefix =
+      MessageCopy.callbackNextPaymentInQueuePrefix;
   static const String callbackApproveSubscriptionPrefix =
       MessageCopy.callbackApproveSubscriptionPrefix;
   static const String callbackRejectSubscriptionPrefix =
@@ -227,7 +232,7 @@ final class MessageTemplates {
   }
 
   String chooseBookingCategory() {
-    return 'Шаг 1/3: выбери категорию для записи 👇';
+    return 'Выбери категорию для записи 👇';
   }
 
   String unknownCategory() {
@@ -253,7 +258,7 @@ final class MessageTemplates {
 
   String chooseBookingListSegment() {
     return '📚 <b>Какой список открыть?</b>\n'
-        'Подсказка: «Активные» - текущие записи, «Архивные» - завершенные и удаленные.';
+        '«Актуальные» — текущие записи, «Прошедшие» — завершённые и отменённые.';
   }
 
   String chooseBookingManagementCategory() {
@@ -270,13 +275,13 @@ final class MessageTemplates {
     required int totalCount,
   }) {
     if (bookings.isEmpty) {
-      final segmentLabel = archived ? 'Архивные' : 'Активные';
+      final segmentLabel = archived ? 'Прошедшие' : 'Актуальные';
       final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
       return '📭 <b>Список пуст для выбранных фильтров</b>\n'
           'Сегмент: <b>${_escapeHtml(segmentLabel)}</b>\n'
           'Категория: <b>${_escapeHtml(categoryLabel)}</b>';
     }
-    final segmentLabel = archived ? 'Архивные' : 'Активные';
+    final segmentLabel = archived ? 'Прошедшие' : 'Актуальные';
     final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
     final dateFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final lines = <String>[
@@ -575,9 +580,9 @@ final class MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Отлично, записал тебя! ✅\n'
-        'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
         'Номер записи: ${booking.id}\n'
-        '${_bookingTitleLine(booking)}\n'
+        '${_escapeHtml(_bookingTitleLine(booking))}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
         '${paymentDetailsSent(booking)}';
@@ -587,9 +592,9 @@ final class MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Отлично, записал тебя! ✅\n'
-        'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
         'Номер записи: ${booking.id}\n'
-        'Тренировка: ${booking.trainingTitle}\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
         'Это бесплатная тренировка, подтверждение оплаты не нужно.';
@@ -598,10 +603,10 @@ final class MessageTemplates {
   String bookingCreatedForWhitelistedTrainer(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Готово, ты записан(а) на тренировку ✅\n'
-        'Статус: ${_statusLabel(booking.status, booking: booking)}\n'
+    return 'Готово, ты записан на тренировку ✅\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
         'Номер записи: ${booking.id}\n'
-        'Тренировка: ${booking.trainingTitle}\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
         'Ты в списке тренеров: подтверждение оплаты не требуется, это только информирование о записи.';
@@ -610,9 +615,9 @@ final class MessageTemplates {
   String bookingAlreadyExists(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Ты уже записан(а) на эту тренировку 👌\n'
+    return 'Ты уже записан на эту тренировку 👌\n'
         'Номер записи: ${booking.id}\n'
-        'Текущий статус: ${_statusLabel(booking.status, booking: booking)}\n'
+        'Текущий статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
   }
 
@@ -659,9 +664,9 @@ final class MessageTemplates {
   }
 
   String chooseOutdoorPaymentType() {
-    return 'Нажми «${MessageCopy.buttonPayPartially}», если внес(ла) предоплату — '
-        '<b>50% от суммы</b> 👇\n'
-        'После этого отправь чек.';
+    return 'Выбери тип оплаты и затем нажми «${MessageCopy.buttonSubmitPayment}»:\n'
+        '• «${MessageCopy.buttonPayPartially}» — предоплата <b>50%</b>\n'
+        '• «${MessageCopy.buttonPayFully}» — полная сумма 👇';
   }
 
   String paymentSubmittedAdminNotification(TrainingBooking booking) {
@@ -835,57 +840,33 @@ final class MessageTemplates {
     final progressToNextFree = completedTrainingsCount % 4;
     final trainingsLeftForNextFree = progressToNextFree == 0 ? 4 : 4 - progressToNextFree;
     final rewardsHint = availableEveryFifthRewards > 0
-        ? '🎁 <b>Бесплатных по бонусу «каждая 5-я»:</b> <b>$availableEveryFifthRewards</b>'
-        : '🎯 <b>До следующей бесплатной:</b> <b>$trainingsLeftForNextFree</b> '
-            '(по правилу «каждая 5-я»)';
-    final starterHint = starterBonusAvailable
-        ? '⚡️ <b>Стартовая бесплатная:</b> доступна'
-        : '⚡️ <b>Стартовая бесплатная:</b> недоступна';
+        ? '🎁 Бесплатных («каждая 5-я»): <b>$availableEveryFifthRewards</b>'
+        : '🎯 До бесплатной («каждая 5-я»): <b>$trainingsLeftForNextFree</b>';
+    final starterHint = starterBonusAvailable ? 'доступна' : 'недоступна';
     final referralHint = availableReferralRewards > 0
-        ? '👥 <b>Реферальных бесплатных:</b> <b>$availableReferralRewards</b>'
-        : '👥 <b>Успешных платных рефералов:</b> <b>$successfulReferralsCount</b>';
+        ? 'реферальных бесплатных: <b>$availableReferralRewards</b>'
+        : 'успешных рефералов: <b>$successfulReferralsCount</b>';
     final subscriptionHint = membershipLevel == MembershipLevel.pro
-        ? '💎 <b>Абонемент:</b> PRO'
-            '${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
-        : '💎 <b>Абонемент:</b> Normal';
-    final currentMoment = now ?? DateTime.now();
-    final daysLeftText = membershipLevel == MembershipLevel.pro && subscriptionActiveUntil != null
-        ? '• ⏳ <b>До конца PRO:</b> '
-            '<b>${subscriptionActiveUntil.difference(currentMoment).inDays.clamp(0, 3650)}</b> дн.'
-        : null;
+        ? 'PRO${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
+        : 'Normal';
     final remainingProTrainingsText =
         membershipLevel == MembershipLevel.pro && subscriptionRemainingProTrainings != null
-            ? '• 🏋️ <b>Осталось тренировок PRO:</b> '
-                '<b>${subscriptionRemainingProTrainings.clamp(0, 8)}/8</b>'
-            : null;
-    final currentPeriodText = subscriptionCurrentPeriodStart == null ||
-            subscriptionActiveUntil == null
-        ? null
-        : '• 📆 <b>Текущий период:</b> ${DateFormat('dd.MM.yyyy').format(subscriptionCurrentPeriodStart)}'
-            ' — ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}';
-    final requestStatusText = subscriptionRequestStatusLine == null
-        ? null
-        : '• 🧾 <b>Заявка:</b> $subscriptionRequestStatusLine';
-    return '👤 <b>Профиль спортсмена DVOR</b>\n\n'
-        '🔐 <b>Текущий статус</b>\n'
-        '• $subscriptionHint\n'
-        '${daysLeftText == null ? '' : '$daysLeftText\n'}'
-        '${remainingProTrainingsText == null ? '' : '$remainingProTrainingsText\n'}'
-        '${currentPeriodText == null ? '' : '$currentPeriodText\n'}'
-        '${requestStatusText == null ? '' : '$requestStatusText\n'}'
-        '• 📚 <b>Оформлений/продлений:</b> <b>$subscriptionTotalApprovedCount</b>\n\n'
-        '📊 <b>Твоя статистика</b>\n'
-        '• Всего записей: <b>$totalBookings</b>\n'
-        '• Активные: <b>$activeBookings</b>\n'
-        '• Посещенные: <b>$visitedBookings</b>\n'
-        '• Отмененные: <b>$cancelledBookings</b>\n\n'
-        '🏋️ <b>Прогресс лояльности</b>\n'
-        '• Тренировок в зачет «каждая 5-я»: <b>$completedTrainingsCount</b>\n'
-        '• $rewardsHint\n'
-        '• $referralHint\n'
-        '$starterHint\n'
-        'Нажми «${MessageCopy.buttonProfileBookings}», чтобы открыть список записей и управление ими.\n'
-        'Раздел «${MessageCopy.buttonReferralProgram}» — твоя ссылка и условия реферальной программы.';
+            ? ' • осталось тренировок: <b>${subscriptionRemainingProTrainings.clamp(0, 8)}/8</b>'
+            : '';
+    final requestStatusText =
+        subscriptionRequestStatusLine == null ? '' : '\n• Заявка: $subscriptionRequestStatusLine';
+    return '👤 <b>Профиль DVOR</b>\n\n'
+        '💎 Абонемент: <b>$subscriptionHint</b>$remainingProTrainingsText'
+        '$requestStatusText\n\n'
+        '📊 Записи: всего <b>$totalBookings</b> • '
+        'актуальные <b>$activeBookings</b> • '
+        'посещенные <b>$visitedBookings</b> • '
+        'отмененные <b>$cancelledBookings</b>\n\n'
+        '🏋️ Лояльность: $rewardsHint\n'
+        '• Стартовая бесплатная: $starterHint\n'
+        '• Рефералка: $referralHint\n\n'
+        'Дальше: «${MessageCopy.buttonProfileBookings}», '
+        '«${MessageCopy.buttonSubscription}» или «${MessageCopy.buttonReferralProgram}».';
   }
 
   String referralProgramOverview({
@@ -907,8 +888,8 @@ final class MessageTemplates {
         '📊 <b>Твой прогресс</b>\n'
         '• Успешных платных рефералов: <b>$successfulReferralsCount</b>\n'
         '• Доступно бесплатных по рефералке: <b>$availableReferralRewards</b>\n\n'
-        'Используй бесплатную тренировку через обычный сценарий записи '
-        'кнопкой «${MessageCopy.buttonUseStarterBonus}».';
+        'Чтобы использовать бесплатную тренировку, нажми «${MessageCopy.buttonBookTraining}» '
+        'и при подтверждении записи выбери бонусную кнопку, если она доступна.';
   }
 
   String subscriptionOverview({
@@ -939,7 +920,7 @@ final class MessageTemplates {
         '',
         if (remainingProTrainings != null)
           '🏋️ <b>Осталось тренировок в текущем PRO:</b> <b>${remainingProTrainings.clamp(0, 8)}/8</b>',
-        '🔄 <b>Продление доступно уже сейчас:</b> нажми «${MessageCopy.buttonSubscribeApply}» и отправь чек.',
+        '🔄 <b>Продление доступно уже сейчас:</b> нажми «${MessageCopy.buttonRenewSubscription}» и отправь чек.',
         'После подтверждения продлим абонемент еще на 1 месяц ✅',
       ]);
     } else {
@@ -1015,10 +996,10 @@ final class MessageTemplates {
       final until = item.activeUntil;
       final untilLabel = until == null ? '—' : formatter.format(until);
       final statusLabel = switch (item.status) {
-        SubscriptionRequestStatus.active => 'active',
-        SubscriptionRequestStatus.paymentSubmitted => 'payment_submitted',
-        SubscriptionRequestStatus.cancelled => 'cancelled',
-        SubscriptionRequestStatus.rejected => 'rejected',
+        SubscriptionRequestStatus.active => 'PRO активен',
+        SubscriptionRequestStatus.paymentSubmitted => 'На проверке',
+        SubscriptionRequestStatus.cancelled => 'Отменён',
+        SubscriptionRequestStatus.rejected => 'Отклонён',
       };
       lines.add(
         '${index + 1}. ${_escapeHtml(_userTagById(item.userId, username: item.userUsername))} '
@@ -1274,8 +1255,18 @@ final class MessageTemplates {
     if (booking == null) {
       return 'Не нашел запись для отмены. Выбери запись заново.';
     }
-    return 'Отмена доступна для бесплатных тренировок, йоги, походов и трейлов.\n'
-        'Для записи #${booking.id} используй другие действия.';
+    return 'Самостоятельно отменить платную тренировку нельзя.\n'
+        'Для записи #${booking.id} напиши в поддержку: @dvor_support.\n'
+        'Отмена доступна самостоятельно для бесплатных тренировок, йоги, походов и трейлов.';
+  }
+
+  String bookingCancelConfirm(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '⚠️ <b>Отменить запись #${booking.id}?</b>\n'
+        '${_escapeHtml(booking.trainingTitle)}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n\n'
+        'Подтверди отмену кнопкой ниже.';
   }
 
   String freeTrainingCancellationTooLate(TrainingBooking booking) {
@@ -1288,14 +1279,19 @@ final class MessageTemplates {
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final hint = switch (booking.status) {
       BookingStatus.pendingPayment =>
-        'Подсказка: «${MessageCopy.buttonRepeatBooking}» откроет оплату по этой записи.',
+        'Подсказка: «${MessageCopy.buttonContinuePayment}» откроет оплату по этой записи.',
       BookingStatus.partialPaid =>
         'Подсказка: для доплаты используй «${MessageCopy.buttonCompletePayment}».',
       _ => 'Подсказка: «${MessageCopy.buttonRepeatBooking}» откроет похожие события.',
     };
     return 'Запись #${booking.id}\n'
-        '${booking.trainingTitle}\n'
-        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n\n'
+        '${_escapeHtml(booking.trainingTitle)}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n\n'
+        'Правила:\n'
+        '• Перенос — только тренировки/йога на слот той же цены.\n'
+        '• Отмена outdoor — за 7+ дней, йога — за 24+ часа, бесплатные — всегда.\n'
+        '• Платные тренировки — через @dvor_support.\n\n'
         'Выбери действие 👇\n'
         '$hint';
   }
@@ -1388,7 +1384,45 @@ final class MessageTemplates {
     return '🧾 <b>Заявки на подтверждение оплаты</b>\n'
         'Категория: <b>${_escapeHtml(_categoryLabel(category))}</b>\n'
         'Всего ожидают проверки: <b>$total</b>.\n'
-        'Ниже отправил каждую заявку отдельным сообщением.';
+        'Показываю следующую заявку.';
+  }
+
+  String paymentReviewResultWithNextStep({
+    required TrainingBooking booking,
+    required int remaining,
+  }) {
+    final nextStep = remaining > 0
+        ? 'Осталось на проверке: $remaining. Нажми «Следующая заявка», чтобы открыть следующую.'
+        : 'Очередь заявок пуста. Можно вернуться в меню.';
+    return '✅ <b>Готово! Статус записи #${booking.id} обновлен</b>\n'
+        '${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
+        '$nextStep';
+  }
+
+  Map<String, Object?> paymentDecisionInlineKeyboard(
+    int bookingId, {
+    bool approvePartial = false,
+  }) {
+    return TelegramKeyboards.paymentDecisionInlineKeyboard(
+      bookingId,
+      approvePartial: approvePartial,
+    );
+  }
+
+  Map<String, Object?> openPaymentsQueueInlineKeyboard({required int total}) {
+    return TelegramKeyboards.openPaymentsQueueInlineKeyboard(
+      buttonLabel: _labelWithCount(MessageCopy.buttonPaymentsQueue, total),
+    );
+  }
+
+  Map<String, Object?> nextPaymentInQueueInlineKeyboard({
+    required ActivityCategory category,
+    required int remaining,
+  }) {
+    return TelegramKeyboards.nextPaymentInQueueInlineKeyboard(
+      category: category,
+      remaining: remaining,
+    );
   }
 
   String paymentsQueueItem(TrainingBooking booking) {
@@ -1587,34 +1621,6 @@ final class MessageTemplates {
         '<code>/approve_partial_payment &lt;id&gt;</code>\n'
         '<code>/reject_payment &lt;id&gt;</code>\n\n'
         'Например: <code>/approve_partial_payment 42</code>';
-  }
-
-  String paymentReviewResultWithNextStep({
-    required TrainingBooking booking,
-    required int remaining,
-  }) {
-    final nextStep = remaining > 0
-        ? 'Осталось на проверке: $remaining. Нажми «${MessageCopy.buttonPaymentsQueue}», чтобы открыть следующую заявку.'
-        : 'Очередь заявок пуста. Можно вернуться в меню.';
-    return '✅ <b>Готово! Статус записи #${booking.id} обновлен</b>\n'
-        '${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
-        '$nextStep';
-  }
-
-  Map<String, Object?> paymentDecisionInlineKeyboard(
-    int bookingId, {
-    bool approvePartial = false,
-  }) {
-    return TelegramKeyboards.paymentDecisionInlineKeyboard(
-      bookingId,
-      approvePartial: approvePartial,
-    );
-  }
-
-  Map<String, Object?> openPaymentsQueueInlineKeyboard({required int total}) {
-    return TelegramKeyboards.openPaymentsQueueInlineKeyboard(
-      buttonLabel: _labelWithCount(MessageCopy.buttonPaymentsQueue, total),
-    );
   }
 
   Map<String, Object?> subscriptionDecisionInlineKeyboard(int requestId) {
@@ -2074,8 +2080,12 @@ final class MessageTemplates {
 
   Map<String, Object?> subscriptionOverviewKeyboard({
     required bool canApply,
+    bool isRenewal = false,
   }) {
-    return TelegramKeyboards.subscriptionOverviewKeyboard(canApply: canApply);
+    return TelegramKeyboards.subscriptionOverviewKeyboard(
+      canApply: canApply,
+      isRenewal: isRenewal,
+    );
   }
 
   Map<String, Object?> adminSubscriptionFilterKeyboard() {
@@ -2123,13 +2133,19 @@ final class MessageTemplates {
     required bool canCancel,
     required bool canRepeat,
     bool canCompletePayment = false,
+    bool canContinuePayment = false,
   }) {
     return TelegramKeyboards.bookingActionsKeyboard(
       canReschedule: canReschedule,
       canCancel: canCancel,
       canRepeat: canRepeat,
       canCompletePayment: canCompletePayment,
+      canContinuePayment: canContinuePayment,
     );
+  }
+
+  Map<String, Object?> bookingCancelConfirmKeyboard() {
+    return TelegramKeyboards.bookingCancelConfirmKeyboard();
   }
 
   Map<String, Object?> adminBookingManagementKeyboard() {
@@ -2350,7 +2366,7 @@ final class MessageTemplates {
     if (botUsername == null || botUsername.isEmpty) {
       return null;
     }
-    return 'https://t.me/$botUsername?start=start';
+    return 'https://t.me/$botUsername?start=book';
   }
 
   String? _botReferralLink(int userId) {

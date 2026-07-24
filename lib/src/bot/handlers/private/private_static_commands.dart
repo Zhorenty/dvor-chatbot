@@ -26,6 +26,7 @@ final class PrivateStaticCommands {
     required int chatId,
     required int? userId,
     required bool isAdmin,
+    required bool showReturnToAdminMenu,
     required Map<int, PrivateFlowState> flowByUserId,
     required TrainerDirectoryRepository trainerDirectoryRepository,
     required OnboardingRepository onboardingRepository,
@@ -42,6 +43,7 @@ final class PrivateStaticCommands {
       return false;
     }
     if (text.startsWith('/start')) {
+      final startPayload = _parseStartPayload(text);
       var starterBonusAvailable = false;
       if (userId != null) {
         final referralInviterId = _parseReferralInviterId(text);
@@ -63,6 +65,7 @@ final class PrivateStaticCommands {
         replyMarkup: templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
+          showReturnToAdminMenu: showReturnToAdminMenu,
         ),
         parseMode: 'HTML',
       );
@@ -74,7 +77,19 @@ final class PrivateStaticCommands {
           replyMarkup: templates.privateMenuKeyboard(
             isAdmin: isAdmin,
             canViewParticipantsList: canViewParticipantsList,
+            showReturnToAdminMenu: showReturnToAdminMenu,
           ),
+        );
+      }
+      if (startPayload == 'book' && userId != null) {
+        flowByUserId[userId] = const PrivateFlowState(
+          step: PrivateFlowStep.selectingBookingCategory,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await sender.sendMessage(
+          chatId,
+          templates.chooseBookingCategory(),
+          replyMarkup: templates.categorySelectionKeyboard(),
         );
       }
       return true;
@@ -129,6 +144,7 @@ final class PrivateStaticCommands {
         replyMarkup: templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
+          showReturnToAdminMenu: showReturnToAdminMenu,
         ),
         parseMode: 'HTML',
       );
@@ -145,6 +161,7 @@ final class PrivateStaticCommands {
         replyMarkup: templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
+          showReturnToAdminMenu: showReturnToAdminMenu,
         ),
       );
       return true;
@@ -161,6 +178,7 @@ final class PrivateStaticCommands {
         replyMarkup: templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
+          showReturnToAdminMenu: showReturnToAdminMenu,
         ),
       );
       return true;
@@ -169,13 +187,17 @@ final class PrivateStaticCommands {
     return false;
   }
 
-  int? _parseReferralInviterId(String text) {
+  String? _parseStartPayload(String text) {
     final parts = text.trim().split(RegExp(r'\s+'));
     if (parts.length < 2) {
       return null;
     }
-    final payload = parts[1].trim().toLowerCase();
-    if (!payload.startsWith('ref_')) {
+    return parts[1].trim().toLowerCase();
+  }
+
+  int? _parseReferralInviterId(String text) {
+    final payload = _parseStartPayload(text);
+    if (payload == null || !payload.startsWith('ref_')) {
       return null;
     }
     return int.tryParse(payload.substring(4));

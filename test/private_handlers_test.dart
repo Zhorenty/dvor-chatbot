@@ -81,7 +81,7 @@ void main() {
       expect(sender.messages.single.chatId, 11);
       expect(sender.messages.single.text, contains('Добро пожаловать в DVOR'));
       expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
-      expect(sender.messages.single.text, contains('публикуем афиши всех мероприятий'));
+      expect(sender.messages.single.text, contains('Группа DVOR'));
       expect(sender.messages.single.replyMarkup, isNotNull);
       expect(sender.pinnedMessages, hasLength(1));
       expect(sender.pinnedMessages.single.chatId, 11);
@@ -144,7 +144,7 @@ void main() {
       expect(sender.messages.first.text, contains('Добро пожаловать в DVOR'));
       expect(sender.messages.first.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
       expect(sender.messages.last.text, contains('бесплатная тренировка'));
-      expect(sender.messages.last.text, contains('/book'));
+      expect(sender.messages.last.text, contains('Записаться'));
       expect(sender.messages.last.text, contains(MessageTemplates.buttonUseStarterBonus));
       expect(sender.pinnedMessages, hasLength(1));
       expect(sender.pinnedMessages.single.chatId, 112);
@@ -430,7 +430,7 @@ void main() {
       expect(sender.messages.single.text, contains('Продление доступно уже сейчас'));
       expect(
         _keyboardTexts(sender.messages.single.replyMarkup),
-        contains(MessageTemplates.buttonSubscribeApply),
+        contains(MessageTemplates.buttonRenewSubscription),
       );
     });
 
@@ -598,8 +598,8 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
-      expect(sender.messages.single.text, contains('Профиль спортсмена DVOR'));
-      expect(sender.messages.single.text, contains('Прогресс лояльности'));
+      expect(sender.messages.single.text, contains('Профиль DVOR'));
+      expect(sender.messages.single.text, contains('Лояльность'));
       expect(sender.messages.single.text, contains(MessageTemplates.buttonProfileBookings));
       expect(sender.messages.single.parseMode, 'HTML');
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
@@ -668,7 +668,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.single.text, contains('Осталось тренировок PRO:</b> <b>5/8</b>'));
+      expect(sender.messages.single.text, contains('осталось тренировок: <b>5/8</b>'));
     });
 
     test('handles coaching staff flow with compact list and trainer card', () async {
@@ -1042,9 +1042,9 @@ void main() {
         contains('Показываю ближайшие тренировки, йогу, походы и трейлы'),
       );
       expect(sender.messages.single.text, contains('каждая 5-я тренировка бесплатная'));
-      expect(sender.messages.single.text, contains('публикуем афиши всех мероприятий'));
+      expect(sender.messages.single.text, contains('Группа DVOR'));
       expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
-      expect(sender.messages.single.text, contains('По остальным вопросам пиши в поддержку'));
+      expect(sender.messages.single.text, contains('По остальным вопросам: @dvor_support'));
       expect(sender.messages.single.text, isNot(contains('внешнего источника')));
     });
 
@@ -1093,7 +1093,7 @@ void main() {
       expect(handled, isTrue);
       expect(repository.refreshCalls, 1);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages.first.text, contains('Google Docs обновил'));
+      expect(sender.messages.first.text, contains('Google Sheets обновлён'));
       expect(sender.messages.last.text, contains(MessageTemplates.scheduleDocumentUrl));
     });
 
@@ -1189,7 +1189,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 0);
-      expect(sender.messages.single.text, contains('выбери категорию для записи'));
+      expect(sender.messages.single.text, contains('Выбери категорию для записи'));
     });
 
     test('book button in selected hike actions creates booking', () async {
@@ -2332,10 +2332,15 @@ void main() {
       final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(keyboard, contains(MessageTemplates.buttonCancelBooking));
 
-      final handled = await handlers.handle(<String, dynamic>{
+      await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 168, 'type': 'private'},
         'from': <String, dynamic>{'id': 1608},
         'text': MessageTemplates.buttonCancelBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608},
+        'text': MessageTemplates.buttonConfirmCancelBooking,
       });
 
       expect(handled, isTrue);
@@ -2380,10 +2385,15 @@ void main() {
         nowProvider: () => now,
       );
 
-      final handled = await handlers.handle(<String, dynamic>{
+      await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 269, 'type': 'private'},
         'from': <String, dynamic>{'id': 2601},
         'text': MessageTemplates.buttonCancelBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 269, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2601},
+        'text': MessageTemplates.buttonConfirmCancelBooking,
       });
 
       expect(handled, isTrue);
@@ -2748,6 +2758,7 @@ void main() {
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
         adminChatId: -100601,
+        nowProvider: () => DateTime(2026, 7, 1, 12),
       );
 
       await handlers.handle(<String, dynamic>{
@@ -2835,6 +2846,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 1, 12),
       );
 
       await handlers.handle(<String, dynamic>{
@@ -2904,6 +2916,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 1, 12),
       );
 
       await handlers.handle(<String, dynamic>{
@@ -2973,6 +2986,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 1, 12),
       );
 
       await handlers.handle(<String, dynamic>{
@@ -3042,6 +3056,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 1, 12),
       );
 
       await handlers.handle(<String, dynamic>{
@@ -3109,6 +3124,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 1, 12),
       );
 
       await handlers.handle(<String, dynamic>{
@@ -3238,10 +3254,15 @@ void main() {
       expect(actionButtons, contains(MessageTemplates.buttonCancelBooking));
       expect(actionButtons, isNot(contains(MessageTemplates.buttonRescheduleBooking)));
 
-      final handled = await handlers.handle(<String, dynamic>{
+      await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 2401, 'type': 'private'},
         'from': <String, dynamic>{'id': 2401},
         'text': MessageTemplates.buttonCancelBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2401, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2401},
+        'text': MessageTemplates.buttonConfirmCancelBooking,
       });
 
       expect(handled, isTrue);
@@ -3300,10 +3321,15 @@ void main() {
         'from': <String, dynamic>{'id': 2411},
         'text': '🧾 #411 🥾 Поход: Домбай',
       });
-      final handled = await handlers.handle(<String, dynamic>{
+      await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 2411, 'type': 'private'},
         'from': <String, dynamic>{'id': 2411},
         'text': MessageTemplates.buttonCancelBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2411, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2411},
+        'text': MessageTemplates.buttonConfirmCancelBooking,
       });
 
       expect(handled, isTrue);
@@ -3405,10 +3431,15 @@ void main() {
         'from': <String, dynamic>{'id': 2403},
         'text': '🧾 #403 Утренняя йога',
       });
-      final handled = await handlers.handle(<String, dynamic>{
+      await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 2403, 'type': 'private'},
         'from': <String, dynamic>{'id': 2403},
         'text': MessageTemplates.buttonCancelBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2403, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2403},
+        'text': MessageTemplates.buttonConfirmCancelBooking,
       });
 
       expect(handled, isTrue);
@@ -3514,10 +3545,15 @@ void main() {
       final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(actionButtons, contains(MessageTemplates.buttonCancelBooking));
 
-      final handled = await handlers.handle(<String, dynamic>{
+      await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 2405, 'type': 'private'},
         'from': <String, dynamic>{'id': 2405},
         'text': MessageTemplates.buttonCancelBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2405, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2405},
+        'text': MessageTemplates.buttonConfirmCancelBooking,
       });
 
       expect(handled, isTrue);
@@ -3579,10 +3615,15 @@ void main() {
       final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(actionButtons, contains(MessageTemplates.buttonCancelBooking));
 
-      final handled = await handlers.handle(<String, dynamic>{
+      await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 2406, 'type': 'private'},
         'from': <String, dynamic>{'id': 2406},
         'text': MessageTemplates.buttonCancelBooking,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2406, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2406},
+        'text': MessageTemplates.buttonConfirmCancelBooking,
       });
 
       expect(handled, isTrue);
@@ -3617,7 +3658,7 @@ void main() {
           _booking(
             id: 72,
             userId: 857655217,
-            userUsername: 'zhorenty',
+            userUsername: 'nudden',
             trainingKey: training.sessionKey,
             title: training.title,
             startsAt: training.startsAt,
@@ -3699,12 +3740,12 @@ void main() {
       expect(sender.messages.last.text, contains('🧑‍🏫 Тренеры:'));
       expect(
         sender.messages.last.text,
-        contains('@zhorenty (Бесплатно: стартовая тренировка 🎁)'),
+        contains('@nudden (Бесплатно: стартовая тренировка 🎁)'),
       );
       expect(sender.messages.last.text, contains('@runner_cancelled (Отменено ❌)'));
       expect(
         sender.messages.last.text.indexOf('@runner_cancelled'),
-        greaterThan(sender.messages.last.text.indexOf('@zhorenty')),
+        greaterThan(sender.messages.last.text.indexOf('@nudden')),
       );
       expect(sender.messages.last.text, isNot(contains('Old Run')));
       expect(sender.messages.last.text, isNot(contains('@runner_archived (Оплачено ✅)')));
@@ -5136,8 +5177,8 @@ void main() {
       expect(handled, isTrue);
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPayPartially));
-      expect(buttons, isNot(contains(MessageTemplates.buttonPayFully)));
-      expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
+      expect(buttons, contains(MessageTemplates.buttonPayFully));
+      expect(buttons, contains(MessageTemplates.buttonSubmitPayment));
     });
 
     test('opens top-up flow for partial paid booking without payment type choice', () async {

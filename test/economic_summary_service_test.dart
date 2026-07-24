@@ -235,7 +235,7 @@ void main() {
         fakeBooking(
           id: 24,
           userId: 999003,
-          userUsername: '@pro_svet_lena',
+          userUsername: '@nudden',
           trainingKey: 'trainings|24',
           title: 'Без цены тренера',
           status: BookingStatus.paid,

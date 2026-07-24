@@ -103,7 +103,7 @@ void main() {
 
       expect(text, contains('Тренировка уже сегодня'));
       expect(text, contains('Записывайся'));
-      expect(text, contains('https://t.me/dvor_chatbot?start=start'));
+      expect(text, contains('https://t.me/dvor_chatbot?start=book'));
     });
 
     test('builds day-before promo with tomorrow wording', () {
@@ -155,7 +155,7 @@ void main() {
       expect(text, contains('вт, 21.07.2026 19:30'));
       expect(text, contains('бесплатная'));
       expect(text, contains('Дарья Данченко'));
-      expect(text, contains('https://t.me/dvor_chatbot?start=start'));
+      expect(text, contains('https://t.me/dvor_chatbot?start=book'));
     });
 
     test('builds referral broadcast with program steps', () {
@@ -164,7 +164,7 @@ void main() {
       expect(text, contains('Приведи друга'));
       expect(text, contains('Реферальная программа'));
       expect(text, contains('первую платную тренировку'));
-      expect(text, contains('https://t.me/dvor_chatbot?start=start'));
+      expect(text, contains('https://t.me/dvor_chatbot?start=book'));
     });
   });
 
