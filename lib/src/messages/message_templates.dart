@@ -671,17 +671,38 @@ final class MessageTemplates {
         '• «${MessageCopy.buttonPayFully}» — полная сумма 👇';
   }
 
-  String paymentSubmittedAdminNotification(TrainingBooking booking) {
-    final identity = _adminBookingIdentityLines(booking).join('\n');
-    final groupHint = (booking.paymentGroupId?.trim().isNotEmpty ?? false)
-        ? '\nПакетная оплата: подтверждение закроет все записи группы.'
-        : '';
-    return '💸 <b>Новое подтверждение оплаты</b>\n\n'
-        'Пришла новая заявка на проверку оплаты.\n'
-        'Мероприятие: ${_escapeHtml(booking.trainingTitle)}\n'
-        '$identity'
-        '$groupHint\n'
-        'Нажми кнопку ниже, чтобы открыть очередь заявок 👇';
+  String paymentSubmittedAdminNotification(
+    TrainingBooking booking, {
+    List<TrainingBooking> groupBookings = const <TrainingBooking>[],
+  }) {
+    final organizer = _userTagById(booking.managerUserId, username: booking.userUsername);
+    final members = groupBookings.isNotEmpty ? groupBookings : <TrainingBooking>[booking];
+    final buffer = StringBuffer()
+      ..writeln('💸 <b>Новое подтверждение оплаты</b>')
+      ..writeln('')
+      ..writeln('Пришла новая заявка на проверку оплаты.')
+      ..writeln('Мероприятие: ${_escapeHtml(booking.trainingTitle)}')
+      ..writeln('Организатор: ${_escapeHtml(organizer)} (${booking.managerUserId})');
+    if (members.length > 1) {
+      final total = members.fold<int>(0, (sum, item) => sum + (item.trainingPrice ?? 0));
+      final unit = booking.trainingPrice ?? 0;
+      buffer
+        ..writeln('Участников: <b>${members.length}</b>')
+        ..writeln('<b>Участники:</b>');
+      for (final member in members) {
+        buffer.writeln('• #${member.id} ${_escapeHtml(member.participantDisplayLabel)}');
+      }
+      buffer
+        ..writeln(
+          'К оплате: <b>${members.length} × ${_trainingPriceLabel(unit)} = '
+          '${_trainingPriceLabel(total)}</b>',
+        )
+        ..writeln('Пакетная оплата: подтверждение закроет все записи группы.');
+    } else {
+      buffer.writeln(_adminBookingIdentityLines(booking).join('\n'));
+    }
+    buffer.writeln('Нажми кнопку ниже, чтобы открыть очередь заявок 👇');
+    return buffer.toString().trimRight();
   }
 
   String starterBonusApplied(TrainingBooking booking) {
@@ -1436,26 +1457,52 @@ final class MessageTemplates {
     );
   }
 
-  String paymentsQueueItem(TrainingBooking booking) {
+  String paymentsQueueItem(
+    TrainingBooking booking, {
+    List<TrainingBooking> groupBookings = const <TrainingBooking>[],
+  }) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final paymentType = _paymentTypeLabelFromNote(booking.paymentNote);
     final cleanNote = _cleanPaymentNote(booking.paymentNote);
     final note = cleanNote == null ? '' : '\nКомментарий: ${_escapeHtml(cleanNote)}';
-    final identity = _adminBookingIdentityLines(booking).join('\n');
-    final groupHint = (booking.paymentGroupId?.trim().isNotEmpty ?? false)
-        ? '\nГруппа оплаты: подтверждение закроет все записи пакета.'
-        : '';
-    return '🧾 <b>Заявка #${booking.id}</b>\n'
-        '$identity\n'
-        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
-        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 ${_escapeHtml(booking.location)}'
-        '${paymentType == null ? '' : '\nТип оплаты: ${_escapeHtml(paymentType)}'}'
-        '$note'
-        '$groupHint\n\n'
-        'Подтверди или отклони оплату кнопками ниже.\n'
-        'После решения можно сразу открыть следующую заявку.';
+    final members = groupBookings.isNotEmpty ? groupBookings : <TrainingBooking>[booking];
+    final organizer = _userTagById(booking.managerUserId, username: booking.userUsername);
+    final buffer = StringBuffer()
+      ..writeln('🧾 <b>Заявка #${booking.id}</b>')
+      ..writeln('Организатор: ${_escapeHtml(organizer)} (${booking.managerUserId})');
+    if (members.length > 1) {
+      buffer.writeln('<b>Участники (${members.length}):</b>');
+      for (final member in members) {
+        buffer.writeln('• #${member.id} ${_escapeHtml(member.participantDisplayLabel)}');
+      }
+      final total = members.fold<int>(0, (sum, item) => sum + (item.trainingPrice ?? 0));
+      final unit = booking.trainingPrice ?? 0;
+      buffer
+        ..writeln(
+          'К оплате: <b>${members.length} × ${_trainingPriceLabel(unit)} = '
+          '${_trainingPriceLabel(total)}</b>',
+        )
+        ..writeln('Группа оплаты: подтверждение закроет все записи пакета.');
+    } else if (booking.isManagedForOther) {
+      buffer.writeln('Участник: ${_escapeHtml(booking.participantDisplayLabel)}');
+    }
+    buffer
+      ..writeln('Тренировка: ${_escapeHtml(booking.trainingTitle)}')
+      ..writeln('🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}')
+      ..writeln('📍 ${_escapeHtml(booking.location)}');
+    if (paymentType != null) {
+      buffer.writeln('Тип оплаты: ${_escapeHtml(paymentType)}');
+    }
+    if (note.isNotEmpty) {
+      buffer.write(note);
+      buffer.writeln();
+    }
+    buffer
+      ..writeln('')
+      ..writeln('Подтверди или отклони оплату кнопками ниже.')
+      ..writeln('После решения можно сразу открыть следующую заявку.');
+    return buffer.toString().trimRight();
   }
 
   String trainingParticipants({

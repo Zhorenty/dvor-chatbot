@@ -3938,14 +3938,30 @@ final class PrivateHandlers {
         );
       }
     }
+    final groupBookings = await _groupBookingsFor(booking);
     await _sendAdminMessage(
       chatId,
-      _templates.paymentsQueueItem(booking),
+      _templates.paymentsQueueItem(
+        booking,
+        groupBookings: groupBookings,
+      ),
       replyMarkup: _templates.paymentDecisionInlineKeyboard(
         booking.id,
         approvePartial: _hasPartialPaymentChoice(booking.paymentNote),
       ),
     );
+  }
+
+  Future<List<TrainingBooking>> _groupBookingsFor(TrainingBooking booking) async {
+    final groupId = booking.paymentGroupId?.trim();
+    if (groupId == null || groupId.isEmpty) {
+      return <TrainingBooking>[booking];
+    }
+    final group = await _bookingRepository.listBookingsByPaymentGroup(groupId);
+    if (group.isEmpty) {
+      return <TrainingBooking>[booking];
+    }
+    return group;
   }
 
   Future<void> _sendNoblesList({
@@ -4780,9 +4796,13 @@ final class PrivateHandlers {
     }
     try {
       final counters = await _paymentReviewService.queueCounters();
+      final groupBookings = await _groupBookingsFor(booking);
       await _sendAdminMessage(
         adminChatId,
-        _templates.paymentSubmittedAdminNotification(booking),
+        _templates.paymentSubmittedAdminNotification(
+          booking,
+          groupBookings: groupBookings,
+        ),
         replyMarkup: _templates.openPaymentsQueueInlineKeyboard(total: counters.total),
       );
     } on Object catch (error, stackTrace) {
