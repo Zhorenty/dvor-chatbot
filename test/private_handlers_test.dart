@@ -239,9 +239,10 @@ void main() {
         'text': MessageTemplates.buttonClientMenu,
       });
       final clientButtons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(clientButtons, contains(MessageTemplates.buttonTrainings));
+      expect(clientButtons, contains(MessageTemplates.buttonBookTraining));
       expect(clientButtons, contains(MessageTemplates.buttonProfile));
       expect(clientButtons, contains(MessageTemplates.buttonAdminMenu));
+      expect(clientButtons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(clientButtons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
 
       await handlers.handle(<String, dynamic>{
@@ -252,7 +253,7 @@ void main() {
       final adminButtons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(adminButtons, contains(MessageTemplates.buttonAdminTools));
       expect(adminButtons, contains(MessageTemplates.buttonPaymentsQueue));
-      expect(adminButtons, isNot(contains(MessageTemplates.buttonTrainings)));
+      expect(adminButtons, isNot(contains(MessageTemplates.buttonBookTraining)));
     });
 
     test('opens subscriptions filters directly for admin', () async {
@@ -301,7 +302,8 @@ void main() {
       // TODO(dvor-x-frank): вернуть expect(buttons.first, MessageTemplates.buttonDvorXFrank).
       expect(buttons, isNot(contains(MessageTemplates.buttonDvorXFrank)));
       expect(buttons, contains(MessageTemplates.buttonCoachingStaff));
-      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(buttons, contains(MessageTemplates.buttonProfile));
       expect(buttons, contains(MessageTemplates.buttonSubscription));
     });
@@ -352,7 +354,8 @@ void main() {
       expect(handled, isTrue);
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
-      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(buttons, contains(MessageTemplates.buttonSubscription));
       expect(buttons, isNot(contains(MessageTemplates.buttonRefreshSchedule)));
       expect(buttons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
@@ -1747,7 +1750,7 @@ void main() {
       expect(sender.messages.last.text, contains('Это бесплатная тренировка'));
       expect(sender.messages.last.text, isNot(contains('Реквизиты для оплаты')));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -1001612).text;
       expect(adminMessage, contains('новая бесплатная запись'));
@@ -1808,7 +1811,7 @@ void main() {
       expect(sender.messages.last.text, contains('Ты в списке тренеров'));
       expect(sender.messages.last.text, isNot(contains('Реквизиты для оплаты')));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100111).text;
       expect(adminMessage, contains('тренер записался'));

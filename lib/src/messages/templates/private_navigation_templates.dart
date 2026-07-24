@@ -9,7 +9,7 @@ final class PrivateNavigationTemplates {
         '1) Нажми «${MessageCopy.buttonBookTraining}» и выбери мероприятие.\n'
         '2) Оплати и отправь чек в этот чат.\n'
         '3) Следи за статусом в «${MessageCopy.buttonProfile}».\n\n'
-        'Ещё здесь: расписание, абонемент PRO, тренерский штаб и помощь.\n'
+        'Ещё здесь: абонемент PRO, тренерский штаб и помощь.\n'
         'Группа DVOR: https://t.me/+n4ksCb3kFRQ5MTcy';
   }
 
