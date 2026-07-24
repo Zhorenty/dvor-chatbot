@@ -1,5 +1,4 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
-import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
@@ -35,10 +34,6 @@ final class MessageTemplates {
   static const String buttonProfile = MessageCopy.buttonProfile;
   static const String buttonProfileBookings = MessageCopy.buttonProfileBookings;
   static const String buttonReferralProgram = MessageCopy.buttonReferralProgram;
-  static const String buttonPartyAddFriend = MessageCopy.buttonPartyAddFriend;
-  static const String buttonPartyAddGuest = MessageCopy.buttonPartyAddGuest;
-  static const String buttonPartyAddSelf = MessageCopy.buttonPartyAddSelf;
-  static const String buttonPartyReady = MessageCopy.buttonPartyReady;
   static const String buttonSubmitPayment = MessageCopy.buttonSubmitPayment;
   static const String buttonPayFully = MessageCopy.buttonPayFully;
   static const String buttonPayPartially = MessageCopy.buttonPayPartially;
@@ -2095,16 +2090,6 @@ final class MessageTemplates {
     return TelegramKeyboards.profileActionsKeyboard();
   }
 
-  Map<String, Object?> partyBuilderKeyboard({
-    required bool canAddSelf,
-    required bool canFinish,
-  }) {
-    return TelegramKeyboards.partyBuilderKeyboard(
-      canAddSelf: canAddSelf,
-      canFinish: canFinish,
-    );
-  }
-
   String chooseBookFriendCategory() {
     return '👥 <b>Записать друга</b>\n'
         'Выбери категорию мероприятия 👇';
@@ -2127,45 +2112,24 @@ final class MessageTemplates {
     return lines.join('\n');
   }
 
-  String partyBuilderStatus({
-    required TrainingInfo training,
-    required List<BookingParticipantDraft> participants,
-  }) {
+  String askPartyParticipants({required TrainingInfo training}) {
     final unitPrice = training.price ?? 0;
-    final count = participants.length;
-    final total = unitPrice * count;
-    final buffer = StringBuffer()
-      ..writeln('👥 <b>Состав участников</b>')
-      ..writeln('Событие: <b>${_escapeHtml(training.title)}</b>')
-      ..writeln('');
-    if (participants.isEmpty) {
-      buffer.writeln('Пока никого. Добавь друга или гостя.');
-    } else {
-      for (var index = 0; index < participants.length; index++) {
-        buffer.writeln('${index + 1}. ${_escapeHtml(participants[index].displayLabel)}');
-      }
-    }
-    buffer
-      ..writeln('')
-      ..writeln(
-        'Сумма: <b>$count × ${_trainingPriceLabel(unitPrice)} = ${_trainingPriceLabel(total)}</b>',
-      )
-      ..writeln('Можно добавить до 3 участников (включая себя).');
-    return buffer.toString().trimRight();
+    return '👥 <b>Кого записать?</b>\n'
+        'Событие: <b>${_escapeHtml(training.title)}</b>\n'
+        'Цена за человека: <b>${_trainingPriceLabel(unitPrice)}</b>\n\n'
+        'Напиши username или ФИО через запятую.\n'
+        'Примеры:\n'
+        '• <code>@anna, @ivan</code>\n'
+        '• <code>Бабушка Мария, Дедушка Пётр</code>\n'
+        '• <code>@anna, Бабушка Мария</code>\n\n'
+        'Можно записать до 3 человек.';
   }
 
-  String askPartyFriendUsername() {
-    return '👤 <b>Username друга</b>\n'
-        'Введи Telegram username (с @ или без).';
-  }
-
-  String askPartyGuestName() {
-    return '👤 <b>Имя гостя</b>\n'
-        'Как записать человека без Telegram? Например: <code>Бабушка Мария</code>.';
-  }
-
-  String invalidPartyGuestName() {
-    return 'Имя гостя должно быть от 1 до 40 символов. Попробуй ещё раз.';
+  String invalidPartyParticipantsInput() {
+    return 'Не понял список участников 🤔\n'
+        'Напиши username или ФИО через запятую.\n'
+        'Пример: <code>@anna, Бабушка Мария</code>\n'
+        'До 3 человек за раз.';
   }
 
   String partyParticipantConflict(String label) {
@@ -2173,11 +2137,11 @@ final class MessageTemplates {
   }
 
   String partyManagerLimitExceeded() {
-    return '⚠️ На одно мероприятие можно записать не больше 3 человек (включая себя).';
+    return '⚠️ На одно мероприятие можно записать не больше 3 человек.';
   }
 
   String partyDuplicateParticipant(String label) {
-    return '⚠️ ${_escapeHtml(label)} уже есть в текущем составе.';
+    return '⚠️ ${_escapeHtml(label)} указан(а) в списке больше одного раза.';
   }
 
   String bookingGroupCreated({

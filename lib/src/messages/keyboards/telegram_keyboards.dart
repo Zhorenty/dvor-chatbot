@@ -320,34 +320,6 @@ final class TelegramKeyboards {
     );
   }
 
-  static Map<String, Object?> partyBuilderKeyboard({
-    required bool canAddSelf,
-    required bool canFinish,
-  }) {
-    return _replyKeyboard(
-      <List<Map<String, String>>>[
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonPartyAddFriend},
-        ],
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonPartyAddGuest},
-        ],
-        if (canAddSelf)
-          <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonPartyAddSelf},
-          ],
-        if (canFinish)
-          <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonPartyReady},
-          ],
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonBack},
-          <String, String>{'text': MessageCopy.buttonMainMenu},
-        ],
-      ],
-    );
-  }
-
   static Map<String, Object?> subscriptionOverviewKeyboard({
     required bool canApply,
     bool isRenewal = false,

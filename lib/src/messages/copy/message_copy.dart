@@ -11,10 +11,6 @@ final class MessageCopy {
   static const String buttonProfile = '👤 Профиль';
   static const String buttonProfileBookings = '🗂 Мои записи';
   static const String buttonReferralProgram = '👥 Реферальная программа';
-  static const String buttonPartyAddFriend = 'Добавить друга';
-  static const String buttonPartyAddGuest = 'Добавить гостя без Telegram';
-  static const String buttonPartyAddSelf = '+ себя';
-  static const String buttonPartyReady = 'Готово';
   static const String buttonSubmitPayment = '💸 Я оплатил';
   static const String buttonPayFully = '💯 Оплатил полностью';
   static const String buttonPayPartially = '🟡 Оплатил предоплату';

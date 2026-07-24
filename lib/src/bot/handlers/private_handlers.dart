@@ -215,37 +215,11 @@ final class PrivateHandlers {
             chatId,
             _templates.chooseBookFriendCategory(),
             replyMarkup: _templates.categorySelectionKeyboard(),
+            parseMode: 'HTML',
           );
           return true;
-        case _PrivateFlowStep.buildingBookingParty:
-        case _PrivateFlowStep.enteringPartyFriendUsername:
-        case _PrivateFlowStep.enteringPartyGuestName:
-          final partyTraining = flowState?.partyTraining;
+        case _PrivateFlowStep.enteringPartyParticipants:
           final items = flowState?.availableTrainings ?? const <TrainingInfo>[];
-          if (partyTraining == null) {
-            _flowByUserId[userId] = const _PrivateFlowState(
-              step: _PrivateFlowStep.selectingBookFriendCategory,
-              availableTrainings: <TrainingInfo>[],
-            );
-            await _sender.sendMessage(
-              chatId,
-              _templates.chooseBookFriendCategory(),
-              replyMarkup: _templates.categorySelectionKeyboard(),
-            );
-            return true;
-          }
-          if (flowState?.step == _PrivateFlowStep.enteringPartyFriendUsername ||
-              flowState?.step == _PrivateFlowStep.enteringPartyGuestName) {
-            _flowByUserId[userId] = flowState!.copyWith(
-              step: _PrivateFlowStep.buildingBookingParty,
-            );
-            await _sendPartyBuilderStatus(
-              chatId: chatId,
-              training: partyTraining,
-              participants: flowState.partyParticipants,
-            );
-            return true;
-          }
           _flowByUserId[userId] = flowState!.copyWith(
             step: _PrivateFlowStep.selectingBookFriendEvent,
             partyParticipants: const <BookingParticipantDraft>[],
@@ -255,6 +229,7 @@ final class PrivateHandlers {
             chatId,
             _templates.chooseBookFriendEvent(items),
             replyMarkup: _templates.bookingSelectionKeyboard(items),
+            parseMode: 'HTML',
           );
           return true;
         case _PrivateFlowStep.selectingTrainerProfile:
@@ -701,6 +676,7 @@ final class PrivateHandlers {
         chatId,
         _templates.chooseBookFriendCategory(),
         replyMarkup: _templates.categorySelectionKeyboard(),
+        parseMode: 'HTML',
       );
       return true;
     }
@@ -1088,6 +1064,7 @@ final class PrivateHandlers {
         chatId,
         _templates.chooseBookFriendEvent(items),
         replyMarkup: _templates.bookingSelectionKeyboard(items),
+        parseMode: 'HTML',
       );
       return true;
     }
@@ -1108,20 +1085,21 @@ final class PrivateHandlers {
       }
       final selectedTraining = items[index - 1];
       _flowByUserId[userId] = flowState!.copyWith(
-        step: _PrivateFlowStep.buildingBookingParty,
+        step: _PrivateFlowStep.enteringPartyParticipants,
         partyTraining: selectedTraining,
         partyParticipants: const <BookingParticipantDraft>[],
       );
-      await _sendPartyBuilderStatus(
-        chatId: chatId,
-        training: selectedTraining,
-        participants: const <BookingParticipantDraft>[],
+      await _sender.sendMessage(
+        chatId,
+        _templates.askPartyParticipants(training: selectedTraining),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+        parseMode: 'HTML',
       );
       return true;
     }
 
     if (userId != null &&
-        flowState?.step == _PrivateFlowStep.buildingBookingParty &&
+        flowState?.step == _PrivateFlowStep.enteringPartyParticipants &&
         text != null &&
         !text.startsWith('/')) {
       final training = flowState?.partyTraining;
@@ -1135,178 +1113,43 @@ final class PrivateHandlers {
         );
         return true;
       }
-      final participants = List<BookingParticipantDraft>.from(flowState!.partyParticipants);
-      if (text == MessageTemplates.buttonPartyAddFriend) {
-        if (participants.length >= 3) {
-          await _sender.sendMessage(
-            chatId,
-            _templates.partyManagerLimitExceeded(),
-            replyMarkup: _templates.partyBuilderKeyboard(
-              canAddSelf: !_partyHasSelf(participants),
-              canFinish: participants.isNotEmpty,
-            ),
-          );
-          return true;
-        }
-        _flowByUserId[userId] = flowState.copyWith(
-          step: _PrivateFlowStep.enteringPartyFriendUsername,
-        );
+      final participants = _parsePartyParticipantsInput(text);
+      if (participants == null) {
         await _sender.sendMessage(
           chatId,
-          _templates.askPartyFriendUsername(),
+          _templates.invalidPartyParticipantsInput(),
           replyMarkup: _templates.simpleNavigationKeyboard(),
+          parseMode: 'HTML',
         );
         return true;
       }
-      if (text == MessageTemplates.buttonPartyAddGuest) {
-        if (participants.length >= 3) {
-          await _sender.sendMessage(
-            chatId,
-            _templates.partyManagerLimitExceeded(),
-            replyMarkup: _templates.partyBuilderKeyboard(
-              canAddSelf: !_partyHasSelf(participants),
-              canFinish: participants.isNotEmpty,
-            ),
-          );
-          return true;
-        }
-        _flowByUserId[userId] = flowState.copyWith(
-          step: _PrivateFlowStep.enteringPartyGuestName,
-        );
+      if (participants.length > 3) {
         await _sender.sendMessage(
           chatId,
-          _templates.askPartyGuestName(),
+          _templates.partyManagerLimitExceeded(),
           replyMarkup: _templates.simpleNavigationKeyboard(),
+          parseMode: 'HTML',
         );
         return true;
       }
-      if (text == MessageTemplates.buttonPartyAddSelf) {
-        if (_partyHasSelf(participants)) {
-          await _sendPartyBuilderStatus(
-            chatId: chatId,
-            training: training,
-            participants: participants,
-          );
-          return true;
-        }
-        if (participants.length >= 3) {
-          await _sender.sendMessage(
-            chatId,
-            _templates.partyManagerLimitExceeded(),
-            replyMarkup: _templates.partyBuilderKeyboard(
-              canAddSelf: false,
-              canFinish: participants.isNotEmpty,
-            ),
-          );
-          return true;
-        }
-        participants.add(const BookingParticipantDraft.self());
-        _flowByUserId[userId] = flowState.copyWith(partyParticipants: participants);
-        await _sendPartyBuilderStatus(
-          chatId: chatId,
-          training: training,
-          participants: participants,
+      final duplicate = _findDuplicatePartyParticipant(participants, managerUserId: userId);
+      if (duplicate != null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.partyDuplicateParticipant(duplicate.displayLabel),
+          replyMarkup: _templates.simpleNavigationKeyboard(),
+          parseMode: 'HTML',
         );
         return true;
       }
-      if (text == MessageTemplates.buttonPartyReady) {
-        if (participants.isEmpty) {
-          await _sendPartyBuilderStatus(
-            chatId: chatId,
-            training: training,
-            participants: participants,
-          );
-          return true;
-        }
-        await _createPartyBookingGroup(
-          chatId: chatId,
-          userId: userId,
-          isAdmin: isAdmin,
-          flowState: flowState,
-          training: training,
-          participants: participants,
-          username: context.from?['username']?.toString(),
-        );
-        return true;
-      }
-      await _sendPartyBuilderStatus(
+      await _createPartyBookingGroup(
         chatId: chatId,
+        userId: userId,
+        isAdmin: isAdmin,
+        flowState: flowState!,
         training: training,
         participants: participants,
-      );
-      return true;
-    }
-
-    if (userId != null &&
-        flowState?.step == _PrivateFlowStep.enteringPartyFriendUsername &&
-        text != null &&
-        !text.startsWith('/')) {
-      final training = flowState?.partyTraining;
-      final username = _normalizeUsernameInput(text);
-      if (training == null || username == null || username.contains(' ')) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.invalidUsernameInput(),
-          replyMarkup: _templates.simpleNavigationKeyboard(),
-        );
-        return true;
-      }
-      final participants = List<BookingParticipantDraft>.from(flowState!.partyParticipants);
-      final draft = BookingParticipantDraft.telegram(username: username);
-      if (_partyContainsDraft(participants, draft, managerUserId: userId)) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.partyDuplicateParticipant(draft.displayLabel),
-          replyMarkup: _templates.simpleNavigationKeyboard(),
-        );
-        return true;
-      }
-      participants.add(draft);
-      _flowByUserId[userId] = flowState.copyWith(
-        step: _PrivateFlowStep.buildingBookingParty,
-        partyParticipants: participants,
-      );
-      await _sendPartyBuilderStatus(
-        chatId: chatId,
-        training: training,
-        participants: participants,
-      );
-      return true;
-    }
-
-    if (userId != null &&
-        flowState?.step == _PrivateFlowStep.enteringPartyGuestName &&
-        text != null &&
-        !text.startsWith('/')) {
-      final training = flowState?.partyTraining;
-      final name = text.trim();
-      if (training == null || name.isEmpty || name.length > 40) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.invalidPartyGuestName(),
-          replyMarkup: _templates.simpleNavigationKeyboard(),
-        );
-        return true;
-      }
-      final participants = List<BookingParticipantDraft>.from(flowState!.partyParticipants);
-      final draft = BookingParticipantDraft.guest(name: name);
-      if (_partyContainsDraft(participants, draft, managerUserId: userId)) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.partyDuplicateParticipant(draft.displayLabel),
-          replyMarkup: _templates.simpleNavigationKeyboard(),
-        );
-        return true;
-      }
-      participants.add(draft);
-      _flowByUserId[userId] = flowState.copyWith(
-        step: _PrivateFlowStep.buildingBookingParty,
-        partyParticipants: participants,
-      );
-      await _sendPartyBuilderStatus(
-        chatId: chatId,
-        training: training,
-        participants: participants,
+        username: context.from?['username']?.toString(),
       );
       return true;
     }
@@ -4139,49 +3982,61 @@ final class PrivateHandlers {
     );
   }
 
-  Future<void> _sendPartyBuilderStatus({
-    required int chatId,
-    required TrainingInfo training,
-    required List<BookingParticipantDraft> participants,
-  }) async {
-    await _sender.sendMessage(
-      chatId,
-      _templates.partyBuilderStatus(training: training, participants: participants),
-      replyMarkup: _templates.partyBuilderKeyboard(
-        canAddSelf: !_partyHasSelf(participants),
-        canFinish: participants.isNotEmpty,
-      ),
-      parseMode: 'HTML',
-    );
+  List<BookingParticipantDraft>? _parsePartyParticipantsInput(String text) {
+    final parts = text
+        .split(',')
+        .map((part) => part.trim())
+        .where((part) => part.isNotEmpty)
+        .toList(growable: false);
+    if (parts.isEmpty || parts.length > 3) {
+      return null;
+    }
+    final drafts = <BookingParticipantDraft>[];
+    for (final part in parts) {
+      if (_looksLikeTelegramUsername(part)) {
+        final username = _normalizeUsernameInput(part);
+        if (username == null) {
+          return null;
+        }
+        drafts.add(BookingParticipantDraft.telegram(username: username));
+        continue;
+      }
+      if (part.length > 40) {
+        return null;
+      }
+      drafts.add(BookingParticipantDraft.guest(name: part));
+    }
+    return drafts;
   }
 
-  bool _partyHasSelf(List<BookingParticipantDraft> participants) {
-    return participants.any((draft) => draft.type == BookingParticipantType.self);
+  bool _looksLikeTelegramUsername(String value) {
+    final normalized = value.startsWith('@') ? value.substring(1) : value;
+    return RegExp(r'^[A-Za-z][A-Za-z0-9_]{3,31}$').hasMatch(normalized);
   }
 
-  bool _partyContainsDraft(
-    List<BookingParticipantDraft> participants,
+  String _partyParticipantKey(
     BookingParticipantDraft draft, {
     required int managerUserId,
   }) {
-    final key = switch (draft.type) {
+    return switch (draft.type) {
       BookingParticipantType.self => 'self:$managerUserId',
       BookingParticipantType.telegram =>
         'tg:${(_normalizeUsernameInput(draft.username ?? '') ?? '').toLowerCase()}',
       BookingParticipantType.guest => 'guest:${(draft.name ?? '').trim().toLowerCase()}',
     };
-    for (final existing in participants) {
-      final existingKey = switch (existing.type) {
-        BookingParticipantType.self => 'self:$managerUserId',
-        BookingParticipantType.telegram =>
-          'tg:${(_normalizeUsernameInput(existing.username ?? '') ?? '').toLowerCase()}',
-        BookingParticipantType.guest => 'guest:${(existing.name ?? '').trim().toLowerCase()}',
-      };
-      if (existingKey == key) {
-        return true;
+  }
+
+  BookingParticipantDraft? _findDuplicatePartyParticipant(
+    List<BookingParticipantDraft> participants, {
+    required int managerUserId,
+  }) {
+    final seen = <String>{};
+    for (final draft in participants) {
+      if (!seen.add(_partyParticipantKey(draft, managerUserId: managerUserId))) {
+        return draft;
       }
     }
-    return false;
+    return null;
   }
 
   Future<void> _createPartyBookingGroup({
@@ -4205,20 +4060,16 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.bookingParticipantsLimitExceeded(),
-        replyMarkup: _templates.partyBuilderKeyboard(
-          canAddSelf: !_partyHasSelf(participants),
-          canFinish: participants.isNotEmpty,
-        ),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+        parseMode: 'HTML',
       );
       return;
     } on BookingManagerLimitExceededException {
       await _sender.sendMessage(
         chatId,
         _templates.partyManagerLimitExceeded(),
-        replyMarkup: _templates.partyBuilderKeyboard(
-          canAddSelf: !_partyHasSelf(participants),
-          canFinish: participants.isNotEmpty,
-        ),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+        parseMode: 'HTML',
       );
       return;
     } on BookingParticipantConflictException catch (error) {
@@ -4226,20 +4077,16 @@ final class PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.partyParticipantConflict(label),
-        replyMarkup: _templates.partyBuilderKeyboard(
-          canAddSelf: !_partyHasSelf(participants),
-          canFinish: participants.isNotEmpty,
-        ),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+        parseMode: 'HTML',
       );
       return;
     } on ArgumentError {
       await _sender.sendMessage(
         chatId,
-        _templates.invalidUsernameInput(),
-        replyMarkup: _templates.partyBuilderKeyboard(
-          canAddSelf: !_partyHasSelf(participants),
-          canFinish: participants.isNotEmpty,
-        ),
+        _templates.invalidPartyParticipantsInput(),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+        parseMode: 'HTML',
       );
       return;
     }
