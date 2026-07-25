@@ -80,6 +80,9 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonEconomicSummary},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonFunnelAnalytics},
+        ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonSubscriptionsAdmin},
           <String, String>{'text': MessageCopy.buttonNoblesList},
         ],

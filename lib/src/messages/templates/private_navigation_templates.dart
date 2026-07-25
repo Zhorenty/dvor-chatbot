@@ -96,6 +96,26 @@ final class PrivateNavigationTemplates {
     return 'Спасибо — это помогает делать DVOR лучше.';
   }
 
+  String trainingFeedbackAdminNotification({
+    required String trainingTitle,
+    required String ratingLabel,
+    String? comment,
+  }) {
+    final lines = <String>[
+      '📝 <b>Новый анонимный отзыв о тренировке</b>',
+      'Занятие: <b>$trainingTitle</b>',
+      'Оценка: <b>$ratingLabel</b>',
+    ];
+    final trimmed = comment?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) {
+      lines
+        ..add('')
+        ..add('Комментарий:')
+        ..add(trimmed);
+    }
+    return lines.join('\n');
+  }
+
   String starterBonusOnboardingOffer() {
     return '🎁 Тебе доступна бесплатная тренировка за старт!\n\n'
         'Нажми «${MessageCopy.buttonBookTraining}», выбери тренировку '

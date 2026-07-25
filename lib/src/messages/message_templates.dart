@@ -1,10 +1,12 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
+import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
+import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
@@ -76,6 +78,7 @@ final class MessageTemplates {
   static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
   static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
   static const String buttonEconomicSummary = MessageCopy.buttonEconomicSummary;
+  static const String buttonFunnelAnalytics = MessageCopy.buttonFunnelAnalytics;
   static const String buttonSubscriptionsAdmin = MessageCopy.buttonSubscriptionsAdmin;
   static const String buttonSubscriptionsList = MessageCopy.buttonSubscriptionsList;
   static const String buttonSubscribersManagement = MessageCopy.buttonSubscribersManagement;
@@ -191,6 +194,18 @@ final class MessageTemplates {
   String trainingFeedbackCommentAsk() => _privateNavigationTemplates.trainingFeedbackCommentAsk();
 
   String trainingFeedbackThanks() => _privateNavigationTemplates.trainingFeedbackThanks();
+
+  String trainingFeedbackAdminNotification({
+    required String trainingTitle,
+    required TrainingFeedbackRating rating,
+    String? comment,
+  }) {
+    return _privateNavigationTemplates.trainingFeedbackAdminNotification(
+      trainingTitle: _escapeHtml(trainingTitle),
+      ratingLabel: _escapeHtml(_feedbackRatingLabel(rating.storageValue)),
+      comment: comment == null ? null : _escapeHtml(comment),
+    );
+  }
 
   String privateHelp() {
     return _privateNavigationTemplates.privateHelp();
@@ -2074,6 +2089,179 @@ final class MessageTemplates {
       ),
     ];
     return lines.join('\n');
+  }
+
+  String funnelAnalyticsOnboarding(FunnelAnalytics analytics) {
+    final generated = DateFormat('dd.MM.yyyy HH:mm').format(analytics.generatedAt.toLocal());
+    final lines = <String>[
+      '📊 <b>Аналитика воронки</b>',
+      'Срез: <b>$generated</b>',
+      '',
+      '<b>Пользователи:</b>',
+      '• С /start: <b>${analytics.startedUsersTotal}</b>',
+      '• В воронке (не legacy): <b>${analytics.funnelUsers}</b>',
+      '• Legacy (без drip): <b>${analytics.legacyUsers}</b>',
+      '• Completed: <b>${analytics.completedUsers}</b>',
+      '• /start за 7д: <b>${analytics.startedLast7Days}</b>',
+      '• /start за 30д: <b>${analytics.startedLast30Days}</b>',
+      '',
+      '<b>Activation:</b>',
+      '• Всего: <b>${analytics.activationsTotal}</b>',
+      '• За 7д: <b>${analytics.activationsLast7Days}</b>',
+      '• За 30д: <b>${analytics.activationsLast30Days}</b>',
+      '• Rate ≤21д: <b>${_percentOrDash(analytics.activationRate21Days)}</b>',
+      '• Средний TTV: <b>${_daysOrDash(analytics.avgTimeToValueDays)}</b>',
+      '• Сейчас в snooze: <b>${analytics.snoozeActiveNow}</b>',
+      '',
+      '<b>Фазы:</b>',
+      ..._mapLines(analytics.phaseCounts, _onboardingPhaseLabel),
+      '',
+      '<b>Вход:</b>',
+      ..._mapLines(analytics.entryTypeCounts, _entryTypeLabel),
+      '',
+      '<b>Цель квиза:</b>',
+      ..._mapLines(analytics.quizGoalCounts, _quizGoalLabel),
+      '',
+      '<b>Опыт:</b>',
+      ..._mapLines(analytics.quizExperienceCounts, _quizExperienceLabel),
+      '',
+      '<b>Трек:</b>',
+      ..._mapLines(analytics.trackCounts, _trackLabel),
+      '',
+      '<b>Nudges (idempotent keys):</b>',
+      if (analytics.nudgeKeyCounts.isEmpty) '• Пока нет',
+      ...analytics.nudgeKeyCounts.entries
+          .take(12)
+          .map((e) => '• ${_escapeHtml(e.key)}: <b>${e.value}</b>'),
+    ];
+    return lines.join('\n');
+  }
+
+  String funnelAnalyticsFeedback(FunnelAnalytics analytics) {
+    final responseRate = analytics.feedbackResponseRate;
+    final lines = <String>[
+      '📝 <b>Отзывы после тренировок</b>',
+      '• Запросов отправлено: <b>${analytics.feedbackRequestsSent}</b>',
+      '• Ответов: <b>${analytics.feedbackResponses}</b>',
+      '• Response rate: <b>${_percentOrDash(responseRate)}</b>',
+      '• Пропусков: <b>${analytics.feedbackSkipped}</b>',
+      '• Комментариев: <b>${analytics.feedbackCommentsCount}</b>',
+      '',
+      '<b>Оценки:</b>',
+      ..._mapLines(analytics.feedbackRatingCounts, _feedbackRatingLabel),
+      '',
+      '<b>Топ занятий по отзывам:</b>',
+      if (analytics.topFeedbackSessions.isEmpty) '• Пока нет',
+      ...analytics.topFeedbackSessions.map((session) {
+        return '• ${_escapeHtml(session.trainingTitle)} — '
+            '<b>${session.responses}</b> '
+            '(👍${session.greatCount} / 🙂${session.okCount} / 👎${session.weakCount})';
+      }),
+      '',
+      '<b>Последние комментарии (анонимно):</b>',
+      if (analytics.recentFeedbackComments.isEmpty) '• Пока нет',
+      ...analytics.recentFeedbackComments.map((item) {
+        final date = DateFormat('dd.MM HH:mm').format(item.submittedAt.toLocal());
+        final comment = (item.comment ?? '').trim();
+        final short = comment.length > 160 ? '${comment.substring(0, 157)}…' : comment;
+        return '• <b>${_escapeHtml(date)}</b> · ${_escapeHtml(_feedbackRatingLabel(item.rating))} · '
+            '${_escapeHtml(item.trainingTitle)}\n'
+            '  <i>${_escapeHtml(short)}</i>';
+      }),
+    ];
+    return lines.join('\n');
+  }
+
+  List<String> _mapLines(Map<String, int> counts, String Function(String) label) {
+    if (counts.isEmpty) {
+      return const <String>['• Нет данных'];
+    }
+    return counts.entries
+        .map((e) => '• ${_escapeHtml(label(e.key))}: <b>${e.value}</b>')
+        .toList(growable: false);
+  }
+
+  String _percentOrDash(double? value) {
+    if (value == null) {
+      return '—';
+    }
+    return '${(value * 100).toStringAsFixed(1)}%';
+  }
+
+  String _daysOrDash(double? value) {
+    if (value == null) {
+      return '—';
+    }
+    return '${value.toStringAsFixed(1)} дн';
+  }
+
+  String _onboardingPhaseLabel(String raw) {
+    return switch (raw) {
+      'legacy_skipped' => 'legacy',
+      'phase1_quiz' => 'фаза 1 · квиз',
+      'phase1_track' => 'фаза 1 · трек',
+      'phase1_map' => 'фаза 1 · карта',
+      'phase2_activation' => 'фаза 2 · активация',
+      'phase3_integration' => 'фаза 3 · интеграция',
+      'phase4_completion' => 'фаза 4 · завершение',
+      'completed' => 'completed',
+      'paused' => 'paused / snooze',
+      'returning' => 'returning',
+      'not_started' => 'not_started',
+      'null' => 'без фазы',
+      _ => raw,
+    };
+  }
+
+  String _entryTypeLabel(String raw) {
+    return switch (raw) {
+      'group' => 'из группы',
+      'cold' => 'холодный DM',
+      'referral' => 'реферал',
+      'returning' => 'возврат',
+      'legacy' => 'legacy',
+      'unknown' => 'не указан',
+      _ => raw,
+    };
+  }
+
+  String _quizGoalLabel(String raw) {
+    return switch (raw) {
+      'form_strength' => 'форма / сила',
+      'endurance_run' => 'выносливость / бег',
+      'yoga_recovery' => 'йога / восстановление',
+      'outdoor_hikes' => 'outdoor / походы',
+      'unknown' => 'пока не знаю',
+      _ => raw,
+    };
+  }
+
+  String _quizExperienceLabel(String raw) {
+    return switch (raw) {
+      'beginner' => 'новичок',
+      'returning' => 'был перерыв',
+      'regular' => 'регулярно',
+      _ => raw,
+    };
+  }
+
+  String _trackLabel(String raw) {
+    return switch (raw) {
+      'one_off' => 'разовая',
+      'outdoor' => 'outdoor',
+      // TODO(subscription): label для трека pro.
+      _ => raw,
+    };
+  }
+
+  String _feedbackRatingLabel(String raw) {
+    return switch (raw) {
+      'great' => 'отлично',
+      'ok' => 'нормально',
+      'weak' => 'слабо',
+      'skipped' => 'пропуск',
+      _ => raw,
+    };
   }
 
   String chooseEconomicSummaryPeriod() {

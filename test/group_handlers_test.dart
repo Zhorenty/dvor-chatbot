@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -591,6 +592,42 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
 
   @override
   Future<bool> hasTrainingFeedback(int bookingId) async => false;
+
+  @override
+  Future<FunnelAnalytics> getFunnelAnalytics({
+    required DateTime now,
+    int recentCommentsLimit = 10,
+    int topSessionsLimit = 8,
+  }) async {
+    return FunnelAnalytics(
+      generatedAt: now.toUtc(),
+      startedUsersTotal: 0,
+      legacyUsers: 0,
+      funnelUsers: 0,
+      completedUsers: 0,
+      phaseCounts: const <String, int>{},
+      entryTypeCounts: const <String, int>{},
+      quizGoalCounts: const <String, int>{},
+      quizExperienceCounts: const <String, int>{},
+      trackCounts: const <String, int>{},
+      startedLast7Days: 0,
+      startedLast30Days: 0,
+      activationsTotal: 0,
+      activationsLast7Days: 0,
+      activationsLast30Days: 0,
+      activationRate21Days: null,
+      avgTimeToValueDays: null,
+      snoozeActiveNow: 0,
+      nudgeKeyCounts: const <String, int>{},
+      feedbackRequestsSent: 0,
+      feedbackResponses: 0,
+      feedbackSkipped: 0,
+      feedbackRatingCounts: const <String, int>{},
+      feedbackCommentsCount: 0,
+      recentFeedbackComments: const <RecentFeedbackComment>[],
+      topFeedbackSessions: const <FeedbackSessionSummary>[],
+    );
+  }
 }
 
 final class _WelcomeRecord {

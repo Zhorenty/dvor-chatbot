@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -871,6 +872,315 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
       <Object?>[bookingId],
     );
     return rows.isNotEmpty;
+  }
+
+  @override
+  Future<FunnelAnalytics> getFunnelAnalytics({
+    required DateTime now,
+    int recentCommentsLimit = 10,
+    int topSessionsLimit = 8,
+  }) async {
+    final db = _database;
+    final nowUtc = now.toUtc();
+    final nowIso = nowUtc.toIso8601String();
+    final d7Iso = nowUtc.subtract(const Duration(days: 7)).toIso8601String();
+    final d30Iso = nowUtc.subtract(const Duration(days: 30)).toIso8601String();
+    final legacy = OnboardingPhase.legacySkipped.storageValue;
+
+    int count(String sql, [List<Object?> args = const <Object?>[]]) {
+      final rows = db.select(sql, args);
+      if (rows.isEmpty) {
+        return 0;
+      }
+      return (rows.first['c'] as int?) ?? 0;
+    }
+
+    Map<String, int> groupCounts(String sql, [List<Object?> args = const <Object?>[]]) {
+      final rows = db.select(sql, args);
+      final map = <String, int>{};
+      for (final row in rows) {
+        final key = (row['k'] as String?)?.trim();
+        if (key == null || key.isEmpty) {
+          continue;
+        }
+        map[key] = (row['c'] as int?) ?? 0;
+      }
+      return map;
+    }
+
+    final startedUsersTotal = count(
+      'SELECT COUNT(*) AS c FROM onboarding_users WHERE started_at IS NOT NULL;',
+    );
+    final legacyUsers = count(
+      'SELECT COUNT(*) AS c FROM onboarding_users WHERE onboarding_phase = ?;',
+      <Object?>[legacy],
+    );
+    final funnelUsers = count(
+      '''
+      SELECT COUNT(*) AS c FROM onboarding_users
+      WHERE started_at IS NOT NULL
+        AND onboarding_phase IS NOT NULL
+        AND onboarding_phase != ?;
+      ''',
+      <Object?>[legacy],
+    );
+    final completedUsers = count(
+      '''
+      SELECT COUNT(*) AS c FROM onboarding_users
+      WHERE onboarding_phase = ?;
+      ''',
+      <Object?>[OnboardingPhase.completed.storageValue],
+    );
+
+    final phaseCounts = groupCounts(
+      '''
+      SELECT COALESCE(onboarding_phase, 'null') AS k, COUNT(*) AS c
+      FROM onboarding_users
+      GROUP BY onboarding_phase
+      ORDER BY c DESC;
+      ''',
+    );
+    final entryTypeCounts = groupCounts(
+      '''
+      SELECT COALESCE(entry_type, 'unknown') AS k, COUNT(*) AS c
+      FROM onboarding_users
+      WHERE started_at IS NOT NULL
+      GROUP BY entry_type
+      ORDER BY c DESC;
+      ''',
+    );
+    final quizGoalCounts = groupCounts(
+      '''
+      SELECT quiz_goal AS k, COUNT(*) AS c
+      FROM onboarding_users
+      WHERE quiz_goal IS NOT NULL AND onboarding_phase != ?
+      GROUP BY quiz_goal
+      ORDER BY c DESC;
+      ''',
+      <Object?>[legacy],
+    );
+    final quizExperienceCounts = groupCounts(
+      '''
+      SELECT quiz_experience AS k, COUNT(*) AS c
+      FROM onboarding_users
+      WHERE quiz_experience IS NOT NULL AND onboarding_phase != ?
+      GROUP BY quiz_experience
+      ORDER BY c DESC;
+      ''',
+      <Object?>[legacy],
+    );
+    final trackCounts = groupCounts(
+      '''
+      SELECT selected_track AS k, COUNT(*) AS c
+      FROM onboarding_users
+      WHERE selected_track IS NOT NULL AND onboarding_phase != ?
+      GROUP BY selected_track
+      ORDER BY c DESC;
+      ''',
+      <Object?>[legacy],
+    );
+
+    final startedLast7Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM onboarding_users
+      WHERE started_at IS NOT NULL AND started_at >= ?;
+      ''',
+      <Object?>[d7Iso],
+    );
+    final startedLast30Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM onboarding_users
+      WHERE started_at IS NOT NULL AND started_at >= ?;
+      ''',
+      <Object?>[d30Iso],
+    );
+    final activationsTotal = count(
+      'SELECT COUNT(*) AS c FROM onboarding_users WHERE activation_at IS NOT NULL;',
+    );
+    final activationsLast7Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM onboarding_users
+      WHERE activation_at IS NOT NULL AND activation_at >= ?;
+      ''',
+      <Object?>[d7Iso],
+    );
+    final activationsLast30Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM onboarding_users
+      WHERE activation_at IS NOT NULL AND activation_at >= ?;
+      ''',
+      <Object?>[d30Iso],
+    );
+
+    final cohortRows = db.select(
+      '''
+      SELECT onboarding_started_at, activation_at
+      FROM onboarding_users
+      WHERE onboarding_started_at IS NOT NULL
+        AND onboarding_phase IS NOT NULL
+        AND onboarding_phase != ?;
+      ''',
+      <Object?>[legacy],
+    );
+    var cohortEligible = 0;
+    var cohortActivatedIn21 = 0;
+    final ttvDays = <double>[];
+    for (final row in cohortRows) {
+      final startedRaw = row['onboarding_started_at'] as String?;
+      if (startedRaw == null) {
+        continue;
+      }
+      final started = DateTime.parse(startedRaw).toUtc();
+      cohortEligible += 1;
+      final activationRaw = row['activation_at'] as String?;
+      if (activationRaw == null) {
+        continue;
+      }
+      final activated = DateTime.parse(activationRaw).toUtc();
+      final days = activated.difference(started).inSeconds / Duration.secondsPerDay;
+      if (days >= 0) {
+        ttvDays.add(days);
+      }
+      if (days >= 0 && days <= 21) {
+        cohortActivatedIn21 += 1;
+      }
+    }
+    final activationRate21Days = cohortEligible == 0 ? null : cohortActivatedIn21 / cohortEligible;
+    final avgTimeToValueDays =
+        ttvDays.isEmpty ? null : ttvDays.reduce((a, b) => a + b) / ttvDays.length;
+
+    final snoozeActiveNow = count(
+      '''
+      SELECT COUNT(*) AS c FROM onboarding_users
+      WHERE snooze_until IS NOT NULL AND snooze_until > ?;
+      ''',
+      <Object?>[nowIso],
+    );
+    final nudgeKeyCounts = groupCounts(
+      '''
+      SELECT nudge_key AS k, COUNT(*) AS c
+      FROM onboarding_nudge_log
+      GROUP BY nudge_key
+      ORDER BY c DESC;
+      ''',
+    );
+
+    final feedbackRequestsSent = count(
+      'SELECT COUNT(*) AS c FROM training_feedback_requests;',
+    );
+    final feedbackResponses = count(
+      'SELECT COUNT(*) AS c FROM training_feedback;',
+    );
+    final feedbackSkipped = count(
+      '''
+      SELECT COUNT(*) AS c FROM training_feedback WHERE rating = ?;
+      ''',
+      <Object?>[TrainingFeedbackRating.skipped.storageValue],
+    );
+    final feedbackRatingCounts = groupCounts(
+      '''
+      SELECT rating AS k, COUNT(*) AS c
+      FROM training_feedback
+      GROUP BY rating
+      ORDER BY c DESC;
+      ''',
+    );
+    final feedbackCommentsCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM training_feedback
+      WHERE comment IS NOT NULL AND TRIM(comment) != '';
+      ''',
+    );
+
+    final recentRows = db.select(
+      '''
+      SELECT
+        r.training_title AS training_title,
+        f.rating AS rating,
+        f.comment AS comment,
+        f.submitted_at AS submitted_at
+      FROM training_feedback f
+      LEFT JOIN training_feedback_requests r ON r.booking_id = f.booking_id
+      WHERE f.comment IS NOT NULL AND TRIM(f.comment) != ''
+      ORDER BY f.submitted_at DESC
+      LIMIT ?;
+      ''',
+      <Object?>[recentCommentsLimit],
+    );
+    final recentFeedbackComments = recentRows
+        .map(
+          (row) => RecentFeedbackComment(
+            trainingTitle: (row['training_title'] as String?)?.trim().isNotEmpty == true
+                ? (row['training_title'] as String).trim()
+                : 'Тренировка',
+            rating: row['rating'] as String? ?? 'unknown',
+            comment: row['comment'] as String?,
+            submittedAt: DateTime.parse(row['submitted_at'] as String).toUtc(),
+          ),
+        )
+        .toList(growable: false);
+
+    final sessionRows = db.select(
+      '''
+      SELECT
+        f.session_key AS session_key,
+        COALESCE(MAX(r.training_title), f.session_key) AS training_title,
+        COUNT(*) AS responses,
+        SUM(CASE WHEN f.rating = 'great' THEN 1 ELSE 0 END) AS great_count,
+        SUM(CASE WHEN f.rating = 'ok' THEN 1 ELSE 0 END) AS ok_count,
+        SUM(CASE WHEN f.rating = 'weak' THEN 1 ELSE 0 END) AS weak_count
+      FROM training_feedback f
+      LEFT JOIN training_feedback_requests r ON r.booking_id = f.booking_id
+      WHERE f.rating != 'skipped'
+      GROUP BY f.session_key
+      ORDER BY responses DESC
+      LIMIT ?;
+      ''',
+      <Object?>[topSessionsLimit],
+    );
+    final topFeedbackSessions = sessionRows
+        .map(
+          (row) => FeedbackSessionSummary(
+            trainingTitle: (row['training_title'] as String?)?.trim().isNotEmpty == true
+                ? (row['training_title'] as String).trim()
+                : 'Тренировка',
+            sessionKey: row['session_key'] as String? ?? '',
+            responses: (row['responses'] as int?) ?? 0,
+            greatCount: (row['great_count'] as int?) ?? 0,
+            okCount: (row['ok_count'] as int?) ?? 0,
+            weakCount: (row['weak_count'] as int?) ?? 0,
+          ),
+        )
+        .toList(growable: false);
+
+    return FunnelAnalytics(
+      generatedAt: nowUtc,
+      startedUsersTotal: startedUsersTotal,
+      legacyUsers: legacyUsers,
+      funnelUsers: funnelUsers,
+      completedUsers: completedUsers,
+      phaseCounts: phaseCounts,
+      entryTypeCounts: entryTypeCounts,
+      quizGoalCounts: quizGoalCounts,
+      quizExperienceCounts: quizExperienceCounts,
+      trackCounts: trackCounts,
+      startedLast7Days: startedLast7Days,
+      startedLast30Days: startedLast30Days,
+      activationsTotal: activationsTotal,
+      activationsLast7Days: activationsLast7Days,
+      activationsLast30Days: activationsLast30Days,
+      activationRate21Days: activationRate21Days,
+      avgTimeToValueDays: avgTimeToValueDays,
+      snoozeActiveNow: snoozeActiveNow,
+      nudgeKeyCounts: nudgeKeyCounts,
+      feedbackRequestsSent: feedbackRequestsSent,
+      feedbackResponses: feedbackResponses,
+      feedbackSkipped: feedbackSkipped,
+      feedbackRatingCounts: feedbackRatingCounts,
+      feedbackCommentsCount: feedbackCommentsCount,
+      recentFeedbackComments: recentFeedbackComments,
+      topFeedbackSessions: topFeedbackSessions,
+    );
   }
 
   OnboardingUserState _mapState(Row row) {

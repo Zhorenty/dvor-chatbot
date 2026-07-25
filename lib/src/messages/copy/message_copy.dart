@@ -55,6 +55,7 @@ final class MessageCopy {
   static const String buttonRefreshSchedule = '🔄 Обновить Google Sheets';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
   static const String buttonEconomicSummary = '💰 Экономическая сводка';
+  static const String buttonFunnelAnalytics = '📊 Аналитика воронки';
   static const String buttonSubscriptionsAdmin = '💎 Абонементы';
   static const String buttonSubscriptionsList = '📋 Список абонементов';
   static const String buttonSubscribersManagement = '🛠 Управление абонентами';

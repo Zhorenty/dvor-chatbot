@@ -7,6 +7,7 @@ import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/promo_code.dart';
@@ -1378,6 +1379,65 @@ final class FakeOnboardingRepository implements OnboardingRepository {
   @override
   Future<bool> hasTrainingFeedback(int bookingId) async {
     return feedbackSubmittedBookingIds.contains(bookingId);
+  }
+
+  @override
+  Future<FunnelAnalytics> getFunnelAnalytics({
+    required DateTime now,
+    int recentCommentsLimit = 10,
+    int topSessionsLimit = 8,
+  }) async {
+    final started = _stateByUserId.values.where((s) => s.startedAt != null).length;
+    final legacy =
+        _stateByUserId.values.where((s) => s.phase == OnboardingPhase.legacySkipped).length;
+    final funnel = _stateByUserId.values
+        .where(
+          (s) => s.startedAt != null && s.phase != null && s.phase != OnboardingPhase.legacySkipped,
+        )
+        .length;
+    final activations = _stateByUserId.values.where((s) => s.activationAt != null).length;
+    final phaseCounts = <String, int>{};
+    for (final state in _stateByUserId.values) {
+      final phase = state.phase;
+      if (phase == null) {
+        continue;
+      }
+      phaseCounts.update(phase.storageValue, (value) => value + 1, ifAbsent: () => 1);
+    }
+    final nudgeCounts = <String, int>{};
+    for (final key in sentNudgeKeys) {
+      final nudgeKey = key.contains('::') ? key.split('::').last : key;
+      nudgeCounts.update(nudgeKey, (value) => value + 1, ifAbsent: () => 1);
+    }
+    return FunnelAnalytics(
+      generatedAt: now.toUtc(),
+      startedUsersTotal: started,
+      legacyUsers: legacy,
+      funnelUsers: funnel,
+      completedUsers:
+          _stateByUserId.values.where((s) => s.phase == OnboardingPhase.completed).length,
+      phaseCounts: phaseCounts,
+      entryTypeCounts: const <String, int>{},
+      quizGoalCounts: const <String, int>{},
+      quizExperienceCounts: const <String, int>{},
+      trackCounts: const <String, int>{},
+      startedLast7Days: started,
+      startedLast30Days: started,
+      activationsTotal: activations,
+      activationsLast7Days: activations,
+      activationsLast30Days: activations,
+      activationRate21Days: funnel == 0 ? null : activations / funnel,
+      avgTimeToValueDays: null,
+      snoozeActiveNow: 0,
+      nudgeKeyCounts: nudgeCounts,
+      feedbackRequestsSent: feedbackRequestBookingIds.length,
+      feedbackResponses: feedbackSubmittedBookingIds.length,
+      feedbackSkipped: 0,
+      feedbackRatingCounts: const <String, int>{},
+      feedbackCommentsCount: 0,
+      recentFeedbackComments: const <RecentFeedbackComment>[],
+      topFeedbackSessions: const <FeedbackSessionSummary>[],
+    );
   }
 
   OnboardingUserState _toState(int userId, _FakeOnboardingState state) {

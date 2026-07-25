@@ -227,6 +227,7 @@ void main() {
       final toolsButtons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(toolsButtons, contains(MessageTemplates.buttonRefreshSchedule));
       expect(toolsButtons, contains(MessageTemplates.buttonEconomicSummary));
+      expect(toolsButtons, contains(MessageTemplates.buttonFunnelAnalytics));
       expect(toolsButtons, contains(MessageTemplates.buttonSubscriptionsAdmin));
       expect(toolsButtons, contains(MessageTemplates.buttonNoblesList));
       expect(toolsButtons, contains(MessageTemplates.buttonAdminUserSearch));

@@ -2316,6 +2316,26 @@ final class PrivateHandlers {
       return true;
     }
 
+    if (text != null &&
+        (text == MessageTemplates.buttonFunnelAnalytics ||
+            text.startsWith('/funnel_analytics') ||
+            text.startsWith('/onboarding_analytics'))) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (userId != null) {
+        _flowByUserId.remove(userId);
+      }
+      await _sendFunnelAnalytics(chatId: chatId, isAdmin: isAdmin);
+      return true;
+    }
+
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.selectingEconomicSummaryPeriod &&
         text != null &&
@@ -4066,6 +4086,24 @@ final class PrivateHandlers {
     );
   }
 
+  Future<void> _sendFunnelAnalytics({
+    required int chatId,
+    required bool isAdmin,
+  }) async {
+    final analytics = await _onboardingRepository.getFunnelAnalytics(
+      now: _nowProvider(),
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.funnelAnalyticsOnboarding(analytics),
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.funnelAnalyticsFeedback(analytics),
+      replyMarkup: _templates.adminToolsKeyboard(),
+    );
+  }
+
   List<BookingParticipantDraft>? _parsePartyParticipantsInput(String text) {
     final parts = text
         .split(',')
@@ -5359,6 +5397,10 @@ final class PrivateHandlers {
             showReturnToAdminMenu: showReturnToAdminMenu,
           ),
         );
+        await _notifyAdminAboutTrainingFeedback(
+          trainingTitle: flow?.feedbackTrainingTitle ?? 'Тренировка',
+          rating: rating,
+        );
         return true;
       }
       _flowByUserId[userId] = flow!.copyWith(
@@ -5376,6 +5418,7 @@ final class PrivateHandlers {
     if (step == PrivateFlowStep.awaitingTrainingFeedbackComment) {
       final bookingId = flow?.feedbackBookingId;
       final sessionKey = flow?.feedbackSessionKey;
+      final trainingTitle = flow?.feedbackTrainingTitle ?? 'Тренировка';
       final rating = flow?.feedbackRating ?? TrainingFeedbackRating.ok;
       if (bookingId == null || sessionKey == null) {
         _flowByUserId.remove(userId);
@@ -5404,10 +5447,38 @@ final class PrivateHandlers {
           showReturnToAdminMenu: showReturnToAdminMenu,
         ),
       );
+      await _notifyAdminAboutTrainingFeedback(
+        trainingTitle: trainingTitle,
+        rating: rating,
+        comment: comment,
+      );
       return true;
     }
 
     return false;
+  }
+
+  Future<void> _notifyAdminAboutTrainingFeedback({
+    required String trainingTitle,
+    required TrainingFeedbackRating rating,
+    String? comment,
+  }) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.trainingFeedbackAdminNotification(
+          trainingTitle: trainingTitle,
+          rating: rating,
+          comment: comment,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin about training feedback: $error', stackTrace);
+    }
   }
 
   Future<void> _handleStartCleanup(int userId) async {
