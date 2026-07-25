@@ -1,5 +1,7 @@
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/onboarding.dart';
+import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:test/test.dart';
@@ -502,6 +504,93 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
 
   @override
   Future<List<int>> getAllStartedUserIds() async => const <int>[];
+
+  @override
+  Future<OnboardingUserState> ensureStartedUser(
+    int userId, {
+    required DateTime startedAt,
+    OnboardingEntryType? entryType,
+  }) async {
+    return OnboardingUserState(
+      userId: userId,
+      phase: OnboardingPhase.legacySkipped,
+      startedAt: startedAt,
+    );
+  }
+
+  @override
+  Future<OnboardingUserState?> getOnboardingState(int userId) async => null;
+
+  @override
+  Future<void> updateOnboardingProgress({
+    required int userId,
+    OnboardingPhase? phase,
+    OnboardingStep? step,
+    OnboardingQuizGoal? quizGoal,
+    OnboardingQuizExperience? quizExperience,
+    OnboardingTrack? selectedTrack,
+    OnboardingEntryType? entryType,
+    DateTime? onboardingStartedAt,
+    DateTime? snoozeUntil,
+    bool clearSnooze = false,
+  }) async {}
+
+  @override
+  Future<bool> tryMarkActivation(
+    int userId, {
+    required DateTime activatedAt,
+  }) async =>
+      false;
+
+  @override
+  Future<bool> hasNudgeBeenSent({
+    required int userId,
+    required String nudgeKey,
+  }) async =>
+      false;
+
+  @override
+  Future<void> recordNudgeSent({
+    required int userId,
+    required String nudgeKey,
+    required DateTime sentAt,
+    OnboardingPhase? phase,
+    OnboardingStep? step,
+  }) async {}
+
+  @override
+  Future<List<OnboardingNudgeCandidate>> listOnboardingNudgeCandidates({
+    required DateTime now,
+    int limit = 100,
+  }) async =>
+      const <OnboardingNudgeCandidate>[];
+
+  @override
+  Future<bool> hasTrainingFeedbackRequest(int bookingId) async => false;
+
+  @override
+  Future<void> recordTrainingFeedbackRequest({
+    required int bookingId,
+    required int userId,
+    required String sessionKey,
+    required String trainingTitle,
+    required DateTime sentAt,
+  }) async {}
+
+  @override
+  Future<void> submitTrainingFeedback({
+    required int bookingId,
+    required String sessionKey,
+    required TrainingFeedbackRating rating,
+    required DateTime submittedAt,
+    String? comment,
+  }) async {}
+
+  @override
+  Future<TrainingFeedbackRequest?> getTrainingFeedbackRequest(int bookingId) async => null;
+
+  @override
+  Future<bool> hasTrainingFeedback(int bookingId) async => false;
 }
 
 final class _WelcomeRecord {

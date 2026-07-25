@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/application/broadcast_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
+import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/application/payment_review_service.dart';
 import 'package:dvor_chatbot/src/application/schedule_query_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/admin_handler.dart';
@@ -24,9 +25,11 @@ import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
+import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -54,6 +57,7 @@ final class PrivateHandlers {
     required Set<int> adminUserIds,
     int? adminChatId,
     int? targetChatId,
+    bool onboardingDripEnabled = false,
     DateTime Function()? nowProvider,
   })  : _sender = sender,
         _scheduleRepository = scheduleRepository,
@@ -66,6 +70,10 @@ final class PrivateHandlers {
         _adminUserIds = adminUserIds,
         _adminChatId = adminChatId,
         _targetChatId = targetChatId,
+        _onboardingService = OnboardingService(
+          onboardingRepository: onboardingRepository,
+          dripEnabled: onboardingDripEnabled,
+        ),
         _nowProvider = nowProvider ?? DateTime.now;
 
   final MessageSender _sender;
@@ -79,6 +87,7 @@ final class PrivateHandlers {
   final Set<int> _adminUserIds;
   final int? _adminChatId;
   final int? _targetChatId;
+  final OnboardingService _onboardingService;
   final DateTime Function() _nowProvider;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
   final Set<int> _adminsInClientMode = <int>{};
@@ -171,6 +180,7 @@ final class PrivateHandlers {
       flowByUserId: _flowByUserId,
       trainerDirectoryRepository: _trainerDirectoryRepository,
       onboardingRepository: _onboardingRepository,
+      onboardingService: _onboardingService,
       sender: _sender,
       templates: _templates,
       canViewParticipantsList: canRunParticipantsAction,
@@ -178,10 +188,51 @@ final class PrivateHandlers {
       onEveryFifthUnlocked: _maybeNotifyEveryFifthRewardUnlocked,
       onPinWelcomeMessage: _tryPinWelcomeMessage,
       nowProvider: _nowProvider,
+      onOpenBookingCategories: ({
+        required int chatId,
+        required int userId,
+        required bool isAdmin,
+        required bool canViewParticipantsList,
+        required bool showReturnToAdminMenu,
+      }) async {
+        _flowByUserId[userId] = const PrivateFlowState(
+          step: PrivateFlowStep.selectingBookingCategory,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseBookingCategory(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+      },
       username: context.from?['username']?.toString(),
     );
     if (handledStaticCommand) {
       return true;
+    }
+
+    if (userId != null && text != null) {
+      final handledOnboarding = await _handleOnboardingFlow(
+        text: text,
+        chatId: chatId,
+        userId: userId,
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+        canViewParticipantsList: canRunParticipantsAction,
+      );
+      if (handledOnboarding) {
+        return true;
+      }
+      final handledFeedback = await _handleTrainingFeedbackFlow(
+        text: text,
+        chatId: chatId,
+        userId: userId,
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+      );
+      if (handledFeedback) {
+        return true;
+      }
     }
 
     if (text == MessageTemplates.buttonBack) {
@@ -601,6 +652,21 @@ final class PrivateHandlers {
             chatId,
             _templates.chooseBookingManagementAction(),
             replyMarkup: _templates.adminBookingAfterActionKeyboard(),
+          );
+          return true;
+        case _PrivateFlowStep.onboardingWelcome:
+        case _PrivateFlowStep.onboardingQuizGoal:
+        case _PrivateFlowStep.onboardingQuizExperience:
+        case _PrivateFlowStep.onboardingTrack:
+        case _PrivateFlowStep.onboardingMap:
+        case _PrivateFlowStep.awaitingTrainingFeedbackRating:
+        case _PrivateFlowStep.awaitingTrainingFeedbackComment:
+          _flowByUserId.remove(userId);
+          await _sender.sendMessage(
+            chatId,
+            'Вернул в главное меню 👇',
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
         case null:
@@ -1892,6 +1958,7 @@ final class PrivateHandlers {
         replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
       );
+      await _maybeMarkOnboardingActivation(userId);
       return true;
     }
 
@@ -4219,6 +4286,7 @@ final class PrivateHandlers {
           bookingStatus: bookingForResponse.status,
         );
         await _notifyAdminAboutFreeBookingCreated(bookingForResponse);
+        await _maybeMarkOnboardingActivation(userId);
       }
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
@@ -4986,6 +5054,7 @@ final class PrivateHandlers {
             parseMode: 'HTML',
           );
         }
+        await _maybeMarkOnboardingActivation(booking.userId);
       }
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify user about payment review: $error', stackTrace);
@@ -5007,6 +5076,338 @@ final class PrivateHandlers {
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about payment review: $error', stackTrace);
     }
+  }
+
+  void beginTrainingFeedbackFlow({
+    required int userId,
+    required int bookingId,
+    required String sessionKey,
+    required String trainingTitle,
+  }) {
+    _flowByUserId[userId] = PrivateFlowState(
+      step: PrivateFlowStep.awaitingTrainingFeedbackRating,
+      availableTrainings: const <TrainingInfo>[],
+      feedbackBookingId: bookingId,
+      feedbackSessionKey: sessionKey,
+      feedbackTrainingTitle: trainingTitle,
+    );
+  }
+
+  Future<void> _maybeMarkOnboardingActivation(int userId) async {
+    final marked = await _onboardingService.tryMarkActivation(
+      userId,
+      activatedAt: _nowProvider(),
+    );
+    if (!marked) {
+      return;
+    }
+    try {
+      await _sender.sendMessage(
+        userId,
+        _templates.onboardingActivationSuccess(),
+        replyMarkup: _templates.onboardingActivationKeyboard(),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to send onboarding activation message to $userId: $error', stackTrace);
+    }
+  }
+
+  Future<bool> _handleOnboardingFlow({
+    required String text,
+    required int chatId,
+    required int userId,
+    required bool isAdmin,
+    required bool showReturnToAdminMenu,
+    required bool canViewParticipantsList,
+  }) async {
+    if (text == MessageTemplates.buttonOnboardingNeedHelp) {
+      await _sender.sendMessage(
+        chatId,
+        _templates.onboardingNeedHelp(),
+        replyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          canViewParticipantsList: canViewParticipantsList,
+          showReturnToAdminMenu: showReturnToAdminMenu,
+        ),
+      );
+      return true;
+    }
+    if (text == MessageTemplates.buttonOnboardingNeedMoreTime) {
+      await _onboardingService.snooze(
+        userId,
+        until: _nowProvider().toUtc().add(const Duration(hours: 48)),
+      );
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        _templates.onboardingSnoozeAck(),
+        replyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          canViewParticipantsList: canViewParticipantsList,
+          showReturnToAdminMenu: showReturnToAdminMenu,
+        ),
+      );
+      return true;
+    }
+
+    final step = _flowByUserId[userId]?.step;
+    if (step == PrivateFlowStep.onboardingWelcome ||
+        (step == null && text == MessageTemplates.buttonOnboardingContinue)) {
+      if (text != MessageTemplates.buttonOnboardingContinue &&
+          text != MessageTemplates.buttonOnboardingSkipQuiz) {
+        if (step != PrivateFlowStep.onboardingWelcome) {
+          return false;
+        }
+      }
+      if (text == MessageTemplates.buttonOnboardingSkipQuiz) {
+        await _onboardingService.applyDefaultTrackIfNeeded(userId);
+        await _sendOnboardingMap(
+          chatId: chatId,
+          userId: userId,
+        );
+        return true;
+      }
+      if (text == MessageTemplates.buttonOnboardingContinue ||
+          step == PrivateFlowStep.onboardingWelcome) {
+        if (text != MessageTemplates.buttonOnboardingContinue &&
+            step == PrivateFlowStep.onboardingWelcome) {
+          return false;
+        }
+        _flowByUserId[userId] = const PrivateFlowState(
+          step: PrivateFlowStep.onboardingQuizGoal,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await _onboardingRepository.updateOnboardingProgress(
+          userId: userId,
+          phase: OnboardingPhase.phase1Quiz,
+          step: OnboardingStep.quizGoal,
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.onboardingQuizGoal(),
+          replyMarkup: _templates.onboardingQuizGoalKeyboard(),
+        );
+        return true;
+      }
+    }
+
+    if (step == PrivateFlowStep.onboardingQuizGoal) {
+      if (text == MessageTemplates.buttonOnboardingSkipQuiz) {
+        await _onboardingService.applyDefaultTrackIfNeeded(userId);
+        await _sendOnboardingMap(chatId: chatId, userId: userId);
+        return true;
+      }
+      final goal = switch (text) {
+        MessageTemplates.buttonQuizGoalForm => OnboardingQuizGoal.formStrength,
+        MessageTemplates.buttonQuizGoalEndurance => OnboardingQuizGoal.enduranceRun,
+        MessageTemplates.buttonQuizGoalYoga => OnboardingQuizGoal.yogaRecovery,
+        MessageTemplates.buttonQuizGoalOutdoor => OnboardingQuizGoal.outdoorHikes,
+        MessageTemplates.buttonQuizGoalUnknown => OnboardingQuizGoal.unknown,
+        _ => null,
+      };
+      if (goal == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.onboardingQuizGoal(),
+          replyMarkup: _templates.onboardingQuizGoalKeyboard(),
+        );
+        return true;
+      }
+      await _onboardingService.saveQuizGoal(userId, goal);
+      _flowByUserId[userId] = const PrivateFlowState(
+        step: PrivateFlowStep.onboardingQuizExperience,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.onboardingQuizExperience(),
+        replyMarkup: _templates.onboardingQuizExperienceKeyboard(),
+      );
+      return true;
+    }
+
+    if (step == PrivateFlowStep.onboardingQuizExperience) {
+      final experience = switch (text) {
+        MessageTemplates.buttonQuizExpBeginner => OnboardingQuizExperience.beginner,
+        MessageTemplates.buttonQuizExpReturning => OnboardingQuizExperience.returning,
+        MessageTemplates.buttonQuizExpRegular => OnboardingQuizExperience.regular,
+        _ => null,
+      };
+      if (experience == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.onboardingQuizExperience(),
+          replyMarkup: _templates.onboardingQuizExperienceKeyboard(),
+        );
+        return true;
+      }
+      await _onboardingService.saveQuizExperience(userId, experience);
+      _flowByUserId[userId] = const PrivateFlowState(
+        step: PrivateFlowStep.onboardingTrack,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.onboardingTrackChoice(),
+        replyMarkup: _templates.onboardingTrackKeyboard(),
+      );
+      return true;
+    }
+
+    if (step == PrivateFlowStep.onboardingTrack) {
+      final track = switch (text) {
+        MessageTemplates.buttonTrackOneOff => OnboardingTrack.oneOff,
+        MessageTemplates.buttonTrackOutdoor => OnboardingTrack.outdoor,
+        _ => null,
+      };
+      if (track == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.onboardingTrackChoice(),
+          replyMarkup: _templates.onboardingTrackKeyboard(),
+        );
+        return true;
+      }
+      await _onboardingService.saveTrack(userId, track);
+      await _sendOnboardingMap(chatId: chatId, userId: userId);
+      return true;
+    }
+
+    if (step == PrivateFlowStep.onboardingMap) {
+      if (text == MessageTemplates.buttonBookTraining ||
+          text == MessageTemplates.buttonCategoryHikes) {
+        final category = await _onboardingService.preferredCategory(userId);
+        await _openBookingByCategory(
+          chatId: chatId,
+          userId: userId,
+          category: category,
+          isAdmin: isAdmin,
+          fromSchedulePreview: false,
+        );
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  Future<void> _sendOnboardingMap({
+    required int chatId,
+    required int userId,
+  }) async {
+    final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
+    final state = await _onboardingRepository.getOnboardingState(userId);
+    final outdoor = state?.selectedTrack == OnboardingTrack.outdoor;
+    _flowByUserId[userId] = const PrivateFlowState(
+      step: PrivateFlowStep.onboardingMap,
+      availableTrainings: <TrainingInfo>[],
+    );
+    await _onboardingService.markMapShown(userId);
+    await _sender.sendMessage(
+      chatId,
+      _templates.onboardingClubMap(starterBonusAvailable: starterBonusAvailable),
+      replyMarkup: _templates.onboardingMapCtaKeyboard(outdoorTrack: outdoor),
+    );
+  }
+
+  Future<bool> _handleTrainingFeedbackFlow({
+    required String text,
+    required int chatId,
+    required int userId,
+    required bool isAdmin,
+    required bool showReturnToAdminMenu,
+  }) async {
+    final flow = _flowByUserId[userId];
+    final step = flow?.step;
+    if (step == PrivateFlowStep.awaitingTrainingFeedbackRating) {
+      final rating = switch (text) {
+        MessageTemplates.buttonFeedbackGreat => TrainingFeedbackRating.great,
+        MessageTemplates.buttonFeedbackOk => TrainingFeedbackRating.ok,
+        MessageTemplates.buttonFeedbackWeak => TrainingFeedbackRating.weak,
+        MessageTemplates.buttonFeedbackSkip => TrainingFeedbackRating.skipped,
+        _ => null,
+      };
+      if (rating == null) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.trainingFeedbackAsk(
+            trainingTitle: flow?.feedbackTrainingTitle ?? 'тренировка',
+          ),
+          replyMarkup: _templates.trainingFeedbackKeyboard(),
+        );
+        return true;
+      }
+      final bookingId = flow?.feedbackBookingId;
+      final sessionKey = flow?.feedbackSessionKey;
+      if (bookingId == null || sessionKey == null) {
+        _flowByUserId.remove(userId);
+        return true;
+      }
+      await _onboardingRepository.submitTrainingFeedback(
+        bookingId: bookingId,
+        sessionKey: sessionKey,
+        rating: rating,
+        submittedAt: _nowProvider(),
+      );
+      if (rating == TrainingFeedbackRating.skipped) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.trainingFeedbackThanks(),
+          replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+          ),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = flow!.copyWith(
+        step: PrivateFlowStep.awaitingTrainingFeedbackComment,
+        feedbackRating: rating,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.trainingFeedbackCommentAsk(),
+        replyMarkup: _templates.trainingFeedbackCommentKeyboard(),
+      );
+      return true;
+    }
+
+    if (step == PrivateFlowStep.awaitingTrainingFeedbackComment) {
+      final bookingId = flow?.feedbackBookingId;
+      final sessionKey = flow?.feedbackSessionKey;
+      final rating = flow?.feedbackRating ?? TrainingFeedbackRating.ok;
+      if (bookingId == null || sessionKey == null) {
+        _flowByUserId.remove(userId);
+        return true;
+      }
+      String? comment;
+      if (text != MessageTemplates.buttonSkipComment && text != MessageTemplates.buttonMainMenu) {
+        comment = text.trim();
+        if (comment.isEmpty) {
+          comment = null;
+        }
+      }
+      await _onboardingRepository.submitTrainingFeedback(
+        bookingId: bookingId,
+        sessionKey: sessionKey,
+        rating: rating,
+        submittedAt: _nowProvider(),
+        comment: comment,
+      );
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        _templates.trainingFeedbackThanks(),
+        replyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          showReturnToAdminMenu: showReturnToAdminMenu,
+        ),
+      );
+      return true;
+    }
+
+    return false;
   }
 
   Future<void> _handleStartCleanup(int userId) async {

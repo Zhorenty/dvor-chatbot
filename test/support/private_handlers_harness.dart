@@ -22,6 +22,7 @@ final class PrivateHandlersHarness {
     FakeBookingRepository? bookingRepository,
     FakeOnboardingRepository? onboardingRepository,
     SubscriptionRepository subscriptionRepository = const NoopSubscriptionRepository(),
+    bool onboardingDripEnabled = false,
   })  : sender = FakeSender(),
         scheduleRepository = FakeScheduleRepository(
           trainings,
@@ -46,6 +47,7 @@ final class PrivateHandlersHarness {
       adminUserIds: _adminUserIds,
       adminChatId: _adminChatId,
       targetChatId: _targetChatId,
+      onboardingDripEnabled: onboardingDripEnabled,
       nowProvider: _nowProvider,
     );
   }

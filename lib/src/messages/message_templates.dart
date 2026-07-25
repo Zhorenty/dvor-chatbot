@@ -49,6 +49,24 @@ final class MessageTemplates {
   static const String buttonBack = MessageCopy.buttonBack;
   static const String buttonMainMenu = MessageCopy.buttonMainMenu;
   static const String buttonHelp = MessageCopy.buttonHelp;
+  static const String buttonOnboardingContinue = MessageCopy.buttonOnboardingContinue;
+  static const String buttonOnboardingNeedHelp = MessageCopy.buttonOnboardingNeedHelp;
+  static const String buttonOnboardingNeedMoreTime = MessageCopy.buttonOnboardingNeedMoreTime;
+  static const String buttonOnboardingSkipQuiz = MessageCopy.buttonOnboardingSkipQuiz;
+  static const String buttonQuizGoalForm = MessageCopy.buttonQuizGoalForm;
+  static const String buttonQuizGoalEndurance = MessageCopy.buttonQuizGoalEndurance;
+  static const String buttonQuizGoalYoga = MessageCopy.buttonQuizGoalYoga;
+  static const String buttonQuizGoalOutdoor = MessageCopy.buttonQuizGoalOutdoor;
+  static const String buttonQuizGoalUnknown = MessageCopy.buttonQuizGoalUnknown;
+  static const String buttonQuizExpBeginner = MessageCopy.buttonQuizExpBeginner;
+  static const String buttonQuizExpReturning = MessageCopy.buttonQuizExpReturning;
+  static const String buttonQuizExpRegular = MessageCopy.buttonQuizExpRegular;
+  static const String buttonTrackOneOff = MessageCopy.buttonTrackOneOff;
+  static const String buttonTrackOutdoor = MessageCopy.buttonTrackOutdoor;
+  static const String buttonFeedbackGreat = MessageCopy.buttonFeedbackGreat;
+  static const String buttonFeedbackOk = MessageCopy.buttonFeedbackOk;
+  static const String buttonFeedbackWeak = MessageCopy.buttonFeedbackWeak;
+  static const String buttonFeedbackSkip = MessageCopy.buttonFeedbackSkip;
   static const String buttonCategoryTrainings = MessageCopy.buttonCategoryTrainings;
   static const String buttonCategoryYoga = MessageCopy.buttonCategoryYoga;
   static const String buttonCategoryHikes = MessageCopy.buttonCategoryHikes;
@@ -137,6 +155,42 @@ final class MessageTemplates {
   String starterBonusOnboardingOffer() {
     return _privateNavigationTemplates.starterBonusOnboardingOffer();
   }
+
+  String onboardingWelcome() => _privateNavigationTemplates.onboardingWelcome();
+
+  String onboardingQuizGoal() => _privateNavigationTemplates.onboardingQuizGoal();
+
+  String onboardingQuizExperience() => _privateNavigationTemplates.onboardingQuizExperience();
+
+  String onboardingTrackChoice() => _privateNavigationTemplates.onboardingTrackChoice();
+
+  String onboardingClubMap({required bool starterBonusAvailable}) {
+    return _privateNavigationTemplates.onboardingClubMap(
+      starterBonusAvailable: starterBonusAvailable,
+    );
+  }
+
+  String onboardingNeedHelp() => _privateNavigationTemplates.onboardingNeedHelp();
+
+  String onboardingNudgeQuizReminder() => _privateNavigationTemplates.onboardingNudgeQuizReminder();
+
+  String onboardingNudgePrimaryCta() => _privateNavigationTemplates.onboardingNudgePrimaryCta();
+
+  String onboardingNudgeDay5Alt() => _privateNavigationTemplates.onboardingNudgeDay5Alt();
+
+  String onboardingNudgeDay7() => _privateNavigationTemplates.onboardingNudgeDay7();
+
+  String onboardingActivationSuccess() => _privateNavigationTemplates.onboardingActivationSuccess();
+
+  String onboardingSnoozeAck() => _privateNavigationTemplates.onboardingSnoozeAck();
+
+  String trainingFeedbackAsk({required String trainingTitle}) {
+    return _privateNavigationTemplates.trainingFeedbackAsk(trainingTitle: trainingTitle);
+  }
+
+  String trainingFeedbackCommentAsk() => _privateNavigationTemplates.trainingFeedbackCommentAsk();
+
+  String trainingFeedbackThanks() => _privateNavigationTemplates.trainingFeedbackThanks();
 
   String privateHelp() {
     return _privateNavigationTemplates.privateHelp();
@@ -2103,6 +2157,42 @@ final class MessageTemplates {
       canViewParticipantsList: canViewParticipantsList,
       showReturnToAdminMenu: showReturnToAdminMenu,
     );
+  }
+
+  Map<String, Object?> onboardingContinueKeyboard() {
+    return TelegramKeyboards.onboardingContinueKeyboard();
+  }
+
+  Map<String, Object?> onboardingQuizGoalKeyboard() {
+    return TelegramKeyboards.onboardingQuizGoalKeyboard();
+  }
+
+  Map<String, Object?> onboardingQuizExperienceKeyboard() {
+    return TelegramKeyboards.onboardingQuizExperienceKeyboard();
+  }
+
+  Map<String, Object?> onboardingTrackKeyboard() {
+    return TelegramKeyboards.onboardingTrackKeyboard();
+  }
+
+  Map<String, Object?> onboardingMapCtaKeyboard({required bool outdoorTrack}) {
+    return TelegramKeyboards.onboardingMapCtaKeyboard(outdoorTrack: outdoorTrack);
+  }
+
+  Map<String, Object?> onboardingNudgeKeyboard() {
+    return TelegramKeyboards.onboardingNudgeKeyboard();
+  }
+
+  Map<String, Object?> onboardingActivationKeyboard() {
+    return TelegramKeyboards.onboardingActivationKeyboard();
+  }
+
+  Map<String, Object?> trainingFeedbackKeyboard() {
+    return TelegramKeyboards.trainingFeedbackKeyboard();
+  }
+
+  Map<String, Object?> trainingFeedbackCommentKeyboard() {
+    return TelegramKeyboards.trainingFeedbackCommentKeyboard();
   }
 
   Map<String, Object?> adminToolsKeyboard() {

@@ -40,10 +40,9 @@ final class TelegramKeyboards {
     }
 
     final rows = <List<Map<String, String>>>[
-      // TODO(dvor-x-frank): вернуть промо-кнопку сверху клиентского меню.
-      // <Map<String, String>>[
-      //   <String, String>{'text': MessageCopy.buttonDvorXFrank},
-      // ],
+      <Map<String, String>>[
+        <String, String>{'text': MessageCopy.buttonDvorXFrank},
+      ],
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonBookTraining},
         <String, String>{'text': MessageCopy.buttonBookFriend},
@@ -879,5 +878,163 @@ final class TelegramKeyboards {
       ],
     );
     return <String, Object?>{'inline_keyboard': rows};
+  }
+
+  static Map<String, Object?> onboardingContinueKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingContinue},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> onboardingQuizGoalKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonQuizGoalForm},
+          <String, String>{'text': MessageCopy.buttonQuizGoalEndurance},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonQuizGoalYoga},
+          <String, String>{'text': MessageCopy.buttonQuizGoalOutdoor},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonQuizGoalUnknown},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingSkipQuiz},
+          <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> onboardingQuizExperienceKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonQuizExpBeginner},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonQuizExpReturning},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonQuizExpRegular},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> onboardingTrackKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonTrackOneOff},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonTrackOutdoor},
+        ],
+        // TODO(subscription): вернуть кнопку трека PRO.
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> onboardingMapCtaKeyboard({required bool outdoorTrack}) {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': outdoorTrack ? MessageCopy.buttonCategoryHikes : MessageCopy.buttonBookTraining,
+          },
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
+          <String, String>{'text': MessageCopy.buttonOnboardingNeedMoreTime},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> onboardingNudgeKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBookTraining},
+          <String, String>{'text': MessageCopy.buttonTrainings},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingNeedMoreTime},
+          <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> onboardingActivationKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBookTraining},
+          <String, String>{'text': MessageCopy.buttonProfile},
+        ],
+        // TODO(subscription): вернуть кнопку абонемента в activation CTA.
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> trainingFeedbackKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonFeedbackGreat},
+          <String, String>{'text': MessageCopy.buttonFeedbackOk},
+          <String, String>{'text': MessageCopy.buttonFeedbackWeak},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonFeedbackSkip},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> trainingFeedbackCommentKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSkipComment},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
   }
 }

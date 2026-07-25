@@ -68,6 +68,7 @@ void main(List<String> args) {
           adminUserIds: config.adminUserIds,
           adminChatId: config.adminChatId,
           targetChatId: config.targetChatId,
+          onboardingDripEnabled: config.onboardingDripEnabled,
         ),
         groupHandlers: GroupHandlers(
           sender: client,

@@ -20,6 +20,8 @@ final class AppConfig {
     required this.logLevel,
     this.timezoneOffsetHours = 3,
     this.antiSpamEnabled = true,
+    this.onboardingDripEnabled = true,
+    this.trainingFeedbackEnabled = true,
   });
 
   final String botToken;
@@ -36,6 +38,8 @@ final class AppConfig {
   final String logLevel;
   final int timezoneOffsetHours;
   final bool antiSpamEnabled;
+  final bool onboardingDripEnabled;
+  final bool trainingFeedbackEnabled;
 
   static AppConfig fromArgs(List<String> args) {
     final parser = ArgParser()
@@ -79,6 +83,14 @@ final class AppConfig {
       ..addOption(
         'anti-spam-enabled',
         help: 'Delete spam ads in group and ban senders (default: true)',
+      )
+      ..addOption(
+        'onboarding-drip-enabled',
+        help: 'Enable onboarding quiz/nudges for newcomers (default: true)',
+      )
+      ..addOption(
+        'training-feedback-enabled',
+        help: 'Ask anonymous feedback 2h after training (default: true)',
       )
       ..addOption('log-level', help: 'Log level: debug/info/warn/error');
 
@@ -144,6 +156,9 @@ final class AppConfig {
     final logLevel = resolve('LOG_LEVEL', 'log-level', fallbackKey: 'CONFIG_VERBOSE') ?? 'info';
     final timezoneOffsetRaw = resolve('TIMEZONE_OFFSET_HOURS', 'timezone-offset-hours');
     final antiSpamEnabledRaw = resolve('ANTISPAM_ENABLED', 'anti-spam-enabled');
+    final onboardingDripEnabledRaw = resolve('ONBOARDING_DRIP_ENABLED', 'onboarding-drip-enabled');
+    final trainingFeedbackEnabledRaw =
+        resolve('TRAINING_FEEDBACK_ENABLED', 'training-feedback-enabled');
 
     final scheduleSource = _parseScheduleSource(scheduleSourceRaw);
     if (scheduleSource == ScheduleSource.googleSheets &&
@@ -171,6 +186,8 @@ final class AppConfig {
       logLevel: logLevel,
       timezoneOffsetHours: int.tryParse(timezoneOffsetRaw ?? '')?.clamp(-12, 14) ?? 3,
       antiSpamEnabled: _toBool(antiSpamEnabledRaw, defaultValue: true),
+      onboardingDripEnabled: _toBool(onboardingDripEnabledRaw, defaultValue: true),
+      trainingFeedbackEnabled: _toBool(trainingFeedbackEnabledRaw, defaultValue: true),
     );
   }
 }

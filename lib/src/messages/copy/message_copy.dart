@@ -26,6 +26,26 @@ final class MessageCopy {
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';
   static const String buttonHelp = '🆘 Помощь';
+  static const String buttonOnboardingContinue = 'Дальше';
+  static const String buttonOnboardingNeedHelp = 'Нужна помощь';
+  static const String buttonOnboardingNeedMoreTime = 'Нужно больше времени';
+  static const String buttonOnboardingSkipQuiz = 'Пропустить';
+  static const String buttonQuizGoalForm = 'Форма / сила';
+  static const String buttonQuizGoalEndurance = 'Выносливость / бег';
+  static const String buttonQuizGoalYoga = 'Йога / восстановление';
+  static const String buttonQuizGoalOutdoor = 'Outdoor / походы';
+  static const String buttonQuizGoalUnknown = 'Пока не знаю';
+  static const String buttonQuizExpBeginner = 'Новичок';
+  static const String buttonQuizExpReturning = 'Был перерыв';
+  static const String buttonQuizExpRegular = 'Регулярно тренируюсь';
+  static const String buttonTrackOneOff = 'Разовая тренировка';
+  static const String buttonTrackOutdoor = 'Outdoor';
+  // TODO(subscription): вернуть кнопку трека PRO-абонемент.
+  // static const String buttonTrackPro = 'PRO-абонемент';
+  static const String buttonFeedbackGreat = 'Отлично';
+  static const String buttonFeedbackOk = 'Нормально';
+  static const String buttonFeedbackWeak = 'Слабо';
+  static const String buttonFeedbackSkip = 'Пропустить';
   static const String buttonCategoryTrainings = '🏋️ Тренировки';
   static const String buttonCategoryYoga = '🧘 Йога';
   static const String buttonCategoryHikes = '🥾 Походы';

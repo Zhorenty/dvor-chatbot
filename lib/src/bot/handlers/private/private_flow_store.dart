@@ -6,11 +6,19 @@ import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
+import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 
 const Object _privateFlowUnset = Object();
 
 enum PrivateFlowStep {
+  onboardingWelcome,
+  onboardingQuizGoal,
+  onboardingQuizExperience,
+  onboardingTrack,
+  onboardingMap,
+  awaitingTrainingFeedbackRating,
+  awaitingTrainingFeedbackComment,
   selectingScheduleCategory,
   viewingCoachingStaff,
   selectingTrainerProfile,
@@ -116,6 +124,10 @@ final class PrivateFlowState {
     this.partyParticipants = const <BookingParticipantDraft>[],
     this.partyTraining,
     this.activePaymentGroupId,
+    this.feedbackBookingId,
+    this.feedbackSessionKey,
+    this.feedbackTrainingTitle,
+    this.feedbackRating,
   });
 
   final PrivateFlowStep step;
@@ -147,6 +159,10 @@ final class PrivateFlowState {
   final List<BookingParticipantDraft> partyParticipants;
   final TrainingInfo? partyTraining;
   final String? activePaymentGroupId;
+  final int? feedbackBookingId;
+  final String? feedbackSessionKey;
+  final String? feedbackTrainingTitle;
+  final TrainingFeedbackRating? feedbackRating;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -178,6 +194,10 @@ final class PrivateFlowState {
     List<BookingParticipantDraft>? partyParticipants,
     Object? partyTraining = _privateFlowUnset,
     Object? activePaymentGroupId = _privateFlowUnset,
+    Object? feedbackBookingId = _privateFlowUnset,
+    Object? feedbackSessionKey = _privateFlowUnset,
+    Object? feedbackTrainingTitle = _privateFlowUnset,
+    Object? feedbackRating = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -246,6 +266,18 @@ final class PrivateFlowState {
       activePaymentGroupId: identical(activePaymentGroupId, _privateFlowUnset)
           ? this.activePaymentGroupId
           : activePaymentGroupId as String?,
+      feedbackBookingId: identical(feedbackBookingId, _privateFlowUnset)
+          ? this.feedbackBookingId
+          : feedbackBookingId as int?,
+      feedbackSessionKey: identical(feedbackSessionKey, _privateFlowUnset)
+          ? this.feedbackSessionKey
+          : feedbackSessionKey as String?,
+      feedbackTrainingTitle: identical(feedbackTrainingTitle, _privateFlowUnset)
+          ? this.feedbackTrainingTitle
+          : feedbackTrainingTitle as String?,
+      feedbackRating: identical(feedbackRating, _privateFlowUnset)
+          ? this.feedbackRating
+          : feedbackRating as TrainingFeedbackRating?,
     );
   }
 }

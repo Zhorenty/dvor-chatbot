@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
+import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
@@ -11,6 +12,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
+import 'package:dvor_chatbot/src/jobs/onboarding_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/referral_broadcast_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_broadcast_job.dart';
@@ -18,6 +20,7 @@ import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
 import 'package:dvor_chatbot/src/jobs/starter_bonus_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/subscription_renewal_job.dart';
 import 'package:dvor_chatbot/src/jobs/training_day_promo_job.dart';
+import 'package:dvor_chatbot/src/jobs/training_feedback_job.dart';
 import 'package:dvor_chatbot/src/jobs/welcome_cleanup_job.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
@@ -94,6 +97,35 @@ final class BotRunner {
           templates: templates,
           adminChatId: config.adminChatId,
         ),
+        _onboardingNudgeJob = OnboardingNudgeJob(
+          onboardingRepository: onboardingRepository,
+          onboardingService: OnboardingService(
+            onboardingRepository: onboardingRepository,
+            dripEnabled: config.onboardingDripEnabled,
+          ),
+          sender: sender,
+          templates: templates,
+        ),
+        _trainingFeedbackJob = TrainingFeedbackJob(
+          bookingRepository: bookingRepository,
+          onboardingRepository: onboardingRepository,
+          sender: sender,
+          templates: templates,
+          enabled: config.trainingFeedbackEnabled,
+          onAskFeedback: ({
+            required int userId,
+            required int bookingId,
+            required String sessionKey,
+            required String trainingTitle,
+          }) async {
+            privateHandlers.beginTrainingFeedbackFlow(
+              userId: userId,
+              bookingId: bookingId,
+              sessionKey: sessionKey,
+              trainingTitle: trainingTitle,
+            );
+          },
+        ),
         _privateHandlers = privateHandlers,
         _groupHandlers = groupHandlers;
 
@@ -109,6 +141,8 @@ final class BotRunner {
   final ScheduleBroadcastJob _scheduleBroadcastJob;
   final ReferralBroadcastJob _referralBroadcastJob;
   final EconomicSummaryJob _economicSummaryJob;
+  final OnboardingNudgeJob _onboardingNudgeJob;
+  final TrainingFeedbackJob _trainingFeedbackJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
 
@@ -130,6 +164,8 @@ final class BotRunner {
   Timer? _trainingDayPromoTimer;
   Timer? _scheduleBroadcastTimer;
   Timer? _referralBroadcastTimer;
+  Timer? _onboardingNudgeTimer;
+  Timer? _trainingFeedbackTimer;
 
   int get exitCode => _exitCode;
 
@@ -195,6 +231,18 @@ final class BotRunner {
         return;
       }
       _launchBackgroundJob('referral broadcast', _referralBroadcastJob.run);
+    });
+    _onboardingNudgeTimer = Timer.periodic(const Duration(minutes: 10), (_) {
+      if (_stopping) {
+        return;
+      }
+      _launchBackgroundJob('onboarding nudge', _onboardingNudgeJob.run);
+    });
+    _trainingFeedbackTimer = Timer.periodic(const Duration(minutes: 10), (_) {
+      if (_stopping) {
+        return;
+      }
+      _launchBackgroundJob('training feedback', _trainingFeedbackJob.run);
     });
     _launchBackgroundJob('economic summary', _economicSummaryJob.run);
     _launchBackgroundJob('subscription renewal', _subscriptionRenewalJob.run);
@@ -281,6 +329,8 @@ final class BotRunner {
     _trainingDayPromoTimer?.cancel();
     _scheduleBroadcastTimer?.cancel();
     _referralBroadcastTimer?.cancel();
+    _onboardingNudgeTimer?.cancel();
+    _trainingFeedbackTimer?.cancel();
     _closeClient();
     await _waitForIdleOperations();
   }

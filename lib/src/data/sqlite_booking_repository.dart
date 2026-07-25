@@ -939,6 +939,38 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<TrainingBooking>> listSelfPaidBookingsStartedBetween({
+    required DateTime startsFromInclusive,
+    required DateTime startsToInclusive,
+    int limit = 100,
+  }) async {
+    _expireOverduePendingBookings();
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE status IN (?, ?, ?)
+        AND starts_at >= ?
+        AND starts_at <= ?
+        AND COALESCE(participant_type, 'self') = 'self'
+        AND status != ?
+      ORDER BY starts_at ASC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        BookingStatus.paid.dbValue,
+        BookingStatus.freeTraining.dbValue,
+        BookingStatus.partialPaid.dbValue,
+        startsFromInclusive.toUtc().toIso8601String(),
+        startsToInclusive.toUtc().toIso8601String(),
+        BookingStatus.cancelled.dbValue,
+        limit,
+      ],
+    );
+    return result.map(_rowToBooking).toList(growable: false);
+  }
+
+  @override
   Future<bool> tryMarkEconomicReportSent({
     required String reportType,
     required DateTime periodStart,

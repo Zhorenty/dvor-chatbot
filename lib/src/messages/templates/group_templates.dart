@@ -27,10 +27,10 @@ final class GroupTemplates {
     required String? firstName,
   }) {
     final mention = _groupMention(username: username, userId: userId, firstName: firstName);
-    final botLink = _botDeepLink();
+    final botLink = _botStartDeepLink();
     final botPrompt = botLink == null
         ? '🤖 Чат с ботом: напиши боту в личку и нажми Start'
-        : '🤖 Чат с ботом: <a href="$botLink">нажми, чтобы открыть и записаться</a>';
+        : '🤖 Чат с ботом: <a href="$botLink">нажми, чтобы открыть — там первый шаг и подарок за старт</a>';
     return 'Привет, $mention! 🏃\n'
         'Добро пожаловать в DVOR.\n'
         'В боте — расписание, запись на мероприятия и подарок за старт.\n'
@@ -117,7 +117,15 @@ final class GroupTemplates {
     return '<a href="tg://user?id=$userId">участник</a>';
   }
 
-  String? _botDeepLink() {
+  String? _botStartDeepLink() {
+    final botUsername = _botUsername;
+    if (botUsername == null || botUsername.isEmpty) {
+      return null;
+    }
+    return 'https://t.me/$botUsername?start=start';
+  }
+
+  String? _botBookDeepLink() {
     final botUsername = _botUsername;
     if (botUsername == null || botUsername.isEmpty) {
       return null;
@@ -126,7 +134,7 @@ final class GroupTemplates {
   }
 
   String _groupBookingCta() {
-    final deepLink = _botDeepLink();
+    final deepLink = _botBookDeepLink();
     if (deepLink != null) {
       return 'Открыть бота: $deepLink';
     }

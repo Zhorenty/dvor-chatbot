@@ -1,3 +1,6 @@
+import 'package:dvor_chatbot/src/domain/onboarding.dart';
+import 'package:dvor_chatbot/src/domain/training_feedback.dart';
+
 final class PendingWelcomeMessage {
   const PendingWelcomeMessage({
     required this.userId,
@@ -20,6 +23,30 @@ final class StarterBonusReminderTarget {
   final DateTime expiresAt;
 }
 
+final class OnboardingNudgeCandidate {
+  const OnboardingNudgeCandidate({
+    required this.userId,
+    required this.phase,
+    required this.step,
+    required this.onboardingStartedAt,
+    this.quizGoal,
+    this.selectedTrack,
+    this.activationAt,
+    this.lastNudgeAt,
+    this.snoozeUntil,
+  });
+
+  final int userId;
+  final OnboardingPhase phase;
+  final OnboardingStep? step;
+  final DateTime onboardingStartedAt;
+  final OnboardingQuizGoal? quizGoal;
+  final OnboardingTrack? selectedTrack;
+  final DateTime? activationAt;
+  final DateTime? lastNudgeAt;
+  final DateTime? snoozeUntil;
+}
+
 abstract interface class OnboardingRepository {
   Future<void> init();
 
@@ -35,6 +62,52 @@ abstract interface class OnboardingRepository {
   Future<PendingWelcomeMessage?> markStartedAndGetPendingWelcome(
     int userId, {
     required DateTime startedAt,
+  });
+
+  /// Ensures a durable started user row exists (cold DM included).
+  Future<OnboardingUserState> ensureStartedUser(
+    int userId, {
+    required DateTime startedAt,
+    OnboardingEntryType? entryType,
+  });
+
+  Future<OnboardingUserState?> getOnboardingState(int userId);
+
+  Future<void> updateOnboardingProgress({
+    required int userId,
+    OnboardingPhase? phase,
+    OnboardingStep? step,
+    OnboardingQuizGoal? quizGoal,
+    OnboardingQuizExperience? quizExperience,
+    OnboardingTrack? selectedTrack,
+    OnboardingEntryType? entryType,
+    DateTime? onboardingStartedAt,
+    DateTime? snoozeUntil,
+    bool clearSnooze = false,
+  });
+
+  /// Marks activation once. Returns true if newly set.
+  Future<bool> tryMarkActivation(
+    int userId, {
+    required DateTime activatedAt,
+  });
+
+  Future<bool> hasNudgeBeenSent({
+    required int userId,
+    required String nudgeKey,
+  });
+
+  Future<void> recordNudgeSent({
+    required int userId,
+    required String nudgeKey,
+    required DateTime sentAt,
+    OnboardingPhase? phase,
+    OnboardingStep? step,
+  });
+
+  Future<List<OnboardingNudgeCandidate>> listOnboardingNudgeCandidates({
+    required DateTime now,
+    int limit = 100,
   });
 
   Future<List<PendingWelcomeMessage>> listWelcomeMessagesReadyForDelete({
@@ -88,6 +161,28 @@ abstract interface class OnboardingRepository {
   /// Returns IDs of all users who have started the bot (sent /start).
   /// Only these users can receive proactive DMs.
   Future<List<int>> getAllStartedUserIds();
+
+  Future<bool> hasTrainingFeedbackRequest(int bookingId);
+
+  Future<void> recordTrainingFeedbackRequest({
+    required int bookingId,
+    required int userId,
+    required String sessionKey,
+    required String trainingTitle,
+    required DateTime sentAt,
+  });
+
+  Future<void> submitTrainingFeedback({
+    required int bookingId,
+    required String sessionKey,
+    required TrainingFeedbackRating rating,
+    required DateTime submittedAt,
+    String? comment,
+  });
+
+  Future<TrainingFeedbackRequest?> getTrainingFeedbackRequest(int bookingId);
+
+  Future<bool> hasTrainingFeedback(int bookingId);
 }
 
 final class NoopOnboardingRepository implements OnboardingRepository {
@@ -113,6 +208,70 @@ final class NoopOnboardingRepository implements OnboardingRepository {
     required DateTime startedAt,
   }) async {
     return null;
+  }
+
+  @override
+  Future<OnboardingUserState> ensureStartedUser(
+    int userId, {
+    required DateTime startedAt,
+    OnboardingEntryType? entryType,
+  }) async {
+    return OnboardingUserState(
+      userId: userId,
+      phase: OnboardingPhase.legacySkipped,
+      startedAt: startedAt,
+      entryType: entryType ?? OnboardingEntryType.legacy,
+    );
+  }
+
+  @override
+  Future<OnboardingUserState?> getOnboardingState(int userId) async => null;
+
+  @override
+  Future<void> updateOnboardingProgress({
+    required int userId,
+    OnboardingPhase? phase,
+    OnboardingStep? step,
+    OnboardingQuizGoal? quizGoal,
+    OnboardingQuizExperience? quizExperience,
+    OnboardingTrack? selectedTrack,
+    OnboardingEntryType? entryType,
+    DateTime? onboardingStartedAt,
+    DateTime? snoozeUntil,
+    bool clearSnooze = false,
+  }) async {}
+
+  @override
+  Future<bool> tryMarkActivation(
+    int userId, {
+    required DateTime activatedAt,
+  }) async {
+    return false;
+  }
+
+  @override
+  Future<bool> hasNudgeBeenSent({
+    required int userId,
+    required String nudgeKey,
+  }) async {
+    return false;
+  }
+
+  @override
+  Future<void> recordNudgeSent({
+    required int userId,
+    required String nudgeKey,
+    required DateTime sentAt,
+    OnboardingPhase? phase,
+    OnboardingStep? step,
+  }) async {}
+
+  @override
+  Future<List<OnboardingNudgeCandidate>> listOnboardingNudgeCandidates({
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    return const <OnboardingNudgeCandidate>[];
   }
 
   @override
@@ -185,4 +344,33 @@ final class NoopOnboardingRepository implements OnboardingRepository {
 
   @override
   Future<List<int>> getAllStartedUserIds() async => const <int>[];
+
+  @override
+  Future<bool> hasTrainingFeedbackRequest(int bookingId) async => false;
+
+  @override
+  Future<void> recordTrainingFeedbackRequest({
+    required int bookingId,
+    required int userId,
+    required String sessionKey,
+    required String trainingTitle,
+    required DateTime sentAt,
+  }) async {}
+
+  @override
+  Future<void> submitTrainingFeedback({
+    required int bookingId,
+    required String sessionKey,
+    required TrainingFeedbackRating rating,
+    required DateTime submittedAt,
+    String? comment,
+  }) async {}
+
+  @override
+  Future<TrainingFeedbackRequest?> getTrainingFeedbackRequest(int bookingId) async {
+    return null;
+  }
+
+  @override
+  Future<bool> hasTrainingFeedback(int bookingId) async => false;
 }

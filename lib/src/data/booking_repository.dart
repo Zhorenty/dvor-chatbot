@@ -177,6 +177,14 @@ abstract interface class BookingRepository {
     int limit = 5000,
   });
 
+  /// Self bookings in paid-like statuses whose start is within
+  /// `[startsFromInclusive, startsToInclusive]` (UTC-aware ISO compare).
+  Future<List<TrainingBooking>> listSelfPaidBookingsStartedBetween({
+    required DateTime startsFromInclusive,
+    required DateTime startsToInclusive,
+    int limit = 100,
+  });
+
   Future<bool> tryMarkEconomicReportSent({
     required String reportType,
     required DateTime periodStart,

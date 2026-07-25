@@ -57,7 +57,7 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonCancelBooking));
       expect(allTexts, contains(MessageCopy.buttonContinuePayment));
       expect(allTexts, contains(MessageCopy.buttonConfirmCancelBooking));
-      // TODO(dvor-x-frank): вернуть expect на MessageCopy.buttonDvorXFrank после включения кнопки.
+      expect(allTexts, contains(MessageCopy.buttonDvorXFrank));
       expect(allTexts, isNot(contains(MessageCopy.buttonTrainings)));
       expect(allTexts, contains(MessageCopy.buttonBookTraining));
       expect(allTexts, contains(MessageCopy.buttonBookFriend));

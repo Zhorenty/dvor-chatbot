@@ -7,11 +7,13 @@ import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/promo_code.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
+import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 
@@ -383,6 +385,26 @@ final class FakeBookingRepository implements BookingRepository {
                   booking.status == BookingStatus.partialPaid) &&
               !booking.updatedAt.isBefore(fromInclusive) &&
               booking.updatedAt.isBefore(toExclusive),
+        )
+        .take(limit)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<TrainingBooking>> listSelfPaidBookingsStartedBetween({
+    required DateTime startsFromInclusive,
+    required DateTime startsToInclusive,
+    int limit = 100,
+  }) async {
+    return queue
+        .where(
+          (booking) =>
+              booking.participantType == BookingParticipantType.self &&
+              (booking.status == BookingStatus.paid ||
+                  booking.status == BookingStatus.freeTraining ||
+                  booking.status == BookingStatus.partialPaid) &&
+              !booking.startsAt.isBefore(startsFromInclusive) &&
+              !booking.startsAt.isAfter(startsToInclusive),
         )
         .take(limit)
         .toList(growable: false);
@@ -974,6 +996,9 @@ final class FakeOnboardingRepository implements OnboardingRepository {
   final Map<int, _FakeOnboardingState> _stateByUserId = <int, _FakeOnboardingState>{};
   final List<PendingWelcomeMessage> readyForDelete = <PendingWelcomeMessage>[];
   final Map<int, int> referralInviterByInvitee = <int, int>{};
+  final Set<String> sentNudgeKeys = <String>{};
+  final Set<int> feedbackRequestBookingIds = <int>{};
+  final Set<int> feedbackSubmittedBookingIds = <int>{};
 
   @override
   Future<void> close() async {}
@@ -1073,7 +1098,164 @@ final class FakeOnboardingRepository implements OnboardingRepository {
     int userId, {
     required DateTime startedAt,
   }) async {
+    await ensureStartedUser(userId, startedAt: startedAt);
     return _stateByUserId[userId]?.pendingWelcome;
+  }
+
+  @override
+  Future<OnboardingUserState> ensureStartedUser(
+    int userId, {
+    required DateTime startedAt,
+    OnboardingEntryType? entryType,
+  }) async {
+    final state = _stateByUserId.putIfAbsent(
+      userId,
+      () => _FakeOnboardingState(
+        pendingWelcome: null,
+        bonusAvailable: false,
+        phase: OnboardingPhase.phase1Quiz,
+        step: OnboardingStep.welcome,
+        entryType: entryType ?? OnboardingEntryType.cold,
+        onboardingStartedAt: startedAt,
+      ),
+    );
+    state.startedAt ??= startedAt;
+    state.onboardingStartedAt ??= startedAt;
+    if (state.phase == null) {
+      state.phase = OnboardingPhase.phase1Quiz;
+      state.step = OnboardingStep.welcome;
+      state.entryType ??= entryType ?? OnboardingEntryType.cold;
+    }
+    return _toState(userId, state);
+  }
+
+  @override
+  Future<OnboardingUserState?> getOnboardingState(int userId) async {
+    final state = _stateByUserId[userId];
+    if (state == null) {
+      return null;
+    }
+    return _toState(userId, state);
+  }
+
+  @override
+  Future<void> updateOnboardingProgress({
+    required int userId,
+    OnboardingPhase? phase,
+    OnboardingStep? step,
+    OnboardingQuizGoal? quizGoal,
+    OnboardingQuizExperience? quizExperience,
+    OnboardingTrack? selectedTrack,
+    OnboardingEntryType? entryType,
+    DateTime? onboardingStartedAt,
+    DateTime? snoozeUntil,
+    bool clearSnooze = false,
+  }) async {
+    final state = _stateByUserId.putIfAbsent(
+      userId,
+      () => _FakeOnboardingState(
+        pendingWelcome: null,
+        bonusAvailable: false,
+      ),
+    );
+    if (phase != null) {
+      state.phase = phase;
+    }
+    if (step != null) {
+      state.step = step;
+    }
+    if (quizGoal != null) {
+      state.quizGoal = quizGoal;
+    }
+    if (quizExperience != null) {
+      state.quizExperience = quizExperience;
+    }
+    if (selectedTrack != null) {
+      state.selectedTrack = selectedTrack;
+    }
+    if (entryType != null) {
+      state.entryType = entryType;
+    }
+    if (onboardingStartedAt != null) {
+      state.onboardingStartedAt = onboardingStartedAt;
+    }
+    if (clearSnooze) {
+      state.snoozeUntil = null;
+    } else if (snoozeUntil != null) {
+      state.snoozeUntil = snoozeUntil;
+    }
+  }
+
+  @override
+  Future<bool> tryMarkActivation(
+    int userId, {
+    required DateTime activatedAt,
+  }) async {
+    final state = _stateByUserId[userId];
+    if (state == null ||
+        state.phase == OnboardingPhase.legacySkipped ||
+        state.activationAt != null) {
+      return false;
+    }
+    state.activationAt = activatedAt;
+    state.phase = OnboardingPhase.phase3Integration;
+    return true;
+  }
+
+  @override
+  Future<bool> hasNudgeBeenSent({
+    required int userId,
+    required String nudgeKey,
+  }) async {
+    return sentNudgeKeys.contains('$userId::$nudgeKey');
+  }
+
+  @override
+  Future<void> recordNudgeSent({
+    required int userId,
+    required String nudgeKey,
+    required DateTime sentAt,
+    OnboardingPhase? phase,
+    OnboardingStep? step,
+  }) async {
+    sentNudgeKeys.add('$userId::$nudgeKey');
+    final state = _stateByUserId[userId];
+    if (state != null) {
+      state.lastNudgeAt = sentAt;
+    }
+  }
+
+  @override
+  Future<List<OnboardingNudgeCandidate>> listOnboardingNudgeCandidates({
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    final result = <OnboardingNudgeCandidate>[];
+    _stateByUserId.forEach((userId, state) {
+      if (state.phase == null ||
+          state.phase == OnboardingPhase.legacySkipped ||
+          state.phase == OnboardingPhase.completed ||
+          state.onboardingStartedAt == null) {
+        return;
+      }
+      if (state.snoozeUntil != null && state.snoozeUntil!.isAfter(now.toUtc())) {
+        return;
+      }
+      result.add(
+        OnboardingNudgeCandidate(
+          userId: userId,
+          phase: state.phase!,
+          step: state.step,
+          onboardingStartedAt: state.onboardingStartedAt!,
+          quizGoal: state.quizGoal,
+          selectedTrack: state.selectedTrack,
+          activationAt: state.activationAt,
+          lastNudgeAt: state.lastNudgeAt,
+          snoozeUntil: state.snoozeUntil,
+        ),
+      );
+    });
+    return result.take(limit).toList(growable: false);
   }
 
   @override
@@ -1097,10 +1279,19 @@ final class FakeOnboardingRepository implements OnboardingRepository {
     required int userId,
     bool bonusAvailable = false,
     PendingWelcomeMessage? pendingWelcome,
+    OnboardingPhase phase = OnboardingPhase.legacySkipped,
+    OnboardingStep? step,
+    DateTime? onboardingStartedAt,
+    DateTime? activationAt,
   }) {
     _stateByUserId[userId] = _FakeOnboardingState(
       pendingWelcome: pendingWelcome,
       bonusAvailable: bonusAvailable,
+      phase: phase,
+      step: step,
+      onboardingStartedAt: onboardingStartedAt,
+      activationAt: activationAt,
+      startedAt: onboardingStartedAt ?? DateTime.now().toUtc(),
     );
   }
 
@@ -1120,6 +1311,7 @@ final class FakeOnboardingRepository implements OnboardingRepository {
       () => _FakeOnboardingState(
         pendingWelcome: null,
         bonusAvailable: false,
+        phase: OnboardingPhase.legacySkipped,
       ),
     );
     state.everyFifthLastNotifiedRewards = rewardsCount;
@@ -1141,12 +1333,81 @@ final class FakeOnboardingRepository implements OnboardingRepository {
   Future<List<int>> getAllStartedUserIds() async {
     return _stateByUserId.keys.toList();
   }
+
+  @override
+  Future<bool> hasTrainingFeedbackRequest(int bookingId) async {
+    return feedbackRequestBookingIds.contains(bookingId);
+  }
+
+  @override
+  Future<void> recordTrainingFeedbackRequest({
+    required int bookingId,
+    required int userId,
+    required String sessionKey,
+    required String trainingTitle,
+    required DateTime sentAt,
+  }) async {
+    feedbackRequestBookingIds.add(bookingId);
+  }
+
+  @override
+  Future<void> submitTrainingFeedback({
+    required int bookingId,
+    required String sessionKey,
+    required TrainingFeedbackRating rating,
+    required DateTime submittedAt,
+    String? comment,
+  }) async {
+    feedbackSubmittedBookingIds.add(bookingId);
+  }
+
+  @override
+  Future<TrainingFeedbackRequest?> getTrainingFeedbackRequest(int bookingId) async {
+    if (!feedbackRequestBookingIds.contains(bookingId)) {
+      return null;
+    }
+    return TrainingFeedbackRequest(
+      bookingId: bookingId,
+      userId: 0,
+      sessionKey: 'session',
+      trainingTitle: 'Training',
+      sentAt: DateTime.now().toUtc(),
+    );
+  }
+
+  @override
+  Future<bool> hasTrainingFeedback(int bookingId) async {
+    return feedbackSubmittedBookingIds.contains(bookingId);
+  }
+
+  OnboardingUserState _toState(int userId, _FakeOnboardingState state) {
+    return OnboardingUserState(
+      userId: userId,
+      phase: state.phase,
+      step: state.step,
+      quizGoal: state.quizGoal,
+      quizExperience: state.quizExperience,
+      selectedTrack: state.selectedTrack,
+      activationAt: state.activationAt,
+      onboardingStartedAt: state.onboardingStartedAt,
+      lastNudgeAt: state.lastNudgeAt,
+      snoozeUntil: state.snoozeUntil,
+      entryType: state.entryType,
+      startedAt: state.startedAt,
+    );
+  }
 }
 
 final class _FakeOnboardingState {
   _FakeOnboardingState({
     required this.pendingWelcome,
     required this.bonusAvailable,
+    this.phase,
+    this.step,
+    this.activationAt,
+    this.onboardingStartedAt,
+    this.entryType,
+    this.startedAt,
   });
 
   PendingWelcomeMessage? pendingWelcome;
@@ -1154,6 +1415,17 @@ final class _FakeOnboardingState {
   bool bonusConsumed = false;
   bool bonusExpiryReminderSent = false;
   int everyFifthLastNotifiedRewards = 0;
+  OnboardingPhase? phase;
+  OnboardingStep? step;
+  OnboardingQuizGoal? quizGoal;
+  OnboardingQuizExperience? quizExperience;
+  OnboardingTrack? selectedTrack;
+  DateTime? activationAt;
+  DateTime? onboardingStartedAt;
+  DateTime? lastNudgeAt;
+  DateTime? snoozeUntil;
+  OnboardingEntryType? entryType;
+  DateTime? startedAt;
 }
 
 List<String> keyboardTexts(Map<String, Object?>? replyMarkup) {
