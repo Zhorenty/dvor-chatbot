@@ -875,18 +875,20 @@ final class MessageTemplates {
     final referralHint = availableReferralRewards > 0
         ? 'реферальных бесплатных: <b>$availableReferralRewards</b>'
         : 'успешных рефералов: <b>$successfulReferralsCount</b>';
-    final subscriptionHint = membershipLevel == MembershipLevel.pro
-        ? 'PRO${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
-        : 'Normal';
-    final remainingProTrainingsText =
-        membershipLevel == MembershipLevel.pro && subscriptionRemainingProTrainings != null
-            ? ' • осталось тренировок: <b>${subscriptionRemainingProTrainings.clamp(0, 8)}/8</b>'
-            : '';
-    final requestStatusText =
-        subscriptionRequestStatusLine == null ? '' : '\n• Заявка: $subscriptionRequestStatusLine';
+    // TODO(subscription): вернуть статус абонемента в профиле.
+    // final subscriptionHint = membershipLevel == MembershipLevel.pro
+    //     ? 'PRO${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
+    //     : 'Normal';
+    // final remainingProTrainingsText =
+    //     membershipLevel == MembershipLevel.pro && subscriptionRemainingProTrainings != null
+    //         ? ' • осталось тренировок: <b>${subscriptionRemainingProTrainings.clamp(0, 8)}/8</b>'
+    //         : '';
+    // final requestStatusText =
+    //     subscriptionRequestStatusLine == null ? '' : '\n• Заявка: $subscriptionRequestStatusLine';
     return '👤 <b>Профиль DVOR</b>\n\n'
-        '💎 Абонемент: <b>$subscriptionHint</b>$remainingProTrainingsText'
-        '$requestStatusText\n\n'
+        // TODO(subscription): вернуть строку «💎 Абонемент: …» в профиле.
+        // '💎 Абонемент: <b>$subscriptionHint</b>$remainingProTrainingsText'
+        // '$requestStatusText\n\n'
         '📊 Записи: всего <b>$totalBookings</b> • '
         'актуальные <b>$activeBookings</b> • '
         'посещенные <b>$visitedBookings</b> • '
@@ -894,8 +896,11 @@ final class MessageTemplates {
         '🏋️ Лояльность: $rewardsHint\n'
         '• Стартовая бесплатная: $starterHint\n'
         '• Рефералка: $referralHint\n\n'
-        'Дальше: «${MessageCopy.buttonProfileBookings}», '
-        '«${MessageCopy.buttonSubscription}» или «${MessageCopy.buttonReferralProgram}».';
+        // TODO(subscription): вернуть «💎 Абонемент» в подсказку «Дальше».
+        // 'Дальше: «${MessageCopy.buttonProfileBookings}», '
+        // '«${MessageCopy.buttonSubscription}» или «${MessageCopy.buttonReferralProgram}».'
+        'Дальше: «${MessageCopy.buttonProfileBookings}» '
+        'или «${MessageCopy.buttonReferralProgram}».';
   }
 
   String referralProgramOverview({

@@ -681,41 +681,42 @@ final class PrivateHandlers {
       return true;
     }
 
-    if (text == MessageTemplates.buttonSubscription) {
-      if (userId == null) {
-        return false;
-      }
-      final now = _nowProvider();
-      final membership = await _subscriptionRepository.getMembership(
-        userId,
-        now: now,
-      );
-      final remainingProTrainings = await _proIncludedTrainingRemainingCount(
-        userId: userId,
-        membership: membership,
-      );
-      final snapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
-      final canApply = snapshot.latestPending == null;
-      final isRenewal = membership.level == MembershipLevel.pro;
-      _flowByUserId[userId] = const _PrivateFlowState(
-        step: _PrivateFlowStep.viewingSubscriptionOverview,
-        availableTrainings: <TrainingInfo>[],
-      );
-      await _sender.sendMessage(
-        chatId,
-        _templates.subscriptionOverview(
-          membershipLevel: membership.level,
-          activeUntil: membership.activeUntil,
-          remainingProTrainings: remainingProTrainings,
-        ),
-        replyMarkup: _templates.subscriptionOverviewKeyboard(
-          canApply: canApply,
-          isRenewal: isRenewal,
-        ),
-        parseMode: 'HTML',
-      );
-      return true;
-    }
+    // TODO(subscription): вернуть обработчик кнопки абонемента в профиле.
+    // if (text == MessageTemplates.buttonSubscription) {
+    //   if (userId == null) {
+    //     return false;
+    //   }
+    //   final now = _nowProvider();
+    //   final membership = await _subscriptionRepository.getMembership(
+    //     userId,
+    //     now: now,
+    //   );
+    //   final remainingProTrainings = await _proIncludedTrainingRemainingCount(
+    //     userId: userId,
+    //     membership: membership,
+    //   );
+    //   final snapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
+    //   final canApply = snapshot.latestPending == null;
+    //   final isRenewal = membership.level == MembershipLevel.pro;
+    //   _flowByUserId[userId] = const _PrivateFlowState(
+    //     step: _PrivateFlowStep.viewingSubscriptionOverview,
+    //     availableTrainings: <TrainingInfo>[],
+    //   );
+    //   await _sender.sendMessage(
+    //     chatId,
+    //     _templates.subscriptionOverview(
+    //       membershipLevel: membership.level,
+    //       activeUntil: membership.activeUntil,
+    //       remainingProTrainings: remainingProTrainings,
+    //     ),
+    //     replyMarkup: _templates.subscriptionOverviewKeyboard(
+    //       canApply: canApply,
+    //       isRenewal: isRenewal,
+    //     ),
+    //     parseMode: 'HTML',
+    //   );
+    //   return true;
+    // }
 
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.viewingCoachingStaff &&

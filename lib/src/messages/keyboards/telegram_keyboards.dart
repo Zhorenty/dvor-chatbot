@@ -309,7 +309,8 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonProfileBookings},
         ],
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonSubscription},
+          // TODO(subscription): вернуть кнопку абонемента в профиле.
+          // <String, String>{'text': MessageCopy.buttonSubscription},
           <String, String>{'text': MessageCopy.buttonReferralProgram},
         ],
         <Map<String, String>>[

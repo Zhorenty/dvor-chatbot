@@ -62,7 +62,8 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonBookTraining));
       expect(allTexts, contains(MessageCopy.buttonBookFriend));
       expect(allTexts, contains(MessageCopy.buttonReferralProgram));
-      expect(allTexts, contains(MessageCopy.buttonSubscription));
+      // TODO(subscription): вернуть expect на MessageCopy.buttonSubscription после включения кнопки.
+      expect(allTexts, isNot(contains(MessageCopy.buttonSubscription)));
     });
 
     test('inline callbacks use copy callback prefixes', () {
