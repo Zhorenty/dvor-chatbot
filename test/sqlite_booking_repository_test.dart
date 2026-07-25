@@ -733,6 +733,7 @@ void main() {
             title: 'Session $i',
             startsAt: DateTime(2030, 6, 10 + i, 18),
             location: 'Gym A',
+            price: 1200,
           ),
         );
         await repository.updateStatus(created.booking.id, BookingStatus.paid);
@@ -743,6 +744,7 @@ void main() {
           title: 'Free reward',
           startsAt: DateTime(2030, 6, 15, 18),
           location: 'Gym A',
+          price: 1200,
         ),
       );
       await repository.updateStatus(
@@ -755,6 +757,89 @@ void main() {
       expect(progress.qualifiedTrainingsCount, 4);
       expect(progress.usedRewardsCount, 1);
       expect(progress.earnedRewardsCount, 1);
+      expect(progress.availableRewardsCount, 0);
+
+      await repository.close();
+    });
+
+    test('excludes free trainings from every-fifth reward progress', () async {
+      final now = DateTime(2030, 6, 20, 12);
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => now,
+      );
+      await repository.init();
+
+      final paid = await repository.createPendingBooking(
+        userId: 5102,
+        training: TrainingInfo(
+          title: 'Paid session',
+          startsAt: DateTime(2030, 6, 10, 18),
+          location: 'Gym A',
+          price: 1200,
+        ),
+      );
+      await repository.updateStatus(paid.booking.id, BookingStatus.paid);
+
+      final freeByPrice = await repository.createPendingBooking(
+        userId: 5102,
+        training: TrainingInfo(
+          title: 'Free by price',
+          startsAt: DateTime(2030, 6, 11, 18),
+          location: 'Gym A',
+          price: 0,
+        ),
+      );
+      await repository.updateStatus(freeByPrice.booking.id, BookingStatus.paid);
+
+      final starterBonus = await repository.createPendingBooking(
+        userId: 5102,
+        training: TrainingInfo(
+          title: 'Starter bonus',
+          startsAt: DateTime(2030, 6, 12, 18),
+          location: 'Gym A',
+          price: 1200,
+        ),
+      );
+      await repository.updateStatus(
+        starterBonus.booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+      );
+
+      final referralBonus = await repository.createPendingBooking(
+        userId: 5102,
+        training: TrainingInfo(
+          title: 'Referral bonus',
+          startsAt: DateTime(2030, 6, 13, 18),
+          location: 'Gym A',
+          price: 1200,
+        ),
+      );
+      await repository.updateStatus(
+        referralBonus.booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.referralBonusPaymentNoteMarker,
+      );
+
+      final proIncluded = await repository.createPendingBooking(
+        userId: 5102,
+        training: TrainingInfo(
+          title: 'PRO included',
+          startsAt: DateTime(2030, 6, 14, 18),
+          location: 'Gym A',
+          price: 1200,
+        ),
+      );
+      await repository.updateStatus(
+        proIncluded.booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+      );
+
+      final progress = await repository.getEveryFifthRewardProgress(5102, now: now);
+      expect(progress.qualifiedTrainingsCount, 1);
+      expect(progress.usedRewardsCount, 0);
       expect(progress.availableRewardsCount, 0);
 
       await repository.close();

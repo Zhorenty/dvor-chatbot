@@ -1296,7 +1296,8 @@ final class SqliteBookingRepository implements BookingRepository {
         AND status = ?
         AND starts_at < ?
         AND ($trainingsCondition)
-        AND (payment_note IS NULL OR payment_note NOT IN (?, ?));
+        AND (training_price IS NULL OR training_price > 0)
+        AND (payment_note IS NULL OR payment_note NOT IN (?, ?, ?, ?));
       ''',
       <Object?>[
         userId,
@@ -1305,6 +1306,8 @@ final class SqliteBookingRepository implements BookingRepository {
         nowIso,
         _starterBonusPaymentNoteMarker,
         _everyFifthBonusPaymentNoteMarker,
+        _referralBonusPaymentNoteMarker,
+        _proIncludedTrainingPaymentNoteMarker,
       ],
     );
     final usedResult = db.select(
