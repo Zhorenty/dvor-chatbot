@@ -1,15 +1,15 @@
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
-import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
 
 final class ReferralBroadcastJob {
   ReferralBroadcastJob({
-    required MessageSender sender,
+    required GroupAnnouncementService announcements,
     required MessageTemplates templates,
     required int? targetChatId,
     int timezoneOffsetHours = 3,
     DateTime Function()? nowProvider,
-  })  : _sender = sender,
+  })  : _announcements = announcements,
         _templates = templates,
         _targetChatId = targetChatId,
         _timezoneOffset = Duration(hours: timezoneOffsetHours),
@@ -19,7 +19,7 @@ final class ReferralBroadcastJob {
   static const int hour = 10;
   static const int minute = 0;
 
-  final MessageSender _sender;
+  final GroupAnnouncementService _announcements;
   final MessageTemplates _templates;
   final int? _targetChatId;
   final Duration _timezoneOffset;
@@ -41,13 +41,16 @@ final class ReferralBroadcastJob {
       if (_sentBroadcasts.containsKey(broadcastKey)) {
         return;
       }
-      await _sender.sendMessage(
-        targetChatId,
-        _templates.groupReferralBroadcast(),
+      final sent = await _announcements.publish(
+        chatId: targetChatId,
+        type: GroupAnnouncementType.referralBroadcast,
+        text: _templates.groupReferralBroadcast(),
         parseMode: 'HTML',
         disableWebPagePreview: true,
       );
-      _sentBroadcasts[broadcastKey] = now;
+      if (sent) {
+        _sentBroadcasts[broadcastKey] = now;
+      }
     } on Object catch (error, stackTrace) {
       l.w('Referral broadcast job failed: $error', stackTrace);
     }

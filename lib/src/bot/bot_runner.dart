@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
@@ -38,6 +39,7 @@ final class BotRunner {
     required SubscriptionRepository subscriptionRepository,
     required MessageSender sender,
     required MessageTemplates templates,
+    required GroupAnnouncementService groupAnnouncements,
     required PrivateHandlers privateHandlers,
     required GroupHandlers groupHandlers,
   })  : _config = config,
@@ -69,20 +71,20 @@ final class BotRunner {
         ),
         _trainingDayPromoJob = TrainingDayPromoJob(
           scheduleRepository: scheduleRepository,
-          sender: sender,
+          announcements: groupAnnouncements,
           templates: templates,
           targetChatId: config.targetChatId,
           timezoneOffsetHours: config.timezoneOffsetHours,
         ),
         _scheduleBroadcastJob = ScheduleBroadcastJob(
           scheduleRepository: scheduleRepository,
-          sender: sender,
+          announcements: groupAnnouncements,
           templates: templates,
           targetChatId: config.targetChatId,
           timezoneOffsetHours: config.timezoneOffsetHours,
         ),
         _referralBroadcastJob = ReferralBroadcastJob(
-          sender: sender,
+          announcements: groupAnnouncements,
           templates: templates,
           targetChatId: config.targetChatId,
           timezoneOffsetHours: config.timezoneOffsetHours,

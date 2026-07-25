@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/bot/bot_runner.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
@@ -100,6 +101,7 @@ void main() {
       subscriptionRepository: subscriptionRepository,
       sender: sender,
       templates: templates,
+      groupAnnouncements: GroupAnnouncementService(sender: sender),
       privateHandlers: PrivateHandlers(
         sender: sender,
         scheduleRepository: scheduleRepository,

@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/jobs/training_day_promo_job.dart';
@@ -20,7 +21,7 @@ void main() {
     final sender = FakeSender();
     final job = TrainingDayPromoJob(
       scheduleRepository: scheduleRepository,
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(botUsername: 'dvor_chatbot'),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -48,7 +49,7 @@ void main() {
     final sender = FakeSender();
     final job = TrainingDayPromoJob(
       scheduleRepository: scheduleRepository,
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -74,7 +75,7 @@ void main() {
     final sender = FakeSender();
     final job = TrainingDayPromoJob(
       scheduleRepository: scheduleRepository,
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -99,7 +100,7 @@ void main() {
     final sender = FakeSender();
     final job = TrainingDayPromoJob(
       scheduleRepository: scheduleRepository,
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,

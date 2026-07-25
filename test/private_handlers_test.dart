@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
@@ -1520,6 +1521,67 @@ void main() {
       expect(groupMessages, hasLength(1));
       expect(groupMessages.single.text, contains('почти не осталось мест'));
       expect(groupMessages.single.text, contains('Свободных мест: 2 из 10'));
+    });
+
+    test('skips low-spots group notification when higher-priority announcement is active',
+        () async {
+      final sender = _FakeSender();
+      final announcements = GroupAnnouncementService(sender: sender);
+      await announcements.publish(
+        chatId: -100777,
+        type: GroupAnnouncementType.trainingDayPromo,
+        text: 'Тренировка уже завтра!',
+      );
+      final training = TrainingInfo(
+        title: 'Full body',
+        startsAt: DateTime(2026, 7, 15, 19, 0),
+        location: 'Main hall',
+        participantsLimit: 10,
+        price: 0,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = List<TrainingBooking>.generate(
+          8,
+          (index) => _booking(
+            id: 340 + index,
+            trainingKey: training.sessionKey,
+            title: training.title,
+            startsAt: training.startsAt,
+            location: training.location,
+            status: BookingStatus.paid,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[training]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        targetChatId: -100777,
+        groupAnnouncements: announcements,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1618, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1618},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1618, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1618},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1618, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1618},
+        'text': '🎯 1. Full body',
+      });
+
+      expect(handled, isTrue);
+      final groupMessages = sender.messages.where((message) => message.chatId == -100777).toList();
+      expect(groupMessages, hasLength(1));
+      expect(groupMessages.single.text, contains('Тренировка уже завтра'));
+      expect(sender.deletedMessages, isEmpty);
     });
 
     test('deletes previous low-spots message before sending new one', () async {

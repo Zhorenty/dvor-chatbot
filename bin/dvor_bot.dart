@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/bot/bot_runner.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
@@ -47,6 +48,7 @@ void main(List<String> args) {
       await subscriptionRepository.init();
       await onboardingRepository.init();
 
+      final groupAnnouncements = GroupAnnouncementService(sender: client);
       final runner = BotRunner(
         config: config,
         client: client,
@@ -56,6 +58,7 @@ void main(List<String> args) {
         subscriptionRepository: subscriptionRepository,
         sender: client,
         templates: templates,
+        groupAnnouncements: groupAnnouncements,
         privateHandlers: PrivateHandlers(
           sender: client,
           scheduleRepository: scheduleRepository,
@@ -68,6 +71,7 @@ void main(List<String> args) {
           adminUserIds: config.adminUserIds,
           adminChatId: config.adminChatId,
           targetChatId: config.targetChatId,
+          groupAnnouncements: groupAnnouncements,
           onboardingDripEnabled: config.onboardingDripEnabled,
         ),
         groupHandlers: GroupHandlers(

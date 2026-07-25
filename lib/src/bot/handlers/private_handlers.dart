@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/application/broadcast_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/application/payment_review_service.dart';
@@ -57,6 +58,7 @@ final class PrivateHandlers {
     required Set<int> adminUserIds,
     int? adminChatId,
     int? targetChatId,
+    GroupAnnouncementService? groupAnnouncements,
     bool onboardingDripEnabled = false,
     DateTime Function()? nowProvider,
   })  : _sender = sender,
@@ -70,6 +72,7 @@ final class PrivateHandlers {
         _adminUserIds = adminUserIds,
         _adminChatId = adminChatId,
         _targetChatId = targetChatId,
+        _groupAnnouncements = groupAnnouncements ?? GroupAnnouncementService(sender: sender),
         _onboardingService = OnboardingService(
           onboardingRepository: onboardingRepository,
           dripEnabled: onboardingDripEnabled,
@@ -87,6 +90,7 @@ final class PrivateHandlers {
   final Set<int> _adminUserIds;
   final int? _adminChatId;
   final int? _targetChatId;
+  final GroupAnnouncementService _groupAnnouncements;
   final OnboardingService _onboardingService;
   final DateTime Function() _nowProvider;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
@@ -95,8 +99,6 @@ final class PrivateHandlers {
   final Map<int, String> _broadcastActiveMediaGroupIds = <int, String>{};
   final Set<String> _lowCapacityNotifiedTrainingKeys = <String>{};
   final Set<String> _fullCapacityNotifiedTrainingKeys = <String>{};
-  int? _lastCapacityGroupMessageId;
-  _CapacityGroupNotificationType? _lastCapacityGroupMessageType;
   late final ActivityCatalogService _catalogService =
       ActivityCatalogService(scheduleRepository: _scheduleRepository);
   late final ScheduleQueryService _scheduleQueryService = ScheduleQueryService(
@@ -5913,18 +5915,19 @@ final class PrivateHandlers {
         return;
       }
       try {
-        final messageId = await _sender.sendMessage(
-          targetChatId,
-          _templates.groupTrainingNoSpotsLeft(
+        final sent = await _groupAnnouncements.publish(
+          chatId: targetChatId,
+          type: GroupAnnouncementType.noSpots,
+          text: _templates.groupTrainingNoSpotsLeft(
             training: training,
             participantsLimit: participantsLimit,
           ),
           parseMode: 'HTML',
         );
-        _lastCapacityGroupMessageId = messageId;
-        _lastCapacityGroupMessageType = _CapacityGroupNotificationType.noSpots;
-        _fullCapacityNotifiedTrainingKeys.add(training.sessionKey);
-        _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
+        if (sent) {
+          _fullCapacityNotifiedTrainingKeys.add(training.sessionKey);
+          _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
+        }
       } on Object catch (error, stackTrace) {
         l.w('Failed to notify group about full training capacity: $error', stackTrace);
       }
@@ -5937,35 +5940,19 @@ final class PrivateHandlers {
     }
 
     try {
-      final previousLowCapacityMessageId =
-          _lastCapacityGroupMessageType == _CapacityGroupNotificationType.lowSpots
-              ? _lastCapacityGroupMessageId
-              : null;
-      if (previousLowCapacityMessageId != null) {
-        try {
-          await _sender.deleteMessage(
-            targetChatId,
-            messageId: previousLowCapacityMessageId,
-          );
-        } on Object catch (error, stackTrace) {
-          l.w(
-            'Failed to delete previous low-capacity group notification: $error',
-            stackTrace,
-          );
-        }
-      }
-      final messageId = await _sender.sendMessage(
-        targetChatId,
-        _templates.groupTrainingLowSpots(
+      final sent = await _groupAnnouncements.publish(
+        chatId: targetChatId,
+        type: GroupAnnouncementType.lowSpots,
+        text: _templates.groupTrainingLowSpots(
           training: training,
           freeSpots: freeSpots,
           participantsLimit: participantsLimit,
         ),
         parseMode: 'HTML',
       );
-      _lastCapacityGroupMessageId = messageId;
-      _lastCapacityGroupMessageType = _CapacityGroupNotificationType.lowSpots;
-      _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
+      if (sent) {
+        _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);
+      }
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify group about low training capacity: $error', stackTrace);
     }
@@ -6417,8 +6404,6 @@ typedef _ActivityCategory = ActivityCategory;
 typedef _AdminClientNotificationAction = AdminClientNotificationAction;
 
 enum _FreeTrainingBonusType { starter, referral, everyFifth }
-
-enum _CapacityGroupNotificationType { lowSpots, noSpots }
 
 enum _EconomicSummaryRange {
   currentWeek('за текущую неделю'),

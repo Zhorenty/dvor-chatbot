@@ -1,19 +1,19 @@
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
-import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
 
 final class ScheduleBroadcastJob {
   ScheduleBroadcastJob({
     required TrainingScheduleRepository scheduleRepository,
-    required MessageSender sender,
+    required GroupAnnouncementService announcements,
     required MessageTemplates templates,
     required int? targetChatId,
     int timezoneOffsetHours = 3,
     DateTime Function()? nowProvider,
   })  : _scheduleRepository = scheduleRepository,
-        _sender = sender,
+        _announcements = announcements,
         _templates = templates,
         _targetChatId = targetChatId,
         _timezoneOffset = Duration(hours: timezoneOffsetHours),
@@ -26,7 +26,7 @@ final class ScheduleBroadcastJob {
   ];
 
   final TrainingScheduleRepository _scheduleRepository;
-  final MessageSender _sender;
+  final GroupAnnouncementService _announcements;
   final MessageTemplates _templates;
   final int? _targetChatId;
   final Duration _timezoneOffset;
@@ -57,16 +57,19 @@ final class ScheduleBroadcastJob {
       if (upcoming.isEmpty) {
         return;
       }
-      await _sender.sendMessage(
-        targetChatId,
-        _templates.groupScheduleBroadcast(
+      final sent = await _announcements.publish(
+        chatId: targetChatId,
+        type: GroupAnnouncementType.scheduleBroadcast,
+        text: _templates.groupScheduleBroadcast(
           trainings: upcoming,
           weekday: matchingSlot.$1,
         ),
         parseMode: 'HTML',
         disableWebPagePreview: true,
       );
-      _sentBroadcasts[broadcastKey] = now;
+      if (sent) {
+        _sentBroadcasts[broadcastKey] = now;
+      }
     } on Object catch (error, stackTrace) {
       l.w('Schedule broadcast job failed: $error', stackTrace);
     }

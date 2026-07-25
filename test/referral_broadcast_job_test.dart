@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/jobs/referral_broadcast_job.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -9,7 +10,7 @@ void main() {
     final now = DateTime.utc(2030, 6, 26, 7, 0); // Wednesday 10:00 MSK
     final sender = FakeSender();
     final job = ReferralBroadcastJob(
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(botUsername: 'dvor_chatbot'),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -30,7 +31,7 @@ void main() {
     final now = DateTime.utc(2030, 6, 25, 7, 0); // Tuesday 10:00 MSK
     final sender = FakeSender();
     final job = ReferralBroadcastJob(
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -46,7 +47,7 @@ void main() {
     var now = DateTime.utc(2030, 6, 26, 7, 0);
     final sender = FakeSender();
     final job = ReferralBroadcastJob(
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,

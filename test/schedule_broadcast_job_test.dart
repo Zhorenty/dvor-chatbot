@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_broadcast_job.dart';
@@ -22,7 +23,7 @@ void main() {
     final sender = FakeSender();
     final job = ScheduleBroadcastJob(
       scheduleRepository: scheduleRepository,
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(botUsername: 'dvor_chatbot'),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -52,7 +53,7 @@ void main() {
     final sender = FakeSender();
     final job = ScheduleBroadcastJob(
       scheduleRepository: scheduleRepository,
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -78,7 +79,7 @@ void main() {
     final sender = FakeSender();
     final job = ScheduleBroadcastJob(
       scheduleRepository: scheduleRepository,
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -104,7 +105,7 @@ void main() {
     final sender = FakeSender();
     final job = ScheduleBroadcastJob(
       scheduleRepository: scheduleRepository,
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -129,7 +130,7 @@ void main() {
     final sender = FakeSender();
     final job = ScheduleBroadcastJob(
       scheduleRepository: scheduleRepository,
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,
@@ -149,7 +150,7 @@ void main() {
     final sender = FakeSender();
     final job = ScheduleBroadcastJob(
       scheduleRepository: FakeScheduleRepository(const <TrainingInfo>[]),
-      sender: sender,
+      announcements: GroupAnnouncementService(sender: sender),
       templates: const MessageTemplates(),
       targetChatId: -1001234567890,
       timezoneOffsetHours: 3,

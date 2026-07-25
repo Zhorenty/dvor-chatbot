@@ -1,27 +1,27 @@
+import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
-import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
 
 final class TrainingDayPromoJob {
   TrainingDayPromoJob({
     required TrainingScheduleRepository scheduleRepository,
-    required MessageSender sender,
+    required GroupAnnouncementService announcements,
     required MessageTemplates templates,
     required int? targetChatId,
     int timezoneOffsetHours = 3,
     DateTime Function()? nowProvider,
   })  : _scheduleRepository = scheduleRepository,
-        _sender = sender,
+        _announcements = announcements,
         _templates = templates,
         _targetChatId = targetChatId,
         _timezoneOffset = Duration(hours: timezoneOffsetHours),
         _nowProvider = nowProvider ?? DateTime.now;
 
   final TrainingScheduleRepository _scheduleRepository;
-  final MessageSender _sender;
+  final GroupAnnouncementService _announcements;
   final MessageTemplates _templates;
   final int? _targetChatId;
   final Duration _timezoneOffset;
@@ -53,27 +53,30 @@ final class TrainingDayPromoJob {
         if (_sentPromos.containsKey(promoKey)) {
           continue;
         }
-        await _sendPromo(
+        final sent = await _sendPromo(
           targetChatId,
           training,
           isToday: _isSameDay(startsAt, now),
         );
-        _sentPromos[promoKey] = now;
+        if (sent) {
+          _sentPromos[promoKey] = now;
+        }
       }
     } on Object catch (error, stackTrace) {
       l.w('Training day promo job failed: $error', stackTrace);
     }
   }
 
-  Future<void> _sendPromo(
+  Future<bool> _sendPromo(
     int chatId,
     TrainingInfo training, {
     required bool isToday,
   }) async {
     try {
-      await _sender.sendMessage(
-        chatId,
-        _templates.groupTrainingTodayPromo(
+      return await _announcements.publish(
+        chatId: chatId,
+        type: GroupAnnouncementType.trainingDayPromo,
+        text: _templates.groupTrainingTodayPromo(
           training: training,
           isToday: isToday,
         ),
@@ -85,6 +88,7 @@ final class TrainingDayPromoJob {
         'Failed to send training day promo for ${training.sessionKey}: $error',
         stackTrace,
       );
+      return false;
     }
   }
 
