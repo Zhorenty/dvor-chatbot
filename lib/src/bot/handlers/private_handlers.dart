@@ -4327,6 +4327,7 @@ final class PrivateHandlers {
         );
         await _notifyAdminAboutFreeBookingCreated(bookingForResponse);
         await _maybeMarkOnboardingActivation(userId);
+        await _sendOutdoorPrepDetails(chatId, bookingForResponse);
       }
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
@@ -4350,6 +4351,7 @@ final class PrivateHandlers {
           selectedTraining,
           bookingStatus: bookingForResponse.status,
         );
+        await _sendOutdoorPrepDetails(chatId, bookingForResponse);
       }
       await _notifyAdminAboutTrainerBookingCreated(bookingForResponse);
       await _sender.sendMessage(
@@ -4381,6 +4383,7 @@ final class PrivateHandlers {
           selectedTraining,
           bookingStatus: bookingForResponse.status,
         );
+        await _sendOutdoorPrepDetails(chatId, bookingForResponse);
       }
       await _sender.sendMessage(
         chatId,
@@ -4407,6 +4410,7 @@ final class PrivateHandlers {
         _templates.outdoorBookingRule(result.booking),
         parseMode: 'HTML',
       );
+      await _sendOutdoorPrepDetails(chatId, result.booking);
     }
     await _sender.sendMessage(
       chatId,
@@ -4419,6 +4423,26 @@ final class PrivateHandlers {
         showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(result.booking),
         showPromoCodeEntry: _shouldShowPromoCodeEntry(result.booking),
       ),
+      parseMode: 'HTML',
+    );
+  }
+
+  Future<void> _sendOutdoorPrepDetails(int chatId, TrainingBooking booking) async {
+    if (!MessageFormatters.isOutdoorBooking(booking)) {
+      return;
+    }
+    final outdoorItem = _catalogService.outdoorByBooking(booking);
+    if (outdoorItem == null) {
+      return;
+    }
+    await _sender.sendMessage(
+      chatId,
+      _templates.outdoorItineraryDetails(outdoorItem),
+      parseMode: 'HTML',
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.outdoorEquipmentDetails(outdoorItem),
       parseMode: 'HTML',
     );
   }
@@ -5081,19 +5105,7 @@ final class PrivateHandlers {
             : _templates.paymentRejectedForUser(booking),
       );
       if (isApproved) {
-        final outdoorItem = _catalogService.outdoorByBooking(booking);
-        if (outdoorItem != null) {
-          await _sender.sendMessage(
-            booking.userId,
-            _templates.outdoorItineraryDetails(outdoorItem),
-            parseMode: 'HTML',
-          );
-          await _sender.sendMessage(
-            booking.userId,
-            _templates.outdoorEquipmentDetails(outdoorItem),
-            parseMode: 'HTML',
-          );
-        }
+        await _sendOutdoorPrepDetails(booking.userId, booking);
         await _maybeMarkOnboardingActivation(booking.userId);
       }
     } on Object catch (error, stackTrace) {

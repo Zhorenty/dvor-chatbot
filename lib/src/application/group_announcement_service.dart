@@ -36,7 +36,7 @@ final class _ActiveAnnouncement {
 final class GroupAnnouncementService {
   GroupAnnouncementService({
     required MessageSender sender,
-    Duration slotTtl = const Duration(hours: 12),
+    Duration slotTtl = const Duration(hours: 3),
     DateTime Function()? nowProvider,
   })  : _sender = sender,
         _slotTtl = slotTtl,

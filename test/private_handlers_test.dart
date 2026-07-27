@@ -1216,6 +1216,8 @@ void main() {
               dateFrom: DateTime(2026, 7, 20),
               dateTo: DateTime(2026, 7, 21, 23, 59, 59),
               description: 'Двухдневный маршрут',
+              equipment: 'Ботинки, дождевик',
+              itinerary: 'Сбор в 07:00, выезд в 07:30',
               price: 4100,
             ),
           ],
@@ -1249,6 +1251,14 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 1);
       expect(bookingRepository.lastCreatedTraining?.title, contains('Поход на Бзерпинский карниз'));
+      final itineraryIndex =
+          sender.messages.indexWhere((message) => message.text.contains('Расписание похода'));
+      final equipmentIndex =
+          sender.messages.indexWhere((message) => message.text.contains('Экипировка'));
+      expect(itineraryIndex, greaterThanOrEqualTo(0));
+      expect(equipmentIndex, greaterThan(itineraryIndex));
+      expect(sender.messages[itineraryIndex].text, contains('Сбор в 07:00, выезд в 07:30'));
+      expect(sender.messages[equipmentIndex].text, contains('Ботинки, дождевик'));
       expect(sender.messages.last.text, contains('записал тебя'));
     });
 
@@ -2207,6 +2217,8 @@ void main() {
               dateTo: DateTime(2026, 7, 14, 23, 59, 59),
               location: 'Лаго-Наки, старт от кордона',
               description: 'Ночевка в лагере',
+              equipment: 'Рюкзак 30л, треккинговые ботинки',
+              itinerary: 'Сбор 06:30, трансфер 07:00',
               price: 3200,
             ),
           ],
@@ -2244,10 +2256,18 @@ void main() {
           bookingRepository.lastCreatedTraining?.location, contains('Лаго-Наки, старт от кордона'));
       final ruleIndex =
           sender.messages.indexWhere((message) => message.text.contains('Правило OUTDVOR'));
+      final itineraryIndex =
+          sender.messages.indexWhere((message) => message.text.contains('Расписание похода'));
+      final equipmentIndex =
+          sender.messages.indexWhere((message) => message.text.contains('Экипировка'));
       final requisitesIndex =
           sender.messages.indexWhere((message) => message.text.contains('Реквизиты OUTDVOR'));
       expect(ruleIndex, greaterThanOrEqualTo(0));
-      expect(requisitesIndex, greaterThan(ruleIndex));
+      expect(itineraryIndex, greaterThan(ruleIndex));
+      expect(equipmentIndex, greaterThan(itineraryIndex));
+      expect(requisitesIndex, greaterThan(equipmentIndex));
+      expect(sender.messages[itineraryIndex].text, contains('Сбор 06:30, трансфер 07:00'));
+      expect(sender.messages[equipmentIndex].text, contains('Рюкзак 30л, треккинговые ботинки'));
       expect(sender.messages.last.text, contains('записал тебя'));
       expect(sender.messages.last.text, contains('Событие: 🥾 Поход: Поход на хребет'));
       expect(sender.messages.last.text, isNot(contains('Тренировка:')));

@@ -73,7 +73,7 @@ void main() {
     final sender = FakeSender();
     final service = GroupAnnouncementService(
       sender: sender,
-      slotTtl: const Duration(hours: 12),
+      slotTtl: const Duration(hours: 3),
       nowProvider: () => now,
     );
 
@@ -84,7 +84,7 @@ void main() {
     );
     expect(sender.messages, hasLength(1));
 
-    now = now.add(const Duration(hours: 12));
+    now = now.add(const Duration(hours: 3));
     final sent = await service.publish(
       chatId: chatId,
       type: GroupAnnouncementType.referralBroadcast,
