@@ -4,6 +4,7 @@
 /// - «Заработок от 100 € в день … Писать в личные сообщения»
 /// - «Ищу желающих на удаленную занятость … пишите в лс»
 /// - «Оплата 110-190 EUR / день … пишите в личные сообщения»
+/// - «Ищу помощников … от 880 евро/неделя … Напишите мне»
 ///
 /// Normal club chat is protected by category rules:
 /// soft phrases («в лс», «обучение», «команда») alone never ban.
@@ -40,6 +41,18 @@ final class GroupSpamDetector {
       category: _SpamCategory.job,
     ),
     _SpamPattern(
+      RegExp(r'ищу\s+.{0,40}помощник'),
+      score: 40,
+      reason: 'recruiting',
+      category: _SpamCategory.job,
+    ),
+    _SpamPattern(
+      RegExp('помощник$_w\\s+в\\s+команд'),
+      score: 35,
+      reason: 'recruiting',
+      category: _SpamCategory.job,
+    ),
+    _SpamPattern(
       RegExp(r'набор\s+в\s+команд'),
       score: 40,
       reason: 'recruiting',
@@ -58,14 +71,27 @@ final class GroupSpamDetector {
       category: _SpamCategory.job,
     ),
     _SpamPattern(
+      RegExp(r'для\s+заработк'),
+      score: 40,
+      reason: 'earnings',
+      category: _SpamCategory.job,
+    ),
+    _SpamPattern(
       RegExp(r'доход\s+от'),
       score: 40,
       reason: 'earnings',
       category: _SpamCategory.job,
     ),
     _SpamPattern(
+      RegExp('биржев$_w\\s+платформ'),
+      score: 40,
+      reason: 'trading_platform',
+      category: _SpamCategory.job,
+    ),
+    _SpamPattern(
       RegExp(
-        r'оплат[аы]?\s*[-–—:]?\s*\d+(\s*[-–—]\s*\d+)?\s*([€$₽]|eur|usd|rub|руб)',
+        r'оплат[аы]?\s*[-–—:]?\s*\d+(\s*[-–—]\s*\d+)?\s*'
+        r'([€$₽]|eur|евро|usd|rub|руб)',
       ),
       score: 35,
       reason: 'payment_rate',
@@ -73,7 +99,7 @@ final class GroupSpamDetector {
     ),
     _SpamPattern(
       RegExp(
-        r'\d+\s*[-–—]?\s*\d*\s*([€$₽]|eur|usd|rub|руб)\s*/?\s*'
+        r'\d+\s*[-–—]?\s*\d*\s*([€$₽]|eur|евро|usd|rub|руб)\s*/?\s*'
         r'(день|час|сутки|недел|ежедневно)',
       ),
       score: 45,
@@ -137,6 +163,12 @@ final class GroupSpamDetector {
       category: _SpamCategory.contact,
     ),
     _SpamPattern(
+      RegExp(r'напишите\s+мне'),
+      score: 20,
+      reason: 'dm_short',
+      category: _SpamCategory.contact,
+    ),
+    _SpamPattern(
       RegExp(r'(?:^|[^а-я0-9])в\s+лс(?:[^а-я0-9]|$)'),
       score: 20,
       reason: 'dm_short',
@@ -169,7 +201,13 @@ final class GroupSpamDetector {
       category: _SpamCategory.filler,
     ),
     _SpamPattern(
-      RegExp(r'бесплатн(ое|ый)\s+(курс\s+)?обучен'),
+      RegExp('бесплатн$_w\\s+(курс\\s+)?обучен'),
+      score: 15,
+      reason: 'free_training_ad',
+      category: _SpamCategory.filler,
+    ),
+    _SpamPattern(
+      RegExp('обуч$_w\\s+бесплатн'),
       score: 15,
       reason: 'free_training_ad',
       category: _SpamCategory.filler,

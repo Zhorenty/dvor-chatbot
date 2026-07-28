@@ -45,6 +45,25 @@ void main() {
       expect(result.reasons, contains('dm_invite'));
     });
 
+    test('flags trading assistants spam with euro weekly rates', () {
+      final result = detector.evaluate('''
+Ищу нескольких помощников в команду. Можно без опыта!
+Для заработка на биржевых платформах с бесплатным обучением
+
+Понедельник - пятница, 1-2 часа в день, от 880 евро/ неделя
+Обучим бесплатно
+
+В задачи входит выполнение инструкций на нескольких сервисах
+Напишите мне, объясню подробнее!
+''');
+
+      expect(result.isSpam, isTrue);
+      expect(result.reasons, contains('recruiting'));
+      expect(result.reasons, contains('earnings_amount'));
+      expect(result.reasons, contains('trading_platform'));
+      expect(result.reasons, contains('dm_short'));
+    });
+
     test('normalizes yo and invisible chars', () {
       final result = detector.evaluate(
         'Ищу желающих на удалённую занятость.\u200B Пишите в лс.',
