@@ -17,7 +17,8 @@ Project guidance for AI/code agents in this repository.
 - Config: `lib/src/config/app_config.dart`
 - Telegram transport: `lib/src/telegram/telegram_client.dart`
 - Handlers:
-  - `lib/src/bot/handlers/private_handlers.dart` (facade + `handle`)
+  - `lib/src/bot/handlers/private_handlers.dart` (facade + DI, ≪200 LOC)
+  - `lib/src/bot/handlers/private/private_handlers_dispatch*.part.dart` (update routing by domain)
   - `lib/src/bot/handlers/private/*.part.dart` (booking/payment/admin/onboarding/bonuses/schedule ops)
   - `lib/src/bot/handlers/group_handlers.dart`
 - Jobs: `lib/src/jobs/` (promo/broadcast jobs use persistent `job_dedupe_log`)
