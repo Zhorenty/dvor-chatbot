@@ -99,14 +99,13 @@ final class MessageFormatters {
     DateTime from,
     DateTime to, {
     String pattern = 'dd.MM.yyyy',
-    String separator = ' — ',
   }) {
     final formatter = DateFormat(pattern);
     final isOneDay = from.year == to.year && from.month == to.month && from.day == to.day;
     if (isOneDay) {
       return formatter.format(from);
     }
-    return '${formatter.format(from)}$separator${formatter.format(to)}';
+    return 'от ${formatter.format(from)} до ${formatter.format(to)}';
   }
 
   static String bookingDateLabel(
@@ -126,6 +125,10 @@ final class MessageFormatters {
     DateFormat dateOnlyFormatter,
   ) {
     if (_isOutdoorCategory(training.category)) {
+      final endsAt = training.endsAt;
+      if (endsAt != null) {
+        return outdoorDateLabel(training.startsAt, endsAt);
+      }
       return dateOnlyFormatter.format(training.startsAt);
     }
     return dateTimeFormatter.format(training.startsAt);

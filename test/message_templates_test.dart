@@ -393,6 +393,30 @@ void main() {
       expect(text, contains('📍 Где: Роза Хутор, КПП Лаура'));
     });
 
+    test('renders from-to dates for multi-day hikes in schedule', () {
+      final text = templates.hikes(<OutdoorActivityInfo>[
+        OutdoorActivityInfo(
+          type: OutdoorActivityType.hike,
+          title: 'Поход на Фишт',
+          dateFrom: DateTime(2026, 8, 2),
+          dateTo: DateTime(2026, 8, 4, 23, 59, 59),
+          location: 'Плато Фишт',
+          description: 'Трёхдневный маршрут с ночёвками',
+        ),
+        OutdoorActivityInfo(
+          type: OutdoorActivityType.hike,
+          title: 'Однодневный выход',
+          dateFrom: DateTime(2026, 8, 10),
+          dateTo: DateTime(2026, 8, 10, 23, 59, 59),
+          description: 'Дневной маршрут',
+        ),
+      ]);
+
+      expect(text, contains('🕒 от 02.08.2026 до 04.08.2026'));
+      expect(text, contains('🕒 10.08.2026'));
+      expect(text, isNot(contains('от 10.08.2026 до 10.08.2026')));
+    });
+
     test('renders full multi-line trail description in schedule list', () {
       final text = templates.trails(<OutdoorActivityInfo>[
         OutdoorActivityInfo(

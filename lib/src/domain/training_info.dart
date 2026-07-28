@@ -5,6 +5,7 @@ final class TrainingInfo {
     required this.title,
     required this.startsAt,
     required this.location,
+    this.endsAt,
     this.locationUrl,
     this.category = ActivityCategory.trainings,
     this.price,
@@ -17,6 +18,9 @@ final class TrainingInfo {
 
   final String title;
   final DateTime startsAt;
+
+  /// End of multi-day outdoor events; null for single-day trainings.
+  final DateTime? endsAt;
   final String location;
   final String? locationUrl;
   final ActivityCategory category;

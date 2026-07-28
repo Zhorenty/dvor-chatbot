@@ -2243,7 +2243,7 @@ void main() {
       final chooseActivityText = sender.messages.last.text;
       expect(chooseActivityText, contains('Выбери мероприятие для записи'));
       expect(chooseActivityText, contains('🥾 Поход: Поход на хребет'));
-      expect(chooseActivityText, contains('🕒 13.07.2026'));
+      expect(chooseActivityText, contains('🕒 от 13.07.2026 до 14.07.2026'));
       expect(chooseActivityText, isNot(contains('13.07.2026 00:00')));
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 162, 'type': 'private'},

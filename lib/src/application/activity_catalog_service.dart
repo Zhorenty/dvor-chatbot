@@ -146,6 +146,7 @@ final class ActivityCatalogService {
     return TrainingInfo(
       title: '$prefix: ${item.title}',
       startsAt: item.dateFrom,
+      endsAt: item.dateTo,
       location: (location == null || location.isEmpty) ? item.description : location,
       category: category,
       price: item.price,
@@ -165,7 +166,7 @@ final class ActivityCatalogService {
       return fromLabel;
     }
     final toLabel = '${twoDigits(to.day)}.${twoDigits(to.month)}.${to.year}';
-    return '$fromLabel — $toLabel';
+    return 'от $fromLabel до $toLabel';
   }
 
   bool _isSameDay(DateTime left, DateTime right) {
