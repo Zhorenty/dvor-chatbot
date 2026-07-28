@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/pending_payment_expiry_policy.dart';
+import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
@@ -18,17 +19,25 @@ final class SqliteBookingRepository implements BookingRepository {
   static const String _proIncludedTrainingPaymentNoteMarker = '__pro_included_training__';
 
   SqliteBookingRepository({
-    required String dbPath,
+    String? dbPath,
+    SqliteDatabaseHandle? databaseHandle,
     Duration pendingPaymentTtl = const Duration(hours: 2),
     DateTime Function()? nowProvider,
-  })  : _dbPath = dbPath,
+  })  : _dbPath = dbPath ?? databaseHandle?.path,
+        _externalHandle = databaseHandle,
         _pendingPaymentTtl = pendingPaymentTtl,
-        _nowProvider = nowProvider ?? DateTime.now;
+        _nowProvider = nowProvider ?? DateTime.now {
+    if (_dbPath == null) {
+      throw ArgumentError('Either dbPath or databaseHandle is required.');
+    }
+  }
 
-  final String _dbPath;
+  final String? _dbPath;
+  final SqliteDatabaseHandle? _externalHandle;
   final Duration _pendingPaymentTtl;
   final DateTime Function() _nowProvider;
   final PendingPaymentExpiryPolicy _pendingPaymentExpiryPolicy = const PendingPaymentExpiryPolicy();
+  SqliteDatabaseHandle? _ownedHandle;
   Database? _db;
 
   Database get _database {
@@ -41,12 +50,18 @@ final class SqliteBookingRepository implements BookingRepository {
 
   @override
   Future<void> init() async {
-    final file = File(_dbPath);
-    file.parent.createSync(recursive: true);
-    final db = sqlite3.open(_dbPath);
-    _db = db;
-    db.execute('PRAGMA journal_mode=WAL;');
-    db.execute('PRAGMA foreign_keys=ON;');
+    final external = _externalHandle;
+    if (external != null) {
+      _db = external.database;
+    } else {
+      final path = _dbPath!;
+      final file = File(path);
+      file.parent.createSync(recursive: true);
+      final handle = SqliteDatabaseHandle.open(path);
+      _ownedHandle = handle;
+      _db = handle.database;
+    }
+    final db = _database;
     db.execute('''
       CREATE TABLE IF NOT EXISTS bookings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,8 +129,11 @@ final class SqliteBookingRepository implements BookingRepository {
 
   @override
   Future<void> close() async {
-    _db?.dispose();
-    _db = null;
+    _ownedHandle?.close();
+    _ownedHandle = null;
+    if (_externalHandle == null) {
+      _db = null;
+    }
   }
 
   @override
@@ -185,12 +203,13 @@ final class SqliteBookingRepository implements BookingRepository {
         return BookingCreateResult(booking: rebound, created: false);
       }
     }
-    _assertParticipantsLimitNotExceeded(
-      training,
-      userId: userId,
-      userUsername: normalizedUsername,
-    );
     try {
+      db.execute('BEGIN IMMEDIATE;');
+      _assertParticipantsLimitNotExceeded(
+        training,
+        userId: userId,
+        userUsername: normalizedUsername,
+      );
       db.execute(
         '''
         INSERT INTO bookings (
@@ -237,8 +256,21 @@ final class SqliteBookingRepository implements BookingRepository {
       if (booking == null) {
         throw StateError('Inserted booking is missing in database.');
       }
+      db.execute('COMMIT;');
       return BookingCreateResult(booking: booking, created: true);
+    } on BookingParticipantsLimitExceededException {
+      try {
+        db.execute('ROLLBACK;');
+      } on Object {
+        // ignore
+      }
+      rethrow;
     } on SqliteException {
+      try {
+        db.execute('ROLLBACK;');
+      } on Object {
+        // ignore
+      }
       if (normalizedUsername != null) {
         _updateBookingUsername(
           userId: userId,
@@ -246,24 +278,31 @@ final class SqliteBookingRepository implements BookingRepository {
           userUsername: normalizedUsername,
         );
       }
-      final existing = _findBookingByUserAndTraining(userId, key);
-      if (existing == null) {
+      final existingAfterConflict = _findBookingByUserAndTraining(userId, key);
+      if (existingAfterConflict == null) {
         rethrow;
       }
-      if (existing.status == BookingStatus.cancelled ||
-          existing.status == BookingStatus.paymentRejected) {
+      if (existingAfterConflict.status == BookingStatus.cancelled ||
+          existingAfterConflict.status == BookingStatus.paymentRejected) {
         _assertParticipantsLimitNotExceeded(
           training,
           userId: userId,
           userUsername: normalizedUsername,
         );
         final reactivated = await _reactivateBookingAsPendingPayment(
-          bookingId: existing.id,
+          bookingId: existingAfterConflict.id,
           userUsername: normalizedUsername,
         );
         return BookingCreateResult(booking: reactivated, created: true);
       }
-      return BookingCreateResult(booking: existing, created: false);
+      return BookingCreateResult(booking: existingAfterConflict, created: false);
+    } on Object {
+      try {
+        db.execute('ROLLBACK;');
+      } on Object {
+        // ignore
+      }
+      rethrow;
     }
   }
 
@@ -299,42 +338,42 @@ final class SqliteBookingRepository implements BookingRepository {
       normalizedParticipants.add(normalized);
     }
 
-    final existingManagedGuests = _countActiveManagedGuestBookings(
-      managerUserId: managerUserId,
-      trainingKey: key,
-    );
-    if (existingManagedGuests + normalizedParticipants.length > maxManagedGuestsPerEvent) {
-      throw const BookingManagerLimitExceededException(
-        'Manager participant limit reached for selected training.',
-      );
-    }
-
-    for (final draft in normalizedParticipants) {
-      final conflict = _findActiveParticipantConflict(
-        trainingKey: key,
-        draft: draft,
-        managerUserId: managerUserId,
-      );
-      if (conflict != null) {
-        throw BookingParticipantConflictException(
-          'Participant already booked: ${draft.displayLabel}',
-        );
-      }
-    }
-
-    _assertParticipantsLimitAllowsAdditional(
-      training,
-      additionalCount: normalizedParticipants.length,
-      userId: managerUserId,
-      userUsername: normalizedManagerUsername,
-    );
-
     final paymentGroupId = _newPaymentGroupId();
     final nowIso = _nowProvider().toUtc().toIso8601String();
     final db = _database;
     final created = <TrainingBooking>[];
     try {
       db.execute('BEGIN IMMEDIATE;');
+      final existingManagedGuests = _countActiveManagedGuestBookings(
+        managerUserId: managerUserId,
+        trainingKey: key,
+      );
+      if (existingManagedGuests + normalizedParticipants.length > maxManagedGuestsPerEvent) {
+        throw const BookingManagerLimitExceededException(
+          'Manager participant limit reached for selected training.',
+        );
+      }
+
+      for (final draft in normalizedParticipants) {
+        final conflict = _findActiveParticipantConflict(
+          trainingKey: key,
+          draft: draft,
+          managerUserId: managerUserId,
+        );
+        if (conflict != null) {
+          throw BookingParticipantConflictException(
+            'Participant already booked: ${draft.displayLabel}',
+          );
+        }
+      }
+
+      _assertParticipantsLimitAllowsAdditional(
+        training,
+        additionalCount: normalizedParticipants.length,
+        userId: managerUserId,
+        userUsername: normalizedManagerUsername,
+      );
+
       for (final draft in normalizedParticipants) {
         final participantUserId = _resolveParticipantUserId(
           draft: draft,
@@ -401,7 +440,11 @@ final class SqliteBookingRepository implements BookingRepository {
       }
       db.execute('COMMIT;');
     } on Object {
-      db.execute('ROLLBACK;');
+      try {
+        db.execute('ROLLBACK;');
+      } on Object {
+        // ignore
+      }
       rethrow;
     }
 

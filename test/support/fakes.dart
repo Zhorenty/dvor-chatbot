@@ -804,6 +804,9 @@ TrainingBooking fakeBooking({
 }
 
 final class FakeSender implements MessageSender {
+  FakeSender({this.sendDelay});
+
+  final Duration? sendDelay;
   final List<SentMessage> messages = <SentMessage>[];
   final List<CopiedMessage> copiedMessages = <CopiedMessage>[];
   final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
@@ -821,6 +824,10 @@ final class FakeSender implements MessageSender {
     Map<String, Object?>? replyMarkup,
     String? parseMode,
   }) async {
+    final delay = sendDelay;
+    if (delay != null) {
+      await Future<void>.delayed(delay);
+    }
     final failure = sendMessageFailuresByChatId[chatId];
     if (failure != null) {
       throw failure;

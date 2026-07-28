@@ -1,0 +1,2132 @@
+part of '../message_templates.dart';
+
+extension MessageTemplatesContent on MessageTemplates {
+  String trainings(
+    List<TrainingInfo> items, {
+    List<TrainerInfo> trainers = const <TrainerInfo>[],
+  }) {
+    return _scheduleTemplates.trainings(items, trainers: trainers);
+  }
+
+  String hikes(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.hikes(items);
+  }
+
+  String yoga(
+    List<TrainingInfo> items, {
+    List<TrainerInfo> trainers = const <TrainerInfo>[],
+  }) {
+    return _scheduleTemplates.yoga(items, trainers: trainers);
+  }
+
+  String trails(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.trails(items);
+  }
+
+  String hikesEquipment(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.hikesEquipment(items);
+  }
+
+  String trailsEquipment(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.trailsEquipment(items);
+  }
+
+  String hikesItinerary(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.hikesItinerary(items);
+  }
+
+  String trailsItinerary(List<OutdoorActivityInfo> items) {
+    return _scheduleTemplates.trailsItinerary(items);
+  }
+
+  String outdoorPostPaymentRecap(OutdoorActivityInfo item) {
+    return _scheduleTemplates.outdoorPostPaymentRecap(item);
+  }
+
+  String chooseOutdoorEventForDetails(ActivityCategory category) {
+    return _scheduleTemplates.chooseOutdoorEventForDetails(category);
+  }
+
+  String chooseOutdoorDetailType(OutdoorActivityInfo item) {
+    return _scheduleTemplates.chooseOutdoorDetailType(item);
+  }
+
+  String unknownOutdoorSelection() {
+    return _scheduleTemplates.unknownOutdoorSelection();
+  }
+
+  String outdoorEquipmentDetails(OutdoorActivityInfo item) {
+    return _scheduleTemplates.outdoorEquipmentDetails(item);
+  }
+
+  String outdoorItineraryDetails(OutdoorActivityInfo item) {
+    return _scheduleTemplates.outdoorItineraryDetails(item);
+  }
+
+  String chooseScheduleCategory() {
+    return _scheduleTemplates.chooseScheduleCategory();
+  }
+
+  String coachingStaff(List<TrainerInfo> trainers) {
+    return _scheduleTemplates.coachingStaff(trainers);
+  }
+
+  String chooseTrainerProfile(List<TrainerInfo> trainers) {
+    return _scheduleTemplates.chooseTrainerProfile(trainers);
+  }
+
+  String trainerProfile(TrainerInfo trainer) {
+    return _scheduleTemplates.trainerProfile(trainer);
+  }
+
+  String unknownTrainerSelection() {
+    return _scheduleTemplates.unknownTrainerSelection();
+  }
+
+  String chooseBookingCategory() {
+    return 'Выбери категорию для записи 👇';
+  }
+
+  String unknownCategory() {
+    return 'Не понял категорию.\n'
+        'Нажми одну из кнопок ниже (Тренировки / Йога / Походы / Трейлы) 👇';
+  }
+
+  String chooseParticipantsCategory() {
+    return '👥 <b>Список записавшихся</b>\n'
+        'Выбери категорию ниже.';
+  }
+
+  String choosePaymentsQueueCategory() {
+    return '🧾 <b>Очередь заявок на оплату</b>\n'
+        'Выбери категорию ниже.\n'
+        'После проверки каждой заявки можно сразу перейти к следующей.';
+  }
+
+  String chooseBookingManagementAction() {
+    return '🛠 <b>Управление записями</b>\n'
+        'Выбери действие 👇';
+  }
+
+  String chooseBookingListSegment() {
+    return '📚 <b>Какой список открыть?</b>\n'
+        '«Актуальные» — текущие записи, «Прошедшие» — завершённые и отменённые.';
+  }
+
+  String chooseBookingManagementCategory() {
+    return '🗂 <b>Категория мероприятий</b>\n'
+        'Выбери категорию для управления 👇';
+  }
+
+  String chooseAdminBookingFromList(
+    List<TrainingBooking> bookings, {
+    required bool archived,
+    ActivityCategory? category,
+    required int page,
+    required int totalPages,
+    required int totalCount,
+  }) {
+    if (bookings.isEmpty) {
+      final segmentLabel = archived ? 'Прошедшие' : 'Актуальные';
+      final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
+      return '📭 <b>Список пуст для выбранных фильтров</b>\n'
+          'Сегмент: <b>${_escapeHtml(segmentLabel)}</b>\n'
+          'Категория: <b>${_escapeHtml(categoryLabel)}</b>';
+    }
+    final segmentLabel = archived ? 'Прошедшие' : 'Актуальные';
+    final categoryLabel = category == null ? 'не выбрана' : _categoryLabel(category);
+    final dateFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>[
+      '🧾 <b>Список записей для управления</b>',
+      'Фильтр: <b>${_escapeHtml(segmentLabel)} • ${_escapeHtml(categoryLabel)}</b>',
+      'Страница <b>$page/$totalPages</b> • всего записей: <b>$totalCount</b>',
+      '<b>Записи на текущей странице:</b>',
+    ];
+    for (var index = 0; index < bookings.length; index++) {
+      final booking = bookings[index];
+      lines.addAll(<String>[
+        '',
+        '🧩 <b>${index + 1}. #${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>',
+        ..._adminBookingIdentityLines(booking),
+        '🕒 ${dateFormatter.format(booking.startsAt)}',
+        '💳 ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
+      ]);
+    }
+    lines.addAll(<String>[
+      '',
+      'Выбери запись кнопкой ниже.',
+      'Чтобы сменить фильтры, нажми «${MessageCopy.buttonBack}».',
+    ]);
+    return lines.join('\n');
+  }
+
+  String adminBookingActions(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final identity = _adminBookingIdentityLines(booking).join('\n');
+    return '🧩 <b>Запись #${booking.id}</b>\n'
+        '$identity\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Дата: ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n\n'
+        'Выбери действие 👇';
+  }
+
+  String chooseAdminBookingEditField(TrainingBooking booking) {
+    return '✏️ <b>Что изменить в записи #${booking.id}?</b>';
+  }
+
+  String chooseAdminBookingPaymentStatus(TrainingBooking booking) {
+    return '💳 <b>Новый статус оплаты</b>\n'
+        'Запись #${booking.id}';
+  }
+
+  String adminBookingAskUsername(TrainingBooking booking) {
+    return '👤 <b>Username пользователя</b>\n'
+        'Отправь username для записи #${booking.id} '
+        '(можно с @ или без).';
+  }
+
+  String invalidUsernameInput() {
+    return 'Не смог распознать username.\n'
+        'Нужен формат @username или username (без пробелов).';
+  }
+
+  String adminBookingUsernameUpdated(TrainingBooking booking) {
+    return '✅ <b>Готово</b>\n'
+        'Пользователь для записи #${booking.id}: ${_escapeHtml(_userTag(booking))}';
+  }
+
+  String adminBookingEventUpdated(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '✅ <b>Событие для записи #${booking.id} обновлено</b>\n'
+        '${_escapeHtml(booking.trainingTitle)}\n'
+        '${formatter.format(booking.startsAt)}';
+  }
+
+  String adminBookingPaymentStatusUpdated(TrainingBooking booking) {
+    return '✅ <b>Статус записи #${booking.id} обновлен</b>\n'
+        '${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
+  }
+
+  String adminBookingDeleteConfirm(TrainingBooking booking) {
+    return '⚠️ <b>Удалить запись #${booking.id}?</b>\n'
+        'Запись перейдет в архив со статусом «Отменена».';
+  }
+
+  String adminBookingDeleted(TrainingBooking booking) {
+    return '✅ <b>Запись #${booking.id} переведена в архив</b>';
+  }
+
+  String adminBookingDeletedForUser(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Твою запись #${booking.id} отменил администратор ❌\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Если есть вопросы, напиши в поддержку: @dvor_support';
+  }
+
+  String adminBookingRestoredForUser(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Администратор восстановил твою запись #${booking.id} ✅\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
+  }
+
+  String adminBookingPaymentStatusUpdatedForUser(TrainingBooking booking) {
+    return 'Администратор обновил статус твоей записи #${booking.id}.\n'
+        'Новый статус: ${_statusLabel(booking.status, booking: booking)}';
+  }
+
+  String adminBookingUsernameUpdatedForUser(TrainingBooking booking) {
+    return 'Администратор обновил данные пользователя в записи #${booking.id}.\n'
+        'Теперь запись привязана к: ${_userTag(booking)} (${booking.userId}).';
+  }
+
+  String adminBookingEventUpdatedForUser(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Администратор изменил мероприятие для твоей записи #${booking.id}.\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
+  }
+
+  String adminBookingCreatedForUser(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Администратор создал для тебя запись #${booking.id} ✅\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
+  }
+
+  String adminBookingRestored(TrainingBooking booking) {
+    return '✅ <b>Запись #${booking.id} восстановлена</b>';
+  }
+
+  String adminBookingRestoreNotAllowed(TrainingBooking booking) {
+    return '⛔️ <b>Запись #${booking.id} нельзя восстановить</b>\n'
+        'Мероприятие уже прошло.';
+  }
+
+  String chooseCreateBookingCategory() {
+    return '➕ <b>Создание записи</b>\n'
+        'Выбери категорию 👇';
+  }
+
+  String chooseCreateBookingEvent(List<TrainingInfo> items) {
+    if (items.isEmpty) {
+      return 'В выбранной категории нет доступных мероприятий для записи.';
+    }
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>['📌 <b>Выбери мероприятие для новой записи</b>'];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      lines.add(
+          '${index + 1}. <b>${_escapeHtml(item.title)}</b> — ${formatter.format(item.startsAt)} '
+          '(${_escapeHtml(item.location)}, участники: ${_participantsLimitLabel(item.participantsLimit)})');
+    }
+    return lines.join('\n');
+  }
+
+  String createBookingAskUsername() {
+    return '👤 <b>Username для новой записи</b>\n'
+        'Введи username пользователя (можно с @ или без).\n'
+        'Чтобы записать несколько человек сразу, перечисли username через запятую: '
+        '<code>user1, user2, user3</code>';
+  }
+
+  String chooseCreateBookingPaymentStatus() {
+    return '💳 <b>Стартовый статус оплаты</b>\n'
+        'Выбери вариант 👇';
+  }
+
+  String createBookingPreview({
+    required TrainingInfo training,
+    required List<String> usernames,
+    required BookingStatus status,
+  }) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final usersLine = usernames.length == 1
+        ? '@${_escapeHtml(usernames.first)}'
+        : usernames.map((u) => '@${_escapeHtml(u)}').join(', ');
+    final header = usernames.length == 1
+        ? '🔍 <b>Проверь данные новой записи</b>'
+        : '🔍 <b>Проверь данные новых записей (${usernames.length} чел.)</b>';
+    return '$header\n'
+        'Пользователи: $usersLine\n'
+        'Событие: ${_escapeHtml(training.title)}\n'
+        'Дата: ${formatter.format(training.startsAt)}\n'
+        'Локация: ${_escapeHtml(training.location)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(status))}';
+  }
+
+  String adminBookingsCreatedBatch({
+    required List<TrainingBooking> created,
+    required List<String> conflicts,
+  }) {
+    final buffer = StringBuffer();
+    if (created.isNotEmpty) {
+      buffer.write('✅ <b>Записи созданы (${created.length} чел.)</b>\n');
+      for (final b in created) {
+        buffer.write('#${b.id} — ${_escapeHtml(_userTag(b))}\n');
+      }
+    }
+    if (conflicts.isNotEmpty) {
+      if (buffer.isNotEmpty) buffer.write('\n');
+      buffer.write('⚠️ <b>Конфликт (уже записаны): ${conflicts.length} чел.</b>\n');
+      for (final u in conflicts) {
+        buffer.write('@${_escapeHtml(u)}\n');
+      }
+    }
+    return buffer.toString().trimRight();
+  }
+
+  String adminBookingCreated(TrainingBooking booking) {
+    return '✅ <b>Запись #${booking.id} создана</b>';
+  }
+
+  String askAdminClientNotificationPreference({
+    required TrainingBooking booking,
+    required String actionLabel,
+  }) {
+    return '📣 <b>Уведомить клиента?</b>\n'
+        'Запись #${booking.id}: $actionLabel';
+  }
+
+  String clubInfoPrivate() {
+    return _groupTemplates.clubInfoPrivate();
+  }
+
+  String groupFallback({required String? botUsername}) {
+    return _groupTemplates.groupFallback(botUsername: botUsername);
+  }
+
+  String groupWelcome({
+    required String? username,
+    required int userId,
+    required String? firstName,
+  }) {
+    return _groupTemplates.groupWelcome(
+      username: username,
+      userId: userId,
+      firstName: firstName,
+    );
+  }
+
+  String groupTrainingTodayPromo({
+    required TrainingInfo training,
+    bool isToday = true,
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final title = isToday ? 'Тренировка уже сегодня!' : 'Тренировка уже завтра!';
+    final cta = isToday
+        ? 'Хочешь попасть на занятие сегодня? Записывайся 👇'
+        : 'Планируй заранее: записывайся на тренировку 👇';
+    final notes = training.notes?.trim();
+    return '📣 <b>$title</b>\n'
+        '<b>${_escapeHtml(training.title)}</b>\n'
+        '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_trainingLocationLabel(training)}\n'
+        '${notes == null || notes.isEmpty ? '' : '📝 ${_escapeHtml(notes)}\n'}\n'
+        '$cta\n'
+        '${_groupBookingCta()}';
+  }
+
+  String groupScheduleBroadcast({
+    required List<TrainingInfo> trainings,
+    required int weekday,
+  }) {
+    return _groupTemplates.groupScheduleBroadcast(
+      trainings: trainings,
+      weekday: weekday,
+    );
+  }
+
+  String groupReferralBroadcast() {
+    return _groupTemplates.groupReferralBroadcast();
+  }
+
+  String scheduleRefreshDone() {
+    return _scheduleTemplates.scheduleRefreshDone();
+  }
+
+  String scheduleRefreshFailed() {
+    return _scheduleTemplates.scheduleRefreshFailed();
+  }
+
+  String scheduleRefreshForbidden() {
+    return 'Эта кнопка только для админов 🔒';
+  }
+
+  String scheduleDocumentLink() {
+    return _scheduleTemplates.scheduleDocumentLink();
+  }
+
+  String noUpcomingForBooking() {
+    return _scheduleTemplates.noUpcomingForBooking();
+  }
+
+  String bookingCreated(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Отлично, записал тебя! ✅\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
+        'Номер записи: ${booking.id}\n'
+        '${_escapeHtml(_bookingTitleLine(booking))}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
+        '${paymentDetailsSent(booking)}';
+  }
+
+  String bookingCreatedWithoutPayment(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Отлично, записал тебя! ✅\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
+        'Номер записи: ${booking.id}\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
+        'Это бесплатная тренировка, подтверждение оплаты не нужно.';
+  }
+
+  String bookingCreatedForWhitelistedTrainer(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Готово, ты записан на тренировку ✅\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
+        'Номер записи: ${booking.id}\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
+        'Ты в списке тренеров: подтверждение оплаты не требуется, это только информирование о записи.';
+  }
+
+  String bookingAlreadyExists(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Ты уже записан на эту тренировку 👌\n'
+        'Номер записи: ${booking.id}\n'
+        'Текущий статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
+  }
+
+  String bookingParticipantsLimitExceeded() {
+    return 'Не удалось записаться: свободных мест больше нет ⛔️\n'
+        'Выбери другое мероприятие из списка ниже.';
+  }
+
+  String groupTrainingLowSpots({
+    required TrainingInfo training,
+    required int freeSpots,
+    required int participantsLimit,
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '🔥 ${_groupLowSpotsTitle(training.category)}\n'
+        '${training.title}\n'
+        '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_trainingLocationLabel(training)}\n'
+        '👥 Свободных мест: $freeSpots из $participantsLimit\n\n'
+        '${_groupBookingCta()}';
+  }
+
+  String groupTrainingNoSpotsLeft({
+    required TrainingInfo training,
+    required int participantsLimit,
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '⛔️ ${_groupNoSpotsTitle(training.category)}\n'
+        'Тренировка: ${training.title}\n'
+        '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_trainingLocationLabel(training)}\n'
+        '👥 Участников: $participantsLimit/$participantsLimit\n\n'
+        'Следи за расписанием - новые слоты и тренировки появляются регулярно.\n'
+        '${_groupBookingCta()}';
+  }
+
+  String paymentSubmitted(TrainingBooking booking) {
+    return 'Супер, файл с подтверждением оплаты отправил администратору ✅\n'
+        'Номер записи: ${booking.id}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
+        'Следующий шаг: дождись результата модерации, бот сообщит автоматически.';
+  }
+
+  String chooseOutdoorPaymentType() {
+    return 'Выбери тип оплаты и затем нажми «${MessageCopy.buttonSubmitPayment}»:\n'
+        '• «${MessageCopy.buttonPayPartially}» — предоплата <b>50%</b>\n'
+        '• «${MessageCopy.buttonPayFully}» — полная сумма 👇';
+  }
+
+  String paymentSubmittedAdminNotification(
+    TrainingBooking booking, {
+    List<TrainingBooking> groupBookings = const <TrainingBooking>[],
+  }) {
+    final organizer = _userTagById(booking.managerUserId, username: booking.userUsername);
+    final members = groupBookings.isNotEmpty ? groupBookings : <TrainingBooking>[booking];
+    final buffer = StringBuffer()
+      ..writeln('💸 <b>Новое подтверждение оплаты</b>')
+      ..writeln('')
+      ..writeln('Пришла новая заявка на проверку оплаты.')
+      ..writeln('Мероприятие: ${_escapeHtml(booking.trainingTitle)}')
+      ..writeln('Организатор: ${_escapeHtml(organizer)} (${booking.managerUserId})');
+    if (members.length > 1) {
+      final total = members.fold<int>(0, (sum, item) => sum + (item.trainingPrice ?? 0));
+      final unit = booking.trainingPrice ?? 0;
+      buffer
+        ..writeln('Участников: <b>${members.length}</b>')
+        ..writeln('<b>Участники:</b>');
+      for (final member in members) {
+        buffer.writeln('• #${member.id} ${_escapeHtml(member.participantDisplayLabel)}');
+      }
+      buffer
+        ..writeln(
+          'К оплате: <b>${members.length} × ${_trainingPriceLabel(unit)} = '
+          '${_trainingPriceLabel(total)}</b>',
+        )
+        ..writeln('Пакетная оплата: подтверждение закроет все записи группы.');
+    } else {
+      buffer.writeln(_adminBookingIdentityLines(booking).join('\n'));
+    }
+    buffer.writeln('Нажми кнопку ниже, чтобы открыть очередь заявок 👇');
+    return buffer.toString().trimRight();
+  }
+
+  String starterBonusApplied(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Готово! Бесплатная тренировка активирована 🎁\n'
+        'Запись: #${booking.id}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
+  }
+
+  String starterBonusUnavailable() {
+    return 'Стартовый бонус уже недоступен. Продолжай запись по стандартному сценарию оплаты 💪';
+  }
+
+  String promoCodeEntryPrompt() {
+    return 'Введи текст промокода 🎟\n'
+        'Отправь его следующим сообщением или нажми «${MessageCopy.buttonBack}», чтобы отменить.';
+  }
+
+  String promoCodeUnavailable() {
+    return 'Промокод сейчас недоступен для этой записи.';
+  }
+
+  String promoCodeInvalid() {
+    return 'Такого промокода не нашел или он больше не действует 🤔\n'
+        'Проверь текст и попробуй еще раз, либо продолжи оплату без промокода.';
+  }
+
+  String promoCodeNotApplicableToCategory() {
+    return 'Этот промокод не действует для выбранного типа мероприятий.\n'
+        'Проверь условия промокода или продолжи оплату без него.';
+  }
+
+  String promoCodeAlreadyUsed() {
+    return 'Этот промокод уже был использован и больше не действует 🙅\n'
+        'Попробуй другой промокод или продолжи оплату без него.';
+  }
+
+  String promoCodeApplied(TrainingBooking booking, {required int originalPrice}) {
+    final percent = booking.promoDiscountPercent ?? 0;
+    final newPrice = booking.trainingPrice ?? 0;
+    return 'Промокод <b>${_escapeHtml(booking.promoCode ?? '')}</b> применен ✅\n'
+        'Скидка: −$percent%\n'
+        'Было: ${_trainingPriceLabel(originalPrice)}\n'
+        'К оплате: <b>${_trainingPriceLabel(newPrice)}</b>\n\n'
+        '${paymentDetailsSent(booking)}';
+  }
+
+  String promoCodeAppliedFree(TrainingBooking booking, {required int originalPrice}) {
+    return 'Промокод <b>${_escapeHtml(booking.promoCode ?? '')}</b> применен ✅\n'
+        'Скидка: −100%\n'
+        'Было: ${_trainingPriceLabel(originalPrice)}\n'
+        'Запись #${booking.id} бесплатна, подтверждение оплаты не нужно 🎉';
+  }
+
+  String everyFifthBonusApplied(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Готово! Тренировка по бонусу «каждая 5-я бесплатно» активирована 🎉\n'
+        'Запись: #${booking.id}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
+  }
+
+  String referralBonusApplied(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Готово! Реферальная бесплатная тренировка активирована 👥\n'
+        'Запись: #${booking.id}\n'
+        'Тренировка: ${booking.trainingTitle}\n'
+        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
+  }
+
+  String everyFifthBonusUnlockedUser({
+    required int completedTrainingsCount,
+    required int availableRewardsCount,
+  }) {
+    return '🎁 Отличная работа! Ты завершил(а) $completedTrainingsCount оплаченных тренировок.\n'
+        'Новая бесплатная тренировка по правилу «каждая 5-я» уже доступна.\n'
+        'Сейчас доступно бесплатных: $availableRewardsCount.';
+  }
+
+  String everyFifthBonusUnlockedAdmin({
+    required int userId,
+    required String? username,
+    required int completedTrainingsCount,
+    required int availableRewardsCount,
+  }) {
+    return '🎁 <b>Новая бесплатная тренировка (каждая 5-я)</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(userId, username: username))} ($userId)\n'
+        'Оплаченных и прошедших тренировок: <b>$completedTrainingsCount</b>\n'
+        'Доступно бесплатных тренировок: <b>$availableRewardsCount</b>';
+  }
+
+  String everyFifthBonusAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '🎁 <b>Бесплатная запись по правилу «каждая 5-я»</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Когда: ${formatter.format(booking.startsAt)}';
+  }
+
+  String referralBonusAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '👥 <b>Бесплатная запись по реферальной программе</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Когда: ${formatter.format(booking.startsAt)}';
+  }
+
+  String starterBonusExpiryReminder({required DateTime expiresAt}) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '⏳ Напоминание: бесплатная стартовая тренировка сгорит через 1 день.\n'
+        'Используй ее до ${formatter.format(expiresAt)}.';
+  }
+
+  String starterBonusAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '🎁 <b>Стартовая бесплатная запись</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Когда: ${formatter.format(booking.startsAt)}\n'
+        'Формат: бесплатная тренировка за старт';
+  }
+
+  String promoCodeAdminNotification(TrainingBooking booking) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '🎟 <b>Применен промокод</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Когда: ${formatter.format(booking.startsAt)}\n'
+        'Промокод: ${_escapeHtml(booking.promoCode ?? '')} (−${booking.promoDiscountPercent ?? 0}%)\n'
+        'Сумма к оплате: ${_trainingPriceLabel(booking.trainingPrice)}';
+  }
+
+  String noPendingPayment() {
+    return 'Не нашел активной записи со статусом "Ожидает оплату" 🤔\n'
+        'Проверь «${MessageCopy.buttonProfile}» или создай новую запись.\n'
+        'Если запись уже отменилась по таймеру — оформи её заново.';
+  }
+
+  String choosePendingPaymentBooking(List<TrainingBooking> bookings) {
+    return 'У тебя несколько записей, ожидающих оплату 💸\n'
+        'Выбери, по какой отправить подтверждение 👇';
+  }
+
+  String partialPaidRemainderOffline(TrainingBooking booking) {
+    final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
+    return 'Предоплату по записи #${booking.id} уже зафиксировали 🟡\n'
+        'Остаток вносится офлайн $outdoorFinalPaymentAfter — через бота доплата не нужна.\n'
+        'Если есть вопросы: @dvor_support.';
+  }
+
+  String profileOverview({
+    required int totalBookings,
+    required int activeBookings,
+    required int visitedBookings,
+    required int cancelledBookings,
+    required int completedTrainingsCount,
+    required int availableEveryFifthRewards,
+    required int successfulReferralsCount,
+    required int availableReferralRewards,
+    required bool starterBonusAvailable,
+    required MembershipLevel membershipLevel,
+    DateTime? subscriptionActiveUntil,
+    int? subscriptionRemainingProTrainings,
+    String? subscriptionRequestStatusLine,
+    required int subscriptionTotalApprovedCount,
+    DateTime? subscriptionCurrentPeriodStart,
+    DateTime? now,
+  }) {
+    final progressToNextFree = completedTrainingsCount % 4;
+    final trainingsLeftForNextFree = progressToNextFree == 0 ? 4 : 4 - progressToNextFree;
+    final rewardsHint = availableEveryFifthRewards > 0
+        ? '🎁 Бесплатных («каждая 5-я»): <b>$availableEveryFifthRewards</b>'
+        : '🎯 До бесплатной («каждая 5-я»): <b>$trainingsLeftForNextFree</b>';
+    final starterHint = starterBonusAvailable ? 'доступна' : 'недоступна';
+    final referralHint = availableReferralRewards > 0
+        ? 'реферальных бесплатных: <b>$availableReferralRewards</b>'
+        : 'успешных рефералов: <b>$successfulReferralsCount</b>';
+    // TODO(subscription): вернуть статус абонемента в профиле.
+    // final subscriptionHint = membershipLevel == MembershipLevel.pro
+    //     ? 'PRO${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
+    //     : 'Normal';
+    // final remainingProTrainingsText =
+    //     membershipLevel == MembershipLevel.pro && subscriptionRemainingProTrainings != null
+    //         ? ' • осталось тренировок: <b>${subscriptionRemainingProTrainings.clamp(0, 8)}/8</b>'
+    //         : '';
+    // final requestStatusText =
+    //     subscriptionRequestStatusLine == null ? '' : '\n• Заявка: $subscriptionRequestStatusLine';
+    return '👤 <b>Профиль DVOR</b>\n\n'
+        // TODO(subscription): вернуть строку «💎 Абонемент: …» в профиле.
+        // '💎 Абонемент: <b>$subscriptionHint</b>$remainingProTrainingsText'
+        // '$requestStatusText\n\n'
+        '📊 Записи: всего <b>$totalBookings</b> • '
+        'актуальные <b>$activeBookings</b> • '
+        'посещенные <b>$visitedBookings</b> • '
+        'отмененные <b>$cancelledBookings</b>\n\n'
+        '🏋️ Лояльность: $rewardsHint\n'
+        '• Стартовая бесплатная: $starterHint\n'
+        '• Рефералка: $referralHint\n\n'
+        // TODO(subscription): вернуть «💎 Абонемент» в подсказку «Дальше».
+        // 'Дальше: «${MessageCopy.buttonProfileBookings}», '
+        // '«${MessageCopy.buttonSubscription}» или «${MessageCopy.buttonReferralProgram}».'
+        'Дальше: «${MessageCopy.buttonProfileBookings}» '
+        'или «${MessageCopy.buttonReferralProgram}».';
+  }
+
+  String referralProgramOverview({
+    required int userId,
+    required int successfulReferralsCount,
+    required int availableReferralRewards,
+  }) {
+    final link = _botReferralLink(userId);
+    final linkLine = link == null
+        ? 'Ссылка недоступна: бот пока не смог определить username.'
+        : '<code>$link</code>';
+    return '👥 <b>Реферальная программа DVOR</b>\n'
+        '1) Пригласи друга по своей ссылке.\n'
+        '2) Друг должен зайти в бота именно по этой ссылке.\n'
+        '3) После того как друг успешно пройдет <b>первую платную тренировку</b>, '
+        'тебе начислится 1 бесплатная тренировка.\n\n'
+        'Твоя реферальная ссылка:\n'
+        '$linkLine\n\n'
+        '📊 <b>Твой прогресс</b>\n'
+        '• Успешных платных рефералов: <b>$successfulReferralsCount</b>\n'
+        '• Доступно бесплатных по рефералке: <b>$availableReferralRewards</b>\n\n'
+        'Чтобы использовать бесплатную тренировку, нажми «${MessageCopy.buttonBookTraining}» '
+        'и при подтверждении записи выбери бонусную кнопку, если она доступна.';
+  }
+
+  String subscriptionOverview({
+    required MembershipLevel membershipLevel,
+    DateTime? activeUntil,
+    int? remainingProTrainings,
+  }) {
+    final untilLabel =
+        activeUntil == null ? null : DateFormat('dd.MM.yyyy').format(activeUntil.toLocal());
+    final statusLabel = membershipLevel == MembershipLevel.pro
+        ? '<b>PRO</b>${untilLabel == null ? '' : ' до <b>$untilLabel</b>'}'
+        : '<b>Normal</b>';
+    final lines = <String>[
+      '💎 <b>Абонемент DVOR PRO</b>',
+      '🚀 Твой статус: $statusLabel',
+      '💸 Стоимость: <b>3990 ₽ / месяц</b>',
+      '',
+      '🔥 <b>Что ты получаешь в PRO на 1 месяц:</b>',
+      '1) 🏋️ 8 бесплатных тренировок',
+      '2) 🤝 Доступ в закрытую DVOR PRO-группу',
+      '3) 🧪 Разбор медицинских анализов с рекомендациями',
+      '4) 🎟 Скидка 10-25% на мероприятия DVOR',
+      '5) 🎯 Одна индивидуальная тренировка с тренером',
+      '6) 📈 Личный кабинет в TrainingPeaks',
+    ];
+    if (membershipLevel == MembershipLevel.pro) {
+      lines.addAll(<String>[
+        '',
+        if (remainingProTrainings != null)
+          '🏋️ <b>Осталось тренировок в текущем PRO:</b> <b>${remainingProTrainings.clamp(0, 8)}/8</b>',
+        '🔄 <b>Продление доступно уже сейчас:</b> нажми «${MessageCopy.buttonRenewSubscription}» и отправь чек.',
+        'После подтверждения продлим абонемент еще на 1 месяц ✅',
+      ]);
+    } else {
+      lines.addAll(<String>[
+        '',
+        'Нажми «${MessageCopy.buttonSubscribeApply}», чтобы оформить абонемент.',
+      ]);
+    }
+    return lines.join('\n');
+  }
+
+  String subscriptionPaymentInstructions() {
+    return '💳 <b>Оформление абонемента PRO</b>\n'
+        'Стоимость: <b>3990 ₽</b>\n'
+        'Срок: 1 месяц.\n\n'
+        'Реквизиты для оплаты:\n'
+        '• Получатель: Денис Р.\n'
+        '• Банк: 🟦 OZON БАНК 🟦\n'
+        '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи <b>3990 ₽</b>.\n\n'
+        'После оплаты отправь в этот чат файл с подтверждением (документ/фото чека).';
+  }
+
+  String subscriptionPaymentProofRequired() {
+    return 'Чтобы отправить заявку на абонемент:\n'
+        '1) Нажми «${MessageCopy.buttonSubscribeApply}».\n'
+        '2) Пришли файл с подтверждением оплаты (документ/фото).\n'
+        '3) Дождись проверки администратором.';
+  }
+
+  String subscriptionPaymentSubmitted() {
+    return '✅ Заявка на абонемент отправлена на проверку.\n'
+        'Как только админ подтвердит оплату, статус в профиле обновится на PRO.';
+  }
+
+  String subscriptionAlreadyPending() {
+    return 'ℹ️ Заявка на абонемент уже на проверке.\n'
+        'Ожидай подтверждения от администратора.';
+  }
+
+  String subscriptionAlreadyActive({DateTime? activeUntil}) {
+    final until = activeUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(activeUntil)}';
+    return '✅ У тебя уже активен абонемент PRO$until.';
+  }
+
+  String chooseAdminSubscriptionsAction() {
+    return subscriptionFilterPrompt();
+  }
+
+  String chooseAdminToolsAction() {
+    return '🧰 <b>Инструменты</b>\n'
+        'Синхронизация, сводки, абонементы и клиентское меню 👇';
+  }
+
+  String adminClientMenuOpened() {
+    return '👤 <b>Клиентское меню</b>\n'
+        'Можно пользоваться ботом как обычный пользователь.\n'
+        'Вернуться: «${MessageCopy.buttonAdminMenu}» или «${MessageCopy.buttonMainMenu}».';
+  }
+
+  String subscriptionsList(List<SubscriptionRequest> items, {required DateTime now}) {
+    final _ = now;
+    if (items.isEmpty) {
+      return '📋 <b>Список абонементов</b>\n'
+          'По выбранному фильтру ничего не найдено.';
+    }
+    final formatter = DateFormat('dd.MM.yyyy');
+    final lines = <String>[
+      '📋 <b>Список абонементов</b>',
+      'Всего: <b>${items.length}</b>',
+    ];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final until = item.activeUntil;
+      final untilLabel = until == null ? '—' : formatter.format(until);
+      final statusLabel = switch (item.status) {
+        SubscriptionRequestStatus.active => 'PRO активен',
+        SubscriptionRequestStatus.paymentSubmitted => 'На проверке',
+        SubscriptionRequestStatus.cancelled => 'Отменён',
+        SubscriptionRequestStatus.rejected => 'Отклонён',
+      };
+      lines.add(
+        '${index + 1}. ${_escapeHtml(_userTagById(item.userId, username: item.userUsername))} '
+        '(${item.userId}) — <b>$statusLabel</b>, до <b>$untilLabel</b>',
+      );
+    }
+    return lines.join('\n');
+  }
+
+  String subscriptionActiveItem(SubscriptionRequest request) {
+    final until = request.activeUntil == null
+        ? 'не задано'
+        : DateFormat('dd.MM.yyyy').format(request.activeUntil!);
+    return '💎 <b>Абонемент #${request.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
+        '(${request.userId})\n'
+        'Статус: <b>PRO</b>\n'
+        'Активен до: <b>$until</b>\n\n'
+        'Можно отменить абонемент кнопкой ниже.';
+  }
+
+  String subscriptionPendingQueueIntro(int total) {
+    return '🧾 <b>Заявки на абонемент</b>\n'
+        'Ожидают проверки: <b>$total</b>.\n'
+        'Ниже отправил каждую заявку отдельным сообщением.';
+  }
+
+  String subscriptionPendingQueueEmpty() {
+    return '✨ <b>Заявки на абонемент</b>\n'
+        'Очередь пуста.';
+  }
+
+  String subscriptionPendingQueueItem(SubscriptionRequest request) {
+    final created = DateFormat('dd.MM.yyyy HH:mm').format(request.createdAt);
+    final note = request.paymentNote?.trim();
+    return '🧾 <b>Заявка #${request.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
+        '(${request.userId})\n'
+        'Отправлена: $created'
+        '${note == null || note.isEmpty ? '' : '\nКомментарий: ${_escapeHtml(note)}'}\n\n'
+        'Подтверди или отклони заявку кнопками ниже.';
+  }
+
+  String subscriptionReviewResultWithNextStep({
+    required SubscriptionRequest request,
+    required int remaining,
+  }) {
+    final status =
+        request.status == SubscriptionRequestStatus.active ? 'PRO активирован' : 'Отклонено';
+    final nextStep = remaining > 0
+        ? 'Осталось заявок: $remaining. Открой «${MessageCopy.buttonSubscriptionsAdmin}» → «${MessageCopy.buttonSubscriptionsFilterPending}», чтобы проверить следующую.'
+        : 'Очередь пустая.';
+    return '✅ <b>Заявка #${request.id} обработана</b>\n'
+        '$status\n'
+        '$nextStep';
+  }
+
+  String subscriptionCancelResult(SubscriptionRequest request) {
+    return '✅ <b>Абонемент #${request.id} отменен</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
+        '(${request.userId})';
+  }
+
+  String subscriptionStatusLineFromSnapshot(SubscriptionUserSnapshot snapshot) {
+    if (snapshot.latestPending != null) {
+      return 'На проверке';
+    }
+    final activeUntil = snapshot.membership.activeUntil;
+    if (snapshot.membership.level == MembershipLevel.pro && activeUntil != null) {
+      return 'Активен до ${DateFormat('dd.MM.yyyy').format(activeUntil)}';
+    }
+    final rejected = snapshot.latestRejectedOrCancelled;
+    if (rejected != null) {
+      final reason = rejected.moderationReason?.trim();
+      final comment = rejected.moderationComment?.trim();
+      if ((reason ?? '').isNotEmpty || (comment ?? '').isNotEmpty) {
+        final suffix = <String>[
+          if ((reason ?? '').isNotEmpty) reason!,
+          if ((comment ?? '').isNotEmpty) comment!,
+        ].join(' — ');
+        return 'Отклонен ($suffix)';
+      }
+      return 'Отклонен';
+    }
+    return 'Нет активной заявки';
+  }
+
+  String subscriptionFilterPrompt() {
+    return '💎 <b>Абонементы</b>\n'
+        'Выбери фильтр или поиск. «${MessageCopy.buttonSubscriptionsFilterPending}» — очередь на модерацию.';
+  }
+
+  String subscriptionSearchPrompt() {
+    return '🔎 Введи запрос для поиска абонемента:\n'
+        '• <code>@username</code>\n'
+        '• <code>userId</code>\n'
+        '• <code>номер заявки</code>';
+  }
+
+  String subscriptionModerationReasonPrompt({required bool isCancel}) {
+    return isCancel ? 'Выбери причину отмены абонемента.' : 'Выбери причину отклонения заявки.';
+  }
+
+  String subscriptionModerationCommentPrompt() {
+    return 'Добавь комментарий для клиента или нажми «${MessageCopy.buttonSkipComment}».';
+  }
+
+  String subscriptionApprovedForUser({required DateTime activeUntil}) {
+    return '✅ Оплата подтверждена, PRO активирован до '
+        '<b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.\n'
+        'Тренируйся в PRO и продли через «${MessageCopy.buttonSubscription}» → '
+        '«${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String subscriptionRejectedForUser({String? reason, String? comment}) {
+    final details = <String>[
+      if ((reason ?? '').trim().isNotEmpty) 'Причина: ${_escapeHtml(reason!.trim())}',
+      if ((comment ?? '').trim().isNotEmpty) 'Комментарий: ${_escapeHtml(comment!.trim())}',
+    ];
+    return '❌ Заявка на абонемент отклонена.\n'
+        '${details.isEmpty ? '' : '${details.join('\n')}\n'}'
+        'Проверь оплату/чек и отправь новую заявку кнопкой «${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String subscriptionCancelledForUser({String? reason, String? comment}) {
+    final details = <String>[
+      if ((reason ?? '').trim().isNotEmpty) 'Причина: ${_escapeHtml(reason!.trim())}',
+      if ((comment ?? '').trim().isNotEmpty) 'Комментарий: ${_escapeHtml(comment!.trim())}',
+    ];
+    return '⛔️ Текущий PRO-абонемент был отменен администратором.\n'
+        '${details.isEmpty ? '' : '${details.join('\n')}\n'}'
+        'Чтобы вернуть PRO, нажми «${MessageCopy.buttonSubscription}» → '
+        '«${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String subscriptionRenewalReminder({required DateTime activeUntil, required int daysBefore}) {
+    return '⏳ До окончания PRO осталось <b>$daysBefore дн.</b>\n'
+        'Абонемент активен до <b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.\n'
+        'Продли заранее: «${MessageCopy.buttonSubscription}» → «${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String subscriptionExpiryPromo() {
+    return '🔥 Твой PRO закончился, но форму терять не нужно.\n'
+        'Вернись в PRO сегодня и получи бонус от DVOR.\n'
+        'Нажми «${MessageCopy.buttonSubscription}», затем «${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String chooseMyBookingsSegment() {
+    return '🗂 <b>Мои записи</b>\n'
+        'Выбери список ниже: «Актуальные» или «Прошедшие».';
+  }
+
+  String myBookings(
+    List<TrainingBooking> bookings, {
+    DateTime? now,
+  }) {
+    final splitPoint = (now ?? DateTime.now()).toLocal();
+    final upcoming = bookings.where((booking) => !booking.startsAt.isBefore(splitPoint)).toList();
+    final past = bookings.where((booking) => booking.startsAt.isBefore(splitPoint)).toList();
+    past.sort((left, right) => right.startsAt.compareTo(left.startsAt));
+    final lines = <String>['🗂 <b>Мои записи</b>'];
+
+    if (bookings.isEmpty) {
+      lines.addAll(<String>[
+        '',
+        'У тебя пока нет записей на мероприятия 🙃',
+      ]);
+      return lines.join('\n');
+    }
+
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+
+    if (upcoming.isNotEmpty) {
+      lines.add('\n📌 <b>Актуальные</b>');
+      for (final booking in upcoming) {
+        lines.add(
+          '\n🧩 <b>#${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>\n'
+          '${_myBookingParticipantLine(booking)}'
+          '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+          '💳 <b>${_escapeHtml(_statusLabel(booking.status, booking: booking))}</b>',
+        );
+      }
+    }
+
+    if (past.isNotEmpty) {
+      lines.add('\n🗃 <b>Прошедшие</b>');
+      for (final booking in past) {
+        lines.add(
+          '\n🧩 <b>#${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>\n'
+          '${_myBookingParticipantLine(booking)}'
+          '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+          '💳 <b>${_escapeHtml(_statusLabel(booking.status, booking: booking))}</b>',
+        );
+      }
+    }
+    return lines.join('\n');
+  }
+
+  String chooseMyBookingFromList(
+    List<TrainingBooking> bookings, {
+    required bool past,
+    required int page,
+    required int totalPages,
+    required int totalCount,
+  }) {
+    if (bookings.isEmpty) {
+      final segmentLabel = past ? 'Прошедшие' : 'Актуальные';
+      return '📭 <b>В этом списке пока пусто</b>\n'
+          'Сегмент: <b>${_escapeHtml(segmentLabel)}</b>';
+    }
+    final segmentLabel = past ? 'Прошедшие' : 'Актуальные';
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final lines = <String>[
+      '🧾 <b>Мои записи</b>',
+      'Фильтр: <b>${_escapeHtml(segmentLabel)}</b>',
+      'Страница <b>$page/$totalPages</b> • всего записей: <b>$totalCount</b>',
+      '<b>Записи на текущей странице:</b>',
+    ];
+    for (var index = 0; index < bookings.length; index++) {
+      final booking = bookings[index];
+      lines.addAll(<String>[
+        '',
+        '🧩 <b>${index + 1}. #${booking.id} ${_escapeHtml(booking.trainingTitle)}</b>',
+        if (booking.isManagedForOther) '👤 ${_escapeHtml(booking.participantDisplayLabel)}',
+        '🕒 ${_myBookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}',
+        '💳 ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
+      ]);
+    }
+    lines.addAll(<String>[
+      '',
+      'Выбери запись кнопкой ниже.',
+      'Чтобы сменить сегмент, нажми «${MessageCopy.buttonBack}».',
+    ]);
+    return lines.join('\n');
+  }
+
+  String chooseBookingToManage(List<TrainingBooking> bookings) {
+    if (bookings.isEmpty) {
+      return 'Сейчас нет записей, которыми можно управлять.';
+    }
+    return 'Выбери запись для управления (кнопки ниже) 👇\n'
+        'Можно перенести, отменить или повторить запись.';
+  }
+
+  String bookingRescheduleNotAvailable(TrainingBooking? booking) {
+    if (booking == null) {
+      return 'Не нашел запись для переноса. Выбери запись заново.';
+    }
+    return 'Перенос доступен только для тренировок и йоги.\n'
+        'Для записи #${booking.id} используй другие действия.';
+  }
+
+  String bookingCancelNotAvailable(TrainingBooking? booking) {
+    if (booking == null) {
+      return 'Не нашел запись для отмены. Выбери запись заново.';
+    }
+    return 'Самостоятельно отменить платную тренировку нельзя.\n'
+        'Для записи #${booking.id} напиши в поддержку: @dvor_support.\n'
+        'Отмена доступна самостоятельно для бесплатных тренировок, йоги, походов и трейлов.';
+  }
+
+  String bookingCancelConfirm(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '⚠️ <b>Отменить запись #${booking.id}?</b>\n'
+        '${_escapeHtml(booking.trainingTitle)}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n\n'
+        'Подтверди отмену кнопкой ниже.';
+  }
+
+  String freeTrainingCancellationTooLate(TrainingBooking booking) {
+    return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
+        'Если проблема остаётся — напиши @dvor_support.';
+  }
+
+  String bookingActions(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final hint = switch (booking.status) {
+      BookingStatus.pendingPayment =>
+        'Подсказка: «${MessageCopy.buttonContinuePayment}» откроет оплату по этой записи.',
+      BookingStatus.partialPaid =>
+        'Подсказка: предоплата уже внесена. Остаток — офлайн после события.',
+      _ => 'Подсказка: «${MessageCopy.buttonRepeatBooking}» откроет похожие события.',
+    };
+    return 'Запись #${booking.id}\n'
+        '${_escapeHtml(booking.trainingTitle)}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n\n'
+        'Правила:\n'
+        '• Перенос — только тренировки/йога на слот той же цены.\n'
+        '• Отмена outdoor — за 7+ дней, йога — за 24+ часа, бесплатные — всегда.\n'
+        '• Платные тренировки — через @dvor_support.\n\n'
+        'Выбери действие 👇\n'
+        '$hint';
+  }
+
+  String chooseTrainingForReschedule(List<TrainingInfo> items, {required TrainingBooking booking}) {
+    if (items.isEmpty) {
+      return 'Сейчас нет ближайших мероприятий для переноса.';
+    }
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final lines = <String>[
+      '🔁 Куда перенести запись #${booking.id}?',
+      'Сейчас: ${booking.trainingTitle}',
+      '',
+      'Выбери новое мероприятие 👇',
+    ];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      lines.add(
+        '${index + 1}. ${item.title}\n'
+        '🕒 ${formatter.format(item.startsAt)}\n'
+        '📍 ${item.location} • 👥 ${_participantsLimitLabel(item.participantsLimit)}',
+      );
+    }
+    return lines.join('\n');
+  }
+
+  String bookingRescheduled({
+    required TrainingBooking from,
+    required TrainingBooking to,
+  }) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return 'Готово! Запись #${to.id} перенесена ✅\n'
+        'Было: ${from.trainingTitle} (${formatter.format(from.startsAt)})\n'
+        'Стало: ${to.trainingTitle} (${formatter.format(to.startsAt)})\n'
+        'Статус оплаты сохранен: ${_statusLabel(to.status)}';
+  }
+
+  String bookingRescheduleConflict() {
+    return 'Не удалось перенести запись: у тебя уже есть запись на выбранную тренировку.';
+  }
+
+  String bookingRescheduleSameTraining() {
+    return 'Эта запись уже на выбранной тренировке. Выбери другую дату.';
+  }
+
+  String bookingRescheduleFreeToPaidNotAllowed() {
+    return 'Эту запись нельзя перенести на платную тренировку.\n'
+        'Бесплатную запись можно переносить только на бесплатные слоты.';
+  }
+
+  String bookingReschedulePaidToFreeNotAllowed() {
+    return 'Эту запись нельзя перенести на бесплатную тренировку.\n'
+        'Платную запись можно переносить только на платные слоты.';
+  }
+
+  String bookingReschedulePriceMismatchNotAllowed() {
+    return 'Эту запись нельзя перенести на тренировку с другой стоимостью.\n'
+        'Перенос доступен только между тренировками с одинаковой ценой.';
+  }
+
+  String bookingCancelled(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Запись #${booking.id} отменена ✅\n'
+        '${booking.trainingTitle}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}';
+  }
+
+  String outdoorCancellationTooLate(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
+        'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
+        'осталось меньше 7 дней.';
+  }
+
+  String yogaCancellationTooLate(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
+        'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
+        'осталось меньше 24 часов.\n\n'
+        '${_yogaContactsHint()}';
+  }
+
+  String paymentsQueueEmpty() => 'Очередь подтверждения оплат пока пустая ✨';
+
+  String paymentsQueueIntro(int total, {required ActivityCategory category}) {
+    return '🧾 <b>Заявки на подтверждение оплаты</b>\n'
+        'Категория: <b>${_escapeHtml(_categoryLabel(category))}</b>\n'
+        'Всего ожидают проверки: <b>$total</b>.\n'
+        'Показываю следующую заявку.';
+  }
+
+  String paymentReviewResultWithNextStep({
+    required TrainingBooking booking,
+    required int remaining,
+  }) {
+    final nextStep = remaining > 0
+        ? 'Осталось на проверке: $remaining. Нажми «Следующая заявка», чтобы открыть следующую.'
+        : 'Очередь заявок пуста. Можно вернуться в меню.';
+    return '✅ <b>Готово! Статус записи #${booking.id} обновлен</b>\n'
+        '${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
+        '$nextStep';
+  }
+
+  Map<String, Object?> paymentDecisionInlineKeyboard(
+    int bookingId, {
+    bool approvePartial = false,
+  }) {
+    return TelegramKeyboards.paymentDecisionInlineKeyboard(
+      bookingId,
+      approvePartial: approvePartial,
+    );
+  }
+
+  Map<String, Object?> pendingPaymentReminderKeyboard(int bookingId) {
+    return TelegramKeyboards.pendingPaymentReminderKeyboard(bookingId);
+  }
+
+  Map<String, Object?> openPaymentsQueueInlineKeyboard({required int total}) {
+    return TelegramKeyboards.openPaymentsQueueInlineKeyboard(
+      buttonLabel: _labelWithCount(MessageCopy.buttonPaymentsQueue, total),
+    );
+  }
+
+  Map<String, Object?> nextPaymentInQueueInlineKeyboard({
+    required ActivityCategory category,
+    required int remaining,
+  }) {
+    return TelegramKeyboards.nextPaymentInQueueInlineKeyboard(
+      category: category,
+      remaining: remaining,
+    );
+  }
+
+  String paymentsQueueItem(
+    TrainingBooking booking, {
+    List<TrainingBooking> groupBookings = const <TrainingBooking>[],
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final paymentType = _paymentTypeLabelFromNote(booking.paymentNote);
+    final cleanNote = _cleanPaymentNote(booking.paymentNote);
+    final note = cleanNote == null ? '' : '\nКомментарий: ${_escapeHtml(cleanNote)}';
+    final members = groupBookings.isNotEmpty ? groupBookings : <TrainingBooking>[booking];
+    final organizer = _userTagById(booking.managerUserId, username: booking.userUsername);
+    final buffer = StringBuffer()
+      ..writeln('🧾 <b>Заявка #${booking.id}</b>')
+      ..writeln('Организатор: ${_escapeHtml(organizer)} (${booking.managerUserId})');
+    if (members.length > 1) {
+      buffer.writeln('<b>Участники (${members.length}):</b>');
+      for (final member in members) {
+        buffer.writeln('• #${member.id} ${_escapeHtml(member.participantDisplayLabel)}');
+      }
+      final total = members.fold<int>(0, (sum, item) => sum + (item.trainingPrice ?? 0));
+      final unit = booking.trainingPrice ?? 0;
+      buffer
+        ..writeln(
+          'К оплате: <b>${members.length} × ${_trainingPriceLabel(unit)} = '
+          '${_trainingPriceLabel(total)}</b>',
+        )
+        ..writeln('Группа оплаты: подтверждение закроет все записи пакета.');
+    } else if (booking.isManagedForOther) {
+      buffer.writeln('Участник: ${_escapeHtml(booking.participantDisplayLabel)}');
+    }
+    buffer
+      ..writeln('Тренировка: ${_escapeHtml(booking.trainingTitle)}')
+      ..writeln('🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}')
+      ..writeln('📍 ${_escapeHtml(booking.location)}');
+    if (paymentType != null) {
+      buffer.writeln('Тип оплаты: ${_escapeHtml(paymentType)}');
+    }
+    if (note.isNotEmpty) {
+      buffer.write(note);
+      buffer.writeln();
+    }
+    buffer
+      ..writeln('')
+      ..writeln('Подтверди или отклони оплату кнопками ниже.')
+      ..writeln('После решения можно сразу открыть следующую заявку.');
+    return buffer.toString().trimRight();
+  }
+
+  String trainingParticipants({
+    required List<TrainingInfo> trainings,
+    required Map<String, List<TrainingBooking>> bookingsByTrainingKey,
+    String title = 'Список записавшихся по тренировкам 👥',
+    String emptyText = 'Ближайших тренировок пока нет, показывать список не для чего.',
+    bool Function(TrainingBooking booking)? isTrainerBooking,
+    bool showTrainers = true,
+  }) {
+    if (trainings.isEmpty) {
+      return emptyText;
+    }
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final lines = <String>['<b>${_escapeHtml(title)}</b>'];
+    final trainerMatcher = isTrainerBooking ?? (_) => false;
+    for (var index = 0; index < trainings.length; index++) {
+      final training = trainings[index];
+      final tags = bookingsByTrainingKey[training.sessionKey] ?? const <TrainingBooking>[];
+      final activeTags =
+          tags.where((booking) => booking.status != BookingStatus.cancelled).toList();
+      final cancelledTags =
+          tags.where((booking) => booking.status == BookingStatus.cancelled).toList();
+      final activeTrainerTags = activeTags.where(trainerMatcher).toList(growable: false);
+      final activeParticipantTags =
+          activeTags.where((booking) => !trainerMatcher(booking)).toList(growable: false);
+      final cancelledTrainerTags = cancelledTags.where(trainerMatcher).toList(growable: false);
+      final cancelledParticipantTags =
+          cancelledTags.where((booking) => !trainerMatcher(booking)).toList(growable: false);
+      final displayedParticipantsCount =
+          training.includeTrainersInParticipants ? activeTags.length : activeParticipantTags.length;
+      lines.addAll(<String>[
+        '',
+        '🏷 <b>${index + 1}. ${_escapeHtml(training.title)}</b>',
+        '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}',
+        '📍 ${_escapeHtml(training.location)}',
+        '👥 Участники: $displayedParticipantsCount/${_participantsLimitValueLabel(training.participantsLimit)}',
+      ]);
+      if (activeTags.isEmpty && cancelledTags.isEmpty) {
+        lines.add('• Пока никто не записался');
+      } else {
+        if (activeParticipantTags.isNotEmpty) {
+          lines.add('👤 Участники:');
+        }
+        for (final booking in activeParticipantTags) {
+          lines.add(
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+          );
+        }
+        if (showTrainers && activeTrainerTags.isNotEmpty) {
+          lines.add('🧑‍🏫 Тренеры:');
+        }
+        for (final booking in showTrainers ? activeTrainerTags : const <TrainingBooking>[]) {
+          lines.add(
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+          );
+        }
+        if (cancelledParticipantTags.isNotEmpty ||
+            (showTrainers && cancelledTrainerTags.isNotEmpty)) {
+          lines.add('❌ Отмененные:');
+        }
+        for (final booking in cancelledParticipantTags) {
+          lines.add(
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+          );
+        }
+        for (final booking in showTrainers ? cancelledTrainerTags : const <TrainingBooking>[]) {
+          lines.add(
+            '• ${_escapeHtml(_userTag(booking))} (${_escapeHtml(_participantStatusLabel(booking))})',
+          );
+        }
+      }
+    }
+    return lines.join('\n');
+  }
+
+  String noblesList(
+    List<({int userId, String? username, int trainingsCount})> users, {
+    int totalTrainings = 0,
+  }) {
+    if (users.isEmpty) {
+      return 'Пока нет данных по записям, список дворян пуст.';
+    }
+    final lines = <String>[
+      '🏰 <b>Список дворян</b>',
+      'Всего записей на тренировки: <b>$totalTrainings</b>',
+      'В зачет идут только уже прошедшие по времени тренировки '
+          '(<code>starts_at &lt; now</code>).',
+      '',
+    ];
+    for (var index = 0; index < users.length; index++) {
+      final user = users[index];
+      lines.add(
+        '${index + 1}. ${_escapeHtml(_userTagById(user.userId, username: user.username))} (${user.userId}) — '
+        '<b>${user.trainingsCount}</b>',
+      );
+    }
+    return lines.join('\n');
+  }
+
+  String adminOnlyAction() {
+    return 'Это действие доступно только администраторам 🔒';
+  }
+
+  String adminUserSearchPrompt() {
+    return '🔍 <b>Поиск по пользователю</b>\n\nВведи никнейм (с @ или без):';
+  }
+
+  String adminUserSearchResults(
+    List<TrainingBooking> bookings, {
+    required String query,
+    required DateTime now,
+  }) {
+    if (bookings.isEmpty) {
+      return '🔍 По запросу «${_escapeHtml(query)}» записей не найдено.';
+    }
+    final dateFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+
+    final total = bookings.length;
+    final cancelled = bookings.where((b) => b.status == BookingStatus.cancelled).length;
+    final rejected = bookings.where((b) => b.status == BookingStatus.paymentRejected).length;
+    final active = bookings
+        .where(
+          (b) =>
+              b.status != BookingStatus.cancelled &&
+              b.status != BookingStatus.paymentRejected &&
+              !b.startsAt.isBefore(now),
+        )
+        .length;
+    final past = bookings
+        .where(
+          (b) =>
+              b.status != BookingStatus.cancelled &&
+              b.status != BookingStatus.paymentRejected &&
+              b.startsAt.isBefore(now),
+        )
+        .length;
+
+    final username = bookings.first.userUsername ?? query;
+    final sb = StringBuffer();
+    sb.writeln('🔍 <b>Пользователь: @${_escapeHtml(username)}</b>\n');
+    sb.writeln('📊 <b>Статистика:</b>');
+    sb.writeln('• Всего записей: <b>$total</b>');
+    if (active > 0) sb.writeln('• Предстоящие: <b>$active</b>');
+    if (past > 0) sb.writeln('• Прошедшие: <b>$past</b>');
+    if (cancelled > 0) sb.writeln('• Отмененные: <b>$cancelled</b>');
+    if (rejected > 0) sb.writeln('• Отклоненные: <b>$rejected</b>');
+    sb.writeln();
+    sb.writeln('📋 <b>Записи:</b>');
+
+    for (final booking in bookings) {
+      final dateLabel = _bookingDateLabel(booking, dateFormatter, dateOnlyFormatter);
+      final statusEmoji = _bookingStatusEmoji(booking.status);
+      sb.writeln('$statusEmoji #${booking.id} — ${_escapeHtml(booking.trainingTitle)} '
+          '($dateLabel)');
+      sb.writeln('   ${_statusLabel(booking.status, booking: booking)}');
+    }
+
+    return sb.toString().trimRight();
+  }
+
+  String _bookingStatusEmoji(BookingStatus status) {
+    return switch (status) {
+      BookingStatus.paid => '✅',
+      BookingStatus.freeTraining => '🎁',
+      BookingStatus.partialPaid => '🟡',
+      BookingStatus.pendingPayment => '⏳',
+      BookingStatus.paymentSubmitted => '🧾',
+      BookingStatus.paymentRejected => '❌',
+      BookingStatus.cancelled => '🚫',
+    };
+  }
+
+  String paymentActionUsage() {
+    return '📘 <b>Использование команд модерации:</b>\n'
+        '<code>/approve_payment &lt;id&gt;</code>\n'
+        '<code>/approve_partial_payment &lt;id&gt;</code>\n'
+        '<code>/reject_payment &lt;id&gt;</code>\n\n'
+        'Например: <code>/approve_partial_payment 42</code>';
+  }
+
+  Map<String, Object?> subscriptionDecisionInlineKeyboard(int requestId) {
+    return TelegramKeyboards.subscriptionDecisionInlineKeyboard(requestId);
+  }
+
+  Map<String, Object?> subscriptionCancelInlineKeyboard(int requestId) {
+    return TelegramKeyboards.subscriptionCancelInlineKeyboard(requestId);
+  }
+
+  String bookingNotFound(int id) {
+    return '😕 <b>Запись #$id не найдена</b>';
+  }
+
+  String bookingStatusUpdated(TrainingBooking booking) {
+    return 'Готово! Статус записи #${booking.id} обновлен: ${_statusLabel(booking.status, booking: booking)} ✅';
+  }
+
+  String paymentAlreadyReviewed(int bookingId) {
+    return 'ℹ️ <b>Запись #$bookingId уже не в статусе «На проверке»</b>\n'
+        'Обнови очередь и проверь актуальный статус.';
+  }
+
+  String adminBookingUpdateConflict() {
+    return 'Не удалось сохранить изменения: для этого пользователя уже есть запись на выбранное мероприятие.';
+  }
+
+  static const String _sbpPaymentLink =
+      'https://finance.ozon.ru/apps/sbp/ozonbankpay/019dcdcb-4af8-7579-9c1b-4a388fd85d6c';
+
+  String paymentInstructions(TrainingBooking booking) {
+    final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
+    if (MessageFormatters.isYogaBooking(booking)) {
+      final promoAmountLine = _promoAmountLine(booking);
+      return '💳 <b>Реквизиты для оплаты</b>\n'
+          '• Получатель: <b>Елена П.</b>\n'
+          '• Банк: <b>🟨 Т-БАНК 🟨</b>\n'
+          '• Номер телефона: <b>+7(961)313-11-44</b>\n'
+          '$promoAmountLine\n'
+          '⏳ Если не оплатить в течение <b>30 минут</b> — запись отменится автоматически. После отмены нужно записаться заново.';
+    }
+    if (MessageFormatters.isOutdoorBooking(booking)) {
+      return '💳 <b>Реквизиты OUTDVOR</b>\n'
+          '• Получатель: <b>Денис Р.</b>\n'
+          '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
+          '• К оплате сейчас: <b>${_outdoorPrepaymentAmountLabel(booking)}</b> (50% предоплата)\n'
+          '• Остальные 50% — $outdoorFinalPaymentAfter.\n'
+          '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n\n'
+          '⏳ Если не оплатить в течение <b>30 минут</b> — запись отменится автоматически. После отмены нужно записаться заново.';
+    }
+    final amountLine = _amountLine(booking);
+    return '💳 <b>Реквизиты для оплаты</b>\n'
+        '• Получатель: <b>Денис Р.</b>\n'
+        '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
+        '$amountLine'
+        '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n\n'
+        '⏳ Если не оплатить в течение <b>30 минут</b> — запись отменится автоматически. После отмены нужно записаться заново.';
+  }
+
+  String _amountLine(TrainingBooking booking) {
+    if (booking.promoCode != null) {
+      return '• К оплате: <b>${_trainingPriceLabel(booking.trainingPrice)}</b> '
+          '(промокод ${_escapeHtml(booking.promoCode!)}, −${booking.promoDiscountPercent ?? 0}%)\n';
+    }
+    return '• К оплате: <b>${_trainingPriceLabel(booking.trainingPrice)}</b>\n';
+  }
+
+  String _promoAmountLine(TrainingBooking booking) {
+    if (booking.promoCode == null) {
+      return '';
+    }
+    return '• К оплате: <b>${_trainingPriceLabel(booking.trainingPrice)}</b> '
+        '(промокод ${_escapeHtml(booking.promoCode!)}, −${booking.promoDiscountPercent ?? 0}%)\n';
+  }
+
+  String outdoorBookingRule(TrainingBooking booking) {
+    final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
+    return '🚸 <b>Правило OUTDVOR</b>\n\n'
+        '• Предоплата невозвратна при отмене за 7 дней и менее до старта.\n'
+        '• Сначала вносится 50% предоплаты, оставшиеся 50% — офлайн $outdoorFinalPaymentAfter.';
+  }
+
+  String paymentApprovedForUser(TrainingBooking booking) {
+    if (booking.status == BookingStatus.partialPaid) {
+      final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
+      return 'Предоплату по записи #${booking.id} подтвердили 🟡\n'
+          'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
+          'Остаток вносится офлайн $outdoorFinalPaymentAfter.';
+    }
+    if (!MessageFormatters.isOutdoorBooking(booking)) {
+      return 'Оплату по записи #${booking.id} подтвердили ✅\n'
+          'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
+          'Спасибо!';
+    }
+
+    return '✅ Оплата подтверждена.\n'
+        'Ты в команде outdvor🚸\n\n'
+        'Место за тобой, предоплата зафиксирована. С этого момента - ты часть команды.\n\n'
+        'Мы сделаем все, чтобы это приключение осталось с тобой надолго. '
+        'Горы, эмоции, новые люди и чувство "я справился" - это не забывается.\n'
+        'Скоро добавим тебя в общий чат поездки🟡\n\n'
+        'Готовься. Скоро стартуем 💚';
+  }
+
+  String paymentRejectedForUser(TrainingBooking booking) {
+    return 'Оплату по записи #${booking.id} отклонили ❌\n'
+        'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
+        'Проверь детали платежа и отправь подтверждение еще раз.\n'
+        'Если нужен комментарий по отклонению, напиши администратору клуба.';
+  }
+
+  String paymentReviewAdminNotification({
+    required TrainingBooking booking,
+    required int moderatorUserId,
+    String? moderatorUsername,
+  }) {
+    return '🧾 <b>Модерация оплаты выполнена</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
+        'Проверил админ: ${_escapeHtml(_userTagById(moderatorUserId, username: moderatorUsername))} ($moderatorUserId)\n'
+        'Дальше: при необходимости открой очередь и проверь следующую заявку.';
+  }
+
+  String bookingRescheduledAdminNotification({
+    required TrainingBooking before,
+    required TrainingBooking after,
+  }) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return '🔁 <b>Операционное событие: перенос записи</b>\n'
+        'Запись: <b>#${after.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(after))} (${after.userId})\n'
+        'Было: ${_escapeHtml(before.trainingTitle)} (${formatter.format(before.startsAt)})\n'
+        'Стало: ${_escapeHtml(after.trainingTitle)} (${formatter.format(after.startsAt)})\n'
+        'Дальше: проверь состав участников перед ближайшей тренировкой.';
+  }
+
+  String bookingCancelledAdminNotification(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '❌ <b>Операционное событие: отмена записи</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Дальше: при необходимости свяжись с участником по возврату/перезаписи.';
+  }
+
+  String freeBookingCreatedAdminNotification(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '🎁 <b>Операционное событие: новая бесплатная запись</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        '${_adminBookingIdentityLines(booking).join('\n')}\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
+  }
+
+  String bookingGroupCreatedAdminNotification({
+    required List<TrainingBooking> bookings,
+    required int unitPrice,
+    required int totalPrice,
+  }) {
+    final first = bookings.first;
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final organizer = _userTagById(first.managerUserId, username: first.userUsername);
+    final buffer = StringBuffer()
+      ..writeln('👥 <b>Операционное событие: запись друга/гостей</b>')
+      ..writeln(
+        'Организатор: ${_escapeHtml(organizer)} (${first.managerUserId})',
+      )
+      ..writeln('Событие: ${_escapeHtml(first.trainingTitle)}')
+      ..writeln('Дата: ${_bookingDateLabel(first, dateTimeFormatter, dateOnlyFormatter)}')
+      ..writeln('Участников: <b>${bookings.length}</b>')
+      ..writeln('<b>Участники:</b>');
+    for (final booking in bookings) {
+      buffer.writeln(
+        '• #${booking.id} ${_escapeHtml(booking.participantDisplayLabel)} '
+        '(${_escapeHtml(_statusLabel(booking.status, booking: booking))})',
+      );
+    }
+    buffer.writeln(
+      'К оплате: <b>${bookings.length} × ${_trainingPriceLabel(unitPrice)} = '
+      '${_trainingPriceLabel(totalPrice)}</b>',
+    );
+    return buffer.toString().trimRight();
+  }
+
+  String trainerBookingCreatedAdminNotification(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '🧑‍🏫 <b>Операционное событие: тренер записался</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
+  }
+
+  String pendingPaymentReminder(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Напоминание об оплате 💸\n'
+        'Запись: #${booking.id}\n'
+        '${booking.trainingTitle} (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)})\n'
+        'Текущий статус: ${_statusLabel(booking.status, booking: booking)}\n\n'
+        '${paymentInstructions(booking)}\n\n'
+        'После оплаты нажми «${MessageCopy.buttonSubmitPayment}» и отправь в этот чат файл с подтверждением (чек/скрин).\n'
+        'Если кнопка не сработала, открой «${MessageCopy.buttonProfile}» и выбери нужную запись.';
+  }
+
+  String pendingPaymentExpired(TrainingBooking booking) {
+    return '⏰ Время на оплату истекло.\n'
+        'Запись #${booking.id} автоматически отменена.\n'
+        'Чтобы попасть на мероприятие, оформи новую запись через «${MessageCopy.buttonBookTraining}».';
+  }
+
+  String chooseTrainingForBooking(List<TrainingInfo> items) {
+    if (items.isEmpty) {
+      return noUpcomingForBooking();
+    }
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final lines = <String>[bookingSelectionPrompt()];
+    final eventLines = <String>[];
+    for (var index = 0; index < items.length; index++) {
+      final item = items[index];
+      final feeLabel = item.price == null ? '' : ', взнос: ${_trainingPriceLabel(item.price)}';
+      eventLines.add(
+        '${index + 1}. ${item.title}\n'
+        '🕒 ${_trainingDateLabel(item, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 ${item.location}$feeLabel\n'
+        '👥 ${_participantsLimitLabel(item.participantsLimit)}',
+      );
+    }
+    return <String>[
+      ...lines,
+      eventLines.join('\n\n'),
+    ].join('\n');
+  }
+
+  String bookingSelectionPrompt() {
+    return 'Выбери мероприятие для записи 👇\n'
+        'Подсказка: отправь номер из списка или нажми кнопку с событием.';
+  }
+
+  String paymentDetailsSent(TrainingBooking booking) {
+    if (booking.status == BookingStatus.partialPaid) {
+      return partialPaidRemainderOffline(booking);
+    }
+    if (!MessageFormatters.isOutdoorBooking(booking)) {
+      final yogaHint = MessageFormatters.isYogaBooking(booking) ? '\n\n${_yogaContactsHint()}' : '';
+      return '${paymentInstructions(booking)}\n\n'
+          '<b>Что дальше:</b>\n'
+          '1) Оплати по реквизитам выше.\n'
+          '2) Нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека (документ/фото) в этот чат 📎\n\n'
+          '⚠️ <b>Важно:</b> без файла подтверждения заявка не уйдёт на проверку.'
+          '$yogaHint';
+    }
+
+    return '${paymentInstructions(booking)}\n\n'
+        '<b>Что дальше:</b>\n'
+        '1) Оплати по реквизитам выше.\n'
+        '2) Нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека (документ/фото) в этот чат 📎\n\n'
+        '⚠️ <b>Важно:</b> без файла подтверждения заявка не уйдёт на проверку.';
+  }
+
+  String _yogaContactsHint() {
+    return 'По вопросам теории и практики можно написать тренеру-йоги.\n'
+        'По организационным вопросам: @dvor_support.';
+  }
+
+  String paymentProofRequired() {
+    return 'Чтобы отправить заявку администратору:\n'
+        '1) Нажми «${MessageCopy.buttonSubmitPayment}».\n'
+        '2) Пришли файл с подтверждением оплаты (документ или фото чека).\n'
+        '3) Дождись ответа о модерации.';
+  }
+
+  String paymentProofUnavailableHint(TrainingBooking booking) {
+    return 'Не удалось подгрузить файл подтверждения для записи #${booking.id}.\n'
+        'Проверь заявку в личке пользователя: ${_userTag(booking)} (${booking.userId}).';
+  }
+
+  String economicSummary(EconomicSummary summary, {String? periodLabel}) {
+    final dateFormatter = DateFormat('dd.MM.yyyy');
+    final periodRange =
+        '${dateFormatter.format(summary.period.startInclusive)} — ${dateFormatter.format(summary.period.endExclusive.subtract(const Duration(days: 1)))}';
+    final lines = <String>[
+      '📈 <b>Экономическая сводка ${_escapeHtml(periodLabel ?? 'по периоду')}</b>',
+      'Период: <b>$periodRange</b>',
+      '',
+      '<b>Финансы:</b>',
+      '• Выручка: <b>${_money(summary.totalRevenue)}</b>',
+      '• Полностью оплаченных бронирований: <b>${summary.paidBookingsCount}</b>',
+      if (summary.partialPaidBookingsCount > 0)
+        '• Предоплат: <b>${summary.partialPaidBookingsCount}</b> '
+            '(на сумму <b>${_money(summary.partialPaidRevenue)}</b>)',
+      '• Средний чек: <b>${_money(summary.averageCheck)}</b>',
+      if (summary.freeBookingsCount > 0)
+        '• Бесплатных бронирований: <b>${summary.freeBookingsCount}</b>',
+      if (summary.regularFreeBookingsCount > 0)
+        '• Бесплатные по цене мероприятия: <b>${summary.regularFreeBookingsCount}</b>',
+      if (summary.starterFreeBookingsCount > 0)
+        '• Бесплатные стартовые: <b>${summary.starterFreeBookingsCount}</b>',
+      if (summary.everyFifthFreeBookingsCount > 0)
+        '• Бесплатные по правилу «каждая 5-я»: <b>${summary.everyFifthFreeBookingsCount}</b>',
+      if (summary.unknownPriceBookingsCount > 0)
+        '• Без цены в данных: <b>${summary.unknownPriceBookingsCount}</b>',
+      '',
+      '<b>По категориям:</b>',
+      if (summary.byCategory.isEmpty) '• Нет оплаченных бронирований с ценой',
+      ...summary.byCategory.map(
+        (item) => '• ${_escapeHtml(_categoryLabel(item.category))}: '
+            '<b>${_money(item.revenue)}</b> (${item.bookingsCount})',
+      ),
+      '',
+      '<b>Топ мероприятий по выручке:</b>',
+      if (summary.byEvent.isEmpty) '• Нет данных',
+      ...summary.byEvent.map(
+        (item) => '• ${_escapeHtml(item.eventTitle)}: '
+            '<b>${_money(item.revenue)}</b> (${item.bookingsCount})',
+      ),
+    ];
+    return lines.join('\n');
+  }
+
+  String funnelAnalyticsOnboarding(FunnelAnalytics analytics) {
+    final generated = DateFormat('dd.MM.yyyy HH:mm').format(analytics.generatedAt.toLocal());
+    final lines = <String>[
+      '📊 <b>Аналитика воронки</b>',
+      'Срез: <b>$generated</b>',
+      '',
+      '<b>Пользователи:</b>',
+      '• С /start: <b>${analytics.startedUsersTotal}</b>',
+      '• В воронке (не legacy): <b>${analytics.funnelUsers}</b>',
+      '• Legacy (без drip): <b>${analytics.legacyUsers}</b>',
+      '• Completed: <b>${analytics.completedUsers}</b>',
+      '• /start за 7д: <b>${analytics.startedLast7Days}</b>',
+      '• /start за 30д: <b>${analytics.startedLast30Days}</b>',
+      '',
+      '<b>Activation:</b>',
+      '• Всего: <b>${analytics.activationsTotal}</b>',
+      '• За 7д: <b>${analytics.activationsLast7Days}</b>',
+      '• За 30д: <b>${analytics.activationsLast30Days}</b>',
+      '• Rate ≤21д: <b>${_percentOrDash(analytics.activationRate21Days)}</b>',
+      '• Средний TTV: <b>${_daysOrDash(analytics.avgTimeToValueDays)}</b>',
+      '• Сейчас в snooze: <b>${analytics.snoozeActiveNow}</b>',
+      '',
+      '<b>Фазы:</b>',
+      ..._mapLines(analytics.phaseCounts, _onboardingPhaseLabel),
+      '',
+      '<b>Вход:</b>',
+      ..._mapLines(analytics.entryTypeCounts, _entryTypeLabel),
+      '',
+      '<b>Цель квиза:</b>',
+      ..._mapLines(analytics.quizGoalCounts, _quizGoalLabel),
+      '',
+      '<b>Опыт:</b>',
+      ..._mapLines(analytics.quizExperienceCounts, _quizExperienceLabel),
+      '',
+      '<b>Трек:</b>',
+      ..._mapLines(analytics.trackCounts, _trackLabel),
+      '',
+      '<b>Nudges (idempotent keys):</b>',
+      if (analytics.nudgeKeyCounts.isEmpty) '• Пока нет',
+      ...analytics.nudgeKeyCounts.entries
+          .take(12)
+          .map((e) => '• ${_escapeHtml(e.key)}: <b>${e.value}</b>'),
+    ];
+    return lines.join('\n');
+  }
+
+  String funnelAnalyticsFeedback(FunnelAnalytics analytics) {
+    final responseRate = analytics.feedbackResponseRate;
+    final lines = <String>[
+      '📝 <b>Отзывы после тренировок</b>',
+      '• Запросов отправлено: <b>${analytics.feedbackRequestsSent}</b>',
+      '• Ответов: <b>${analytics.feedbackResponses}</b>',
+      '• Response rate: <b>${_percentOrDash(responseRate)}</b>',
+      '• Пропусков: <b>${analytics.feedbackSkipped}</b>',
+      '• Комментариев: <b>${analytics.feedbackCommentsCount}</b>',
+      '',
+      '<b>Оценки:</b>',
+      ..._mapLines(analytics.feedbackRatingCounts, _feedbackRatingLabel),
+      '',
+      '<b>Топ занятий по отзывам:</b>',
+      if (analytics.topFeedbackSessions.isEmpty) '• Пока нет',
+      ...analytics.topFeedbackSessions.map((session) {
+        return '• ${_escapeHtml(session.trainingTitle)} — '
+            '<b>${session.responses}</b> '
+            '(👍${session.greatCount} / 🙂${session.okCount} / 👎${session.weakCount})';
+      }),
+      '',
+      '<b>Последние комментарии (анонимно):</b>',
+      if (analytics.recentFeedbackComments.isEmpty) '• Пока нет',
+      ...analytics.recentFeedbackComments.map((item) {
+        final date = DateFormat('dd.MM HH:mm').format(item.submittedAt.toLocal());
+        final comment = (item.comment ?? '').trim();
+        final short = comment.length > 160 ? '${comment.substring(0, 157)}…' : comment;
+        return '• <b>${_escapeHtml(date)}</b> · ${_escapeHtml(_feedbackRatingLabel(item.rating))} · '
+            '${_escapeHtml(item.trainingTitle)}\n'
+            '  <i>${_escapeHtml(short)}</i>';
+      }),
+    ];
+    return lines.join('\n');
+  }
+
+  List<String> _mapLines(Map<String, int> counts, String Function(String) label) {
+    if (counts.isEmpty) {
+      return const <String>['• Нет данных'];
+    }
+    return counts.entries
+        .map((e) => '• ${_escapeHtml(label(e.key))}: <b>${e.value}</b>')
+        .toList(growable: false);
+  }
+
+  String _percentOrDash(double? value) {
+    if (value == null) {
+      return '—';
+    }
+    return '${(value * 100).toStringAsFixed(1)}%';
+  }
+
+  String _daysOrDash(double? value) {
+    if (value == null) {
+      return '—';
+    }
+    return '${value.toStringAsFixed(1)} дн';
+  }
+
+  String _onboardingPhaseLabel(String raw) {
+    return switch (raw) {
+      'legacy_skipped' => 'legacy',
+      'phase1_quiz' => 'фаза 1 · квиз',
+      'phase1_track' => 'фаза 1 · трек',
+      'phase1_map' => 'фаза 1 · карта',
+      'phase2_activation' => 'фаза 2 · активация',
+      'phase3_integration' => 'фаза 3 · интеграция',
+      'phase4_completion' => 'фаза 4 · завершение',
+      'completed' => 'completed',
+      'paused' => 'paused / snooze',
+      'returning' => 'returning',
+      'not_started' => 'not_started',
+      'null' => 'без фазы',
+      _ => raw,
+    };
+  }
+
+  String _entryTypeLabel(String raw) {
+    return switch (raw) {
+      'group' => 'из группы',
+      'cold' => 'холодный DM',
+      'referral' => 'реферал',
+      'returning' => 'возврат',
+      'legacy' => 'legacy',
+      'unknown' => 'не указан',
+      _ => raw,
+    };
+  }
+
+  String _quizGoalLabel(String raw) {
+    return switch (raw) {
+      'form_strength' => 'форма / сила',
+      'endurance_run' => 'выносливость / бег',
+      'yoga_recovery' => 'йога / восстановление',
+      'outdoor_hikes' => 'outdoor / походы',
+      'unknown' => 'пока не знаю',
+      _ => raw,
+    };
+  }
+
+  String _quizExperienceLabel(String raw) {
+    return switch (raw) {
+      'beginner' => 'новичок',
+      'returning' => 'был перерыв',
+      'regular' => 'регулярно',
+      _ => raw,
+    };
+  }
+
+  String _trackLabel(String raw) {
+    return switch (raw) {
+      'one_off' => 'разовая',
+      'outdoor' => 'outdoor',
+      // TODO(subscription): label для трека pro.
+      _ => raw,
+    };
+  }
+
+  String _feedbackRatingLabel(String raw) {
+    return switch (raw) {
+      'great' => 'отлично',
+      'ok' => 'нормально',
+      'weak' => 'слабо',
+      'skipped' => 'пропуск',
+      _ => raw,
+    };
+  }
+
+  String chooseEconomicSummaryPeriod() {
+    return '📅 <b>Выбери период для экономической сводки</b>';
+  }
+
+  String adminBroadcastPrompt() {
+    return '📢 <b>Рассылка</b>\n\n'
+        'Отправь текст и/или фото для рассылки.\n'
+        'Можно прислать одно фото или альбом (несколько фото).\n'
+        'Подпись к фото сохранится. Для текста поддерживается HTML: '
+        '<code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;code&gt;</code> и т.д.\n\n'
+        'Нажми «${MessageCopy.buttonMainMenu}», чтобы отменить.';
+  }
+
+  String adminBroadcastPreview(String text) {
+    return '👁 <b>Предпросмотр сообщения:</b>\n\n$text\n\n'
+        '📌 Выбери, куда отправить рассылку:';
+  }
+
+  String adminBroadcastMediaPreview({required int photoCount}) {
+    final photosLabel = photoCount == 1 ? '1 фото' : '$photoCount фото';
+    return '👁 <b>Предпросмотр рассылки</b>\n\n'
+        'Будет отправлено: <b>$photosLabel</b> '
+        '(как в сообщении выше, с подписью если она была).\n\n'
+        '📌 Выбери, куда отправить рассылку:';
+  }
+
+  String adminBroadcastMediaCollecting({required int photoCount}) {
+    final photosLabel = photoCount == 1 ? '1 фото' : '$photoCount фото';
+    return '🖼 Получено: <b>$photosLabel</b>.\n'
+        'Если это альбом — дождись загрузки всех фото, '
+        'затем появится выбор получателей.';
+  }
+
+  String adminBroadcastSent({
+    required int sent,
+    required int failed,
+    required int total,
+    required bool groupSent,
+  }) {
+    final buffer = StringBuffer('✅ <b>Рассылка завершена</b>\n\n');
+    buffer.write('👥 Пользователям: <b>$sent</b> из <b>$total</b> доставлено');
+    if (failed > 0) {
+      buffer.write(', не доставлено: <b>$failed</b>');
+    }
+    buffer.writeln('.');
+    if (groupSent) {
+      buffer.writeln('💬 В группу: отправлено.');
+    }
+    return buffer.toString();
+  }
+
+  String adminBroadcastGroupOnly({required bool groupSent}) {
+    if (groupSent) {
+      return '✅ <b>Сообщение отправлено в группу.</b>';
+    }
+    return '⚠️ Группа не настроена или не удалось отправить сообщение в группу.';
+  }
+
+  String adminBroadcastCancelled() {
+    return '🚫 Рассылка отменена.';
+  }
+
+  String adminBroadcastNoUsers() {
+    return '⚠️ Нет пользователей для рассылки.\n'
+        'Только пользователи, начавшие диалог с ботом (/start), получат сообщения.';
+  }
+
+  Map<String, Object?> broadcastTargetKeyboard({required bool hasGroup}) {
+    return TelegramKeyboards.broadcastTargetKeyboard(hasGroup: hasGroup);
+  }
+}

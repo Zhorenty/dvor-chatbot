@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
+import 'package:dvor_chatbot/src/messages/html_escaper.dart';
 import 'package:intl/intl.dart';
 
 final class GroupTemplates {
@@ -154,12 +155,5 @@ final class GroupTemplates {
     };
   }
 
-  String _escapeHtml(String value) {
-    return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-  }
+  String _escapeHtml(String value) => escapeHtml(value);
 }

@@ -3,6 +3,7 @@ import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
+import 'package:dvor_chatbot/src/messages/html_escaper.dart';
 import 'package:intl/intl.dart';
 
 final class ScheduleTemplates {
@@ -540,14 +541,7 @@ final class ScheduleTemplates {
     return value.trim();
   }
 
-  String _escapeHtml(String value) {
-    return value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
-  }
+  String _escapeHtml(String value) => escapeHtml(value);
 
   String _normalizeTrainerDescription(String raw) {
     final normalized = raw.replaceAll('\r\n', '\n');

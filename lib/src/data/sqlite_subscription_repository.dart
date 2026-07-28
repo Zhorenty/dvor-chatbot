@@ -1,15 +1,24 @@
 import 'dart:io';
 
+import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 final class SqliteSubscriptionRepository implements SubscriptionRepository {
   SqliteSubscriptionRepository({
-    required String dbPath,
-  }) : _dbPath = dbPath;
+    String? dbPath,
+    SqliteDatabaseHandle? databaseHandle,
+  })  : _dbPath = dbPath ?? databaseHandle?.path,
+        _externalHandle = databaseHandle {
+    if (_dbPath == null) {
+      throw ArgumentError('Either dbPath or databaseHandle is required.');
+    }
+  }
 
-  final String _dbPath;
+  final String? _dbPath;
+  final SqliteDatabaseHandle? _externalHandle;
+  SqliteDatabaseHandle? _ownedHandle;
   Database? _db;
 
   Database get _database {
@@ -22,12 +31,18 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
 
   @override
   Future<void> init() async {
-    final file = File(_dbPath);
-    file.parent.createSync(recursive: true);
-    final db = sqlite3.open(_dbPath);
-    _db = db;
-    db.execute('PRAGMA journal_mode=WAL;');
-    db.execute('PRAGMA foreign_keys=ON;');
+    final external = _externalHandle;
+    if (external != null) {
+      _db = external.database;
+    } else {
+      final path = _dbPath!;
+      final file = File(path);
+      file.parent.createSync(recursive: true);
+      final handle = SqliteDatabaseHandle.open(path);
+      _ownedHandle = handle;
+      _db = handle.database;
+    }
+    final db = _database;
     db.execute('''
       CREATE TABLE IF NOT EXISTS subscription_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,8 +126,11 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
 
   @override
   Future<void> close() async {
-    _db?.dispose();
-    _db = null;
+    _ownedHandle?.close();
+    _ownedHandle = null;
+    if (_externalHandle == null) {
+      _db = null;
+    }
   }
 
   @override

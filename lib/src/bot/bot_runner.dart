@@ -8,10 +8,12 @@ import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
+import 'package:dvor_chatbot/src/jobs/job_scheduler.dart';
 import 'package:dvor_chatbot/src/jobs/onboarding_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/referral_broadcast_job.dart';
@@ -41,9 +43,11 @@ final class BotRunner {
     required GroupAnnouncementService groupAnnouncements,
     required PrivateHandlers privateHandlers,
     required GroupHandlers groupHandlers,
+    JobDedupeRepository? jobDedupeRepository,
   })  : _config = config,
         _client = client,
         _scheduleRepository = scheduleRepository,
+        _jobScheduler = JobScheduler(),
         _scheduleSyncJob = ScheduleSyncJob(scheduleRepository: scheduleRepository),
         _paymentReminderJob = PaymentReminderJob(
           bookingRepository: bookingRepository,
@@ -71,6 +75,7 @@ final class BotRunner {
           templates: templates,
           targetChatId: config.targetChatId,
           timezoneOffsetHours: config.timezoneOffsetHours,
+          jobDedupeRepository: jobDedupeRepository,
         ),
         _scheduleBroadcastJob = ScheduleBroadcastJob(
           scheduleRepository: scheduleRepository,
@@ -78,12 +83,14 @@ final class BotRunner {
           templates: templates,
           targetChatId: config.targetChatId,
           timezoneOffsetHours: config.timezoneOffsetHours,
+          jobDedupeRepository: jobDedupeRepository,
         ),
         _referralBroadcastJob = ReferralBroadcastJob(
           announcements: groupAnnouncements,
           templates: templates,
           targetChatId: config.targetChatId,
           timezoneOffsetHours: config.timezoneOffsetHours,
+          jobDedupeRepository: jobDedupeRepository,
         ),
         _economicSummaryJob = EconomicSummaryJob(
           bookingRepository: bookingRepository,
@@ -130,6 +137,7 @@ final class BotRunner {
   final AppConfig _config;
   final TelegramClient _client;
   final TrainingScheduleRepository _scheduleRepository;
+  final JobScheduler _jobScheduler;
   final ScheduleSyncJob _scheduleSyncJob;
   final PaymentReminderJob _paymentReminderJob;
   final StarterBonusReminderJob _starterBonusReminderJob;
@@ -151,19 +159,7 @@ final class BotRunner {
   int _conflictRetries = 0;
   int _offset = 0;
   bool _clientClosed = false;
-  int _activeOperations = 0;
-  Completer<void>? _idleCompleter;
-  Timer? _scheduleSyncTimer;
-  Timer? _paymentReminderTimer;
-  Timer? _starterBonusReminderTimer;
-  Timer? _welcomeCleanupTimer;
-  Timer? _economicSummaryTimer;
-  Timer? _subscriptionRenewalTimer;
-  Timer? _trainingDayPromoTimer;
-  Timer? _scheduleBroadcastTimer;
-  Timer? _referralBroadcastTimer;
-  Timer? _onboardingNudgeTimer;
-  Timer? _trainingFeedbackTimer;
+  final List<Timer> _timers = <Timer>[];
 
   int get exitCode => _exitCode;
 
@@ -173,80 +169,34 @@ final class BotRunner {
     if (!initialRefreshOk) {
       l.w('Initial schedule refresh failed. Continuing with available cache.');
     }
-    _scheduleSyncTimer = Timer.periodic(
+    _schedulePeriodic(
       Duration(seconds: _config.scheduleSyncIntervalSeconds),
-      (_) {
-        if (_stopping) {
-          return;
-        }
-        _launchBackgroundJob('schedule sync', _scheduleSyncJob.run);
-      },
+      'schedule sync',
+      _scheduleSyncJob.run,
     );
-    _paymentReminderTimer = Timer.periodic(const Duration(minutes: 5), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('payment reminder', _paymentReminderJob.run);
-    });
-    _starterBonusReminderTimer = Timer.periodic(const Duration(minutes: 30), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('starter bonus reminder', _starterBonusReminderJob.run);
-    });
-    _welcomeCleanupTimer = Timer.periodic(const Duration(seconds: 20), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('welcome cleanup', _welcomeCleanupJob.run);
-    });
-    _economicSummaryTimer = Timer.periodic(const Duration(minutes: 30), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('economic summary', _economicSummaryJob.run);
-    });
-    _subscriptionRenewalTimer = Timer.periodic(const Duration(minutes: 30), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('subscription renewal', _subscriptionRenewalJob.run);
-    });
-    _trainingDayPromoTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('training day promo', _trainingDayPromoJob.run);
-    });
-    _scheduleBroadcastTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('schedule broadcast', _scheduleBroadcastJob.run);
-    });
-    _referralBroadcastTimer = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('referral broadcast', _referralBroadcastJob.run);
-    });
-    _onboardingNudgeTimer = Timer.periodic(const Duration(minutes: 10), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('onboarding nudge', _onboardingNudgeJob.run);
-    });
-    _trainingFeedbackTimer = Timer.periodic(const Duration(minutes: 10), (_) {
-      if (_stopping) {
-        return;
-      }
-      _launchBackgroundJob('training feedback', _trainingFeedbackJob.run);
-    });
-    _launchBackgroundJob('economic summary', _economicSummaryJob.run);
-    _launchBackgroundJob('subscription renewal', _subscriptionRenewalJob.run);
-    _launchBackgroundJob('training day promo', _trainingDayPromoJob.run);
-    _launchBackgroundJob('schedule broadcast', _scheduleBroadcastJob.run);
-    _launchBackgroundJob('referral broadcast', _referralBroadcastJob.run);
+    _schedulePeriodic(const Duration(minutes: 5), 'payment reminder', _paymentReminderJob.run);
+    _schedulePeriodic(
+      const Duration(minutes: 30),
+      'starter bonus reminder',
+      _starterBonusReminderJob.run,
+    );
+    _schedulePeriodic(const Duration(seconds: 20), 'welcome cleanup', _welcomeCleanupJob.run);
+    _schedulePeriodic(const Duration(minutes: 30), 'economic summary', _economicSummaryJob.run);
+    _schedulePeriodic(
+      const Duration(minutes: 30),
+      'subscription renewal',
+      _subscriptionRenewalJob.run,
+    );
+    _schedulePeriodic(const Duration(minutes: 1), 'training day promo', _trainingDayPromoJob.run);
+    _schedulePeriodic(const Duration(minutes: 1), 'schedule broadcast', _scheduleBroadcastJob.run);
+    _schedulePeriodic(const Duration(minutes: 1), 'referral broadcast', _referralBroadcastJob.run);
+    _schedulePeriodic(const Duration(minutes: 10), 'onboarding nudge', _onboardingNudgeJob.run);
+    _schedulePeriodic(const Duration(minutes: 10), 'training feedback', _trainingFeedbackJob.run);
+    _jobScheduler.launch('economic summary', _economicSummaryJob.run);
+    _jobScheduler.launch('subscription renewal', _subscriptionRenewalJob.run);
+    _jobScheduler.launch('training day promo', _trainingDayPromoJob.run);
+    _jobScheduler.launch('schedule broadcast', _scheduleBroadcastJob.run);
+    _jobScheduler.launch('referral broadcast', _referralBroadcastJob.run);
 
     while (!_stopping) {
       try {
@@ -261,7 +211,7 @@ final class BotRunner {
           }
           final updateId = update['update_id'];
           try {
-            await _runTracked(() => _handleUpdate(update));
+            await _jobScheduler.runTracked(() => _handleUpdate(update));
           } on Object catch (error, stackTrace) {
             l.e('Failed to handle update (update_id=$updateId): $error', stackTrace);
           } finally {
@@ -301,7 +251,7 @@ final class BotRunner {
         await Future<void>.delayed(const Duration(seconds: 2));
       }
     }
-    await _waitForIdleOperations();
+    await _jobScheduler.waitForIdle();
     _closeClient();
   }
 
@@ -318,19 +268,27 @@ final class BotRunner {
       return;
     }
     _stopping = true;
-    _scheduleSyncTimer?.cancel();
-    _paymentReminderTimer?.cancel();
-    _starterBonusReminderTimer?.cancel();
-    _welcomeCleanupTimer?.cancel();
-    _economicSummaryTimer?.cancel();
-    _subscriptionRenewalTimer?.cancel();
-    _trainingDayPromoTimer?.cancel();
-    _scheduleBroadcastTimer?.cancel();
-    _referralBroadcastTimer?.cancel();
-    _onboardingNudgeTimer?.cancel();
-    _trainingFeedbackTimer?.cancel();
+    for (final timer in _timers) {
+      timer.cancel();
+    }
+    _timers.clear();
     _closeClient();
-    await _waitForIdleOperations();
+    await _jobScheduler.waitForIdle();
+  }
+
+  void _schedulePeriodic(
+    Duration period,
+    String name,
+    Future<void> Function() action,
+  ) {
+    _timers.add(
+      Timer.periodic(period, (_) {
+        if (_stopping) {
+          return;
+        }
+        _jobScheduler.launch(name, action);
+      }),
+    );
   }
 
   Future<void> _initializeLongPolling() async {
@@ -339,44 +297,6 @@ final class BotRunner {
     } on Object catch (error, stackTrace) {
       l.w('Failed to reset Telegram webhook before polling: $error', stackTrace);
     }
-  }
-
-  Future<T> _runTracked<T>(Future<T> Function() action) async {
-    _activeOperations += 1;
-    try {
-      return await action();
-    } finally {
-      _activeOperations -= 1;
-      if (_activeOperations == 0) {
-        _idleCompleter?.complete();
-        _idleCompleter = null;
-      }
-    }
-  }
-
-  void _launchBackgroundJob(String name, Future<void> Function() action) {
-    unawaited(
-      _runTracked(action).onError<Object>((error, stackTrace) {
-        l.w('Background $name job failed: $error', stackTrace);
-      }),
-    );
-  }
-
-  Future<void> _waitForIdleOperations() async {
-    if (_activeOperations == 0) {
-      return;
-    }
-    const timeout = Duration(seconds: 15);
-    final completer = _idleCompleter ??= Completer<void>();
-    await completer.future.timeout(
-      timeout,
-      onTimeout: () {
-        l.w(
-          'Timed out after ${timeout.inSeconds}s waiting for '
-          '$_activeOperations active operation(s); proceeding with shutdown.',
-        );
-      },
-    );
   }
 
   void _closeClient() {

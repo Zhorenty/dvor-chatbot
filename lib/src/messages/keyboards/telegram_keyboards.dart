@@ -4,16 +4,13 @@ import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
+import 'package:dvor_chatbot/src/messages/keyboards/keyboard_builders.dart';
 
 final class TelegramKeyboards {
   const TelegramKeyboards._();
 
   static Map<String, Object?> _replyKeyboard(List<List<Map<String, String>>> rows) {
-    return <String, Object?>{
-      'keyboard': rows,
-      'resize_keyboard': true,
-      'one_time_keyboard': false,
-    };
+    return replyKeyboard(rows);
   }
 
   static Map<String, Object?> privateMenuKeyboard({

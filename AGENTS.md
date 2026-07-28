@@ -12,20 +12,24 @@ Project guidance for AI/code agents in this repository.
 
 ## Source of Truth (Key Files)
 
-- Entry point: `bin/dvor_bot.dart`
-- App runtime: `lib/src/bot/bot_runner.dart`
+- Entry point: `bin/dvor_bot.dart` (shared SQLite handle for booking/onboarding/subscription)
+- App runtime: `lib/src/bot/bot_runner.dart` + `lib/src/jobs/job_scheduler.dart`
 - Config: `lib/src/config/app_config.dart`
 - Telegram transport: `lib/src/telegram/telegram_client.dart`
 - Handlers:
-  - `lib/src/bot/handlers/private_handlers.dart`
+  - `lib/src/bot/handlers/private_handlers.dart` (facade + `handle`)
+  - `lib/src/bot/handlers/private/*.part.dart` (booking/payment/admin/onboarding/bonuses/schedule ops)
   - `lib/src/bot/handlers/group_handlers.dart`
+- Jobs: `lib/src/jobs/` (promo/broadcast jobs use persistent `job_dedupe_log`)
 - Anti-spam:
   - `lib/src/application/group_spam_detector.dart`
 - Trainings domain/data:
   - `lib/src/domain/training_info.dart`
   - `lib/src/data/training_schedule_repository.dart`
   - `lib/src/data/static_schedule_repository.dart`
-- Message text/templates: `lib/src/messages/message_templates.dart`
+  - `lib/src/data/sqlite/sqlite_database_handle.dart`
+- Message text/templates: `lib/src/messages/message_templates.dart` (+ `templates/*.part.dart`)
+- HTML escaping: `lib/src/messages/html_escaper.dart`
 
 ## Architecture and Coding Rules
 
@@ -73,6 +77,9 @@ Project guidance for AI/code agents in this repository.
 - Keep timeout/retry behavior in Telegram API calls.
 - Handle Telegram failures explicitly via `TelegramApiException`.
 - Keep graceful shutdown behavior (`SIGINT`/`SIGTERM`) intact.
+- Capacity checks for bookings run inside `BEGIN IMMEDIATE` transactions.
+- Background jobs use `JobScheduler` in-flight guards; group announcements are serialized.
+- Scheduled promo/broadcast jobs claim keys via `job_dedupe_log` so restarts do not double-send.
 
 ## Required Validation Before Handoff
 

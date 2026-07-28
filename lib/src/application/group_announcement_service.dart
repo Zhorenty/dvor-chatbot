@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
 
@@ -47,17 +49,44 @@ final class GroupAnnouncementService {
   final DateTime Function() _nowProvider;
 
   _ActiveAnnouncement? _active;
+  Future<void> _chain = Future<void>.value();
 
   /// Publishes [text] if it may take the announcement slot.
   ///
   /// Returns `true` when a message was sent. Returns `false` when skipped
   /// because a higher-priority announcement still occupies the slot.
+  /// Concurrent callers are serialized so slot checks cannot interleave.
   Future<bool> publish({
     required int chatId,
     required GroupAnnouncementType type,
     required String text,
     String? parseMode,
     bool disableWebPagePreview = false,
+  }) {
+    final completer = Completer<bool>();
+    _chain = _chain.then((_) async {
+      try {
+        final sent = await _publishLocked(
+          chatId: chatId,
+          type: type,
+          text: text,
+          parseMode: parseMode,
+          disableWebPagePreview: disableWebPagePreview,
+        );
+        completer.complete(sent);
+      } on Object catch (error, stackTrace) {
+        completer.completeError(error, stackTrace);
+      }
+    });
+    return completer.future;
+  }
+
+  Future<bool> _publishLocked({
+    required int chatId,
+    required GroupAnnouncementType type,
+    required String text,
+    required String? parseMode,
+    required bool disableWebPagePreview,
   }) async {
     final now = _nowProvider();
     final active = _active;

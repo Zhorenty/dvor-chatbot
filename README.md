@@ -71,17 +71,20 @@ MVP-бот для спортивного объединения DVOR на Dart.
 
 ## Структура проекта
 
-- `bin/dvor_bot.dart` — entrypoint и запуск бота
+- `bin/dvor_bot.dart` — entrypoint; один shared SQLite handle на booking/onboarding/subscription
 - `lib/src/config/app_config.dart` — конфигурация из CLI/env/.env
 - `lib/src/telegram/telegram_client.dart` — Telegram Bot API клиент
-- `lib/src/bot/handlers/private_handlers.dart` — логика private-сценариев и кнопочного меню
+- `lib/src/bot/bot_runner.dart` + `lib/src/jobs/job_scheduler.dart` — long polling и фоновые джобы
+- `lib/src/bot/handlers/private_handlers.dart` — facade private-сценариев (+ `private/*.part.dart`)
 - `lib/src/bot/handlers/group_handlers.dart` — welcome flow и антиспам в группе
 - `lib/src/application/group_spam_detector.dart` — эвристики рекламы заработка / удалёнки
 - `lib/src/data/static_schedule_repository.dart` — статичное расписание тренировок
 - `lib/src/data/google_sheets_schedule_repository.dart` — расписание из Google Sheets CSV
 - `lib/src/data/sqlite_booking_repository.dart` — SQLite-хранилище записей и оплат
-- `lib/src/messages/message_templates.dart` — шаблоны сообщений
-- `test/` — unit-тесты
+- `lib/src/data/job_dedupe_repository.dart` — идемпотентность promo/broadcast джобов
+- `lib/src/messages/message_templates.dart` — шаблоны сообщений (+ `templates/*.part.dart`)
+- `lib/src/messages/html_escaper.dart` — общий HTML escape для Telegram
+- `test/` — unit-тесты (включая `concurrency_safety_test.dart`)
 
 ## Конфигурация
 

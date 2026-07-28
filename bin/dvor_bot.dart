@@ -6,19 +6,18 @@ import 'package:dvor_chatbot/src/bot/bot_runner.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
-import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_schedule_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_trainer_directory_repository.dart';
-import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
+import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/static_promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/static_schedule_repository.dart';
 import 'package:dvor_chatbot/src/data/static_trainer_directory_repository.dart';
-import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -41,9 +40,18 @@ void main(List<String> args) {
       final scheduleRepository = _createScheduleRepository(config);
       final trainerDirectoryRepository = _createTrainerDirectoryRepository(config);
       final promoCodeRepository = _createPromoCodeRepository(config);
-      final bookingRepository = _createBookingRepository(config);
-      final subscriptionRepository = _createSubscriptionRepository(config);
-      final onboardingRepository = _createOnboardingRepository(config);
+      final databaseHandle = SqliteDatabaseHandle.open(config.bookingsDbPath);
+      final jobDedupeRepository = JobDedupeRepository(databaseHandle: databaseHandle)..initSchema();
+      final bookingRepository = SqliteBookingRepository(
+        databaseHandle: databaseHandle,
+        pendingPaymentTtl: Duration(minutes: config.pendingPaymentTtlMinutes),
+      );
+      final subscriptionRepository = SqliteSubscriptionRepository(
+        databaseHandle: databaseHandle,
+      );
+      final onboardingRepository = SqliteOnboardingRepository(
+        databaseHandle: databaseHandle,
+      );
       await bookingRepository.init();
       await subscriptionRepository.init();
       await onboardingRepository.init();
@@ -59,6 +67,7 @@ void main(List<String> args) {
         sender: client,
         templates: templates,
         groupAnnouncements: groupAnnouncements,
+        jobDedupeRepository: jobDedupeRepository,
         privateHandlers: PrivateHandlers(
           sender: client,
           scheduleRepository: scheduleRepository,
@@ -102,6 +111,7 @@ void main(List<String> args) {
         await bookingRepository.close();
         await subscriptionRepository.close();
         await onboardingRepository.close();
+        databaseHandle.close();
       }
 
       final code = runner.exitCode;
@@ -167,25 +177,6 @@ TrainingScheduleRepository _createScheduleRepository(AppConfig config) {
     case ScheduleSource.staticData:
       return const StaticScheduleRepository();
   }
-}
-
-BookingRepository _createBookingRepository(AppConfig config) {
-  return SqliteBookingRepository(
-    dbPath: config.bookingsDbPath,
-    pendingPaymentTtl: Duration(minutes: config.pendingPaymentTtlMinutes),
-  );
-}
-
-OnboardingRepository _createOnboardingRepository(AppConfig config) {
-  return SqliteOnboardingRepository(
-    dbPath: config.bookingsDbPath,
-  );
-}
-
-SubscriptionRepository _createSubscriptionRepository(AppConfig config) {
-  return SqliteSubscriptionRepository(
-    dbPath: config.bookingsDbPath,
-  );
 }
 
 void _registerShutdown(BotRunner runner) {
