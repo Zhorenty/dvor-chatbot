@@ -194,11 +194,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         selectedOutdoorActivity: null,
         outdoorDetailType: null,
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.chooseOutdoorEventForDetails(category),
-        replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
-      );
+      await _sendOutdoorEventSelection(chatId: chatId, outdoorItems: outdoorItems);
       return true;
     }
 
@@ -216,12 +212,13 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         return true;
       }
       final outdoorItems = _catalogService.outdoorItems(category);
+      final bookable = outdoorItems.map(_catalogService.toBookableInfo).toList(growable: false);
       final index = _parseTrainingSelectionIndex(text);
       if (index == null || index < 1 || index > outdoorItems.length) {
         await _sender.sendMessage(
           chatId,
           _templates.unknownOutdoorSelection(),
-          replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
+          replyMarkup: _templates.bookingSelectionKeyboard(bookable),
         );
         return true;
       }
@@ -307,11 +304,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
           parseMode: 'HTML',
           disableWebPagePreview: true,
         );
-        await _sender.sendMessage(
-          chatId,
-          _templates.chooseOutdoorEventForDetails(category),
-          replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
-        );
+        await _sendOutdoorEventSelection(chatId: chatId, outdoorItems: outdoorItems);
       } else {
         await _refreshTrainerDirectoryForSchedule();
         await _openBookingByCategory(

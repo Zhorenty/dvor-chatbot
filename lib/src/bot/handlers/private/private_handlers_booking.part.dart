@@ -315,6 +315,18 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     );
   }
 
+  Future<void> _sendOutdoorEventSelection({
+    required int chatId,
+    required List<OutdoorActivityInfo> outdoorItems,
+  }) async {
+    final bookable = outdoorItems.map(_catalogService.toBookableInfo).toList(growable: false);
+    await _sender.sendMessage(
+      chatId,
+      _templates.chooseTrainingForBooking(bookable),
+      replyMarkup: _templates.bookingSelectionKeyboard(bookable),
+    );
+  }
+
   Future<void> _openBookingByCategory({
     required int chatId,
     required int userId,
@@ -343,11 +355,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         selectedCategory: category,
         bookingFromSchedulePreview: fromSchedulePreview,
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.chooseOutdoorEventForDetails(category),
-        replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
-      );
+      await _sendOutdoorEventSelection(chatId: chatId, outdoorItems: outdoorItems);
       return;
     }
     final upcoming = _bookableItemsByCategory(category);

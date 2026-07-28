@@ -1021,9 +1021,9 @@ void main() {
       expect(sender.messages[1].text, contains('50% предоплата при записи'));
       expect(sender.messages[1].text, contains('2500 ₽ (1250 ₽ предоплата 50%)'));
       expect(sender.messages[1].text, contains('Поход на водопады'));
-      expect(sender.messages.last.text, contains('Выбери поход из кнопок'));
+      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains('🎯 1. Поход на водопады'));
+      expect(buttons, contains('🎯 1. 🥾 Поход: Поход на водопады'));
       expect(buttons, isNot(contains('Трейл перевал')));
     });
 
@@ -1064,9 +1064,9 @@ void main() {
       expect(sender.messages[1].text, contains('Ближайшие трейлы OUTDVOR'));
       expect(sender.messages[1].text, contains('50% предоплата при записи'));
       expect(sender.messages[1].text, contains('Трейл перевал'));
-      expect(sender.messages.last.text, contains('Выбери трейл из кнопок'));
+      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains('🎯 1. Трейл перевал'));
+      expect(buttons, contains('🎯 1. 🏃 Трейл: Трейл перевал'));
     });
 
     test('help button shows client-facing bot capabilities', () async {
@@ -1280,7 +1280,7 @@ void main() {
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1610, 'type': 'private'},
         'from': <String, dynamic>{'id': 1610},
-        'text': '🎯 1. Поход на Бзерпинский карниз',
+        'text': '🎯 1. 🥾 Поход: Поход на Бзерпинский карниз',
       });
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1610, 'type': 'private'},
@@ -1336,7 +1336,7 @@ void main() {
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
         'from': <String, dynamic>{'id': 1611},
-        'text': '🎯 1. Трейл Фишт',
+        'text': '🎯 1. 🏃 Трейл: Трейл Фишт',
       });
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
@@ -1345,9 +1345,9 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Выбери трейл из кнопок'));
+      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains('🎯 1. Трейл Фишт'));
+      expect(buttons, contains('🎯 1. 🏃 Трейл: Трейл Фишт'));
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
@@ -1395,12 +1395,12 @@ void main() {
       final opened = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
         'from': <String, dynamic>{'id': 1612},
-        'text': '🎯 1. Поход на Бзерпинский карниз',
+        'text': '🎯 1. 🥾 Поход: Поход на Бзерпинский карниз',
       });
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
         'from': <String, dynamic>{'id': 1612},
-        'text': '🎯 1. Поход на Бзерпинский карниз',
+        'text': '🎯 1. 🥾 Поход: Поход на Бзерпинский карниз',
       });
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1612, 'type': 'private'},
@@ -2282,14 +2282,17 @@ void main() {
         'from': <String, dynamic>{'id': 1620},
         'text': MessageTemplates.buttonCategoryHikes,
       });
-      expect(sender.messages.last.text, contains('Выбери поход из кнопок'));
+      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
+      expect(sender.messages.last.text, contains('1. 🥾 Поход: Поход на хребет'));
+      expect(sender.messages.last.text, contains('🕒 от 13.07.2026 до 14.07.2026'));
+      expect(sender.messages.last.text, contains('📍 Лаго-Наки, старт от кордона, взнос: 3200 ₽'));
       final listButtons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(listButtons, contains('🎯 1. Поход на хребет'));
+      expect(listButtons, contains('🎯 1. 🥾 Поход: Поход на хребет'));
 
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 162, 'type': 'private'},
         'from': <String, dynamic>{'id': 1620},
-        'text': '🎯 1. Поход на хребет',
+        'text': '🎯 1. 🥾 Поход: Поход на хребет',
       });
       final detailsText = sender.messages.last.text;
       expect(detailsText, contains('Поход на хребет'));
@@ -2476,7 +2479,7 @@ void main() {
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 168, 'type': 'private'},
         'from': <String, dynamic>{'id': 1608},
-        'text': '🎯 1. Архыз',
+        'text': '🎯 1. 🥾 Поход: Архыз',
       });
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 168, 'type': 'private'},
@@ -5665,10 +5668,10 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Выбери поход из кнопок'));
-      expect(sender.messages.last.text, isNot(contains('Выбери мероприятие для записи')));
+      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
+      expect(sender.messages.last.text, contains('1. 🥾 Поход: Архыз выходные'));
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, contains('🎯 1. Архыз выходные'));
+      expect(buttons, contains('🎯 1. 🥾 Поход: Архыз выходные'));
     });
 
     test('opens and sends economic summary by selected period', () async {

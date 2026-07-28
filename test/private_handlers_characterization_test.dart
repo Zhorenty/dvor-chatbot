@@ -91,7 +91,7 @@ void main() {
       await harness.handleText(
         chatId: 1610,
         userId: 1610,
-        text: '🎯 1. Поход на Бзерпинский карниз',
+        text: '🎯 1. 🥾 Поход: Поход на Бзерпинский карниз',
       );
       final handled = await harness.handleText(
         chatId: 1610,

@@ -124,11 +124,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             selectedOutdoorActivity: null,
             outdoorDetailType: null,
           );
-          await _sender.sendMessage(
-            chatId,
-            _templates.chooseOutdoorEventForDetails(selectedCategory),
-            replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
-          );
+          await _sendOutdoorEventSelection(chatId: chatId, outdoorItems: outdoorItems);
           return true;
         case _PrivateFlowStep.viewingScheduleCategory:
           _flowByUserId[userId] =
