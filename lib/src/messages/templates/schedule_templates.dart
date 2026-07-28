@@ -157,8 +157,26 @@ final class ScheduleTemplates {
   }
 
   String chooseOutdoorDetailType(OutdoorActivityInfo item) {
-    return 'Выбран(о): <b>${_escapeHtml(item.title)}</b>\n'
-        'Выбери действие 👇';
+    final location = item.location?.trim();
+    final description = _normalizeMultiline(item.description);
+    final lines = <String>[
+      '🏷 <b>${_escapeHtml(item.title)}</b>',
+      '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+      if (location != null && location.isNotEmpty) '📍 ${_escapeHtml(location)}',
+      if (item.price != null) '💳 ${_outdoorPriceWithPrepayment(item.price!)}',
+    ];
+    if (description != null) {
+      lines.addAll(<String>[
+        '',
+        '📝 <b>Описание:</b>',
+        _escapeHtml(description),
+      ]);
+    }
+    lines.addAll(<String>[
+      '',
+      'Выбери действие 👇',
+    ]);
+    return lines.join('\n');
   }
 
   String unknownOutdoorSelection() {

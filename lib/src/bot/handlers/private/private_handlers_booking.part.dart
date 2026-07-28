@@ -325,6 +325,31 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     String? parseMode,
     bool disableWebPagePreview = false,
   }) async {
+    if (_isOutdoorCategory(category)) {
+      final outdoorItems = _catalogService.outdoorItems(category);
+      if (outdoorItems.isEmpty) {
+        _flowByUserId.remove(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.noUpcomingForBooking(),
+          replyMarkup:
+              _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
+        );
+        return;
+      }
+      _flowByUserId[userId] = _PrivateFlowState(
+        step: _PrivateFlowStep.selectingOutdoorDetailEvent,
+        availableTrainings: const <TrainingInfo>[],
+        selectedCategory: category,
+        bookingFromSchedulePreview: fromSchedulePreview,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.chooseOutdoorEventForDetails(category),
+        replyMarkup: _templates.outdoorSelectionKeyboard(outdoorItems),
+      );
+      return;
+    }
     final upcoming = _bookableItemsByCategory(category);
     if (upcoming.isEmpty) {
       _flowByUserId.remove(userId);

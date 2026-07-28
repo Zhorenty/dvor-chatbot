@@ -393,6 +393,28 @@ void main() {
       expect(text, contains('📍 Где: Роза Хутор, КПП Лаура'));
     });
 
+    test('renders selected outdoor detail card with description and price', () {
+      final text = templates.chooseOutdoorDetailType(
+        OutdoorActivityInfo(
+          type: OutdoorActivityType.hike,
+          title: 'Поход на Ачишхо',
+          dateFrom: DateTime(2026, 7, 21),
+          dateTo: DateTime(2026, 7, 21, 23, 59, 59),
+          location: 'Красная Поляна',
+          description: 'Дневной маршрут\nс красивыми видами',
+          price: 2500,
+        ),
+      );
+
+      expect(text, contains('Поход на Ачишхо'));
+      expect(text, contains('📍 Красная Поляна'));
+      expect(text, contains('2500 ₽ (1250 ₽ предоплата 50%)'));
+      expect(text, contains('📝 <b>Описание:</b>'));
+      expect(text, contains('Дневной маршрут'));
+      expect(text, contains('с красивыми видами'));
+      expect(text, contains('Выбери действие'));
+    });
+
     test('renders from-to dates for multi-day hikes in schedule', () {
       final text = templates.hikes(<OutdoorActivityInfo>[
         OutdoorActivityInfo(

@@ -298,6 +298,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
           step: _PrivateFlowStep.selectingOutdoorDetailEvent,
           availableTrainings: const <TrainingInfo>[],
           selectedCategory: category,
+          bookingFromSchedulePreview: true,
         );
         await _refreshTrainerDirectoryForSchedule();
         await _sender.sendMessage(

@@ -92,14 +92,17 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           );
           return true;
         case _PrivateFlowStep.selectingOutdoorDetailEvent:
+          final fromSchedule = flowState?.bookingFromSchedulePreview == true;
           _flowByUserId[userId] = flowState!.copyWith(
-            step: _PrivateFlowStep.selectingScheduleCategory,
+            step: fromSchedule
+                ? _PrivateFlowStep.selectingScheduleCategory
+                : _PrivateFlowStep.selectingBookingCategory,
             selectedOutdoorActivity: null,
             outdoorDetailType: null,
           );
           await _sender.sendMessage(
             chatId,
-            _templates.chooseScheduleCategory(),
+            fromSchedule ? _templates.chooseScheduleCategory() : _templates.chooseBookingCategory(),
             replyMarkup: _templates.categorySelectionKeyboard(),
           );
           return true;
@@ -161,6 +164,22 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           );
           return true;
         case _PrivateFlowStep.paymentConfirmation:
+          final selectedOutdoor = flowState?.selectedOutdoorActivity;
+          if (selectedOutdoor != null) {
+            _flowByUserId[userId] = flowState!.copyWith(
+              step: _PrivateFlowStep.selectingOutdoorDetailType,
+              activeBooking: null,
+              starterBonusOffered: false,
+              paymentChoice: null,
+            );
+            await _sender.sendMessage(
+              chatId,
+              _templates.chooseOutdoorDetailType(selectedOutdoor),
+              replyMarkup: _templates.outdoorDetailTypeKeyboard(),
+              parseMode: 'HTML',
+            );
+            return true;
+          }
           final items = flowState!.availableTrainings;
           _flowByUserId[userId] = flowState.copyWith(step: _PrivateFlowStep.selectingTraining);
           await _sender.sendMessage(

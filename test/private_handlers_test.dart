@@ -1365,6 +1365,7 @@ void main() {
               dateTo: DateTime(2026, 7, 21, 23, 59, 59),
               description: 'Двухдневный маршрут',
               equipment: 'Ботинки, дождевик, фонарь',
+              price: 4100,
             ),
             OutdoorActivityInfo(
               type: OutdoorActivityType.hike,
@@ -1414,8 +1415,11 @@ void main() {
       final actionsButtons = _keyboardTexts(detailsMessage.replyMarkup);
       expect(actionsButtons, contains(MessageTemplates.buttonOutdoorEquipment));
       expect(actionsButtons, contains(MessageTemplates.buttonOutdoorItinerary));
+      expect(actionsButtons, contains(MessageTemplates.buttonBookTraining));
       expect(sender.messages[1].text, contains('Ближайшие походы OUTDVOR'));
       expect(detailsMessage.text, contains('Выбери действие'));
+      expect(detailsMessage.text, contains('Двухдневный маршрут'));
+      expect(detailsMessage.text, contains('4100 ₽ (2050 ₽ предоплата 50%)'));
       expect(sender.messages.last.text, contains('Экипировка'));
       expect(sender.messages.last.text, contains('Поход на Бзерпинский карниз'));
       expect(sender.messages.last.text, contains('Ботинки, дождевик, фонарь'));
@@ -2278,15 +2282,30 @@ void main() {
         'from': <String, dynamic>{'id': 1620},
         'text': MessageTemplates.buttonCategoryHikes,
       });
-      final chooseActivityText = sender.messages.last.text;
-      expect(chooseActivityText, contains('Выбери мероприятие для записи'));
-      expect(chooseActivityText, contains('🥾 Поход: Поход на хребет'));
-      expect(chooseActivityText, contains('🕒 от 13.07.2026 до 14.07.2026'));
-      expect(chooseActivityText, isNot(contains('13.07.2026 00:00')));
+      expect(sender.messages.last.text, contains('Выбери поход из кнопок'));
+      final listButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(listButtons, contains('🎯 1. Поход на хребет'));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 162, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1620},
+        'text': '🎯 1. Поход на хребет',
+      });
+      final detailsText = sender.messages.last.text;
+      expect(detailsText, contains('Поход на хребет'));
+      expect(detailsText, contains('Ночевка в лагере'));
+      expect(detailsText, contains('3200 ₽ (1600 ₽ предоплата 50%)'));
+      expect(detailsText, contains('Выбери действие'));
+      expect(bookingRepository.createCalls, 0);
+      final detailButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(detailButtons, contains(MessageTemplates.buttonBookTraining));
+      expect(detailButtons, contains(MessageTemplates.buttonOutdoorEquipment));
+      expect(detailButtons, contains(MessageTemplates.buttonOutdoorItinerary));
+
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 162, 'type': 'private'},
         'from': <String, dynamic>{'id': 1620},
-        'text': '🎯 1. 🥾 Поход: Поход на хребет',
+        'text': MessageTemplates.buttonBookTraining,
       });
 
       expect(handled, isTrue);
@@ -2457,7 +2476,12 @@ void main() {
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 168, 'type': 'private'},
         'from': <String, dynamic>{'id': 1608},
-        'text': '🎯 1. 🥾 Поход: Архыз',
+        'text': '🎯 1. Архыз',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 168, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1608},
+        'text': MessageTemplates.buttonBookTraining,
       });
 
       final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
@@ -5641,8 +5665,10 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
-      expect(sender.messages.last.text, contains('🥾 Поход: Архыз выходные'));
+      expect(sender.messages.last.text, contains('Выбери поход из кнопок'));
+      expect(sender.messages.last.text, isNot(contains('Выбери мероприятие для записи')));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains('🎯 1. Архыз выходные'));
     });
 
     test('opens and sends economic summary by selected period', () async {
