@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
@@ -627,6 +628,11 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
       recentFeedbackComments: const <RecentFeedbackComment>[],
       topFeedbackSessions: const <FeedbackSessionSummary>[],
     );
+  }
+
+  @override
+  Future<StarterBonusAnalytics> getStarterBonusAnalytics() async {
+    return const StarterBonusAnalytics(availableCount: 0, consumedCount: 0);
   }
 }
 

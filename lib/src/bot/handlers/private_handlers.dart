@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
+import 'package:dvor_chatbot/src/application/admin_analytics_service.dart';
 import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/application/broadcast_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
@@ -134,6 +135,11 @@ final class PrivateHandlers {
       PaymentReviewService(bookingRepository: _bookingRepository, catalogService: _catalogService);
   late final EconomicSummaryService _economicSummaryService = EconomicSummaryService(
       bookingRepository: _bookingRepository, catalogService: _catalogService);
+  late final AdminAnalyticsService _adminAnalyticsService = AdminAnalyticsService(
+    bookingRepository: _bookingRepository,
+    onboardingRepository: _onboardingRepository,
+    subscriptionRepository: _subscriptionRepository,
+  );
   late final NoblesListService _noblesListService = NoblesListService(
     bookingRepository: _bookingRepository,
     catalogService: _catalogService,

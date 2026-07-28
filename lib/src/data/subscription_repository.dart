@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 
 abstract interface class SubscriptionRepository {
@@ -84,6 +85,8 @@ abstract interface class SubscriptionRepository {
     required int requestId,
     required DateTime sentAt,
   });
+
+  Future<SubscriptionAnalytics> getSubscriptionAnalytics({required DateTime now});
 }
 
 final class NoopSubscriptionRepository implements SubscriptionRepository {
@@ -221,4 +224,16 @@ final class NoopSubscriptionRepository implements SubscriptionRepository {
     required int requestId,
     required DateTime sentAt,
   }) async {}
+
+  @override
+  Future<SubscriptionAnalytics> getSubscriptionAnalytics({required DateTime now}) async {
+    return SubscriptionAnalytics(
+      generatedAt: now.toUtc(),
+      activeCount: 0,
+      expiringSoonCount: 0,
+      pendingCount: 0,
+      cancelledOrRejectedCount: 0,
+      approvedTotal: 0,
+    );
+  }
 }

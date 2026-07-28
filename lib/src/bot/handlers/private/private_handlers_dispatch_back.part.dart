@@ -20,7 +20,6 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.selectingBookFriendCategory:
         case _PrivateFlowStep.selectingParticipantsCategory:
         case _PrivateFlowStep.selectingPaymentsQueueCategory:
-        case _PrivateFlowStep.selectingEconomicSummaryPeriod:
         case _PrivateFlowStep.viewingSubscriptionOverview:
         case _PrivateFlowStep.selectingBookingListSegment:
           _flowByUserId.remove(userId);
@@ -29,6 +28,30 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             'Вернул в главное меню 👇',
             replyMarkup: _templates.privateMenuKeyboard(
                 isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+          );
+          return true;
+        case _PrivateFlowStep.selectingEconomicSummaryPeriod:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminAnalyticsAction,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseAdminAnalyticsAction(),
+            replyMarkup: _templates.adminAnalyticsKeyboard(),
+            parseMode: 'HTML',
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminAnalyticsAction:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminToolsAction,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseAdminToolsAction(),
+            replyMarkup: _templates.adminToolsKeyboard(),
+            parseMode: 'HTML',
           );
           return true;
         case _PrivateFlowStep.selectingBookFriendEvent:

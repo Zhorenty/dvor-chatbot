@@ -74,10 +74,7 @@ final class TelegramKeyboards {
       <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonRefreshSchedule},
-          <String, String>{'text': MessageCopy.buttonEconomicSummary},
-        ],
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonFunnelAnalytics},
+          <String, String>{'text': MessageCopy.buttonAdminAnalytics},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonSubscriptionsAdmin},
@@ -88,6 +85,29 @@ final class TelegramKeyboards {
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonClientMenu},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminAnalyticsKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonFunnelAnalytics},
+          <String, String>{'text': MessageCopy.buttonFeedbackAnalytics},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonEconomicSummary},
+          <String, String>{'text': MessageCopy.buttonBookingAnalytics},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonLoyaltyAnalytics},
+          <String, String>{'text': MessageCopy.buttonSubscriptionAnalytics},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},

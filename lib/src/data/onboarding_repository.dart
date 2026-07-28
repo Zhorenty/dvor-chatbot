@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
@@ -190,6 +191,8 @@ abstract interface class OnboardingRepository {
     int recentCommentsLimit = 10,
     int topSessionsLimit = 8,
   });
+
+  Future<StarterBonusAnalytics> getStarterBonusAnalytics();
 }
 
 final class NoopOnboardingRepository implements OnboardingRepository {
@@ -415,5 +418,10 @@ final class NoopOnboardingRepository implements OnboardingRepository {
       recentFeedbackComments: const <RecentFeedbackComment>[],
       topFeedbackSessions: const <FeedbackSessionSummary>[],
     );
+  }
+
+  @override
+  Future<StarterBonusAnalytics> getStarterBonusAnalytics() async {
+    return const StarterBonusAnalytics(availableCount: 0, consumedCount: 0);
   }
 }

@@ -397,9 +397,100 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         return true;
       }
       if (userId != null) {
-        _flowByUserId.remove(userId);
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminAnalyticsAction,
+          availableTrainings: <TrainingInfo>[],
+        );
       }
       await _sendFunnelAnalytics(chatId: chatId, isAdmin: isAdmin);
+      return true;
+    }
+
+    if (text != null &&
+        (text == MessageTemplates.buttonFeedbackAnalytics ||
+            text.startsWith('/feedback_analytics'))) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (userId != null) {
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminAnalyticsAction,
+          availableTrainings: <TrainingInfo>[],
+        );
+      }
+      await _sendFeedbackAnalytics(chatId: chatId, isAdmin: isAdmin);
+      return true;
+    }
+
+    if (text != null &&
+        (text == MessageTemplates.buttonBookingAnalytics ||
+            text.startsWith('/booking_analytics'))) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (userId != null) {
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminAnalyticsAction,
+          availableTrainings: <TrainingInfo>[],
+        );
+      }
+      await _sendBookingAnalytics(chatId: chatId, isAdmin: isAdmin);
+      return true;
+    }
+
+    if (text != null &&
+        (text == MessageTemplates.buttonLoyaltyAnalytics ||
+            text.startsWith('/loyalty_analytics'))) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (userId != null) {
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminAnalyticsAction,
+          availableTrainings: <TrainingInfo>[],
+        );
+      }
+      await _sendLoyaltyAnalytics(chatId: chatId, isAdmin: isAdmin);
+      return true;
+    }
+
+    if (text != null &&
+        (text == MessageTemplates.buttonSubscriptionAnalytics ||
+            text.startsWith('/subscription_analytics'))) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (userId != null) {
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingAdminAnalyticsAction,
+          availableTrainings: <TrainingInfo>[],
+        );
+      }
+      await _sendSubscriptionAnalytics(chatId: chatId, isAdmin: isAdmin);
       return true;
     }
 
@@ -416,7 +507,10 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         );
         return true;
       }
-      _flowByUserId.remove(userId);
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminAnalyticsAction,
+        availableTrainings: <TrainingInfo>[],
+      );
       await _sendEconomicSummary(chatId: chatId, isAdmin: isAdmin, range: range);
       return true;
     }

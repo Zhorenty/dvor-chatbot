@@ -869,7 +869,12 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String chooseAdminToolsAction() {
     return '🧰 <b>Инструменты</b>\n'
-        'Синхронизация, сводки, абонементы и клиентское меню 👇';
+        'Синхронизация, аналитика, абонементы и клиентское меню 👇';
+  }
+
+  String chooseAdminAnalyticsAction() {
+    return '📊 <b>Аналитика</b>\n'
+        'Выбери сегмент: воронка, фидбэк, экономика, бронирования, бонусы или абонементы 👇';
   }
 
   String adminClientMenuOpened() {
@@ -1889,7 +1894,7 @@ extension MessageTemplatesContent on MessageTemplates {
   String funnelAnalyticsOnboarding(FunnelAnalytics analytics) {
     final generated = DateFormat('dd.MM.yyyy HH:mm').format(analytics.generatedAt.toLocal());
     final lines = <String>[
-      '📊 <b>Аналитика воронки</b>',
+      '📈 <b>Воронка онбординга</b>',
       'Срез: <b>$generated</b>',
       '',
       '<b>Пользователи:</b>',
@@ -1935,7 +1940,7 @@ extension MessageTemplatesContent on MessageTemplates {
   String funnelAnalyticsFeedback(FunnelAnalytics analytics) {
     final responseRate = analytics.feedbackResponseRate;
     final lines = <String>[
-      '📝 <b>Отзывы после тренировок</b>',
+      '📝 <b>Анонимный фидбэк</b>',
       '• Запросов отправлено: <b>${analytics.feedbackRequestsSent}</b>',
       '• Ответов: <b>${analytics.feedbackResponses}</b>',
       '• Response rate: <b>${_percentOrDash(responseRate)}</b>',
@@ -1963,6 +1968,80 @@ extension MessageTemplatesContent on MessageTemplates {
             '${_escapeHtml(item.trainingTitle)}\n'
             '  <i>${_escapeHtml(short)}</i>';
       }),
+    ];
+    return lines.join('\n');
+  }
+
+  String bookingAnalytics(BookingAnalytics analytics) {
+    final generated = DateFormat('dd.MM.yyyy HH:mm').format(analytics.generatedAt.toLocal());
+    final lines = <String>[
+      '📋 <b>Аналитика бронирований</b>',
+      'Срез: <b>$generated</b>',
+      '',
+      '<b>Объём:</b>',
+      '• Всего записей: <b>${analytics.totalBookings}</b>',
+      '• Создано за 7д: <b>${analytics.createdLast7Days}</b>',
+      '• Создано за 30д: <b>${analytics.createdLast30Days}</b>',
+      '• Уникальных пользователей с подтверждёнными: '
+          '<b>${analytics.uniqueUsersWithConfirmed}</b>',
+      '• С промокодом: <b>${analytics.promoCodeBookingsCount}</b>',
+      '',
+      '<b>Воронка оплаты (сейчас):</b>',
+      '• Ожидает оплату: <b>${analytics.pendingPaymentCount}</b>',
+      '• На проверке: <b>${analytics.paymentSubmittedCount}</b>',
+      '• Предстоящие подтверждённые: <b>${analytics.upcomingConfirmedCount}</b>',
+      '• Прошедшие подтверждённые: <b>${analytics.pastConfirmedCount}</b>',
+      '',
+      '<b>Динамика:</b>',
+      '• Подтверждено за 7д: <b>${analytics.confirmedLast7Days}</b>',
+      '• Подтверждено за 30д: <b>${analytics.confirmedLast30Days}</b>',
+      '• Отменено за 7д: <b>${analytics.cancelledLast7Days}</b>',
+      '• Отменено за 30д: <b>${analytics.cancelledLast30Days}</b>',
+      '• Конверсия за 30д: <b>${_percentOrDash(analytics.conversionRate30Days)}</b>',
+      '',
+      '<b>Статусы (все):</b>',
+      ..._mapLines(analytics.statusCounts, _bookingStatusLabel),
+      '',
+      '<b>Подтверждённые по категориям:</b>',
+      ..._mapLines(analytics.confirmedByCategory, _activityCategoryLabel),
+    ];
+    return lines.join('\n');
+  }
+
+  String loyaltyAnalytics(LoyaltyAnalytics analytics) {
+    final generated = DateFormat('dd.MM.yyyy HH:mm').format(analytics.generatedAt.toLocal());
+    final lines = <String>[
+      '🎁 <b>Бонусы и рефералы</b>',
+      'Срез: <b>$generated</b>',
+      '',
+      '<b>Стартовый бонус:</b>',
+      '• Доступен: <b>${analytics.starterBonusAvailable}</b>',
+      '• Использован: <b>${analytics.starterBonusConsumed}</b>',
+      '',
+      '<b>Рефералы:</b>',
+      '• Атрибуций всего: <b>${analytics.referralAttributionsTotal}</b>',
+      '• За 30д: <b>${analytics.referralAttributionsLast30Days}</b>',
+      '',
+      '<b>Бесплатные тренировки:</b>',
+      '• Всего: <b>${analytics.freeTrainingsTotal}</b>',
+      '• Стартовый бонус: <b>${analytics.freeByStarterCount}</b>',
+      '• Реферальный бонус: <b>${analytics.freeByReferralCount}</b>',
+      '• Каждая 5-я: <b>${analytics.freeByEveryFifthCount}</b>',
+    ];
+    return lines.join('\n');
+  }
+
+  String subscriptionAnalytics(SubscriptionAnalytics analytics) {
+    final generated = DateFormat('dd.MM.yyyy HH:mm').format(analytics.generatedAt.toLocal());
+    final lines = <String>[
+      '💎 <b>Сводка абонементов</b>',
+      'Срез: <b>$generated</b>',
+      '',
+      '• Активные сейчас: <b>${analytics.activeCount}</b>',
+      '• Скоро истекают (≤7д): <b>${analytics.expiringSoonCount}</b>',
+      '• На проверке: <b>${analytics.pendingCount}</b>',
+      '• Отменённые / отклонённые: <b>${analytics.cancelledOrRejectedCount}</b>',
+      '• Всего когда-либо approved (active rows): <b>${analytics.approvedTotal}</b>',
     ];
     return lines.join('\n');
   }
@@ -2055,6 +2134,29 @@ extension MessageTemplatesContent on MessageTemplates {
       'ok' => 'нормально',
       'weak' => 'слабо',
       'skipped' => 'пропуск',
+      _ => raw,
+    };
+  }
+
+  String _bookingStatusLabel(String raw) {
+    return switch (raw) {
+      'pending_payment' => 'ожидает оплату',
+      'payment_submitted' => 'на проверке',
+      'partial_paid' => 'предоплата',
+      'paid' => 'оплачено',
+      'free_training' => 'бесплатная',
+      'payment_rejected' => 'оплата отклонена',
+      'cancelled' => 'отменено',
+      _ => raw,
+    };
+  }
+
+  String _activityCategoryLabel(String raw) {
+    return switch (raw) {
+      'trainings' => 'тренировки',
+      'yoga' => 'йога',
+      'hikes' => 'походы',
+      'trails' => 'трейлы',
       _ => raw,
     };
   }

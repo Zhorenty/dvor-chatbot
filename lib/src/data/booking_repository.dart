@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -233,4 +234,8 @@ abstract interface class BookingRepository {
     int userId, {
     required DateTime now,
   });
+
+  Future<BookingAnalytics> getBookingAnalytics({required DateTime now});
+
+  Future<LoyaltyBonusUsageAnalytics> getLoyaltyBonusUsageAnalytics({required DateTime now});
 }

@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
@@ -82,8 +83,13 @@ final class MessageTemplates {
   static const String buttonOutdoorItinerary = MessageCopy.buttonOutdoorItinerary;
   static const String buttonRefreshSchedule = MessageCopy.buttonRefreshSchedule;
   static const String buttonPaymentsQueue = MessageCopy.buttonPaymentsQueue;
+  static const String buttonAdminAnalytics = MessageCopy.buttonAdminAnalytics;
   static const String buttonEconomicSummary = MessageCopy.buttonEconomicSummary;
   static const String buttonFunnelAnalytics = MessageCopy.buttonFunnelAnalytics;
+  static const String buttonFeedbackAnalytics = MessageCopy.buttonFeedbackAnalytics;
+  static const String buttonBookingAnalytics = MessageCopy.buttonBookingAnalytics;
+  static const String buttonLoyaltyAnalytics = MessageCopy.buttonLoyaltyAnalytics;
+  static const String buttonSubscriptionAnalytics = MessageCopy.buttonSubscriptionAnalytics;
   static const String buttonSubscriptionsAdmin = MessageCopy.buttonSubscriptionsAdmin;
   static const String buttonSubscriptionsList = MessageCopy.buttonSubscriptionsList;
   static const String buttonSubscribersManagement = MessageCopy.buttonSubscribersManagement;

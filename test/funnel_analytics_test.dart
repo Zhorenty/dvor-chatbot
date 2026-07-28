@@ -109,7 +109,7 @@ void main() {
       expect(analytics.avgTimeToValueDays, isNotNull);
     });
 
-    test('admin tools button sends analytics report', () async {
+    test('admin tools button opens analytics menu with segments', () async {
       final onboarding = FakeOnboardingRepository()
         ..seedUser(
           userId: 9001,
@@ -131,17 +131,39 @@ void main() {
         text: MessageTemplates.buttonAdminTools,
       );
       final toolsButtons = keyboardTexts(harness.messagesTo(42).last.replyMarkup);
-      expect(toolsButtons, contains(MessageTemplates.buttonFunnelAnalytics));
+      expect(toolsButtons, contains(MessageTemplates.buttonAdminAnalytics));
+      expect(toolsButtons, isNot(contains(MessageTemplates.buttonFunnelAnalytics)));
+
+      await harness.handleText(
+        chatId: 42,
+        userId: 42,
+        text: MessageTemplates.buttonAdminAnalytics,
+      );
+      final analyticsButtons = keyboardTexts(harness.messagesTo(42).last.replyMarkup);
+      expect(analyticsButtons, contains(MessageTemplates.buttonFunnelAnalytics));
+      expect(analyticsButtons, contains(MessageTemplates.buttonFeedbackAnalytics));
+      expect(analyticsButtons, contains(MessageTemplates.buttonEconomicSummary));
+      expect(analyticsButtons, contains(MessageTemplates.buttonBookingAnalytics));
+      expect(analyticsButtons, contains(MessageTemplates.buttonLoyaltyAnalytics));
+      expect(analyticsButtons, contains(MessageTemplates.buttonSubscriptionAnalytics));
 
       await harness.handleText(
         chatId: 42,
         userId: 42,
         text: MessageTemplates.buttonFunnelAnalytics,
       );
-      final texts = harness.messagesTo(42).map((m) => m.text).join('\n');
-      expect(texts, contains('Аналитика воронки'));
-      expect(texts, contains('Отзывы после тренировок'));
-      expect(texts, contains('Activation'));
+      final funnelText = harness.messagesTo(42).last.text;
+      expect(funnelText, contains('Воронка онбординга'));
+      expect(funnelText, contains('Activation'));
+      expect(funnelText, isNot(contains('Анонимный фидбэк')));
+
+      await harness.handleText(
+        chatId: 42,
+        userId: 42,
+        text: MessageTemplates.buttonFeedbackAnalytics,
+      );
+      final feedbackText = harness.messagesTo(42).last.text;
+      expect(feedbackText, contains('Анонимный фидбэк'));
     });
 
     test('training feedback notifies admin chat anonymously once completed', () async {

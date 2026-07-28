@@ -87,6 +87,32 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
       return true;
     }
 
+    if (text != null &&
+        (text == MessageTemplates.buttonAdminAnalytics || text.startsWith('/analytics'))) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (userId == null) {
+        return false;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.selectingAdminAnalyticsAction,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.chooseAdminAnalyticsAction(),
+        replyMarkup: _templates.adminAnalyticsKeyboard(),
+      );
+      return true;
+    }
+
     if (text != null && text == MessageTemplates.buttonClientMenu) {
       if (!canRunAdminAction) {
         await _sendAdminMessage(

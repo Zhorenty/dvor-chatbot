@@ -229,13 +229,27 @@ void main() {
       });
       final toolsButtons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(toolsButtons, contains(MessageTemplates.buttonRefreshSchedule));
-      expect(toolsButtons, contains(MessageTemplates.buttonEconomicSummary));
-      expect(toolsButtons, contains(MessageTemplates.buttonFunnelAnalytics));
+      expect(toolsButtons, contains(MessageTemplates.buttonAdminAnalytics));
+      expect(toolsButtons, isNot(contains(MessageTemplates.buttonEconomicSummary)));
+      expect(toolsButtons, isNot(contains(MessageTemplates.buttonFunnelAnalytics)));
       expect(toolsButtons, contains(MessageTemplates.buttonSubscriptionsAdmin));
       expect(toolsButtons, contains(MessageTemplates.buttonNoblesList));
       expect(toolsButtons, contains(MessageTemplates.buttonAdminUserSearch));
       expect(toolsButtons, contains(MessageTemplates.buttonClientMenu));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonParticipantsList)));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100},
+        'text': MessageTemplates.buttonAdminAnalytics,
+      });
+      final analyticsButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(analyticsButtons, contains(MessageTemplates.buttonFunnelAnalytics));
+      expect(analyticsButtons, contains(MessageTemplates.buttonFeedbackAnalytics));
+      expect(analyticsButtons, contains(MessageTemplates.buttonEconomicSummary));
+      expect(analyticsButtons, contains(MessageTemplates.buttonBookingAnalytics));
+      expect(analyticsButtons, contains(MessageTemplates.buttonLoyaltyAnalytics));
+      expect(analyticsButtons, contains(MessageTemplates.buttonSubscriptionAnalytics));
 
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 9100, 'type': 'private'},

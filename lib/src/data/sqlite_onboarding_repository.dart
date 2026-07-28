@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
+import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
@@ -1198,6 +1199,35 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
       feedbackCommentsCount: feedbackCommentsCount,
       recentFeedbackComments: recentFeedbackComments,
       topFeedbackSessions: topFeedbackSessions,
+    );
+  }
+
+  @override
+  Future<StarterBonusAnalytics> getStarterBonusAnalytics() async {
+    final db = _database;
+    int count(String sql) {
+      final rows = db.select(sql);
+      if (rows.isEmpty) {
+        return 0;
+      }
+      return (rows.first['c'] as int?) ?? 0;
+    }
+
+    final availableCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM onboarding_users
+      WHERE started_at IS NOT NULL AND starter_bonus_consumed_at IS NULL;
+      ''',
+    );
+    final consumedCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM onboarding_users
+      WHERE starter_bonus_consumed_at IS NOT NULL;
+      ''',
+    );
+    return StarterBonusAnalytics(
+      availableCount: availableCount,
+      consumedCount: consumedCount,
     );
   }
 

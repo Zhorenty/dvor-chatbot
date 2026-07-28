@@ -54,8 +54,13 @@ final class MessageCopy {
   static const String buttonOutdoorItinerary = '🗺 Расписание похода';
   static const String buttonRefreshSchedule = '🔄 Обновить Google Sheets';
   static const String buttonPaymentsQueue = '🧾 Заявки на оплату';
+  static const String buttonAdminAnalytics = '📊 Аналитика';
   static const String buttonEconomicSummary = '💰 Экономическая сводка';
-  static const String buttonFunnelAnalytics = '📊 Аналитика воронки';
+  static const String buttonFunnelAnalytics = '📈 Воронка онбординга';
+  static const String buttonFeedbackAnalytics = '📝 Анонимный фидбэк';
+  static const String buttonBookingAnalytics = '📋 Бронирования';
+  static const String buttonLoyaltyAnalytics = '🎁 Бонусы и рефералы';
+  static const String buttonSubscriptionAnalytics = '💎 Сводка абонементов';
   static const String buttonSubscriptionsAdmin = '💎 Абонементы';
   static const String buttonSubscriptionsList = '📋 Список абонементов';
   static const String buttonSubscribersManagement = '🛠 Управление абонентами';

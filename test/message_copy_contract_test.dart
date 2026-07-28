@@ -15,6 +15,7 @@ void main() {
           ),
         ),
         ..._replyTexts(TelegramKeyboards.adminToolsKeyboard()),
+        ..._replyTexts(TelegramKeyboards.adminAnalyticsKeyboard()),
         ..._replyTexts(TelegramKeyboards.adminSubscriptionFilterKeyboard()),
         ..._replyTexts(TelegramKeyboards.categorySelectionKeyboard()),
         ..._replyTexts(TelegramKeyboards.scheduleCategoryActionsKeyboard()),
@@ -47,6 +48,12 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonBack));
       expect(allTexts, contains(MessageCopy.buttonMainMenu));
       expect(allTexts, contains(MessageCopy.buttonAdminTools));
+      expect(allTexts, contains(MessageCopy.buttonAdminAnalytics));
+      expect(allTexts, contains(MessageCopy.buttonFunnelAnalytics));
+      expect(allTexts, contains(MessageCopy.buttonFeedbackAnalytics));
+      expect(allTexts, contains(MessageCopy.buttonBookingAnalytics));
+      expect(allTexts, contains(MessageCopy.buttonLoyaltyAnalytics));
+      expect(allTexts, contains(MessageCopy.buttonSubscriptionAnalytics));
       expect(allTexts, contains(MessageCopy.buttonClientMenu));
       expect(allTexts, contains(MessageCopy.buttonAdminMenu));
       expect(allTexts, contains(MessageCopy.buttonSubscriptionsSearch));

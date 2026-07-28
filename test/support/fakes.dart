@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
@@ -539,6 +540,43 @@ final class FakeBookingRepository implements BookingRepository {
   }) async {
     return referralProgress;
   }
+
+  @override
+  Future<BookingAnalytics> getBookingAnalytics({required DateTime now}) async {
+    return BookingAnalytics(
+      generatedAt: now.toUtc(),
+      totalBookings: queue.length,
+      statusCounts: const <String, int>{},
+      createdLast7Days: 0,
+      createdLast30Days: 0,
+      confirmedLast7Days: 0,
+      confirmedLast30Days: 0,
+      cancelledLast7Days: 0,
+      cancelledLast30Days: 0,
+      pendingPaymentCount: 0,
+      paymentSubmittedCount: 0,
+      upcomingConfirmedCount: 0,
+      pastConfirmedCount: 0,
+      confirmedByCategory: const <String, int>{},
+      createdWithOutcomeLast30Days: 0,
+      confirmedAmongOutcomeLast30Days: 0,
+      promoCodeBookingsCount: 0,
+      uniqueUsersWithConfirmed: 0,
+    );
+  }
+
+  @override
+  Future<LoyaltyBonusUsageAnalytics> getLoyaltyBonusUsageAnalytics({
+    required DateTime now,
+  }) async {
+    return const LoyaltyBonusUsageAnalytics(
+      freeByStarterCount: 0,
+      freeByReferralCount: 0,
+      freeByEveryFifthCount: 0,
+      referralAttributionsTotal: 0,
+      referralAttributionsLast30Days: 0,
+    );
+  }
 }
 
 final class FakeSubscriptionRepository implements SubscriptionRepository {
@@ -701,6 +739,18 @@ final class FakeSubscriptionRepository implements SubscriptionRepository {
     required int requestId,
     required DateTime sentAt,
   }) async {}
+
+  @override
+  Future<SubscriptionAnalytics> getSubscriptionAnalytics({required DateTime now}) async {
+    return SubscriptionAnalytics(
+      generatedAt: now.toUtc(),
+      activeCount: activeSubscriptions.length,
+      expiringSoonCount: 0,
+      pendingCount: pendingRequests.length,
+      cancelledOrRejectedCount: 0,
+      approvedTotal: activeSubscriptions.length,
+    );
+  }
 }
 
 final class FakePromoCodeRepository implements PromoCodeRepository {
@@ -1445,6 +1495,11 @@ final class FakeOnboardingRepository implements OnboardingRepository {
       recentFeedbackComments: const <RecentFeedbackComment>[],
       topFeedbackSessions: const <FeedbackSessionSummary>[],
     );
+  }
+
+  @override
+  Future<StarterBonusAnalytics> getStarterBonusAnalytics() async {
+    return const StarterBonusAnalytics(availableCount: 0, consumedCount: 0);
   }
 
   OnboardingUserState _toState(int userId, _FakeOnboardingState state) {

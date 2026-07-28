@@ -53,6 +53,10 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     return TelegramKeyboards.adminToolsKeyboard();
   }
 
+  Map<String, Object?> adminAnalyticsKeyboard() {
+    return TelegramKeyboards.adminAnalyticsKeyboard();
+  }
+
   Map<String, Object?> bookingSelectionKeyboard(List<TrainingInfo> items) {
     return TelegramKeyboards.bookingSelectionKeyboard(items);
   }

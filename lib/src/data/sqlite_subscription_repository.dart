@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
+import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -801,6 +802,73 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       return null;
     }
     return _rowToRequest(rows.first);
+  }
+
+  @override
+  Future<SubscriptionAnalytics> getSubscriptionAnalytics({required DateTime now}) async {
+    final db = _database;
+    final nowUtc = now.toUtc();
+    final nowIso = nowUtc.toIso8601String();
+    final expiringUntilIso = nowUtc.add(const Duration(days: 7)).toIso8601String();
+
+    int count(String sql, [List<Object?> args = const <Object?>[]]) {
+      final rows = db.select(sql, args);
+      if (rows.isEmpty) {
+        return 0;
+      }
+      return (rows.first['c'] as int?) ?? 0;
+    }
+
+    final activeCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM subscription_requests
+      WHERE status = ? AND active_until IS NOT NULL AND active_until > ?;
+      ''',
+      <Object?>[SubscriptionRequestStatus.active.dbValue, nowIso],
+    );
+    final expiringSoonCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM subscription_requests
+      WHERE status = ?
+        AND active_until IS NOT NULL
+        AND active_until > ?
+        AND active_until <= ?;
+      ''',
+      <Object?>[SubscriptionRequestStatus.active.dbValue, nowIso, expiringUntilIso],
+    );
+    final pendingCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM subscription_requests
+      WHERE status = ?;
+      ''',
+      <Object?>[SubscriptionRequestStatus.paymentSubmitted.dbValue],
+    );
+    final cancelledOrRejectedCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM subscription_requests
+      WHERE status IN (?, ?);
+      ''',
+      <Object?>[
+        SubscriptionRequestStatus.cancelled.dbValue,
+        SubscriptionRequestStatus.rejected.dbValue,
+      ],
+    );
+    final approvedTotal = count(
+      '''
+      SELECT COUNT(*) AS c FROM subscription_requests
+      WHERE status = ?;
+      ''',
+      <Object?>[SubscriptionRequestStatus.active.dbValue],
+    );
+
+    return SubscriptionAnalytics(
+      generatedAt: nowUtc,
+      activeCount: activeCount,
+      expiringSoonCount: expiringSoonCount,
+      pendingCount: pendingCount,
+      cancelledOrRejectedCount: cancelledOrRejectedCount,
+      approvedTotal: approvedTotal,
+    );
   }
 
   String? _normalizeUsername(String? username) {

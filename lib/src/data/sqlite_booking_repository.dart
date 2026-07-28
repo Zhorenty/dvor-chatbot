@@ -6,6 +6,7 @@ import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/pending_payment_expiry_policy.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -1087,6 +1088,242 @@ final class SqliteBookingRepository implements BookingRepository {
     return (
       active: (row['active_count'] as int?) ?? 0,
       archived: (row['archived_count'] as int?) ?? 0,
+    );
+  }
+
+  @override
+  Future<BookingAnalytics> getBookingAnalytics({required DateTime now}) async {
+    _expireOverduePendingBookings();
+    final db = _database;
+    final nowUtc = now.toUtc();
+    final nowIso = nowUtc.toIso8601String();
+    final d7Iso = nowUtc.subtract(const Duration(days: 7)).toIso8601String();
+    final d30Iso = nowUtc.subtract(const Duration(days: 30)).toIso8601String();
+    final confirmedStatuses = <String>[
+      BookingStatus.paid.dbValue,
+      BookingStatus.partialPaid.dbValue,
+      BookingStatus.freeTraining.dbValue,
+    ];
+    final confirmedIn = confirmedStatuses.map((_) => '?').join(', ');
+    final outcomeStatuses = <String>[
+      ...confirmedStatuses,
+      BookingStatus.cancelled.dbValue,
+      BookingStatus.paymentRejected.dbValue,
+    ];
+    final outcomeIn = outcomeStatuses.map((_) => '?').join(', ');
+
+    int count(String sql, [List<Object?> args = const <Object?>[]]) {
+      final rows = db.select(sql, args);
+      if (rows.isEmpty) {
+        return 0;
+      }
+      return (rows.first['c'] as int?) ?? 0;
+    }
+
+    final totalBookings = count('SELECT COUNT(*) AS c FROM bookings;');
+    final statusRows = db.select(
+      '''
+      SELECT status AS k, COUNT(*) AS c
+      FROM bookings
+      GROUP BY status
+      ORDER BY c DESC;
+      ''',
+    );
+    final statusCounts = <String, int>{};
+    for (final row in statusRows) {
+      final key = row['k'] as String? ?? 'unknown';
+      statusCounts[key] = (row['c'] as int?) ?? 0;
+    }
+
+    final createdLast7Days = count(
+      'SELECT COUNT(*) AS c FROM bookings WHERE created_at >= ?;',
+      <Object?>[d7Iso],
+    );
+    final createdLast30Days = count(
+      'SELECT COUNT(*) AS c FROM bookings WHERE created_at >= ?;',
+      <Object?>[d30Iso],
+    );
+    final confirmedLast7Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE status IN ($confirmedIn) AND updated_at >= ?;
+      ''',
+      <Object?>[...confirmedStatuses, d7Iso],
+    );
+    final confirmedLast30Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE status IN ($confirmedIn) AND updated_at >= ?;
+      ''',
+      <Object?>[...confirmedStatuses, d30Iso],
+    );
+    final cancelledLast7Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE status = ? AND updated_at >= ?;
+      ''',
+      <Object?>[BookingStatus.cancelled.dbValue, d7Iso],
+    );
+    final cancelledLast30Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE status = ? AND updated_at >= ?;
+      ''',
+      <Object?>[BookingStatus.cancelled.dbValue, d30Iso],
+    );
+    final pendingPaymentCount = count(
+      'SELECT COUNT(*) AS c FROM bookings WHERE status = ?;',
+      <Object?>[BookingStatus.pendingPayment.dbValue],
+    );
+    final paymentSubmittedCount = count(
+      'SELECT COUNT(*) AS c FROM bookings WHERE status = ?;',
+      <Object?>[BookingStatus.paymentSubmitted.dbValue],
+    );
+    final upcomingConfirmedCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE status IN ($confirmedIn) AND starts_at >= ?;
+      ''',
+      <Object?>[...confirmedStatuses, nowIso],
+    );
+    final pastConfirmedCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE status IN ($confirmedIn) AND starts_at < ?;
+      ''',
+      <Object?>[...confirmedStatuses, nowIso],
+    );
+    final createdWithOutcomeLast30Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE created_at >= ? AND status IN ($outcomeIn);
+      ''',
+      <Object?>[d30Iso, ...outcomeStatuses],
+    );
+    final confirmedAmongOutcomeLast30Days = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE created_at >= ? AND status IN ($confirmedIn);
+      ''',
+      <Object?>[d30Iso, ...confirmedStatuses],
+    );
+    final promoCodeBookingsCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE promo_code IS NOT NULL AND TRIM(promo_code) != '';
+      ''',
+    );
+    final uniqueUsersWithConfirmed = count(
+      '''
+      SELECT COUNT(DISTINCT user_id) AS c FROM bookings
+      WHERE status IN ($confirmedIn);
+      ''',
+      <Object?>[...confirmedStatuses],
+    );
+
+    final confirmedByCategory = <String, int>{
+      'trainings': count(
+        '''
+        SELECT COUNT(*) AS c FROM bookings
+        WHERE status IN ($confirmedIn) AND ${_categoryConditionSql(ActivityCategory.trainings)};
+        ''',
+        <Object?>[...confirmedStatuses],
+      ),
+      'yoga': count(
+        '''
+        SELECT COUNT(*) AS c FROM bookings
+        WHERE status IN ($confirmedIn) AND ${_categoryConditionSql(ActivityCategory.yoga)};
+        ''',
+        <Object?>[...confirmedStatuses],
+      ),
+      'hikes': count(
+        '''
+        SELECT COUNT(*) AS c FROM bookings
+        WHERE status IN ($confirmedIn) AND ${_categoryConditionSql(ActivityCategory.hikes)};
+        ''',
+        <Object?>[...confirmedStatuses],
+      ),
+      'trails': count(
+        '''
+        SELECT COUNT(*) AS c FROM bookings
+        WHERE status IN ($confirmedIn) AND ${_categoryConditionSql(ActivityCategory.trails)};
+        ''',
+        <Object?>[...confirmedStatuses],
+      ),
+    };
+
+    return BookingAnalytics(
+      generatedAt: nowUtc,
+      totalBookings: totalBookings,
+      statusCounts: statusCounts,
+      createdLast7Days: createdLast7Days,
+      createdLast30Days: createdLast30Days,
+      confirmedLast7Days: confirmedLast7Days,
+      confirmedLast30Days: confirmedLast30Days,
+      cancelledLast7Days: cancelledLast7Days,
+      cancelledLast30Days: cancelledLast30Days,
+      pendingPaymentCount: pendingPaymentCount,
+      paymentSubmittedCount: paymentSubmittedCount,
+      upcomingConfirmedCount: upcomingConfirmedCount,
+      pastConfirmedCount: pastConfirmedCount,
+      confirmedByCategory: confirmedByCategory,
+      createdWithOutcomeLast30Days: createdWithOutcomeLast30Days,
+      confirmedAmongOutcomeLast30Days: confirmedAmongOutcomeLast30Days,
+      promoCodeBookingsCount: promoCodeBookingsCount,
+      uniqueUsersWithConfirmed: uniqueUsersWithConfirmed,
+    );
+  }
+
+  @override
+  Future<LoyaltyBonusUsageAnalytics> getLoyaltyBonusUsageAnalytics({
+    required DateTime now,
+  }) async {
+    final db = _database;
+    final d30Iso = now.toUtc().subtract(const Duration(days: 30)).toIso8601String();
+
+    int count(String sql, [List<Object?> args = const <Object?>[]]) {
+      final rows = db.select(sql, args);
+      if (rows.isEmpty) {
+        return 0;
+      }
+      return (rows.first['c'] as int?) ?? 0;
+    }
+
+    final freeByStarterCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE status = ? AND payment_note = ?;
+      ''',
+      <Object?>[BookingStatus.freeTraining.dbValue, _starterBonusPaymentNoteMarker],
+    );
+    final freeByReferralCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE status = ? AND payment_note = ?;
+      ''',
+      <Object?>[BookingStatus.freeTraining.dbValue, _referralBonusPaymentNoteMarker],
+    );
+    final freeByEveryFifthCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM bookings
+      WHERE status = ? AND payment_note = ?;
+      ''',
+      <Object?>[BookingStatus.freeTraining.dbValue, _everyFifthBonusPaymentNoteMarker],
+    );
+    final referralAttributionsTotal = count(
+      'SELECT COUNT(*) AS c FROM referral_attributions;',
+    );
+    final referralAttributionsLast30Days = count(
+      'SELECT COUNT(*) AS c FROM referral_attributions WHERE attributed_at >= ?;',
+      <Object?>[d30Iso],
+    );
+
+    return LoyaltyBonusUsageAnalytics(
+      freeByStarterCount: freeByStarterCount,
+      freeByReferralCount: freeByReferralCount,
+      freeByEveryFifthCount: freeByEveryFifthCount,
+      referralAttributionsTotal: referralAttributionsTotal,
+      referralAttributionsLast30Days: referralAttributionsLast30Days,
     );
   }
 

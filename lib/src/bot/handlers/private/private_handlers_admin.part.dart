@@ -243,7 +243,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     await _sendAdminMessage(
       chatId,
       _templates.economicSummary(summary, periodLabel: range.label),
-      replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
+      replyMarkup: _templates.adminAnalyticsKeyboard(),
     );
   }
 
@@ -257,11 +257,63 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     await _sendAdminMessage(
       chatId,
       _templates.funnelAnalyticsOnboarding(analytics),
+      replyMarkup: _templates.adminAnalyticsKeyboard(),
+    );
+  }
+
+  Future<void> _sendFeedbackAnalytics({
+    required int chatId,
+    required bool isAdmin,
+  }) async {
+    final analytics = await _onboardingRepository.getFunnelAnalytics(
+      now: _nowProvider(),
     );
     await _sendAdminMessage(
       chatId,
       _templates.funnelAnalyticsFeedback(analytics),
-      replyMarkup: _templates.adminToolsKeyboard(),
+      replyMarkup: _templates.adminAnalyticsKeyboard(),
+    );
+  }
+
+  Future<void> _sendBookingAnalytics({
+    required int chatId,
+    required bool isAdmin,
+  }) async {
+    final analytics = await _adminAnalyticsService.buildBookingAnalytics(
+      now: _nowProvider(),
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.bookingAnalytics(analytics),
+      replyMarkup: _templates.adminAnalyticsKeyboard(),
+    );
+  }
+
+  Future<void> _sendLoyaltyAnalytics({
+    required int chatId,
+    required bool isAdmin,
+  }) async {
+    final analytics = await _adminAnalyticsService.buildLoyaltyAnalytics(
+      now: _nowProvider(),
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.loyaltyAnalytics(analytics),
+      replyMarkup: _templates.adminAnalyticsKeyboard(),
+    );
+  }
+
+  Future<void> _sendSubscriptionAnalytics({
+    required int chatId,
+    required bool isAdmin,
+  }) async {
+    final analytics = await _adminAnalyticsService.buildSubscriptionAnalytics(
+      now: _nowProvider(),
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.subscriptionAnalytics(analytics),
+      replyMarkup: _templates.adminAnalyticsKeyboard(),
     );
   }
 
