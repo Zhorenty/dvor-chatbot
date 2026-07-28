@@ -34,9 +34,12 @@ extension PrivateHandlersDispatch on PrivateHandlers {
     }
     final isAdmin = userId != null && isConfiguredAdmin && !_adminsInClientMode.contains(userId);
     final showReturnToAdminMenu = isConfiguredAdmin && !isAdmin;
+    final username = context.from?['username']?.toString();
     final isYogaTrainer = userId == PrivateHandlers._yogaTrainerUserId;
+    final isWhitelistedTrainer =
+        userId != null && isTrainerBookingWhitelisted(userId: userId, username: username);
     final canRunAdminAction = _adminHandler.canRunAdminAction(isAdmin: isConfiguredAdmin);
-    final canRunParticipantsAction = canRunAdminAction || isYogaTrainer;
+    final canRunParticipantsAction = canRunAdminAction || isYogaTrainer || isWhitelistedTrainer;
     final flowState = userId == null ? null : _flowByUserId[userId];
     final paymentProof = extractPaymentProof(context.message);
     if (_isIgnorableServiceMessage(context.message)) {
@@ -80,7 +83,7 @@ extension PrivateHandlersDispatch on PrivateHandlers {
           replyMarkup: _templates.categorySelectionKeyboard(),
         );
       },
-      username: context.from?['username']?.toString(),
+      username: username,
     );
     if (handledStaticCommand) {
       return true;
@@ -120,9 +123,10 @@ extension PrivateHandlersDispatch on PrivateHandlers {
       canRunAdminAction: canRunAdminAction,
       canRunParticipantsAction: canRunParticipantsAction,
       isYogaTrainer: isYogaTrainer,
+      isWhitelistedTrainer: isWhitelistedTrainer,
       flowState: flowState,
       paymentProof: paymentProof,
-      username: context.from?['username']?.toString(),
+      username: username,
       message: context.message,
     );
 

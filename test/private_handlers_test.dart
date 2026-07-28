@@ -382,6 +382,30 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonManageBookings)));
     });
 
+    test('shows participants button in private menu for whitelisted trainer', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4401, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4401, 'username': 'nudden'},
+        'text': '/start',
+      });
+
+      expect(handled, isTrue);
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonParticipantsList));
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonManageBookings)));
+    });
+
     // TODO(subscription): вернуть тест после включения кнопки абонемента в профиле.
     // test('opens subscription overview and allows applying for normal user', () async {
     //   final sender = _FakeSender();
@@ -3914,6 +3938,69 @@ void main() {
       expect(sender.messages.single.text, contains('Список записавшихся'));
       expect(sender.messages.single.text, contains('@yogi'));
       expect(sender.messages.single.text, isNot(contains('@runner')));
+      expect(sender.messages.single.text, isNot(contains('Выбери категорию')));
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonParticipantsList));
+    });
+
+    test('shows trainings participants list directly for whitelisted trainer', () async {
+      final sender = _FakeSender();
+      final yoga = TrainingInfo(
+        title: 'Sunrise Yoga',
+        startsAt: DateTime(2026, 9, 3, 8, 0),
+        location: 'Yoga Hall',
+        category: ActivityCategory.yoga,
+      );
+      final run = TrainingInfo(
+        title: 'Morning Run',
+        startsAt: DateTime(2026, 9, 3, 7, 0),
+        location: 'Park',
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          _booking(
+            id: 801,
+            userId: 8101,
+            userUsername: 'yogi',
+            trainingKey: yoga.sessionKey,
+            title: yoga.title,
+            startsAt: yoga.startsAt,
+            location: yoga.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 802,
+            userId: 8102,
+            userUsername: 'runner',
+            trainingKey: run.sessionKey,
+            title: run.title,
+            startsAt: run.startsAt,
+            location: run.location,
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[run],
+          yogaItems: <TrainingInfo>[yoga],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4402, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4402, 'username': 'androdentio'},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Список записавшихся по тренировкам'));
+      expect(sender.messages.single.text, contains('@runner'));
+      expect(sender.messages.single.text, isNot(contains('@yogi')));
       expect(sender.messages.single.text, isNot(contains('Выбери категорию')));
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
