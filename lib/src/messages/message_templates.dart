@@ -140,6 +140,7 @@ final class MessageTemplates {
   static const String callbackApprovePartialPaymentPrefix =
       MessageCopy.callbackApprovePartialPaymentPrefix;
   static const String callbackRejectPaymentPrefix = MessageCopy.callbackRejectPaymentPrefix;
+  static const String callbackPayBookingPrefix = MessageCopy.callbackPayBookingPrefix;
   static const String callbackOpenPaymentsQueue = MessageCopy.callbackOpenPaymentsQueue;
   static const String callbackNextPaymentInQueuePrefix =
       MessageCopy.callbackNextPaymentInQueuePrefix;
@@ -914,7 +915,20 @@ final class MessageTemplates {
 
   String noPendingPayment() {
     return 'Не нашел активной записи со статусом "Ожидает оплату" 🤔\n'
-        'Проверь «${MessageCopy.buttonProfile}» или создай новую запись.';
+        'Проверь «${MessageCopy.buttonProfile}» или создай новую запись.\n'
+        'Если запись уже отменилась по таймеру — оформи её заново.';
+  }
+
+  String choosePendingPaymentBooking(List<TrainingBooking> bookings) {
+    return 'У тебя несколько записей, ожидающих оплату 💸\n'
+        'Выбери, по какой отправить подтверждение 👇';
+  }
+
+  String partialPaidRemainderOffline(TrainingBooking booking) {
+    final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
+    return 'Предоплату по записи #${booking.id} уже зафиксировали 🟡\n'
+        'Остаток вносится офлайн $outdoorFinalPaymentAfter — через бота доплата не нужна.\n'
+        'Если есть вопросы: @dvor_support.';
   }
 
   String profileOverview({
@@ -1387,7 +1401,7 @@ final class MessageTemplates {
       BookingStatus.pendingPayment =>
         'Подсказка: «${MessageCopy.buttonContinuePayment}» откроет оплату по этой записи.',
       BookingStatus.partialPaid =>
-        'Подсказка: для доплаты используй «${MessageCopy.buttonCompletePayment}».',
+        'Подсказка: предоплата уже внесена. Остаток — офлайн после события.',
       _ => 'Подсказка: «${MessageCopy.buttonRepeatBooking}» откроет похожие события.',
     };
     return 'Запись #${booking.id}\n'
@@ -1513,6 +1527,10 @@ final class MessageTemplates {
       bookingId,
       approvePartial: approvePartial,
     );
+  }
+
+  Map<String, Object?> pendingPaymentReminderKeyboard(int bookingId) {
+    return TelegramKeyboards.pendingPaymentReminderKeyboard(bookingId);
   }
 
   Map<String, Object?> openPaymentsQueueInlineKeyboard({required int total}) {
@@ -1837,14 +1855,15 @@ final class MessageTemplates {
     final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
     return '🚸 <b>Правило OUTDVOR</b>\n\n'
         '• Предоплата невозвратна при отмене за 7 дней и менее до старта.\n'
-        '• Сначала вносится 50% предоплаты, оставшиеся 50% — $outdoorFinalPaymentAfter.';
+        '• Сначала вносится 50% предоплаты, оставшиеся 50% — офлайн $outdoorFinalPaymentAfter.';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {
     if (booking.status == BookingStatus.partialPaid) {
+      final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
       return 'Предоплату по записи #${booking.id} подтвердили 🟡\n'
           'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
-          'Оставшуюся сумму можно доплатить ближе к старту.';
+          'Остаток вносится офлайн $outdoorFinalPaymentAfter.';
     }
     if (!MessageFormatters.isOutdoorBooking(booking)) {
       return 'Оплату по записи #${booking.id} подтвердили ✅\n'
@@ -2007,12 +2026,7 @@ final class MessageTemplates {
 
   String paymentDetailsSent(TrainingBooking booking) {
     if (booking.status == BookingStatus.partialPaid) {
-      return 'Предоплату по записи #${booking.id} уже зафиксировали 🟡\n'
-          'Чтобы доплатить остаток:\n'
-          '1) Нажми «${MessageCopy.buttonSubmitPayment}».\n'
-          '2) Отправь в этот чат файл с подтверждением оплаты (чек/скрин) 📎\n\n'
-          'Реквизиты не изменились:\n'
-          '${paymentInstructions(booking)}';
+      return partialPaidRemainderOffline(booking);
     }
     if (!MessageFormatters.isOutdoorBooking(booking)) {
       final yogaHint = MessageFormatters.isYogaBooking(booking) ? '\n\n${_yogaContactsHint()}' : '';

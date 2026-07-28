@@ -559,14 +559,13 @@ final class SqliteBookingRepository implements BookingRepository {
       result = db.select(
         '''
         SELECT id FROM bookings
-        WHERE id = ? AND user_id = ? AND status IN (?, ?)
+        WHERE id = ? AND user_id = ? AND status = ?
         LIMIT 1;
         ''',
         <Object?>[
           bookingId,
           userId,
           BookingStatus.pendingPayment.dbValue,
-          BookingStatus.partialPaid.dbValue,
         ],
       );
     } else {
@@ -599,7 +598,7 @@ final class SqliteBookingRepository implements BookingRepository {
             payment_proof_message_id = ?,
             updated_at = ?
         WHERE payment_group_id = ?
-          AND status IN (?, ?);
+          AND status = ?;
         ''',
         <Object?>[
           BookingStatus.paymentSubmitted.dbValue,
@@ -609,7 +608,6 @@ final class SqliteBookingRepository implements BookingRepository {
           nowIso,
           groupId,
           BookingStatus.pendingPayment.dbValue,
-          BookingStatus.partialPaid.dbValue,
         ],
       );
     } else {
@@ -1410,16 +1408,13 @@ final class SqliteBookingRepository implements BookingRepository {
       '''
       SELECT id FROM bookings
       WHERE user_id = ?
-        AND status IN (?, ?)
-      ORDER BY starts_at ASC,
-               CASE status WHEN ? THEN 0 ELSE 1 END ASC
+        AND status = ?
+      ORDER BY created_at DESC, id DESC
       LIMIT 1;
       ''',
       <Object?>[
         userId,
         BookingStatus.pendingPayment.dbValue,
-        BookingStatus.partialPaid.dbValue,
-        BookingStatus.partialPaid.dbValue,
       ],
     );
   }

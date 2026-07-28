@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
-import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
@@ -48,9 +47,6 @@ final class BotRunner {
         _scheduleSyncJob = ScheduleSyncJob(scheduleRepository: scheduleRepository),
         _paymentReminderJob = PaymentReminderJob(
           bookingRepository: bookingRepository,
-          bookingPolicyService: BookingPolicyService(
-            catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
-          ),
           sender: sender,
           templates: templates,
           pendingPaymentTtl: Duration(minutes: config.pendingPaymentTtlMinutes),

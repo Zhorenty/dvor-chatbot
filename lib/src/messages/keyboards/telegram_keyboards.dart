@@ -464,6 +464,19 @@ final class TelegramKeyboards {
     );
   }
 
+  static Map<String, Object?> pendingPaymentReminderKeyboard(int bookingId) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonSubmitPayment,
+            'callback_data': '${MessageCopy.callbackPayBookingPrefix}$bookingId',
+          },
+        ],
+      ],
+    };
+  }
+
   static Map<String, Object?> paymentDecisionInlineKeyboard(
     int bookingId, {
     bool approvePartial = false,

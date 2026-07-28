@@ -433,6 +433,15 @@ final class PrivateHandlers {
           );
           await _sendMyBookingListPage(chatId: chatId, userId: userId);
           return true;
+        case _PrivateFlowStep.selectingPendingPaymentBooking:
+          _flowByUserId.remove(userId);
+          await _sender.sendMessage(
+            chatId,
+            'Вернул в главное меню 👇',
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+          );
+          return true;
         case _PrivateFlowStep.confirmingBookingCancel:
           final selectedBooking = flowState?.selectedBooking;
           if (selectedBooking == null) {
@@ -1605,16 +1614,43 @@ final class PrivateHandlers {
         flowState?.step == _PrivateFlowStep.selectingBookingAction &&
         text == MessageTemplates.buttonCompletePayment) {
       final selectedBooking = flowState?.selectedBooking;
-      if (selectedBooking == null || selectedBooking.status != BookingStatus.partialPaid) {
+      if (selectedBooking == null) {
         await _sender.sendMessage(
           chatId,
-          selectedBooking == null
-              ? _templates.privateFallback()
-              : _templates.bookingActions(selectedBooking),
-          replyMarkup: selectedBooking == null
-              ? _templates.privateMenuKeyboard(
-                  isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu)
-              : _bookingActionsKeyboard(selectedBooking),
+          _templates.privateFallback(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      await _sender.sendMessage(
+        chatId,
+        _templates.partialPaidRemainderOffline(selectedBooking),
+        replyMarkup: _bookingActionsKeyboard(selectedBooking),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingPendingPaymentBooking &&
+        text != null &&
+        !text.startsWith('/')) {
+      final selectedBookingId = _parseBookingSelectionId(text);
+      final pending = flowState?.availableBookings ?? const <TrainingBooking>[];
+      TrainingBooking? selectedBooking;
+      if (selectedBookingId != null) {
+        for (final booking in pending) {
+          if (booking.id == selectedBookingId) {
+            selectedBooking = booking;
+            break;
+          }
+        }
+      }
+      if (selectedBooking == null || selectedBooking.status != BookingStatus.pendingPayment) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.choosePendingPaymentBooking(pending),
+          replyMarkup: _templates.bookingManagementSelectionKeyboard(pending),
         );
         return true;
       }
@@ -1641,8 +1677,17 @@ final class PrivateHandlers {
         return true;
       }
       if (text == MessageTemplates.buttonContinuePayment ||
-          selectedBooking.status == BookingStatus.pendingPayment ||
-          selectedBooking.status == BookingStatus.partialPaid) {
+          selectedBooking.status == BookingStatus.pendingPayment) {
+        if (selectedBooking.status != BookingStatus.pendingPayment) {
+          await _sender.sendMessage(
+            chatId,
+            selectedBooking.status == BookingStatus.partialPaid
+                ? _templates.partialPaidRemainderOffline(selectedBooking)
+                : _templates.bookingActions(selectedBooking),
+            replyMarkup: _bookingActionsKeyboard(selectedBooking),
+          );
+          return true;
+        }
         await _openPaymentFlowForBooking(
           chatId: chatId,
           userId: userId,
@@ -2022,6 +2067,23 @@ final class PrivateHandlers {
         (text == MessageTemplates.buttonSubmitPayment || text.startsWith('/paid'))) {
       if (userId == null) {
         return false;
+      }
+      final pinnedBookingId = _parsePaidCommandBookingId(text);
+      if (pinnedBookingId != null) {
+        final opened = await _openPaymentFlowForBookingId(
+          chatId: chatId,
+          userId: userId,
+          bookingId: pinnedBookingId,
+        );
+        if (!opened) {
+          await _sender.sendMessage(
+            chatId,
+            _templates.noPendingPayment(),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+          );
+        }
+        return true;
       }
       if (flowState?.step != _PrivateFlowStep.paymentConfirmation) {
         final opened = await _openPendingPaymentFlow(
@@ -4759,7 +4821,7 @@ final class PrivateHandlers {
       canReschedule: _bookingPolicyService.canReschedule(booking),
       canCancel: _canCancelBookingByPolicy(booking),
       canRepeat: !canContinuePayment && booking.status != BookingStatus.partialPaid,
-      canCompletePayment: booking.status == BookingStatus.partialPaid,
+      canCompletePayment: false,
       canContinuePayment: canContinuePayment,
     );
   }
@@ -6187,6 +6249,15 @@ final class PrivateHandlers {
     required int userId,
     required TrainingBooking booking,
   }) async {
+    if (booking.status == BookingStatus.partialPaid) {
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        _templates.partialPaidRemainderOffline(booking),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return;
+    }
     final starterBonusOffered =
         _catalogService.categoryForBooking(booking) == _ActivityCategory.trainings &&
             !(_catalogService.trainingInfoForBooking(booking)?.promoRestricted ?? false) &&
@@ -6211,23 +6282,56 @@ final class PrivateHandlers {
     );
   }
 
+  Future<bool> _openPaymentFlowForBookingId({
+    required int chatId,
+    required int userId,
+    required int bookingId,
+  }) async {
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 50);
+    TrainingBooking? target;
+    for (final booking in bookings) {
+      if (booking.id == bookingId) {
+        target = booking;
+        break;
+      }
+    }
+    if (target == null || target.status != BookingStatus.pendingPayment) {
+      return false;
+    }
+    await _openPaymentFlowForBooking(chatId: chatId, userId: userId, booking: target);
+    return true;
+  }
+
   Future<bool> _openPendingPaymentFlow({
     required int chatId,
     required int userId,
   }) async {
     final bookings = await _bookingRepository.listUserBookings(userId, limit: 20);
-    final pending = bookings
-        .where(
-          (item) =>
-              item.status == BookingStatus.pendingPayment ||
-              item.status == BookingStatus.partialPaid,
-        )
-        .toList();
+    final pending = bookings.where((item) => item.status == BookingStatus.pendingPayment).toList();
     if (pending.isEmpty) {
       return false;
     }
-    pending.sort((left, right) => left.startsAt.compareTo(right.startsAt));
-    await _openPaymentFlowForBooking(chatId: chatId, userId: userId, booking: pending.first);
+    pending.sort((left, right) {
+      final byCreated = right.createdAt.compareTo(left.createdAt);
+      if (byCreated != 0) {
+        return byCreated;
+      }
+      return right.id.compareTo(left.id);
+    });
+    if (pending.length == 1) {
+      await _openPaymentFlowForBooking(chatId: chatId, userId: userId, booking: pending.first);
+      return true;
+    }
+    _flowByUserId[userId] = _PrivateFlowState(
+      step: _PrivateFlowStep.selectingPendingPaymentBooking,
+      availableTrainings: const <TrainingInfo>[],
+      availableBookings: pending,
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.choosePendingPaymentBooking(pending),
+      replyMarkup: _templates.bookingManagementSelectionKeyboard(pending),
+    );
     return true;
   }
 
@@ -6237,8 +6341,22 @@ final class PrivateHandlers {
     if (pending.isEmpty) {
       return null;
     }
-    pending.sort((left, right) => left.startsAt.compareTo(right.startsAt));
+    pending.sort((left, right) {
+      final byCreated = right.createdAt.compareTo(left.createdAt);
+      if (byCreated != 0) {
+        return byCreated;
+      }
+      return right.id.compareTo(left.id);
+    });
     return pending.first;
+  }
+
+  int? _parsePaidCommandBookingId(String text) {
+    final match = RegExp(r'^/paid(?:@\w+)?\s+(\d+)\s*$').firstMatch(text.trim());
+    if (match == null) {
+      return null;
+    }
+    return int.tryParse(match.group(1) ?? '');
   }
 
   bool _canCancelBookingByPolicy(TrainingBooking booking) {

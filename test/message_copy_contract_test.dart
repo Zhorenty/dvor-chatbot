@@ -69,9 +69,11 @@ void main() {
     test('inline callbacks use copy callback prefixes', () {
       final decision = TelegramKeyboards.paymentDecisionInlineKeyboard(42, approvePartial: true);
       final openQueue = TelegramKeyboards.openPaymentsQueueInlineKeyboard();
+      final reminder = TelegramKeyboards.pendingPaymentReminderKeyboard(777);
       final callbacks = <String>{
         ..._inlineCallbacks(decision),
         ..._inlineCallbacks(openQueue),
+        ..._inlineCallbacks(reminder),
       };
 
       expect(
@@ -83,6 +85,7 @@ void main() {
         isTrue,
       );
       expect(callbacks, contains(MessageCopy.callbackOpenPaymentsQueue));
+      expect(callbacks, contains('${MessageCopy.callbackPayBookingPrefix}777'));
     });
   });
 }

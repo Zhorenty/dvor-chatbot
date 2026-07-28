@@ -38,6 +38,7 @@ enum PrivateFlowStep {
   selectingBookingListSegment,
   paymentConfirmation,
   enteringPromoCode,
+  selectingPendingPaymentBooking,
   selectingBookingToManage,
   selectingBookingAction,
   confirmingBookingCancel,

@@ -412,7 +412,7 @@ void main() {
       await repository.close();
     });
 
-    test('submits payment for partial paid booking id', () async {
+    test('does not submit payment for partial paid booking id', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',
       );
@@ -434,10 +434,7 @@ void main() {
         note: 'final payment proof',
       );
 
-      expect(submitted, isNotNull);
-      expect(submitted!.id, created.booking.id);
-      expect(submitted.status, BookingStatus.paymentSubmitted);
-      expect(submitted.paymentNote, 'final payment proof');
+      expect(submitted, isNull);
 
       await repository.close();
     });

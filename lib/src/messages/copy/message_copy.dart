@@ -119,6 +119,7 @@ final class MessageCopy {
   static const String callbackApprovePaymentPrefix = 'payment:approve:';
   static const String callbackApprovePartialPaymentPrefix = 'payment:approve_partial:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';
+  static const String callbackPayBookingPrefix = 'payment:pay:';
   static const String callbackOpenPaymentsQueue = 'payment:open_queue';
   static const String callbackNextPaymentInQueuePrefix = 'payment:next:';
   static const String callbackApproveSubscriptionPrefix = 'subscription:approve:';

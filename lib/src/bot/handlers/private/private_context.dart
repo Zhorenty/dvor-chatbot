@@ -157,6 +157,11 @@ String? callbackToCommandText(String? callbackData) {
     final bookingId = int.tryParse(rawId);
     return bookingId == null ? null : '/reject_payment $bookingId';
   }
+  if (callbackData.startsWith(MessageCopy.callbackPayBookingPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackPayBookingPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/paid $bookingId';
+  }
   if (callbackData == MessageCopy.callbackOpenPaymentsQueue) {
     return '/payments_queue';
   }

@@ -40,6 +40,7 @@ TrainingBooking _booking({
   String location = 'Hall',
   BookingStatus status = BookingStatus.pendingPayment,
   String? paymentNote,
+  DateTime? createdAt,
   DateTime? updatedAt,
 }) {
   return fakeBooking(
@@ -54,6 +55,7 @@ TrainingBooking _booking({
     location: location,
     status: status,
     paymentNote: paymentNote,
+    createdAt: createdAt,
     updatedAt: updatedAt,
   );
 }
@@ -5272,7 +5274,7 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonSubmitPayment));
     });
 
-    test('opens top-up flow for partial paid booking without payment type choice', () async {
+    test('does not open payment flow for partial paid booking via Я оплатил', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..userBookings = <TrainingBooking>[
@@ -5301,14 +5303,152 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Предоплату по записи #931 уже зафиксировали'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(buttons, isNot(contains(MessageTemplates.buttonPayFully)));
-      expect(buttons, isNot(contains(MessageTemplates.buttonPayPartially)));
-      expect(buttons, contains(MessageTemplates.buttonSubmitPayment));
+      expect(sender.messages.last.text, contains('Не нашел активной записи'));
     });
 
-    test('shows dedicated top-up action for partial paid booking in profile', () async {
+    test('prefers pending training over earlier partial paid hike on Я оплатил', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 428,
+            userId: 3940,
+            title: '🥾 Поход: Архыз',
+            trainingKey: 'hikes|2026-08-01T10:00:00.000Z|🥾 Поход: Архыз|Маршрут',
+            startsAt: DateTime(2026, 8, 1, 10, 0),
+            location: 'Маршрут',
+            status: BookingStatus.partialPaid,
+            createdAt: DateTime(2026, 6, 1, 10),
+          ),
+          _booking(
+            id: 722,
+            userId: 3940,
+            title: '🏃 КубГАУ LONG RUN',
+            trainingKey: 'trainings|2026-07-28T20:30:00.000Z|🏃 КубГАУ LONG RUN|Stadium',
+            startsAt: DateTime(2026, 7, 28, 20, 30),
+            location: 'Stadium',
+            status: BookingStatus.pendingPayment,
+            createdAt: DateTime(2026, 7, 28, 10),
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3940, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3940},
+        'text': MessageTemplates.buttonSubmitPayment,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
+      expect(sender.messages.last.text, isNot(contains('OUTDVOR')));
+      expect(sender.messages.last.text, isNot(contains('доплатить остаток')));
+      expect(sender.messages.last.text, isNot(contains('офлайн')));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonSubmitPayment));
+      expect(buttons, isNot(contains(MessageTemplates.buttonPayPartially)));
+    });
+
+    test('asks to choose booking when several pending payments exist', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 101,
+            userId: 3941,
+            title: 'Training A',
+            startsAt: DateTime(2026, 8, 1, 18),
+            status: BookingStatus.pendingPayment,
+            createdAt: DateTime(2026, 7, 1, 10),
+          ),
+          _booking(
+            id: 102,
+            userId: 3941,
+            title: 'Training B',
+            startsAt: DateTime(2026, 8, 2, 18),
+            status: BookingStatus.pendingPayment,
+            createdAt: DateTime(2026, 7, 2, 10),
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 3941, 'type': 'private'},
+        'from': <String, dynamic>{'id': 3941},
+        'text': MessageTemplates.buttonSubmitPayment,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.last.text, contains('несколько записей'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons.any((item) => item.contains('#101')), isTrue);
+      expect(buttons.any((item) => item.contains('#102')), isTrue);
+    });
+
+    test('opens pinned booking payment flow from reminder callback', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 722,
+            userId: 3942,
+            title: '🏃 КубГАУ LONG RUN',
+            trainingKey: 'trainings|2026-07-28T20:30:00.000Z|🏃 КубГАУ LONG RUN|Stadium',
+            startsAt: DateTime(2026, 7, 28, 20, 30),
+            status: BookingStatus.pendingPayment,
+            createdAt: DateTime(2026, 7, 28, 9),
+          ),
+          _booking(
+            id: 100,
+            userId: 3942,
+            title: '🥾 Поход: Архыз',
+            trainingKey: 'hikes|2026-08-01T10:00:00.000Z|🥾 Поход: Архыз|Маршрут',
+            startsAt: DateTime(2026, 8, 1, 10, 0),
+            status: BookingStatus.pendingPayment,
+            createdAt: DateTime(2026, 7, 29, 10),
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'callback_query': <String, dynamic>{
+          'id': 'cbq-pay-722',
+          'from': <String, dynamic>{'id': 3942},
+          'data': '${MessageTemplates.callbackPayBookingPrefix}722',
+          'message': <String, dynamic>{
+            'chat': <String, dynamic>{'id': 3942, 'type': 'private'},
+          },
+        },
+      });
+
+      expect(handled, isTrue);
+      // Pinned training #722, not the newer outdoor pending #100.
+      expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
+      expect(sender.messages.last.text, isNot(contains('OUTDVOR')));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, isNot(contains(MessageTemplates.buttonPayPartially)));
+      expect(sender.answeredCallbacks, hasLength(1));
+    });
+
+    test('does not offer Доплатить for partial paid booking in profile', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..userBookings = <TrainingBooking>[
@@ -5342,16 +5482,8 @@ void main() {
       });
 
       final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
-      expect(actionButtons, contains(MessageTemplates.buttonCompletePayment));
-
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 3932, 'type': 'private'},
-        'from': <String, dynamic>{'id': 3932},
-        'text': MessageTemplates.buttonCompletePayment,
-      });
-
-      expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Предоплату по записи #932 уже зафиксировали'));
+      expect(actionButtons, isNot(contains(MessageTemplates.buttonCompletePayment)));
+      expect(sender.messages.last.text, contains('офлайн'));
     });
 
     test('repeat booking action opens booking flow for same category', () async {

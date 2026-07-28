@@ -1,7 +1,6 @@
-import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
-import 'package:dvor_chatbot/src/application/booking_policy_service.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
+import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
@@ -18,11 +17,6 @@ void main() {
     final sender = FakeSender();
     final job = PaymentReminderJob(
       bookingRepository: bookingRepository,
-      bookingPolicyService: BookingPolicyService(
-        catalogService: ActivityCatalogService(
-          scheduleRepository: FakeScheduleRepository(const []),
-        ),
-      ),
       sender: sender,
       templates: const MessageTemplates(),
       pendingPaymentTtl: const Duration(minutes: 120),
@@ -36,7 +30,7 @@ void main() {
     expect(sender.messages.single.text, contains('Время на оплату истекло'));
   });
 
-  test('sends pending reminder with HTML parse mode', () async {
+  test('sends pending reminder with HTML parse mode and pinned pay callback', () async {
     final now = DateTime(2030, 6, 1, 12, 0);
     final bookingRepository = FakeBookingRepository()
       ..expiredPending = const <TrainingBooking>[]
@@ -51,11 +45,6 @@ void main() {
     final sender = FakeSender();
     final job = PaymentReminderJob(
       bookingRepository: bookingRepository,
-      bookingPolicyService: BookingPolicyService(
-        catalogService: ActivityCatalogService(
-          scheduleRepository: FakeScheduleRepository(const []),
-        ),
-      ),
       sender: sender,
       templates: const MessageTemplates(),
       pendingPaymentTtl: const Duration(minutes: 120),
@@ -69,5 +58,13 @@ void main() {
     expect(sender.messages.single.text, contains('Напоминание об оплате'));
     expect(sender.messages.single.parseMode, 'HTML');
     expect(bookingRepository.remindersMarked, 1);
+    final markup = sender.messages.single.replyMarkup;
+    expect(markup, isNotNull);
+    final inline = markup!['inline_keyboard'] as List<dynamic>;
+    final firstButton = Map<String, Object?>.from(
+      (inline.first as List<dynamic>).first as Map,
+    );
+    expect(firstButton['text'], MessageCopy.buttonSubmitPayment);
+    expect(firstButton['callback_data'], '${MessageCopy.callbackPayBookingPrefix}777');
   });
 }
