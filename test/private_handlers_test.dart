@@ -1291,15 +1291,19 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 1);
       expect(bookingRepository.lastCreatedTraining?.title, contains('Поход на Бзерпинский карниз'));
-      final itineraryIndex =
-          sender.messages.indexWhere((message) => message.text.contains('Расписание похода'));
-      final equipmentIndex =
-          sender.messages.indexWhere((message) => message.text.contains('Экипировка'));
-      expect(itineraryIndex, greaterThanOrEqualTo(0));
-      expect(equipmentIndex, greaterThan(itineraryIndex));
-      expect(sender.messages[itineraryIndex].text, contains('Сбор в 07:00, выезд в 07:30'));
-      expect(sender.messages[equipmentIndex].text, contains('Ботинки, дождевик'));
+      expect(
+        sender.messages.any((message) => message.text.contains('Расписание похода')),
+        isFalse,
+      );
+      expect(
+        sender.messages.any((message) => message.text.contains('Экипировка')),
+        isFalse,
+      );
       expect(sender.messages.last.text, contains('записал тебя'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonPayFully));
+      expect(buttons, contains(MessageTemplates.buttonPayPartially));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
     });
 
     test('back from outdoor event selection returns to schedule categories', () async {
@@ -2318,22 +2322,26 @@ void main() {
           bookingRepository.lastCreatedTraining?.location, contains('Лаго-Наки, старт от кордона'));
       final ruleIndex =
           sender.messages.indexWhere((message) => message.text.contains('Правило OUTDVOR'));
-      final itineraryIndex =
-          sender.messages.indexWhere((message) => message.text.contains('Расписание похода'));
-      final equipmentIndex =
-          sender.messages.indexWhere((message) => message.text.contains('Экипировка'));
       final requisitesIndex =
           sender.messages.indexWhere((message) => message.text.contains('Реквизиты OUTDVOR'));
       expect(ruleIndex, greaterThanOrEqualTo(0));
-      expect(itineraryIndex, greaterThan(ruleIndex));
-      expect(equipmentIndex, greaterThan(itineraryIndex));
-      expect(requisitesIndex, greaterThan(equipmentIndex));
-      expect(sender.messages[itineraryIndex].text, contains('Сбор 06:30, трансфер 07:00'));
-      expect(sender.messages[equipmentIndex].text, contains('Рюкзак 30л, треккинговые ботинки'));
+      expect(requisitesIndex, greaterThan(ruleIndex));
+      expect(
+        sender.messages.any((message) => message.text.contains('Расписание похода')),
+        isFalse,
+      );
+      expect(
+        sender.messages.any((message) => message.text.contains('Экипировка')),
+        isFalse,
+      );
       expect(sender.messages.last.text, contains('записал тебя'));
       expect(sender.messages.last.text, contains('Событие: 🥾 Поход: Поход на хребет'));
       expect(sender.messages.last.text, isNot(contains('Тренировка:')));
       expect(sender.messages.last.text, contains('📍 Где: Лаго-Наки, старт от кордона'));
+      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonPayFully));
+      expect(buttons, contains(MessageTemplates.buttonPayPartially));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
     });
 
     test('payment is not submitted without proof file', () async {
@@ -5227,12 +5235,123 @@ void main() {
       expect(sender.messages, hasLength(3));
       expect(sender.messages[0].chatId, 1);
       expect(sender.messages[0].text, contains('отклонили'));
+      expect(
+        _keyboardTexts(sender.messages[0].replyMarkup),
+        contains(MessageTemplates.buttonSubmitPayment),
+      );
       expect(sender.messages[1].chatId, -100556);
       expect(sender.messages[1].text, contains('Проверил админ: @moderator_anna (1950)'));
       expect(sender.messages[2].chatId, 1950);
       expect(sender.messages[2].text, contains('Статус записи #22 обновлен'));
       expect(sender.answeredCallbacks, hasLength(1));
       expect(sender.answeredCallbacks.single.callbackQueryId, 'cbq-1');
+    });
+
+    test('submits payment proof without in-memory flow when pending booking exists', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 880,
+            userId: 2880,
+            title: 'Lost flow training',
+            status: BookingStatus.pendingPayment,
+          ),
+        ]
+        ..submitResult = _booking(
+          id: 880,
+          userId: 2880,
+          title: 'Lost flow training',
+          status: BookingStatus.paymentSubmitted,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'message': <String, dynamic>{
+          'message_id': 501,
+          'chat': <String, dynamic>{'id': 2880, 'type': 'private'},
+          'from': <String, dynamic>{'id': 2880},
+          'document': <String, Object?>{'file_id': 'doc-lost-flow'},
+        },
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.submitCalls, 1);
+      expect(bookingRepository.lastSubmittedBookingId, 880);
+      expect(sender.messages.last.text, contains('отправил администратору'));
+    });
+
+    test('allows resubmit after payment rejection without changing rejected status first',
+        () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..paymentReviewResult = PaymentReviewResult(
+          outcome: PaymentReviewOutcome.success,
+          booking: _booking(
+            id: 881,
+            userId: 2881,
+            title: 'Rejected hike',
+            trainingKey: 'hikes|2026-10-01T10:00:00.000Z|🥾 Поход: Rejected|Route',
+            status: BookingStatus.paymentRejected,
+          ),
+        )
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 881,
+            userId: 2881,
+            title: '🥾 Поход: Rejected',
+            trainingKey: 'hikes|2026-10-01T10:00:00.000Z|🥾 Поход: Rejected|Route',
+            status: BookingStatus.paymentRejected,
+          ),
+        ]
+        ..submitResult = _booking(
+          id: 881,
+          userId: 2881,
+          title: '🥾 Поход: Rejected',
+          trainingKey: 'hikes|2026-10-01T10:00:00.000Z|🥾 Поход: Rejected|Route',
+          status: BookingStatus.paymentSubmitted,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1951},
+        adminChatId: -100560,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'callback_query': <String, dynamic>{
+          'id': 'cbq-reject-resubmit',
+          'from': <String, dynamic>{'id': 1951, 'username': 'moderator'},
+          'data': '${MessageTemplates.callbackRejectPaymentPrefix}881',
+          'message': <String, dynamic>{
+            'chat': <String, dynamic>{'id': 1951, 'type': 'private'},
+          },
+        },
+      });
+      expect(sender.messages.first.text, contains('отклонили'));
+      expect(bookingRepository.paymentReviewResult?.booking?.status, BookingStatus.paymentRejected);
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'message': <String, dynamic>{
+          'message_id': 502,
+          'chat': <String, dynamic>{'id': 2881, 'type': 'private'},
+          'from': <String, dynamic>{'id': 2881},
+          'document': <String, Object?>{'file_id': 'doc-resubmit'},
+        },
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.submitCalls, 1);
+      expect(bookingRepository.lastSubmittedBookingId, 881);
+      expect(sender.messages.last.text, contains('отправил администратору'));
     });
 
     test('handles partial payment moderation callback buttons for admin', () async {
@@ -5399,7 +5518,7 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPayPartially));
       expect(buttons, contains(MessageTemplates.buttonPayFully));
-      expect(buttons, contains(MessageTemplates.buttonSubmitPayment));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
     });
 
     test('does not open payment flow for partial paid booking via Я оплатил', () async {

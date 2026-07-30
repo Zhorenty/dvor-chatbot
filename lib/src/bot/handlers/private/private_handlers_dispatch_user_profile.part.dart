@@ -425,7 +425,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           }
         }
       }
-      if (selectedBooking == null || selectedBooking.status != BookingStatus.pendingPayment) {
+      if (selectedBooking == null || !_isPayableForProof(selectedBooking)) {
         await _sender.sendMessage(
           chatId,
           _templates.choosePendingPaymentBooking(pending),
@@ -455,9 +455,8 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         );
         return true;
       }
-      if (text == MessageTemplates.buttonContinuePayment ||
-          selectedBooking.status == BookingStatus.pendingPayment) {
-        if (selectedBooking.status != BookingStatus.pendingPayment) {
+      if (text == MessageTemplates.buttonContinuePayment || _isPayableForProof(selectedBooking)) {
+        if (!_isPayableForProof(selectedBooking)) {
           await _sender.sendMessage(
             chatId,
             selectedBooking.status == BookingStatus.partialPaid
@@ -612,6 +611,43 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       return true;
     }
 
+    if (userId != null &&
+        text != null &&
+        (text == MessageTemplates.buttonPayFully || text == MessageTemplates.buttonPayPartially) &&
+        flowState?.step != _PrivateFlowStep.paymentConfirmation) {
+      final opened = await _openPendingPaymentFlow(chatId: chatId, userId: userId);
+      if (!opened) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.noPendingPayment(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      final restoredFlow = _flowByUserId[userId];
+      final booking = restoredFlow?.activeBooking;
+      if (restoredFlow?.step == _PrivateFlowStep.paymentConfirmation &&
+          booking != null &&
+          _shouldShowOutdoorPaymentTypeChoice(booking)) {
+        final selectedChoice = text == MessageTemplates.buttonPayPartially
+            ? PaymentChoice.partial
+            : PaymentChoice.full;
+        _flowByUserId[userId] = restoredFlow!.copyWith(paymentChoice: selectedChoice);
+        await _sender.sendMessage(
+          chatId,
+          _templates.paymentProofRequired(),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: restoredFlow.starterBonusOffered,
+            showCancelBooking: _canCancelBookingByPolicy(booking),
+            showOutdoorPaymentTypeChoice: true,
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
+          ),
+        );
+      }
+      return true;
+    }
+
     if (text == MessageTemplates.buttonSubscribeApply ||
         text == MessageTemplates.buttonRenewSubscription) {
       if (userId == null) {
@@ -689,6 +725,72 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           caption: paymentProof.caption,
           choice: currentFlow.paymentChoice,
         ),
+        paymentProofChatId: paymentProof.fromChatId,
+        paymentProofMessageId: paymentProof.messageId,
+      );
+      if (booking != null) {
+        await _notifyAdminAboutPaymentSubmitted(booking);
+      }
+      _flowByUserId.remove(userId);
+      await _sender.sendMessage(
+        chatId,
+        booking == null ? _templates.noPendingPayment() : _templates.paymentSubmitted(booking),
+        replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+      );
+      return true;
+    }
+
+    if (userId != null && paymentProof != null && flowState == null) {
+      final payable = await _listPayableBookings(userId);
+      if (payable.isEmpty) {
+        final bookings = await _bookingRepository.listUserBookings(userId, limit: 20);
+        final alreadySubmitted = bookings.any(
+          (item) => item.status == BookingStatus.paymentSubmitted,
+        );
+        await _sender.sendMessage(
+          chatId,
+          alreadySubmitted
+              ? _templates.paymentSubmittedAlreadyPending()
+              : _templates.noPendingPayment(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (payable.length > 1) {
+        _flowByUserId[userId] = _PrivateFlowState(
+          step: _PrivateFlowStep.selectingPendingPaymentBooking,
+          availableTrainings: const <TrainingInfo>[],
+          availableBookings: payable,
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.choosePendingPaymentBooking(payable),
+          replyMarkup: _templates.bookingManagementSelectionKeyboard(payable),
+        );
+        return true;
+      }
+      final target = payable.first;
+      if (_shouldShowOutdoorPaymentTypeChoice(target)) {
+        await _openPaymentFlowForBooking(chatId: chatId, userId: userId, booking: target);
+        await _sender.sendMessage(
+          chatId,
+          _templates.chooseOutdoorPaymentType(),
+          parseMode: 'HTML',
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: _flowByUserId[userId]?.starterBonusOffered ?? false,
+            showCancelBooking: _canCancelBookingByPolicy(target),
+            showOutdoorPaymentTypeChoice: true,
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(target),
+          ),
+        );
+        return true;
+      }
+      final booking = await _bookingRepository.submitPaymentForLatestPending(
+        userId,
+        bookingId: target.id,
+        note: paymentProof.caption,
         paymentProofChatId: paymentProof.fromChatId,
         paymentProofMessageId: paymentProof.messageId,
       );

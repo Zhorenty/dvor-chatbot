@@ -603,13 +603,14 @@ final class SqliteBookingRepository implements BookingRepository {
       result = db.select(
         '''
         SELECT id FROM bookings
-        WHERE id = ? AND user_id = ? AND status = ?
+        WHERE id = ? AND user_id = ? AND status IN (?, ?)
         LIMIT 1;
         ''',
         <Object?>[
           bookingId,
           userId,
           BookingStatus.pendingPayment.dbValue,
+          BookingStatus.paymentRejected.dbValue,
         ],
       );
     } else {
@@ -642,7 +643,7 @@ final class SqliteBookingRepository implements BookingRepository {
             payment_proof_message_id = ?,
             updated_at = ?
         WHERE payment_group_id = ?
-          AND status = ?;
+          AND status IN (?, ?);
         ''',
         <Object?>[
           BookingStatus.paymentSubmitted.dbValue,
@@ -652,6 +653,7 @@ final class SqliteBookingRepository implements BookingRepository {
           nowIso,
           groupId,
           BookingStatus.pendingPayment.dbValue,
+          BookingStatus.paymentRejected.dbValue,
         ],
       );
     } else {
@@ -663,7 +665,8 @@ final class SqliteBookingRepository implements BookingRepository {
             payment_proof_chat_id = ?,
             payment_proof_message_id = ?,
             updated_at = ?
-        WHERE id = ?;
+        WHERE id = ?
+          AND status IN (?, ?);
         ''',
         <Object?>[
           BookingStatus.paymentSubmitted.dbValue,
@@ -672,8 +675,13 @@ final class SqliteBookingRepository implements BookingRepository {
           paymentProofMessageId,
           nowIso,
           selectedBookingId,
+          BookingStatus.pendingPayment.dbValue,
+          BookingStatus.paymentRejected.dbValue,
         ],
       );
+    }
+    if (db.updatedRows == 0) {
+      return null;
     }
     return _findBookingById(selectedBookingId);
   }
@@ -1688,12 +1696,17 @@ final class SqliteBookingRepository implements BookingRepository {
       '''
       SELECT id FROM bookings
       WHERE user_id = ?
-        AND status = ?
-      ORDER BY created_at DESC, id DESC
+        AND status IN (?, ?)
+      ORDER BY
+        CASE status WHEN ? THEN 0 ELSE 1 END ASC,
+        created_at DESC,
+        id DESC
       LIMIT 1;
       ''',
       <Object?>[
         userId,
+        BookingStatus.pendingPayment.dbValue,
+        BookingStatus.paymentRejected.dbValue,
         BookingStatus.pendingPayment.dbValue,
       ],
     );

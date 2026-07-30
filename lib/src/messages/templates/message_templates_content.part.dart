@@ -517,9 +517,10 @@ extension MessageTemplatesContent on MessageTemplates {
   }
 
   String chooseOutdoorPaymentType() {
-    return 'Выбери тип оплаты и затем нажми «${MessageCopy.buttonSubmitPayment}»:\n'
+    return 'Выбери тип оплаты:\n'
+        '• «${MessageCopy.buttonPayFully}» — полная сумма\n'
         '• «${MessageCopy.buttonPayPartially}» — предоплата <b>50%</b>\n'
-        '• «${MessageCopy.buttonPayFully}» — полная сумма 👇';
+        'После выбора пришли файл с подтверждением оплаты (документ или фото чека) 📎';
   }
 
   String paymentSubmittedAdminNotification(
@@ -695,9 +696,14 @@ extension MessageTemplatesContent on MessageTemplates {
   }
 
   String noPendingPayment() {
-    return 'Не нашел активной записи со статусом "Ожидает оплату" 🤔\n'
+    return 'Не нашел активной записи, по которой можно отправить оплату 🤔\n'
         'Проверь «${MessageCopy.buttonProfile}» или создай новую запись.\n'
         'Если запись уже отменилась по таймеру — оформи её заново.';
+  }
+
+  String paymentSubmittedAlreadyPending() {
+    return 'Уже получил подтверждение оплаты — заявка на проверке ✅\n'
+        'Дождись результата модерации, бот сообщит автоматически.';
   }
 
   String choosePendingPaymentBooking(List<TrainingBooking> bookings) {
@@ -1184,7 +1190,8 @@ extension MessageTemplatesContent on MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final hint = switch (booking.status) {
-      BookingStatus.pendingPayment =>
+      BookingStatus.pendingPayment ||
+      BookingStatus.paymentRejected =>
         'Подсказка: «${MessageCopy.buttonContinuePayment}» откроет оплату по этой записи.',
       BookingStatus.partialPaid =>
         'Подсказка: предоплата уже внесена. Остаток — офлайн после события.',
@@ -1670,7 +1677,7 @@ extension MessageTemplatesContent on MessageTemplates {
     return 'Оплату по записи #${booking.id} отклонили ❌\n'
         'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
         'Проверь детали платежа и отправь подтверждение еще раз.\n'
-        'Если нужен комментарий по отклонению, напиши администратору клуба.';
+        'Если нужен комментарий по отклонению, напиши саппорту @dvor_support.';
   }
 
   String paymentReviewAdminNotification({
@@ -1827,7 +1834,8 @@ extension MessageTemplatesContent on MessageTemplates {
     return '${paymentInstructions(booking)}\n\n'
         '<b>Что дальше:</b>\n'
         '1) Оплати по реквизитам выше.\n'
-        '2) Нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека (документ/фото) в этот чат 📎\n\n'
+        '2) Выбери тип оплаты: «${MessageCopy.buttonPayFully}» или «${MessageCopy.buttonPayPartially}».\n'
+        '3) Пришли файл чека (документ/фото) в этот чат 📎\n\n'
         '⚠️ <b>Важно:</b> без файла подтверждения заявка не уйдёт на проверку.';
   }
 
@@ -1838,9 +1846,8 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String paymentProofRequired() {
     return 'Чтобы отправить заявку администратору:\n'
-        '1) Нажми «${MessageCopy.buttonSubmitPayment}».\n'
-        '2) Пришли файл с подтверждением оплаты (документ или фото чека).\n'
-        '3) Дождись ответа о модерации.';
+        '1) Пришли файл с подтверждением оплаты (документ или фото чека).\n'
+        '2) Дождись ответа о модерации.';
   }
 
   String paymentProofUnavailableHint(TrainingBooking booking) {

@@ -272,6 +272,14 @@ final class TelegramKeyboards {
         ],
       );
     }
+    if (showOutdoorPaymentTypeChoice) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonPayFully},
+          <String, String>{'text': MessageCopy.buttonPayPartially},
+        ],
+      );
+    }
     if (showPromoCodeEntry) {
       rows.add(
         <Map<String, String>>[
@@ -279,19 +287,13 @@ final class TelegramKeyboards {
         ],
       );
     }
-    if (showOutdoorPaymentTypeChoice) {
+    if (!showOutdoorPaymentTypeChoice) {
       rows.add(
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonPayPartially},
-          <String, String>{'text': MessageCopy.buttonPayFully},
+          <String, String>{'text': MessageCopy.buttonSubmitPayment},
         ],
       );
     }
-    rows.add(
-      <Map<String, String>>[
-        <String, String>{'text': MessageCopy.buttonSubmitPayment},
-      ],
-    );
     if (showCancelBooking) {
       rows.add(
         <Map<String, String>>[

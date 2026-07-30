@@ -133,6 +133,16 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       partyTraining: null,
     );
 
+    final outdoorPaymentChoice = _shouldShowOutdoorPaymentTypeChoice(first);
+    final nextSteps = outdoorPaymentChoice
+        ? '<b>Что дальше:</b>\n'
+            '1) Оплати полную сумму за группу.\n'
+            '2) Выбери тип оплаты: «${MessageTemplates.buttonPayFully}» или '
+            '«${MessageTemplates.buttonPayPartially}».\n'
+            '3) Пришли файл чека в этот чат 📎'
+        : '<b>Что дальше:</b>\n'
+            '1) Оплати полную сумму за группу.\n'
+            '2) Нажми «${MessageTemplates.buttonSubmitPayment}» и отправь файл чека в этот чат 📎';
     await _sender.sendMessage(
       chatId,
       '${_templates.bookingGroupCreated(
@@ -146,13 +156,11 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         unitPrice: unitPrice,
         totalPrice: totalPrice,
       )}\n\n'
-      '<b>Что дальше:</b>\n'
-      '1) Оплати полную сумму за группу.\n'
-      '2) Нажми «${MessageTemplates.buttonSubmitPayment}» и отправь файл чека в этот чат 📎',
+      '$nextSteps',
       replyMarkup: _templates.paymentConfirmationKeyboard(
         showStarterBonus: false,
         showCancelBooking: _canCancelBookingByPolicy(first),
-        showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(first),
+        showOutdoorPaymentTypeChoice: outdoorPaymentChoice,
         showPromoCodeEntry: false,
       ),
       parseMode: 'HTML',
@@ -278,7 +286,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         _templates.outdoorBookingRule(result.booking),
         parseMode: 'HTML',
       );
-      await _sendOutdoorPrepDetails(chatId, result.booking);
     }
     await _sender.sendMessage(
       chatId,
@@ -503,7 +510,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     if (booking == null) {
       return _templates.simpleNavigationKeyboard();
     }
-    final canContinuePayment = booking.status == BookingStatus.pendingPayment;
+    final canContinuePayment = _isPayableForProof(booking);
     return _templates.bookingActionsKeyboard(
       canReschedule: _bookingPolicyService.canReschedule(booking),
       canCancel: _canCancelBookingByPolicy(booking),

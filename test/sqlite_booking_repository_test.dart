@@ -647,6 +647,41 @@ void main() {
       await repository.close();
     });
 
+    test('keeps paymentRejected status and allows proof resubmit', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final created = await repository.createPendingBooking(
+        userId: 5210,
+        training: TrainingInfo(
+          title: 'Reject then resubmit',
+          startsAt: DateTime(2030, 6, 19, 19),
+          location: 'Gym',
+        ),
+      );
+      await repository.submitPaymentForLatestPending(5210, bookingId: created.booking.id);
+      final rejected = await repository.reviewSubmittedPayment(
+        bookingId: created.booking.id,
+        status: BookingStatus.paymentRejected,
+      );
+      expect(rejected.outcome, PaymentReviewOutcome.success);
+      expect(rejected.booking, isNotNull);
+      expect(rejected.booking!.status, BookingStatus.paymentRejected);
+
+      final resubmitted = await repository.submitPaymentForLatestPending(
+        5210,
+        bookingId: created.booking.id,
+        note: 'new proof',
+      );
+      expect(resubmitted, isNotNull);
+      expect(resubmitted!.status, BookingStatus.paymentSubmitted);
+      expect(resubmitted.paymentNote, 'new proof');
+
+      await repository.close();
+    });
+
     test('returns conflict when rescheduling to already booked slot', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',

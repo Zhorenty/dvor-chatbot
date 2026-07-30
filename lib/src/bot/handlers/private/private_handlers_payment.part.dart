@@ -99,15 +99,35 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
     try {
       final isApproved =
           booking.status == BookingStatus.paid || booking.status == BookingStatus.partialPaid;
-      await _sender.sendMessage(
-        booking.userId,
-        isApproved
-            ? _templates.paymentApprovedForUser(booking)
-            : _templates.paymentRejectedForUser(booking),
-      );
       if (isApproved) {
+        await _sender.sendMessage(
+          booking.userId,
+          _templates.paymentApprovedForUser(booking),
+        );
         await _sendOutdoorPrepDetails(booking.userId, booking);
         await _maybeMarkOnboardingActivation(booking.userId);
+      } else {
+        final starterBonusOffered =
+            _catalogService.categoryForBooking(booking) == _ActivityCategory.trainings &&
+                !(_catalogService.trainingInfoForBooking(booking)?.promoRestricted ?? false) &&
+                await _hasAnyFreeTrainingBonusAvailable(booking.userId);
+        _flowByUserId[booking.userId] = _PrivateFlowState(
+          step: _PrivateFlowStep.paymentConfirmation,
+          availableTrainings: const <TrainingInfo>[],
+          activeBooking: booking,
+          starterBonusOffered: starterBonusOffered,
+          paymentChoice: null,
+        );
+        await _sender.sendMessage(
+          booking.userId,
+          _templates.paymentRejectedForUser(booking),
+          replyMarkup: _templates.paymentConfirmationKeyboard(
+            showStarterBonus: starterBonusOffered,
+            showCancelBooking: _canCancelBookingByPolicy(booking),
+            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(booking),
+            showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
+          ),
+        );
       }
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify user about payment review: $error', stackTrace);
@@ -222,7 +242,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
         break;
       }
     }
-    if (target == null || target.status != BookingStatus.pendingPayment) {
+    if (target == null || !_isPayableForProof(target)) {
       return false;
     }
     await _openPaymentFlowForBooking(chatId: chatId, userId: userId, booking: target);
@@ -233,18 +253,10 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
     required int chatId,
     required int userId,
   }) async {
-    final bookings = await _bookingRepository.listUserBookings(userId, limit: 20);
-    final pending = bookings.where((item) => item.status == BookingStatus.pendingPayment).toList();
+    final pending = await _listPayableBookings(userId);
     if (pending.isEmpty) {
       return false;
     }
-    pending.sort((left, right) {
-      final byCreated = right.createdAt.compareTo(left.createdAt);
-      if (byCreated != 0) {
-        return byCreated;
-      }
-      return right.id.compareTo(left.id);
-    });
     if (pending.length == 1) {
       await _openPaymentFlowForBooking(chatId: chatId, userId: userId, booking: pending.first);
       return true;
@@ -263,11 +275,16 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
   }
 
   Future<TrainingBooking?> _resolveLatestPendingPaymentBooking(int userId) async {
-    final bookings = await _bookingRepository.listUserBookings(userId, limit: 20);
-    final pending = bookings.where((item) => item.status == BookingStatus.pendingPayment).toList();
+    final pending = await _listPayableBookings(userId);
     if (pending.isEmpty) {
       return null;
     }
+    return pending.first;
+  }
+
+  Future<List<TrainingBooking>> _listPayableBookings(int userId) async {
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 50);
+    final pending = bookings.where(_isPayableForProof).toList();
     pending.sort((left, right) {
       final byCreated = right.createdAt.compareTo(left.createdAt);
       if (byCreated != 0) {
@@ -275,7 +292,12 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       }
       return right.id.compareTo(left.id);
     });
-    return pending.first;
+    return pending;
+  }
+
+  bool _isPayableForProof(TrainingBooking booking) {
+    return booking.status == BookingStatus.pendingPayment ||
+        booking.status == BookingStatus.paymentRejected;
   }
 
   int? _parsePaidCommandBookingId(String text) {
