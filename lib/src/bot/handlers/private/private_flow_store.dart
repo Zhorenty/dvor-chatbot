@@ -69,6 +69,7 @@ enum PrivateFlowStep {
   enteringAdminBroadcastText,
   selectingAdminBroadcastTarget,
   enteringAdminUserSearchQuery,
+  enteringAdminDialogUsernameQuery,
 }
 
 enum PaymentChoice {

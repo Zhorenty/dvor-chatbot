@@ -1497,6 +1497,90 @@ extension MessageTemplatesContent on MessageTemplates {
     return '🔍 <b>Поиск по пользователю</b>\n\nВведи никнейм (с @ или без):';
   }
 
+  String adminRecentBotActions(List<ConversationLogEntry> entries) {
+    if (entries.isEmpty) {
+      return '📜 <b>Последние действия бота</b>\n\n'
+          'Пока пусто. Лог появляется после сообщений пользователей и ответов бота '
+          '(история до включения логирования недоступна).';
+    }
+    final dateFormatter = DateFormat('dd.MM HH:mm');
+    final lines = <String>[
+      '📜 <b>Последние действия бота</b> (до ${entries.length})',
+      '',
+    ];
+    for (final entry in entries) {
+      final who = entry.peerUsername == null || entry.peerUsername!.isEmpty
+          ? 'id ${entry.peerUserId}'
+          : '@${entry.peerUsername}';
+      final arrow = entry.direction == ConversationDirection.inbound ? '⬅️' : '➡️';
+      final preview = entry.textPreview?.trim();
+      final body = (preview == null || preview.isEmpty)
+          ? _conversationContentLabel(entry.contentType)
+          : _escapeHtml(preview);
+      lines.add(
+        '${dateFormatter.format(entry.occurredAt)} $arrow ${_escapeHtml(who)}\n$body',
+      );
+      lines.add('');
+    }
+    lines.add('<i>Только сообщения после включения логирования.</i>');
+    return lines.join('\n').trimRight();
+  }
+
+  String adminUserDialogPrompt() {
+    return '💬 <b>Диалог с пользователем</b>\n\n'
+        'Введи никнейм (с @ или без). Бот покажет сохранённую переписку '
+        'и попробует переслать исходные сообщения.';
+  }
+
+  String adminUserDialogNotFound(String query) {
+    return '💬 Пользователь «${_escapeHtml(query)}» не найден в логе переписки '
+        'и в записях. Нужен @username, с которым уже был диалог после включения логирования.';
+  }
+
+  String adminUserDialogHeader({
+    required String query,
+    required int userId,
+    required String? username,
+    required int entriesCount,
+  }) {
+    final tag = username == null || username.isEmpty ? 'id $userId' : '@$username';
+    if (entriesCount == 0) {
+      return '💬 <b>Диалог: ${_escapeHtml(tag)}</b> (id $userId)\n\n'
+          'Сохранённых сообщений пока нет. '
+          'Запрос: «${_escapeHtml(query)}».';
+    }
+    return '💬 <b>Диалог: ${_escapeHtml(tag)}</b> (id $userId)\n'
+        'Сообщений в логе: <b>$entriesCount</b>\n'
+        'Ниже — пересылка, где возможно, иначе текстовый fallback.';
+  }
+
+  String adminUserDialogFallbackLine(ConversationLogEntry entry) {
+    final dateFormatter = DateFormat('dd.MM HH:mm');
+    final arrow = entry.direction == ConversationDirection.inbound ? '⬅️ user' : '➡️ bot';
+    final preview = entry.textPreview?.trim();
+    final body = (preview == null || preview.isEmpty)
+        ? _conversationContentLabel(entry.contentType)
+        : _escapeHtml(preview);
+    return '${dateFormatter.format(entry.occurredAt)} $arrow\n$body';
+  }
+
+  String adminUserDialogFooter({
+    required int forwarded,
+    required int fallback,
+  }) {
+    return '✅ Готово: переслано <b>$forwarded</b>, текстом <b>$fallback</b>.';
+  }
+
+  String _conversationContentLabel(ConversationContentType type) {
+    return switch (type) {
+      ConversationContentType.text => '[текст]',
+      ConversationContentType.photo => '[фото]',
+      ConversationContentType.document => '[документ]',
+      ConversationContentType.copy => '[копия сообщения]',
+      ConversationContentType.other => '[сообщение]',
+    };
+  }
+
   String adminUserSearchResults(
     List<TrainingBooking> bookings, {
     required String query,

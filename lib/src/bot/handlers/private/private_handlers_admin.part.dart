@@ -933,4 +933,113 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     _broadcastMediaFinalizeTimers.remove(userId)?.cancel();
     _broadcastActiveMediaGroupIds.remove(userId);
   }
+
+  Future<void> _sendRecentBotActions({
+    required int chatId,
+    required bool isAdmin,
+    required bool showReturnToAdminMenu,
+  }) async {
+    final entries = await _conversationLogRepository.recentActions(
+      limit: 40,
+      excludePeerIds: _adminUserIds,
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.adminRecentBotActions(entries),
+      replyMarkup: _templates.privateMenuKeyboard(
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+      ),
+    );
+  }
+
+  Future<void> _sendUserDialogByUsername({
+    required int chatId,
+    required String query,
+    required bool isAdmin,
+    required bool showReturnToAdminMenu,
+  }) async {
+    final resolvedUserId = await _resolveDialogPeerUserId(query);
+    if (resolvedUserId == null) {
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminUserDialogNotFound(query),
+        replyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          showReturnToAdminMenu: showReturnToAdminMenu,
+        ),
+      );
+      return;
+    }
+
+    final entries = await _conversationLogRepository.dialogForUserId(
+      resolvedUserId,
+      limit: 40,
+    );
+    final username = entries.map((entry) => entry.peerUsername).whereType<String>().firstWhere(
+          (value) => value.isNotEmpty,
+          orElse: () => normalizeTelegramUsername(query) ?? query,
+        );
+    await _sendAdminMessage(
+      chatId,
+      _templates.adminUserDialogHeader(
+        query: query,
+        userId: resolvedUserId,
+        username: username,
+        entriesCount: entries.length,
+      ),
+      replyMarkup: _templates.privateMenuKeyboard(
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+      ),
+    );
+    if (entries.isEmpty) {
+      return;
+    }
+
+    var forwarded = 0;
+    var fallback = 0;
+    for (final entry in entries) {
+      final messageId = entry.telegramMessageId;
+      if (entry.canForward && messageId != null) {
+        try {
+          await _sender.copyMessage(
+            chatId,
+            fromChatId: entry.chatId,
+            messageId: messageId,
+          );
+          forwarded += 1;
+          continue;
+        } on Object catch (error, stackTrace) {
+          l.w(
+            'Failed to copy dialog message ${entry.chatId}#$messageId: $error',
+            stackTrace,
+          );
+        }
+      }
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminUserDialogFallbackLine(entry),
+      );
+      fallback += 1;
+    }
+    await _sendAdminMessage(
+      chatId,
+      _templates.adminUserDialogFooter(forwarded: forwarded, fallback: fallback),
+    );
+  }
+
+  Future<int?> _resolveDialogPeerUserId(String query) async {
+    final fromLog = await _conversationLogRepository.resolveUserIdByUsername(query);
+    if (fromLog != null && fromLog > 0) {
+      return fromLog;
+    }
+    final bookings = await _bookingRepository.adminSearchBookingsByUsername(query);
+    for (final booking in bookings) {
+      if (booking.userId > 0) {
+        return booking.userId;
+      }
+    }
+    return null;
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
@@ -114,6 +115,8 @@ final class MessageTemplates {
   static const String buttonClientMenu = MessageCopy.buttonClientMenu;
   static const String buttonAdminMenu = MessageCopy.buttonAdminMenu;
   static const String buttonAdminUserSearch = MessageCopy.buttonAdminUserSearch;
+  static const String buttonAdminRecentActions = MessageCopy.buttonAdminRecentActions;
+  static const String buttonAdminUserDialog = MessageCopy.buttonAdminUserDialog;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;
   static const String buttonBookingsList = MessageCopy.buttonBookingsList;
   static const String buttonCreateBooking = MessageCopy.buttonCreateBooking;

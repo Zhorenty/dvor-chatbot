@@ -305,6 +305,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.enteringAdminBroadcastText:
         case _PrivateFlowStep.selectingAdminBroadcastTarget:
         case _PrivateFlowStep.enteringAdminUserSearchQuery:
+        case _PrivateFlowStep.enteringAdminDialogUsernameQuery:
           _cancelBroadcastMediaCollection(userId);
           _flowByUserId.remove(userId);
           await _sender.sendMessage(

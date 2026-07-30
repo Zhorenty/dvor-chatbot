@@ -30,6 +30,7 @@ Project guidance for AI/code agents in this repository.
   - `lib/src/data/training_schedule_repository.dart`
   - `lib/src/data/static_schedule_repository.dart`
   - `lib/src/data/sqlite/sqlite_database_handle.dart`
+- Conversation log: `lib/src/data/sqlite_conversation_log_repository.dart` (+ `LoggingMessageSender`)
 - Message text/templates: `lib/src/messages/message_templates.dart` (+ `templates/*.part.dart`)
 - HTML escaping: `lib/src/messages/html_escaper.dart`
 

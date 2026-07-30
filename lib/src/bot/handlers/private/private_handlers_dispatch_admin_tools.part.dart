@@ -292,6 +292,49 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
       return true;
     }
 
+    if (text != null && text == MessageTemplates.buttonAdminRecentActions) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      await _sendRecentBotActions(
+        chatId: chatId,
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+      );
+      return true;
+    }
+
+    if (text != null && text == MessageTemplates.buttonAdminUserDialog) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (userId == null) {
+        return false;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.enteringAdminDialogUsernameQuery,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.adminUserDialogPrompt(),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return true;
+    }
+
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.enteringAdminUserSearchQuery &&
         text != null &&
@@ -307,6 +350,20 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
         ),
         replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringAdminDialogUsernameQuery &&
+        text != null &&
+        !text.startsWith('/')) {
+      _flowByUserId.remove(userId);
+      await _sendUserDialogByUsername(
+        chatId: chatId,
+        query: text,
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
       );
       return true;
     }

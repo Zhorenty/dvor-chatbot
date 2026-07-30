@@ -13,6 +13,7 @@ import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
+import 'package:dvor_chatbot/src/data/sqlite_conversation_log_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/static_promo_code_repository.dart';
@@ -21,6 +22,7 @@ import 'package:dvor_chatbot/src/data/static_trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
+import 'package:dvor_chatbot/src/telegram/logging_message_sender.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_client.dart';
 import 'package:l/l.dart';
 
@@ -52,11 +54,19 @@ void main(List<String> args) {
       final onboardingRepository = SqliteOnboardingRepository(
         databaseHandle: databaseHandle,
       );
+      final conversationLogRepository = SqliteConversationLogRepository(
+        databaseHandle: databaseHandle,
+      );
       await bookingRepository.init();
       await subscriptionRepository.init();
       await onboardingRepository.init();
+      await conversationLogRepository.init();
 
-      final groupAnnouncements = GroupAnnouncementService(sender: client);
+      final sender = LoggingMessageSender(
+        inner: client,
+        conversationLog: conversationLogRepository,
+      );
+      final groupAnnouncements = GroupAnnouncementService(sender: sender);
       final runner = BotRunner(
         config: config,
         client: client,
@@ -64,16 +74,17 @@ void main(List<String> args) {
         bookingRepository: bookingRepository,
         onboardingRepository: onboardingRepository,
         subscriptionRepository: subscriptionRepository,
-        sender: client,
+        sender: sender,
         templates: templates,
         groupAnnouncements: groupAnnouncements,
         jobDedupeRepository: jobDedupeRepository,
         privateHandlers: PrivateHandlers(
-          sender: client,
+          sender: sender,
           scheduleRepository: scheduleRepository,
           bookingRepository: bookingRepository,
           subscriptionRepository: subscriptionRepository,
           onboardingRepository: onboardingRepository,
+          conversationLogRepository: conversationLogRepository,
           trainerDirectoryRepository: trainerDirectoryRepository,
           promoCodeRepository: promoCodeRepository,
           templates: templates,
@@ -84,7 +95,7 @@ void main(List<String> args) {
           onboardingDripEnabled: config.onboardingDripEnabled,
         ),
         groupHandlers: GroupHandlers(
-          sender: client,
+          sender: sender,
           onboardingRepository: onboardingRepository,
           templates: templates,
           targetChatId: config.targetChatId,
@@ -111,6 +122,7 @@ void main(List<String> args) {
         await bookingRepository.close();
         await subscriptionRepository.close();
         await onboardingRepository.close();
+        await conversationLogRepository.close();
         databaseHandle.close();
       }
 

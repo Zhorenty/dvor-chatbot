@@ -85,6 +85,10 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonClientMenu},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonAdminRecentActions},
+          <String, String>{'text': MessageCopy.buttonAdminUserDialog},
+        ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],

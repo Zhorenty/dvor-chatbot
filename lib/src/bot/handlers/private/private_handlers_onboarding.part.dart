@@ -394,4 +394,46 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     // Telegram sends a service update after pinning; it should not trigger fallback.
     return message['pinned_message'] is Map;
   }
+
+  Future<void> _logInboundPrivateMessage({
+    required int? userId,
+    required String? username,
+    required int chatId,
+    required Map<String, dynamic>? message,
+    required String? text,
+  }) async {
+    if (userId == null || message == null || chatId <= 0) {
+      return;
+    }
+    final messageId = message['message_id'];
+    final contentType = _inboundContentType(message);
+    final preview =
+        text?.trim().isNotEmpty == true ? text!.trim() : message['caption']?.toString().trim();
+    try {
+      await _conversationLogRepository.append(
+        direction: ConversationDirection.inbound,
+        peerUserId: userId,
+        peerUsername: username,
+        chatId: chatId,
+        telegramMessageId: messageId is int ? messageId : null,
+        contentType: contentType,
+        textPreview: preview?.isEmpty == true ? null : preview,
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to append inbound conversation log: $error', stackTrace);
+    }
+  }
+
+  ConversationContentType _inboundContentType(Map<String, dynamic> message) {
+    if (message['text'] != null) {
+      return ConversationContentType.text;
+    }
+    if (message['photo'] is List && (message['photo'] as List).isNotEmpty) {
+      return ConversationContentType.photo;
+    }
+    if (message['document'] is Map) {
+      return ConversationContentType.document;
+    }
+    return ConversationContentType.other;
+  }
 }

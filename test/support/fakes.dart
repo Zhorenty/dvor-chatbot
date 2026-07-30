@@ -1,4 +1,6 @@
+import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
@@ -8,6 +10,7 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
@@ -1548,6 +1551,96 @@ final class _FakeOnboardingState {
   DateTime? snoozeUntil;
   OnboardingEntryType? entryType;
   DateTime? startedAt;
+}
+
+final class FakeConversationLogRepository implements ConversationLogRepository {
+  final List<ConversationLogEntry> entries = <ConversationLogEntry>[];
+  final Map<int, String?> users = <int, String?>{};
+  int _nextId = 1;
+
+  @override
+  Future<void> init() async {}
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<void> upsertTelegramUser({
+    required int userId,
+    String? username,
+  }) async {
+    final normalized = normalizeTelegramUsername(username);
+    users[userId] = normalized ?? users[userId];
+  }
+
+  @override
+  Future<void> append({
+    required ConversationDirection direction,
+    required int peerUserId,
+    String? peerUsername,
+    required int chatId,
+    int? telegramMessageId,
+    required ConversationContentType contentType,
+    String? textPreview,
+  }) async {
+    final normalized = normalizeTelegramUsername(peerUsername);
+    await upsertTelegramUser(userId: peerUserId, username: normalized);
+    entries.add(
+      ConversationLogEntry(
+        id: _nextId++,
+        occurredAt: DateTime.now(),
+        direction: direction,
+        peerUserId: peerUserId,
+        peerUsername: normalized ?? users[peerUserId],
+        chatId: chatId,
+        telegramMessageId: telegramMessageId,
+        contentType: contentType,
+        textPreview: textPreview,
+      ),
+    );
+  }
+
+  @override
+  Future<List<ConversationLogEntry>> recentActions({
+    int limit = 40,
+    Set<int> excludePeerIds = const <int>{},
+  }) async {
+    final filtered = entries.where((entry) => !excludePeerIds.contains(entry.peerUserId)).toList()
+      ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
+    return filtered.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<List<ConversationLogEntry>> dialogForUserId(
+    int userId, {
+    int limit = 50,
+  }) async {
+    final filtered = entries.where((entry) => entry.peerUserId == userId).toList()
+      ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
+    if (filtered.length <= limit) {
+      return filtered;
+    }
+    return filtered.sublist(filtered.length - limit);
+  }
+
+  @override
+  Future<int?> resolveUserIdByUsername(String username) async {
+    final normalized = normalizeTelegramUsername(username);
+    if (normalized == null) {
+      return null;
+    }
+    for (final entry in users.entries) {
+      if (entry.value == normalized) {
+        return entry.key;
+      }
+    }
+    for (final entry in entries.reversed) {
+      if (entry.peerUsername == normalized) {
+        return entry.peerUserId;
+      }
+    }
+    return null;
+  }
 }
 
 List<String> keyboardTexts(Map<String, Object?>? replyMarkup) {

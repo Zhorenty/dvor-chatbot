@@ -45,6 +45,13 @@ extension PrivateHandlersDispatch on PrivateHandlers {
     if (_isIgnorableServiceMessage(context.message)) {
       return true;
     }
+    await _logInboundPrivateMessage(
+      userId: userId,
+      username: username,
+      chatId: chatId,
+      message: context.message,
+      text: text,
+    );
     if (userId != null && text == MessageTemplates.buttonMainMenu) {
       _cancelBroadcastMediaCollection(userId);
     }

@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/promo_code.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
@@ -235,6 +236,8 @@ void main() {
       expect(toolsButtons, contains(MessageTemplates.buttonSubscriptionsAdmin));
       expect(toolsButtons, contains(MessageTemplates.buttonNoblesList));
       expect(toolsButtons, contains(MessageTemplates.buttonAdminUserSearch));
+      expect(toolsButtons, contains(MessageTemplates.buttonAdminRecentActions));
+      expect(toolsButtons, contains(MessageTemplates.buttonAdminUserDialog));
       expect(toolsButtons, contains(MessageTemplates.buttonClientMenu));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonParticipantsList)));
 
@@ -272,6 +275,72 @@ void main() {
       expect(adminButtons, contains(MessageTemplates.buttonAdminTools));
       expect(adminButtons, contains(MessageTemplates.buttonPaymentsQueue));
       expect(adminButtons, isNot(contains(MessageTemplates.buttonBookTraining)));
+    });
+
+    test('shows recent bot actions and forwards user dialog by username', () async {
+      final sender = _FakeSender();
+      final conversationLog = FakeConversationLogRepository();
+      await conversationLog.append(
+        direction: ConversationDirection.inbound,
+        peerUserId: 501,
+        peerUsername: 'client_one',
+        chatId: 501,
+        telegramMessageId: 11,
+        contentType: ConversationContentType.text,
+        textPreview: 'хочу записаться',
+      );
+      await conversationLog.append(
+        direction: ConversationDirection.outbound,
+        peerUserId: 501,
+        peerUsername: 'client_one',
+        chatId: 501,
+        telegramMessageId: 12,
+        contentType: ConversationContentType.text,
+        textPreview: 'выбери тренировку',
+      );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        conversationLogRepository: conversationLog,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{9100},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100, 'username': 'admin'},
+        'text': MessageTemplates.buttonAdminRecentActions,
+        'message_id': 100,
+      });
+      expect(sender.messages.last.text, contains('Последние действия бота'));
+      expect(sender.messages.last.text, contains('client_one'));
+      expect(sender.messages.last.text, contains('хочу записаться'));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100, 'username': 'admin'},
+        'text': MessageTemplates.buttonAdminUserDialog,
+        'message_id': 101,
+      });
+      expect(sender.messages.last.text, contains('Диалог с пользователем'));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9100, 'username': 'admin'},
+        'text': '@client_one',
+        'message_id': 102,
+      });
+      expect(
+        sender.messages.any((item) => item.text.contains('Диалог: @client_one')),
+        isTrue,
+      );
+      expect(sender.copiedMessages, hasLength(2));
+      expect(
+        sender.copiedMessages.map((item) => item.messageId).toList(),
+        <int>[11, 12],
+      );
+      expect(sender.messages.last.text, contains('переслано'));
     });
 
     test('opens subscriptions filters directly for admin', () async {

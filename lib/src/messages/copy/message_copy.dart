@@ -116,6 +116,8 @@ final class MessageCopy {
   static const String buttonClientMenu = '👤 Клиентское меню';
   static const String buttonAdminMenu = '🛡 Админ-меню';
   static const String buttonAdminUserSearch = '🔍 Поиск по пользователю';
+  static const String buttonAdminRecentActions = '📜 Последние действия';
+  static const String buttonAdminUserDialog = '💬 Диалог по @username';
   static const String buttonBroadcastToUsers = '👥 Только пользователям';
   static const String buttonBroadcastToGroup = '💬 Только в группу';
   static const String buttonBroadcastToUsersAndGroup = '📢 Пользователям и в группу';

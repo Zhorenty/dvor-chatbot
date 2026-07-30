@@ -21,6 +21,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private/private_update_router.dart
 import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
@@ -29,6 +30,7 @@ import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
@@ -76,6 +78,7 @@ final class PrivateHandlers {
     required BookingRepository bookingRepository,
     SubscriptionRepository subscriptionRepository = const NoopSubscriptionRepository(),
     OnboardingRepository onboardingRepository = const NoopOnboardingRepository(),
+    ConversationLogRepository conversationLogRepository = const NoopConversationLogRepository(),
     TrainerDirectoryRepository trainerDirectoryRepository = const NoopTrainerDirectoryRepository(),
     PromoCodeRepository promoCodeRepository = const NoopPromoCodeRepository(),
     required MessageTemplates templates,
@@ -90,6 +93,7 @@ final class PrivateHandlers {
         _bookingRepository = bookingRepository,
         _subscriptionRepository = subscriptionRepository,
         _onboardingRepository = onboardingRepository,
+        _conversationLogRepository = conversationLogRepository,
         _trainerDirectoryRepository = trainerDirectoryRepository,
         _promoCodeRepository = promoCodeRepository,
         _templates = templates,
@@ -108,6 +112,7 @@ final class PrivateHandlers {
   final BookingRepository _bookingRepository;
   final SubscriptionRepository _subscriptionRepository;
   final OnboardingRepository _onboardingRepository;
+  final ConversationLogRepository _conversationLogRepository;
   final TrainerDirectoryRepository _trainerDirectoryRepository;
   final PromoCodeRepository _promoCodeRepository;
   final MessageTemplates _templates;
