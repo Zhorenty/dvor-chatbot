@@ -505,7 +505,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         );
         return true;
       }
-      final participants = _parsePartyParticipantsInput(text);
+      final participants = _parsePartyParticipantsInput(text, managerUsername: username);
       if (participants == null) {
         await _sender.sendMessage(
           chatId,

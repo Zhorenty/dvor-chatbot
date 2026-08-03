@@ -177,6 +177,20 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             return true;
           }
           final items = flowState!.availableTrainings;
+          if (items.isEmpty) {
+            _flowByUserId[userId] = flowState.copyWith(
+              step: _PrivateFlowStep.selectingBookingCategory,
+              activeBooking: null,
+              starterBonusOffered: false,
+              paymentChoice: null,
+            );
+            await _sender.sendMessage(
+              chatId,
+              _templates.chooseBookingCategory(),
+              replyMarkup: _templates.categorySelectionKeyboard(),
+            );
+            return true;
+          }
           _flowByUserId[userId] = flowState.copyWith(step: _PrivateFlowStep.selectingTraining);
           await _sender.sendMessage(
             chatId,

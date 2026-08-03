@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
@@ -5266,7 +5267,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(4));
       expect(sender.messages[0].chatId, 1777);
-      expect(sender.messages[0].text, contains('Оплата подтверждена'));
+      expect(sender.messages[0].text, contains('Полная оплата подтверждена'));
       expect(sender.messages[1].chatId, 1777);
       expect(sender.messages[1].text, contains('Расписание похода'));
       expect(sender.messages[1].text, contains('Сбор в 06:00, выезд в 06:30'));
@@ -5356,6 +5357,193 @@ void main() {
       expect(sender.messages.last.text, contains('отправил администратору'));
     });
 
+    test('submits outdoor payment proof even when leftover outdoor detail flow is active',
+        () async {
+      final sender = _FakeSender();
+      final hike = OutdoorActivityInfo(
+        type: OutdoorActivityType.hike,
+        title: 'КАНЬОН РЕКИ БЕШЕНКА 2',
+        dateFrom: DateTime(2026, 8, 8),
+        dateTo: DateTime(2026, 8, 8, 23, 59, 59),
+        location: 'Туапсинский р-н',
+        description: 'Лёгкая прогулка',
+        price: 4700,
+      );
+      final pending = fakeBooking(
+        id: 8810,
+        userId: 28810,
+        userUsername: 'eseniya',
+        title: '🥾 Поход: КАНЬОН РЕКИ БЕШЕНКА 2',
+        trainingKey:
+            'hikes|2026-08-08T00:00:00.000Z|🥾 Поход: КАНЬОН РЕКИ БЕШЕНКА 2|Туапсинский р-н',
+        startsAt: DateTime(2026, 8, 8),
+        location: 'Туапсинский р-н',
+        status: BookingStatus.pendingPayment,
+        trainingPrice: 4700,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[pending]
+        ..submitResult = fakeBooking(
+          id: 8810,
+          userId: 28810,
+          userUsername: 'eseniya',
+          title: pending.trainingTitle,
+          trainingKey: pending.trainingKey,
+          startsAt: pending.startsAt,
+          location: pending.location,
+          status: BookingStatus.paymentSubmitted,
+          trainingPrice: 4700,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[hike],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 28810, 'type': 'private'},
+        'from': <String, dynamic>{'id': 28810, 'username': 'eseniya'},
+        'text': MessageTemplates.buttonTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 28810, 'type': 'private'},
+        'from': <String, dynamic>{'id': 28810, 'username': 'eseniya'},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 28810, 'type': 'private'},
+        'from': <String, dynamic>{'id': 28810, 'username': 'eseniya'},
+        'text': '🎯 1. 🥾 Поход: КАНЬОН РЕКИ БЕШЕНКА 2',
+      });
+      expect(sender.messages.last.text, contains('Выбери действие'));
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'message': <String, dynamic>{
+          'message_id': 502,
+          'chat': <String, dynamic>{'id': 28810, 'type': 'private'},
+          'from': <String, dynamic>{'id': 28810, 'username': 'eseniya'},
+          'document': <String, Object?>{'file_id': 'doc-outdoor-proof'},
+        },
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.submitCalls, 0);
+      expect(sender.messages.last.text, contains('Чек уже получил'));
+      expect(_keyboardTexts(sender.messages.last.replyMarkup),
+          contains(MessageTemplates.buttonPayPartially));
+
+      final submitHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 28810, 'type': 'private'},
+        'from': <String, dynamic>{'id': 28810, 'username': 'eseniya'},
+        'text': MessageTemplates.buttonPayPartially,
+      });
+      expect(submitHandled, isTrue);
+      expect(bookingRepository.submitCalls, 1);
+      expect(bookingRepository.lastSubmittedBookingId, 8810);
+      expect(sender.messages.last.text, contains('отправил администратору'));
+    });
+
+    test('keeps all managed party participants visible in outdoor participants list', () async {
+      final sender = _FakeSender();
+      final hike = TrainingInfo(
+        title: '🥾 Поход: Архыз',
+        startsAt: DateTime(2030, 8, 8),
+        location: 'Архыз',
+        category: ActivityCategory.hikes,
+        price: 4700,
+        includeTrainersInParticipants: true,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          fakeBooking(
+            id: 9101,
+            userId: 5001,
+            userUsername: 'katya',
+            title: hike.title,
+            trainingKey: hike.sessionKey,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.paid,
+            participantType: BookingParticipantType.telegram,
+            managerUserId: 5001,
+            participantUserId: -111,
+            participantUsername: 'nikita_medvedev',
+            paymentGroupId: 'pg-party-1',
+          ),
+          fakeBooking(
+            id: 9102,
+            userId: 5001,
+            userUsername: 'katya',
+            title: hike.title,
+            trainingKey: hike.sessionKey,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.partialPaid,
+            participantType: BookingParticipantType.guest,
+            managerUserId: 5001,
+            participantName: 'Третий Человек',
+            paymentGroupId: 'pg-party-1',
+          ),
+          fakeBooking(
+            id: 9103,
+            userId: 5001,
+            userUsername: 'katya',
+            title: hike.title,
+            trainingKey: hike.sessionKey,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.paid,
+            participantType: BookingParticipantType.guest,
+            managerUserId: 5001,
+            participantName: 'Ещё Гость',
+            paymentGroupId: 'pg-party-1',
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Архыз',
+              dateFrom: hike.startsAt,
+              dateTo: hike.startsAt,
+              location: hike.location,
+              description: 'Поход',
+              price: 4700,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2001},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2001},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2001},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+
+      expect(handled, isTrue);
+      final messageText = sender.messages.last.text;
+      expect(messageText, contains('@nikita_medvedev (через @katya)'));
+      expect(messageText, contains('Третий Человек'));
+      expect(messageText, contains('Ещё Гость'));
+      expect(messageText, contains('👥 Участники: 3/'));
+    });
+
     test('allows resubmit after payment rejection without changing rejected status first',
         () async {
       final sender = _FakeSender();
@@ -5418,6 +5606,16 @@ void main() {
       });
 
       expect(handled, isTrue);
+      // Outdoor proof is stashed until the user picks full/partial payment.
+      expect(bookingRepository.submitCalls, 0);
+      expect(sender.messages.last.text, contains('Чек уже получил'));
+
+      final submitHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2881, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2881},
+        'text': MessageTemplates.buttonPayPartially,
+      });
+      expect(submitHandled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(bookingRepository.lastSubmittedBookingId, 881);
       expect(sender.messages.last.text, contains('отправил администратору'));

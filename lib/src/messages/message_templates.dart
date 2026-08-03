@@ -23,6 +23,9 @@ part 'templates/message_templates_content.part.dart';
 part 'templates/message_templates_keyboards.part.dart';
 part 'templates/message_templates_helpers.part.dart';
 
+const String _sbpPaymentLink =
+    'https://finance.ozon.ru/apps/sbp/ozonbankpay/019dcdcb-4af8-7579-9c1b-4a388fd85d6c';
+
 final class MessageTemplates {
   const MessageTemplates({
     String? botUsername,

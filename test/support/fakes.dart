@@ -825,11 +825,16 @@ TrainingBooking fakeBooking({
   DateTime? createdAt,
   DateTime? updatedAt,
   BookingParticipantType participantType = BookingParticipantType.self,
+  int? managerUserId,
+  int? participantUserId,
   String? participantUsername,
   String? participantName,
   String? paymentGroupId,
 }) {
   final now = DateTime(2026, 1, 1, 10);
+  final resolvedManagerUserId = managerUserId ?? userId;
+  final resolvedParticipantUserId =
+      participantUserId ?? (participantType == BookingParticipantType.guest ? null : userId);
   return TrainingBooking(
     id: id,
     userId: userId,
@@ -847,9 +852,9 @@ TrainingBooking fakeBooking({
     promoDiscountPercent: promoDiscountPercent,
     createdAt: createdAt ?? now,
     updatedAt: updatedAt ?? now,
-    managerUserId: userId,
+    managerUserId: resolvedManagerUserId,
     participantType: participantType,
-    participantUserId: participantType == BookingParticipantType.guest ? null : userId,
+    participantUserId: resolvedParticipantUserId,
     participantUsername: participantUsername ?? userUsername,
     participantName: participantName,
     paymentGroupId: paymentGroupId,

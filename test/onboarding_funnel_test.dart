@@ -111,7 +111,7 @@ void main() {
       await repository.init();
       addTearDown(repository.close);
 
-      final joinedAt = DateTime.utc(2026, 7, 25, 10);
+      final joinedAt = DateTime.now().toUtc().subtract(const Duration(hours: 2));
       await repository.registerGroupWelcome(
         userId: 404,
         groupChatId: -100,

@@ -113,6 +113,9 @@ final class PrivateFlowState {
     this.adminCreateUsernames,
     this.adminCreateTraining,
     this.paymentChoice,
+    this.pendingPaymentProofChatId,
+    this.pendingPaymentProofMessageId,
+    this.pendingPaymentProofCaption,
     this.adminBookingsPage = 0,
     this.adminSubscriptionFilter = SubscriptionListFilter.active,
     this.subscriptionModerationAction,
@@ -148,6 +151,9 @@ final class PrivateFlowState {
   final List<String>? adminCreateUsernames;
   final TrainingInfo? adminCreateTraining;
   final PaymentChoice? paymentChoice;
+  final int? pendingPaymentProofChatId;
+  final int? pendingPaymentProofMessageId;
+  final String? pendingPaymentProofCaption;
   final int adminBookingsPage;
   final SubscriptionListFilter adminSubscriptionFilter;
   final SubscriptionModerationAction? subscriptionModerationAction;
@@ -183,6 +189,9 @@ final class PrivateFlowState {
     Object? adminCreateUsernames = _privateFlowUnset,
     Object? adminCreateTraining = _privateFlowUnset,
     Object? paymentChoice = _privateFlowUnset,
+    Object? pendingPaymentProofChatId = _privateFlowUnset,
+    Object? pendingPaymentProofMessageId = _privateFlowUnset,
+    Object? pendingPaymentProofCaption = _privateFlowUnset,
     int? adminBookingsPage,
     SubscriptionListFilter? adminSubscriptionFilter,
     Object? subscriptionModerationAction = _privateFlowUnset,
@@ -234,6 +243,15 @@ final class PrivateFlowState {
       paymentChoice: identical(paymentChoice, _privateFlowUnset)
           ? this.paymentChoice
           : paymentChoice as PaymentChoice?,
+      pendingPaymentProofChatId: identical(pendingPaymentProofChatId, _privateFlowUnset)
+          ? this.pendingPaymentProofChatId
+          : pendingPaymentProofChatId as int?,
+      pendingPaymentProofMessageId: identical(pendingPaymentProofMessageId, _privateFlowUnset)
+          ? this.pendingPaymentProofMessageId
+          : pendingPaymentProofMessageId as int?,
+      pendingPaymentProofCaption: identical(pendingPaymentProofCaption, _privateFlowUnset)
+          ? this.pendingPaymentProofCaption
+          : pendingPaymentProofCaption as String?,
       adminBookingsPage: adminBookingsPage ?? this.adminBookingsPage,
       adminSubscriptionFilter: adminSubscriptionFilter ?? this.adminSubscriptionFilter,
       subscriptionModerationAction: identical(subscriptionModerationAction, _privateFlowUnset)

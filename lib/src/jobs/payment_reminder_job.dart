@@ -33,6 +33,9 @@ final class PaymentReminderJob {
         limit: 50,
       );
       for (final booking in expiredBookings) {
+        if (booking.userId <= 0) {
+          continue;
+        }
         try {
           await _sender.sendMessage(
             booking.userId,
@@ -55,12 +58,14 @@ final class PaymentReminderJob {
 
       for (final booking in bookings) {
         try {
-          await _sender.sendMessage(
-            booking.userId,
-            _templates.pendingPaymentReminder(booking),
-            replyMarkup: _templates.pendingPaymentReminderKeyboard(booking.id),
-            parseMode: 'HTML',
-          );
+          if (booking.userId > 0) {
+            await _sender.sendMessage(
+              booking.userId,
+              _templates.pendingPaymentReminder(booking),
+              replyMarkup: _templates.pendingPaymentReminderKeyboard(booking.id),
+              parseMode: 'HTML',
+            );
+          }
           await _bookingRepository.markReminderSent(booking.id);
         } on Object catch (error, stackTrace) {
           l.w('Failed to send payment reminder for booking ${booking.id}: $error', stackTrace);

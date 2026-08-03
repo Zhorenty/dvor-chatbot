@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -368,10 +369,10 @@ void main() {
       await repository.close();
     });
 
-    test('falls back to any pending booking when pinned bookingId is no longer payable', () async {
-      // Simulate the corner case where the in-memory flow holds a stale
-      // activeBooking.id (e.g. cancelled by TTL or admin) while a different
-      // pending booking still exists for the same user.
+    test('does not fall back to another pending booking when pinned id is stale', () async {
+      // In-memory flow may hold a cancelled activeBooking.id while another
+      // pending booking exists. Attaching the receipt to the wrong event is worse
+      // than asking the user to pick again.
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',
       );
@@ -385,7 +386,6 @@ void main() {
           location: 'Track A',
         ),
       );
-      // Move stale booking to a non-payable status (e.g. cancelled by TTL).
       await repository.updateStatus(stale.booking.id, BookingStatus.cancelled);
 
       final active = await repository.createPendingBooking(
@@ -397,17 +397,18 @@ void main() {
         ),
       );
 
-      // Pass the stale booking id (as the flow would) — must fall back to
-      // the active booking rather than returning null.
       final submitted = await repository.submitPaymentForLatestPending(
         3301,
         bookingId: stale.booking.id,
         note: 'proof',
       );
 
-      expect(submitted, isNotNull);
-      expect(submitted!.id, active.booking.id);
-      expect(submitted.status, BookingStatus.paymentSubmitted);
+      expect(submitted, isNull);
+      final listed = await repository.listUserBookings(3301, limit: 10);
+      expect(
+        listed.firstWhere((b) => b.id == active.booking.id).status,
+        BookingStatus.pendingPayment,
+      );
 
       await repository.close();
     });
@@ -1526,6 +1527,348 @@ void main() {
           ],
         ),
         throwsA(isA<BookingParticipantConflictException>()),
+      );
+
+      await repository.close();
+    });
+
+    test('allows manager self-booking after creating friend seats on same event', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => DateTime(2030, 7, 1, 12),
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: '🥾 Поход: Архыз',
+        startsAt: DateTime(2030, 8, 8),
+        location: 'Архыз',
+        category: ActivityCategory.hikes,
+        price: 4700,
+        participantsLimit: 20,
+        includeTrainersInParticipants: true,
+      );
+
+      final group = await repository.createPendingBookingGroup(
+        managerUserId: 5101,
+        managerUsername: 'katya',
+        training: training,
+        participants: const <BookingParticipantDraft>[
+          BookingParticipantDraft.telegram(username: 'nikita_medvedev'),
+          BookingParticipantDraft.guest(name: 'Третий Человек'),
+        ],
+      );
+      expect(group.bookings, hasLength(2));
+
+      final selfBooking = await repository.createPendingBooking(
+        userId: 5101,
+        userUsername: 'katya',
+        training: training,
+      );
+      expect(selfBooking.created, isTrue);
+      expect(selfBooking.booking.participantType, BookingParticipantType.self);
+      expect(selfBooking.booking.id, isNot(group.bookings.first.id));
+
+      final listed = await repository.listUserBookings(5101, limit: 20);
+      expect(listed.where((b) => b.trainingKey == training.sessionKey), hasLength(3));
+
+      await repository.close();
+    });
+
+    test('allows status-only admin update for sibling party bookings', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => DateTime(2030, 7, 1, 12),
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: '🥾 Поход: Архыз',
+        startsAt: DateTime(2030, 8, 8),
+        location: 'Архыз',
+        category: ActivityCategory.hikes,
+        price: 4700,
+        includeTrainersInParticipants: true,
+      );
+      final group = await repository.createPendingBookingGroup(
+        managerUserId: 5201,
+        managerUsername: 'katya',
+        training: training,
+        participants: const <BookingParticipantDraft>[
+          BookingParticipantDraft.guest(name: 'Никита Медведев'),
+          BookingParticipantDraft.guest(name: 'Третий Человек'),
+        ],
+      );
+
+      final updated = await repository.adminUpdateBooking(
+        bookingId: group.bookings.last.id,
+        status: BookingStatus.partialPaid,
+      );
+      expect(updated, isNotNull);
+      expect(updated!.status, BookingStatus.partialPaid);
+      expect(group.bookings.first.status, BookingStatus.pendingPayment);
+
+      final found = await repository.adminSearchBookingsByUsername('Третий Человек');
+      expect(found.map((b) => b.id), contains(group.bookings.last.id));
+
+      await repository.close();
+    });
+
+    test('reactivated booking gets a fresh payment TTL window', () async {
+      var now = DateTime.utc(2030, 6, 1, 12);
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => now,
+        pendingPaymentTtl: const Duration(minutes: 30),
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Trail',
+        startsAt: DateTime(2030, 7, 1, 10),
+        location: 'Forest',
+        price: 2000,
+      );
+      final first = await repository.createPendingBooking(
+        userId: 6101,
+        userUsername: 'runner',
+        training: training,
+      );
+      final originalCreatedAt = first.booking.createdAt;
+
+      now = now.add(const Duration(minutes: 31));
+      final expired = await repository.expirePendingPaymentBookings(
+        createdBefore: now,
+        limit: 10,
+      );
+      expect(expired.map((b) => b.id), contains(first.booking.id));
+
+      now = now.add(const Duration(minutes: 5));
+      final second = await repository.createPendingBooking(
+        userId: 6101,
+        userUsername: 'runner',
+        training: training,
+      );
+      expect(second.created, isTrue);
+      expect(second.booking.id, first.booking.id);
+      expect(second.booking.createdAt.isAfter(originalCreatedAt), isTrue);
+
+      now = now.add(const Duration(minutes: 10));
+      final stillAlive = await repository.expirePendingPaymentBookings(
+        createdBefore: now.subtract(const Duration(minutes: 30)),
+        limit: 10,
+      );
+      expect(stillAlive, isEmpty);
+
+      await repository.close();
+    });
+
+    test('cancels and expires whole payment group together', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => DateTime.utc(2030, 6, 1, 12),
+        pendingPaymentTtl: const Duration(minutes: 30),
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: '🥾 Поход: Группа',
+        startsAt: DateTime(2030, 8, 1),
+        location: 'Горы',
+        category: ActivityCategory.hikes,
+        price: 4000,
+      );
+      final group = await repository.createPendingBookingGroup(
+        managerUserId: 6201,
+        managerUsername: 'manager',
+        training: training,
+        participants: const <BookingParticipantDraft>[
+          BookingParticipantDraft.telegram(username: 'friend_alpha'),
+          BookingParticipantDraft.guest(name: 'Гость Один'),
+        ],
+      );
+
+      final cancelled = await repository.cancelBooking(
+        userId: 6201,
+        bookingId: group.bookings.first.id,
+      );
+      expect(cancelled.outcome, BookingActionOutcome.success);
+      final afterCancel = await repository.listBookingsByPaymentGroup(group.paymentGroupId);
+      expect(afterCancel.every((b) => b.status == BookingStatus.cancelled), isTrue);
+
+      final group2 = await repository.createPendingBookingGroup(
+        managerUserId: 6201,
+        managerUsername: 'manager',
+        training: training,
+        participants: const <BookingParticipantDraft>[
+          BookingParticipantDraft.telegram(username: 'friend_alpha'),
+          BookingParticipantDraft.guest(name: 'Гость Один'),
+        ],
+      );
+      expect(group2.bookings, hasLength(2));
+
+      final expired = await repository.expirePendingPaymentBookings(
+        createdBefore: DateTime.utc(2030, 6, 1, 13),
+        limit: 20,
+      );
+      expect(expired, isNotEmpty);
+      final afterExpire = await repository.listBookingsByPaymentGroup(group2.paymentGroupId);
+      expect(afterExpire.every((b) => b.status == BookingStatus.cancelled), isTrue);
+
+      await repository.close();
+    });
+
+    test('rebinds managed telegram friend when the real user books later', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => DateTime.utc(2030, 6, 1, 12),
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: '🥾 Поход: Ребинд',
+        startsAt: DateTime(2030, 8, 1),
+        location: 'Горы',
+        category: ActivityCategory.hikes,
+        price: 4000,
+      );
+      final group = await repository.createPendingBookingGroup(
+        managerUserId: 6301,
+        managerUsername: 'manager',
+        training: training,
+        participants: const <BookingParticipantDraft>[
+          BookingParticipantDraft.telegram(username: 'real_friend'),
+        ],
+      );
+      final managedId = group.bookings.single.id;
+
+      final rebound = await repository.createPendingBooking(
+        userId: 6399,
+        userUsername: 'real_friend',
+        training: training,
+      );
+      expect(rebound.created, isFalse);
+      expect(rebound.booking.id, managedId);
+      expect(rebound.booking.userId, 6399);
+      expect(rebound.booking.participantType, BookingParticipantType.self);
+      expect(rebound.booking.managerUserId, 6399);
+
+      await repository.close();
+    });
+
+    test('trainer manager party seats still consume participant capacity', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Limited',
+        startsAt: DateTime(2030, 7, 1, 19),
+        location: 'Hall',
+        price: 1000,
+        participantsLimit: 2,
+        includeTrainersInParticipants: false,
+      );
+
+      // Whitelisted trainer username from trainer_booking_whitelist.dart.
+      await repository.createPendingBookingGroup(
+        managerUserId: 6401,
+        managerUsername: 'k_morozzovaa',
+        training: training,
+        participants: const <BookingParticipantDraft>[
+          BookingParticipantDraft.guest(name: 'Друг 1'),
+          BookingParticipantDraft.guest(name: 'Друг 2'),
+        ],
+      );
+
+      expect(
+        () => repository.createPendingBooking(
+          userId: 6402,
+          userUsername: 'regular',
+          training: training,
+        ),
+        throwsA(isA<BookingParticipantsLimitExceededException>()),
+      );
+
+      await repository.close();
+    });
+
+    test('admin username edit keeps managed guest seat ownership', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Managed edit',
+        startsAt: DateTime(2030, 7, 1, 19),
+        location: 'Hall',
+        price: 1000,
+      );
+      final group = await repository.createPendingBookingGroup(
+        managerUserId: 6501,
+        managerUsername: 'manager',
+        training: training,
+        participants: const <BookingParticipantDraft>[
+          BookingParticipantDraft.guest(name: 'Старое Имя'),
+        ],
+      );
+
+      final updated = await repository.adminUpdateBooking(
+        bookingId: group.bookings.single.id,
+        userUsername: 'Новое Имя',
+      );
+      expect(updated, isNotNull);
+      expect(updated!.managerUserId, 6501);
+      expect(updated.userId, 6501);
+      expect(updated.participantType, BookingParticipantType.guest);
+      expect(updated.participantName, 'Новое Имя');
+
+      await repository.close();
+    });
+
+    test('does not attach pinned payment proof to a different pending booking', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+
+      final outdoor = TrainingInfo(
+        title: '🥾 Поход: A',
+        startsAt: DateTime(2030, 8, 1),
+        location: 'A',
+        category: ActivityCategory.hikes,
+        price: 4000,
+      );
+      final training = TrainingInfo(
+        title: 'Training B',
+        startsAt: DateTime(2030, 8, 2, 19),
+        location: 'Hall',
+        price: 1500,
+      );
+      final outdoorBooking = await repository.createPendingBooking(
+        userId: 6601,
+        userUsername: 'payer',
+        training: outdoor,
+      );
+      final other = await repository.createPendingBooking(
+        userId: 6601,
+        userUsername: 'payer',
+        training: training,
+      );
+      await repository.updateStatus(outdoorBooking.booking.id, BookingStatus.cancelled);
+
+      final submitted = await repository.submitPaymentForLatestPending(
+        6601,
+        bookingId: outdoorBooking.booking.id,
+        note: 'proof for outdoor',
+      );
+      expect(submitted, isNull);
+      final stillPending = await repository.listUserBookings(6601, limit: 10);
+      expect(
+        stillPending.firstWhere((b) => b.id == other.booking.id).status,
+        BookingStatus.pendingPayment,
       );
 
       await repository.close();

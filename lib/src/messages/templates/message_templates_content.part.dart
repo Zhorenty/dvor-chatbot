@@ -1680,9 +1680,6 @@ extension MessageTemplatesContent on MessageTemplates {
     return 'Не удалось сохранить изменения: для этого пользователя уже есть запись на выбранное мероприятие.';
   }
 
-  static const String _sbpPaymentLink =
-      'https://finance.ozon.ru/apps/sbp/ozonbankpay/019dcdcb-4af8-7579-9c1b-4a388fd85d6c';
-
   String paymentInstructions(TrainingBooking booking) {
     final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
     if (MessageFormatters.isYogaBooking(booking)) {
@@ -1748,12 +1745,12 @@ extension MessageTemplatesContent on MessageTemplates {
           'Спасибо!';
     }
 
-    return '✅ Оплата подтверждена.\n'
+    return '✅ Полная оплата подтверждена.\n'
         'Ты в команде outdvor🚸\n\n'
-        'Место за тобой, предоплата зафиксирована. С этого момента - ты часть команды.\n\n'
+        'Место за тобой, оплата зафиксирована. С этого момента — ты часть команды.\n\n'
         'Мы сделаем все, чтобы это приключение осталось с тобой надолго. '
-        'Горы, эмоции, новые люди и чувство "я справился" - это не забывается.\n'
-        'Скоро добавим тебя в общий чат поездки🟡\n\n'
+        'Горы, эмоции, новые люди и чувство "я справился" — это не забывается.\n'
+        'Скоро добавим тебя в общий чат поездки 🟡\n\n'
         'Готовься. Скоро стартуем 💚';
   }
 

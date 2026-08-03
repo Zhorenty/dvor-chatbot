@@ -187,14 +187,28 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
   }
 
   String _participantIdentity(TrainingBooking booking) {
-    if (booking.userId > 0) {
-      return 'id:${booking.userId}';
+    // Party/"book a friend" rows share manager user_id. Identity must be keyed by
+    // the actual participant, otherwise the whole group collapses to one line.
+    switch (booking.participantType) {
+      case BookingParticipantType.self:
+        return 'self:${booking.managerUserId}';
+      case BookingParticipantType.telegram:
+        final participantUserId = booking.participantUserId;
+        if (participantUserId != null) {
+          return 'tg-id:$participantUserId';
+        }
+        final username = booking.participantUsername?.trim().toLowerCase();
+        if (username != null && username.isNotEmpty) {
+          return 'tg:${username.startsWith('@') ? username.substring(1) : username}';
+        }
+        return 'tg-row:${booking.id}';
+      case BookingParticipantType.guest:
+        final name = booking.participantName?.trim().toLowerCase();
+        if (name != null && name.isNotEmpty) {
+          return 'guest:${booking.managerUserId}:$name';
+        }
+        return 'guest-row:${booking.id}';
     }
-    final username = booking.userUsername?.trim().toLowerCase();
-    if (username != null && username.isNotEmpty) {
-      return 'username:$username';
-    }
-    return 'id:${booking.userId}';
   }
 
   String _trainingSignature(TrainingInfo training) {
@@ -317,20 +331,28 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     );
   }
 
-  List<BookingParticipantDraft>? _parsePartyParticipantsInput(String text) {
+  List<BookingParticipantDraft>? _parsePartyParticipantsInput(
+    String text, {
+    String? managerUsername,
+  }) {
     final parts = text
-        .split(',')
+        .split(RegExp(r'[,;\n]+'))
         .map((part) => part.trim())
         .where((part) => part.isNotEmpty)
         .toList(growable: false);
     if (parts.isEmpty || parts.length > maxManagedGuestsPerEvent) {
       return null;
     }
+    final normalizedManager = _normalizeUsernameInput(managerUsername ?? '')?.toLowerCase();
     final drafts = <BookingParticipantDraft>[];
     for (final part in parts) {
       if (_looksLikeTelegramUsername(part)) {
         final username = _normalizeUsernameInput(part);
         if (username == null) {
+          return null;
+        }
+        if (normalizedManager != null && username.toLowerCase() == normalizedManager) {
+          // Manager cannot book themselves as a managed @friend seat.
           return null;
         }
         drafts.add(BookingParticipantDraft.telegram(username: username));

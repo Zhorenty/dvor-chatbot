@@ -152,17 +152,20 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     return '👥 <b>Кого записать?</b>\n'
         'Событие: <b>${_escapeHtml(training.title)}</b>\n'
         'Цена за человека: <b>${_trainingPriceLabel(unitPrice)}</b>\n\n'
-        'Напиши username или ФИО через запятую.\n'
+        'Напиши Telegram-username с <b>@</b> или ФИО через запятую (или с новой строки).\n'
         'Примеры:\n'
         '• <code>@anna, @ivan</code>\n'
         '• <code>Бабушка Мария, Дедушка Пётр</code>\n'
         '• <code>@anna, Бабушка Мария</code>\n\n'
-        'Можно записать до 5 человек.';
+        'Без @ имя считается гостем (ФИО), а не Telegram-аккаунтом.\n'
+        'Можно записать до 5 человек.\n'
+        'Свою запись это не создаёт — себя запиши отдельно через «Записаться».';
   }
 
   String invalidPartyParticipantsInput() {
     return 'Не понял список участников 🤔\n'
-        'Напиши username или ФИО через запятую.\n'
+        'Telegram-username указывай с <b>@</b>, иначе это будет ФИО гостя.\n'
+        'Нельзя указать свой собственный @username.\n'
         'Пример: <code>@anna, Бабушка Мария</code>\n'
         'До 5 человек за раз.';
   }
@@ -212,15 +215,27 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     required int unitPrice,
     required int totalPrice,
   }) {
+    if (MessageFormatters.isOutdoorBooking(booking)) {
+      final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
+      final groupPrepayment = totalPrice <= 0 ? 0 : (totalPrice / 2).ceil();
+      return '💳 <b>Реквизиты OUTDVOR</b>\n'
+          '• Получатель: <b>Денис Р.</b>\n'
+          '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
+          '• Полная сумма за группу: <b>$participantsCount × ${_trainingPriceLabel(unitPrice)} = '
+          '${_trainingPriceLabel(totalPrice)}</b>\n'
+          '• К оплате сейчас при предоплате: <b>${_trainingPriceLabel(groupPrepayment)}</b> '
+          '(50% от суммы группы)\n'
+          '• Остальные 50% — $outdoorFinalPaymentAfter.\n'
+          '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n\n'
+          '⏳ Если не оплатить в течение <b>30 минут</b> — запись отменится автоматически. '
+          'После отмены нужно записаться заново.';
+    }
     final base = paymentInstructions(booking);
     final totalLine =
         '• К оплате за группу: <b>$participantsCount × ${_trainingPriceLabel(unitPrice)} = '
         '${_trainingPriceLabel(totalPrice)}</b>\n';
     if (base.contains('• К оплате:')) {
       return base.replaceFirst(RegExp(r'• К оплате:.*\n'), totalLine);
-    }
-    if (base.contains('• К оплате сейчас:')) {
-      return '$totalLine$base';
     }
     return '$totalLine$base';
   }

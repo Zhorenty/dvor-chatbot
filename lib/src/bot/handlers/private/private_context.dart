@@ -87,14 +87,14 @@ PaymentProof? extractPaymentProof(Map<String, dynamic>? message) {
   if (message == null) {
     return null;
   }
-  final messageId = message['message_id'];
+  final messageId = _asTelegramInt(message['message_id']);
   final chatRaw = message['chat'];
-  if (messageId is! int || chatRaw is! Map) {
+  if (messageId == null || chatRaw is! Map) {
     return null;
   }
   final chat = Map<String, dynamic>.from(chatRaw);
-  final fromChatId = chat['id'];
-  if (fromChatId is! int) {
+  final fromChatId = _asTelegramInt(chat['id']);
+  if (fromChatId == null) {
     return null;
   }
   final hasDocument = message['document'] is Map;
@@ -107,6 +107,19 @@ PaymentProof? extractPaymentProof(Map<String, dynamic>? message) {
     messageId: messageId,
     caption: message['caption']?.toString().trim(),
   );
+}
+
+int? _asTelegramInt(Object? value) {
+  if (value is int) {
+    return value;
+  }
+  if (value is num) {
+    return value.toInt();
+  }
+  if (value is String) {
+    return int.tryParse(value.trim());
+  }
+  return null;
 }
 
 /// Extracts a photo message suitable for admin broadcast (photo only, not documents).

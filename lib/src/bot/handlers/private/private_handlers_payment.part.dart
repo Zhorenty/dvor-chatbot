@@ -283,7 +283,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
   }
 
   Future<List<TrainingBooking>> _listPayableBookings(int userId) async {
-    final bookings = await _bookingRepository.listUserBookings(userId, limit: 50);
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 100);
     final pending = bookings.where(_isPayableForProof).toList();
     pending.sort((left, right) {
       final byCreated = right.createdAt.compareTo(left.createdAt);
@@ -292,7 +292,19 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       }
       return right.id.compareTo(left.id);
     });
-    return pending;
+    // One picker entry per payment group (manager pays once for the party).
+    final seenGroups = <String>{};
+    final deduped = <TrainingBooking>[];
+    for (final booking in pending) {
+      final groupId = booking.paymentGroupId?.trim();
+      if (groupId != null && groupId.isNotEmpty) {
+        if (!seenGroups.add(groupId)) {
+          continue;
+        }
+      }
+      deduped.add(booking);
+    }
+    return deduped;
   }
 
   bool _isPayableForProof(TrainingBooking booking) {
@@ -306,5 +318,61 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       return null;
     }
     return int.tryParse(match.group(1) ?? '');
+  }
+
+  bool _shouldRecoverOrphanPaymentProof(_PrivateFlowState? flowState) {
+    if (flowState == null) {
+      return true;
+    }
+    // Only reclaim proofs from leftover browse/booking steps. Never steal media
+    // from admin broadcast, onboarding, feedback, or other dedicated flows.
+    return switch (flowState.step) {
+      _PrivateFlowStep.selectingOutdoorDetailType ||
+      _PrivateFlowStep.selectingOutdoorDetailEvent ||
+      _PrivateFlowStep.selectingBookingCategory ||
+      _PrivateFlowStep.selectingBookFriendCategory ||
+      _PrivateFlowStep.selectingBookFriendEvent ||
+      _PrivateFlowStep.enteringPartyParticipants ||
+      _PrivateFlowStep.selectingTraining ||
+      _PrivateFlowStep.viewingScheduleCategory ||
+      _PrivateFlowStep.selectingScheduleCategory ||
+      _PrivateFlowStep.selectingParticipantsCategory ||
+      _PrivateFlowStep.selectingPendingPaymentBooking ||
+      _PrivateFlowStep.enteringPromoCode ||
+      _PrivateFlowStep.viewingCoachingStaff ||
+      _PrivateFlowStep.selectingTrainerProfile =>
+        true,
+      _ => false,
+    };
+  }
+
+  Future<void> _submitStoredPaymentProof({
+    required int chatId,
+    required int userId,
+    required bool isAdmin,
+    required bool showReturnToAdminMenu,
+    required int? bookingId,
+    required PaymentChoice? choice,
+    required int proofChatId,
+    required int proofMessageId,
+    required String? caption,
+  }) async {
+    final booking = await _bookingRepository.submitPaymentForLatestPending(
+      userId,
+      bookingId: bookingId,
+      note: _composePaymentNote(caption: caption, choice: choice),
+      paymentProofChatId: proofChatId,
+      paymentProofMessageId: proofMessageId,
+    );
+    if (booking != null) {
+      await _notifyAdminAboutPaymentSubmitted(booking);
+    }
+    _flowByUserId.remove(userId);
+    await _sender.sendMessage(
+      chatId,
+      booking == null ? _templates.noPendingPayment() : _templates.paymentSubmitted(booking),
+      replyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+    );
   }
 }

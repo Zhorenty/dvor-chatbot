@@ -373,7 +373,7 @@ final class TelegramKeyboards {
     for (final booking in bookings) {
       rows.add(
         <Map<String, String>>[
-          <String, String>{'text': '🧾 #${booking.id} ${booking.trainingTitle}'},
+          <String, String>{'text': _bookingSelectionButtonText(booking)},
         ],
       );
     }
@@ -395,7 +395,7 @@ final class TelegramKeyboards {
     for (final booking in bookings) {
       rows.add(
         <Map<String, String>>[
-          <String, String>{'text': '🧾 #${booking.id} ${booking.trainingTitle}'},
+          <String, String>{'text': _bookingSelectionButtonText(booking)},
         ],
       );
     }
@@ -715,7 +715,7 @@ final class TelegramKeyboards {
     for (final booking in bookings) {
       rows.add(
         <Map<String, String>>[
-          <String, String>{'text': '🧾 #${booking.id} ${booking.trainingTitle}'},
+          <String, String>{'text': _bookingSelectionButtonText(booking)},
         ],
       );
     }
@@ -1073,5 +1073,16 @@ final class TelegramKeyboards {
         ],
       ],
     );
+  }
+
+  static String _bookingSelectionButtonText(TrainingBooking booking) {
+    final title = booking.trainingTitle;
+    if (!booking.isManagedForOther) {
+      return '🧾 #${booking.id} $title';
+    }
+    final participant = booking.participantDisplayLabel;
+    final truncatedParticipant =
+        participant.length > 24 ? '${participant.substring(0, 24)}…' : participant;
+    return '🧾 #${booking.id} $truncatedParticipant · $title';
   }
 }

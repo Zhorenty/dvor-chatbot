@@ -2,8 +2,13 @@ part of '../private_handlers.dart';
 
 extension PrivateHandlersBookingOps on PrivateHandlers {
   bool _looksLikeTelegramUsername(String value) {
-    final normalized = value.startsWith('@') ? value.substring(1) : value;
-    return RegExp(r'^[A-Za-z][A-Za-z0-9_]{3,31}$').hasMatch(normalized);
+    // Require explicit @ so Latin guest names (Anna, John) are not treated as TG.
+    if (!value.trim().startsWith('@')) {
+      return false;
+    }
+    final normalized = value.trim().substring(1);
+    // Telegram usernames are 5–32 chars.
+    return RegExp(r'^[A-Za-z][A-Za-z0-9_]{4,31}$').hasMatch(normalized);
   }
 
   String _partyParticipantKey(
@@ -136,7 +141,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     final outdoorPaymentChoice = _shouldShowOutdoorPaymentTypeChoice(first);
     final nextSteps = outdoorPaymentChoice
         ? '<b>Что дальше:</b>\n'
-            '1) Оплати полную сумму за группу.\n'
+            '1) Оплати по реквизитам выше (сумма за всю группу).\n'
             '2) Выбери тип оплаты: «${MessageTemplates.buttonPayFully}» или '
             '«${MessageTemplates.buttonPayPartially}».\n'
             '3) Пришли файл чека в этот чат 📎'
@@ -402,7 +407,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required int chatId,
     required int userId,
   }) async {
-    final bookings = await _bookingRepository.listUserBookings(userId);
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 100);
     if (bookings.isEmpty) {
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
@@ -600,12 +605,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     if (training.includeTrainersInParticipants) {
       return bookings.length;
     }
-    return bookings
-        .where((booking) => !_isWhitelistedTrainerBooking(
-              userId: booking.userId,
-              username: booking.userUsername,
-            ))
-        .length;
+    return bookings.where((booking) => !_isWhitelistedTrainerBookingByBooking(booking)).length;
   }
 
   bool _isWhitelistedTrainerBooking({
@@ -616,7 +616,17 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
   }
 
   bool _isWhitelistedTrainerBookingByBooking(TrainingBooking booking) {
-    return _isWhitelistedTrainerBooking(userId: booking.userId, username: booking.userUsername);
+    // Guest FIO seats are never trainers. For telegram/self, use participant
+    // identity — manager fields would mis-classify a whole party.
+    if (booking.participantType == BookingParticipantType.guest) {
+      return false;
+    }
+    final participantUserId = booking.participantUserId ?? booking.userId;
+    final participantUsername = booking.participantUsername ?? booking.userUsername;
+    return _isWhitelistedTrainerBooking(
+      userId: participantUserId,
+      username: participantUsername,
+    );
   }
 
   bool _isCapacityConfirmedBookingStatus(BookingStatus status) {
