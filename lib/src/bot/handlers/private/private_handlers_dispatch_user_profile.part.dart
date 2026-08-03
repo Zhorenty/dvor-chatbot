@@ -167,11 +167,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
               availableBookings: currentBookings,
               selectedBooking: selectedBooking,
             );
-            await _sender.sendMessage(
-              chatId,
-              _templates.bookingActions(selectedBooking),
-              replyMarkup: _bookingActionsKeyboard(selectedBooking),
-            );
+            await _sendBookingActionsCard(chatId: chatId, booking: selectedBooking);
             return true;
           }
         }
@@ -223,11 +219,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         step: _PrivateFlowStep.selectingBookingAction,
         selectedBooking: selectedBooking,
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.bookingActions(selectedBooking),
-        replyMarkup: _bookingActionsKeyboard(selectedBooking),
-      );
+      await _sendBookingActionsCard(chatId: chatId, booking: selectedBooking);
       return true;
     }
 
@@ -284,7 +276,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         await _sender.sendMessage(
           chatId,
           _templates.bookingCancelNotAvailable(selectedBooking),
-          replyMarkup: _bookingActionsKeyboard(selectedBooking),
+          replyMarkup: _bookingActionsInlineKeyboard(selectedBooking),
         );
         return true;
       }
@@ -302,12 +294,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         step: _PrivateFlowStep.confirmingBookingCancel,
         selectedBooking: selectedBooking,
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.bookingCancelConfirm(selectedBooking),
-        replyMarkup: _templates.bookingCancelConfirmKeyboard(),
-        parseMode: 'HTML',
-      );
+      await _sendBookingCancelConfirmCard(chatId: chatId, booking: selectedBooking);
       return true;
     }
 
@@ -328,11 +315,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       _flowByUserId[userId] = flowState!.copyWith(
         step: _PrivateFlowStep.selectingBookingAction,
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.bookingActions(selectedBooking),
-        replyMarkup: _bookingActionsKeyboard(selectedBooking),
-      );
+      await _sendBookingActionsCard(chatId: chatId, booking: selectedBooking);
       return true;
     }
 
@@ -405,7 +388,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       await _sender.sendMessage(
         chatId,
         _templates.partialPaidRemainderOffline(selectedBooking),
-        replyMarkup: _bookingActionsKeyboard(selectedBooking),
+        replyMarkup: _bookingActionsInlineKeyboard(selectedBooking),
       );
       return true;
     }
@@ -471,17 +454,13 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           pendingPaymentProofMessageId: stashedProofMessageId,
           pendingPaymentProofCaption: stashedProofCaption,
         );
-        await _sender.sendMessage(
-          chatId,
-          '${_templates.chooseOutdoorPaymentType()}\n\n'
-          'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
+        await _sendPayableBookingCard(
+          chatId: chatId,
+          booking: selectedBooking,
+          text: '${_templates.chooseOutdoorPaymentType()}\n\n'
+              'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
+          showStarterBonus: openedFlow.starterBonusOffered,
           parseMode: 'HTML',
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: openedFlow.starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(selectedBooking),
-            showOutdoorPaymentTypeChoice: true,
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(selectedBooking),
-          ),
         );
         return true;
       }
@@ -520,7 +499,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
             selectedBooking.status == BookingStatus.partialPaid
                 ? _templates.partialPaidRemainderOffline(selectedBooking)
                 : _templates.bookingActions(selectedBooking),
-            replyMarkup: _bookingActionsKeyboard(selectedBooking),
+            replyMarkup: _bookingActionsInlineKeyboard(selectedBooking),
           );
           return true;
         }
@@ -640,16 +619,10 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       final currentFlow = flowState!;
       final booking = currentFlow.activeBooking;
       if (booking == null || !_isOutdoorCategory(_catalogService.categoryForBooking(booking))) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.paymentProofRequired(),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: currentFlow.starterBonusOffered,
-            showCancelBooking: booking != null && _canCancelBookingByPolicy(booking),
-            showOutdoorPaymentTypeChoice:
-                booking != null && _shouldShowOutdoorPaymentTypeChoice(booking),
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
-          ),
+        await _sendPaymentFlowRePrompt(
+          chatId: chatId,
+          flowState: currentFlow,
+          text: _templates.paymentProofRequired(),
         );
         return true;
       }
@@ -705,15 +678,11 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         return true;
       }
       final active = flowAfterChoice.activeBooking ?? booking;
-      await _sender.sendMessage(
-        chatId,
-        _templates.paymentProofRequired(),
-        replyMarkup: _templates.paymentConfirmationKeyboard(
-          showStarterBonus: flowAfterChoice.starterBonusOffered,
-          showCancelBooking: _canCancelBookingByPolicy(active),
-          showOutdoorPaymentTypeChoice: true,
-          showPromoCodeEntry: _shouldShowPromoCodeEntry(active),
-        ),
+      await _sendPayableBookingCard(
+        chatId: chatId,
+        booking: active,
+        text: _templates.paymentProofRequired(),
+        showStarterBonus: flowAfterChoice.starterBonusOffered,
       );
       return true;
     }
@@ -758,15 +727,11 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           );
           return true;
         }
-        await _sender.sendMessage(
-          chatId,
-          _templates.paymentProofRequired(),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: restoredFlow.starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(booking),
-            showOutdoorPaymentTypeChoice: true,
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
-          ),
+        await _sendPayableBookingCard(
+          chatId: chatId,
+          booking: booking,
+          text: _templates.paymentProofRequired(),
+          showStarterBonus: restoredFlow.starterBonusOffered,
         );
       }
       return true;
@@ -851,17 +816,13 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           pendingPaymentProofMessageId: paymentProof.messageId,
           pendingPaymentProofCaption: paymentProof.caption,
         );
-        await _sender.sendMessage(
-          chatId,
-          '${_templates.chooseOutdoorPaymentType()}\n\n'
-          'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
+        await _sendPayableBookingCard(
+          chatId: chatId,
+          booking: activeBooking,
+          text: '${_templates.chooseOutdoorPaymentType()}\n\n'
+              'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
+          showStarterBonus: currentFlow.starterBonusOffered,
           parseMode: 'HTML',
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: currentFlow.starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
-            showOutdoorPaymentTypeChoice: true,
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-          ),
         );
         return true;
       }
@@ -932,17 +893,13 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
             pendingPaymentProofCaption: paymentProof.caption,
           );
         }
-        await _sender.sendMessage(
-          chatId,
-          '${_templates.chooseOutdoorPaymentType()}\n\n'
-          'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
+        await _sendPayableBookingCard(
+          chatId: chatId,
+          booking: target,
+          text: '${_templates.chooseOutdoorPaymentType()}\n\n'
+              'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
+          showStarterBonus: _flowByUserId[userId]?.starterBonusOffered ?? false,
           parseMode: 'HTML',
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: _flowByUserId[userId]?.starterBonusOffered ?? false,
-            showCancelBooking: _canCancelBookingByPolicy(target),
-            showOutdoorPaymentTypeChoice: true,
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(target),
-          ),
         );
         return true;
       }
@@ -971,30 +928,19 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           activeBooking != null &&
           _catalogService.categoryForBooking(activeBooking) == _ActivityCategory.trainings;
       if (!canUseBonus) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.starterBonusUnavailable(),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: flowState.starterBonusOffered,
-            showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
-            showOutdoorPaymentTypeChoice:
-                activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-          ),
+        await _sendPaymentFlowRePrompt(
+          chatId: chatId,
+          flowState: flowState,
+          text: _templates.starterBonusUnavailable(),
         );
         return true;
       }
       final bonusType = await _resolveFreeTrainingBonusType(userId);
       if (bonusType == null) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.starterBonusUnavailable(),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: flowState.starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
-            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-          ),
+        await _sendPaymentFlowRePrompt(
+          chatId: chatId,
+          flowState: flowState,
+          text: _templates.starterBonusUnavailable(),
         );
         return true;
       }
@@ -1004,15 +950,10 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         _FreeTrainingBonusType.everyFifth => await _applyEveryFifthBonus(activeBooking),
       };
       if (updated == null) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.starterBonusUnavailable(),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: flowState.starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
-            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-          ),
+        await _sendPaymentFlowRePrompt(
+          chatId: chatId,
+          flowState: flowState,
+          text: _templates.starterBonusUnavailable(),
         );
         return true;
       }

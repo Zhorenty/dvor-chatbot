@@ -1,6 +1,62 @@
 part of '../private_handlers.dart';
 
 extension PrivateHandlersPaymentOps on PrivateHandlers {
+  Future<void> _sendPayableBookingCard({
+    required int chatId,
+    required TrainingBooking booking,
+    required String text,
+    required bool showStarterBonus,
+    String? parseMode,
+  }) async {
+    await _sender.sendMessage(
+      chatId,
+      text,
+      parseMode: parseMode,
+      replyMarkup: _templates.paymentCardInlineKeyboard(
+        booking.id,
+        showStarterBonus: showStarterBonus,
+        showCancelBooking: _canCancelBookingByPolicy(booking),
+        showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(booking),
+        showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
+      ),
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.paymentCardNavHint(),
+      replyMarkup: _templates.simpleNavigationKeyboard(),
+    );
+  }
+
+  Future<void> _sendPaymentFlowRePrompt({
+    required int chatId,
+    required _PrivateFlowState flowState,
+    required String text,
+    String? parseMode,
+  }) async {
+    final booking = flowState.activeBooking;
+    if (booking != null) {
+      await _sendPayableBookingCard(
+        chatId: chatId,
+        booking: booking,
+        text: text,
+        showStarterBonus: flowState.starterBonusOffered,
+        parseMode: parseMode,
+      );
+      return;
+    }
+    await _sender.sendMessage(
+      chatId,
+      text,
+      parseMode: parseMode,
+      replyMarkup: _templates.paymentConfirmationKeyboard(
+        showStarterBonus: flowState.starterBonusOffered,
+        showCancelBooking: false,
+        showOutdoorPaymentTypeChoice: false,
+        showPromoCodeEntry: false,
+      ),
+    );
+  }
+
   Future<void> _sendPaymentsQueueByCategory({
     required int chatId,
     required _ActivityCategory category,
@@ -118,15 +174,11 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
           starterBonusOffered: starterBonusOffered,
           paymentChoice: null,
         );
-        await _sender.sendMessage(
-          booking.userId,
-          _templates.paymentRejectedForUser(booking),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(booking),
-            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(booking),
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
-          ),
+        await _sendPayableBookingCard(
+          chatId: booking.userId,
+          booking: booking,
+          text: _templates.paymentRejectedForUser(booking),
+          showStarterBonus: starterBonusOffered,
         );
       }
     } on Object catch (error, stackTrace) {
@@ -216,16 +268,12 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       starterBonusOffered: starterBonusOffered,
       paymentChoice: null,
     );
-    await _sender.sendMessage(
-      chatId,
-      _templates.paymentDetailsSent(booking),
+    await _sendPayableBookingCard(
+      chatId: chatId,
+      booking: booking,
+      text: _templates.paymentDetailsSent(booking),
+      showStarterBonus: starterBonusOffered,
       parseMode: 'HTML',
-      replyMarkup: _templates.paymentConfirmationKeyboard(
-        showStarterBonus: starterBonusOffered,
-        showCancelBooking: _canCancelBookingByPolicy(booking),
-        showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(booking),
-        showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
-      ),
     );
   }
 
@@ -272,14 +320,6 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       replyMarkup: _templates.bookingManagementSelectionKeyboard(pending),
     );
     return true;
-  }
-
-  Future<TrainingBooking?> _resolveLatestPendingPaymentBooking(int userId) async {
-    final pending = await _listPayableBookings(userId);
-    if (pending.isEmpty) {
-      return null;
-    }
-    return pending.first;
   }
 
   Future<List<TrainingBooking>> _listPayableBookings(int userId) async {

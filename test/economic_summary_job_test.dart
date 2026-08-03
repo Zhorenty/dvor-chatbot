@@ -141,4 +141,11 @@ final class _FlakySender implements MessageSender {
     successfulSends++;
     return successfulSends;
   }
+
+  @override
+  Future<void> editMessageReplyMarkup(
+    int chatId, {
+    required int messageId,
+    Map<String, Object?>? replyMarkup,
+  }) async {}
 }

@@ -433,8 +433,66 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     return (bookings.length - 1) ~/ PrivateHandlers._adminBookingsPageSize;
   }
 
-  Map<String, Object?> _adminBookingActionsKeyboard(TrainingBooking booking) {
-    return _templates.adminBookingActionsKeyboard(canRestore: _canRestoreBooking(booking));
+  Map<String, Object?> _adminBookingActionsInlineKeyboard(TrainingBooking booking) {
+    return _templates.adminBookingActionsInlineKeyboard(
+      booking.id,
+      canRestore: _canRestoreBooking(booking),
+    );
+  }
+
+  Future<void> _sendAdminBookingActionsCard({
+    required int chatId,
+    required TrainingBooking booking,
+  }) async {
+    await _sendAdminMessage(
+      chatId,
+      _templates.adminBookingActions(booking),
+      replyMarkup: _adminBookingActionsInlineKeyboard(booking),
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.paymentCardNavHint(),
+      replyMarkup: _templates.simpleNavigationKeyboard(),
+    );
+  }
+
+  Future<void> _sendAdminBookingDeleteConfirmCard({
+    required int chatId,
+    required TrainingBooking booking,
+  }) async {
+    await _sendAdminMessage(
+      chatId,
+      _templates.adminBookingDeleteConfirm(booking),
+      replyMarkup: _templates.adminBookingDeleteConfirmInlineKeyboard(booking.id),
+    );
+    await _sendAdminMessage(
+      chatId,
+      _templates.paymentCardNavHint(),
+      replyMarkup: _templates.simpleNavigationKeyboard(),
+    );
+  }
+
+  Future<TrainingBooking?> _resolveAdminBooking(
+    int bookingId, {
+    TrainingBooking? fromFlow,
+  }) async {
+    if (fromFlow?.id == bookingId) {
+      return fromFlow;
+    }
+    for (final category in ActivityCategory.values) {
+      for (final archived in const <bool>[false, true]) {
+        final bookings = await _bookingRepository.adminListBookings(
+          category: category,
+          archived: archived,
+        );
+        for (final booking in bookings) {
+          if (booking.id == bookingId) {
+            return booking;
+          }
+        }
+      }
+    }
+    return null;
   }
 
   Future<void> _openAdminClientNotificationStep({
@@ -455,7 +513,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
         booking: booking,
         actionLabel: _adminClientNotificationActionLabel(action),
       ),
-      replyMarkup: _templates.adminClientNotificationPreferenceKeyboard(),
+      replyMarkup: _templates.adminClientNotificationPreferenceInlineKeyboard(),
     );
   }
 
@@ -492,6 +550,44 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
       return false;
     }
     return booking.startsAt.isAfter(_nowProvider());
+  }
+
+  Future<void> _refreshCallbackMessageMarkup({
+    required PrivateRequestContext ctx,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final callbackMessage = ctx.callbackMessage;
+    if (callbackMessage == null) {
+      return;
+    }
+    final messageId = callbackMessage['message_id'];
+    final chatRaw = callbackMessage['chat'];
+    final resolvedMessageId = messageId is int
+        ? messageId
+        : messageId is num
+            ? messageId.toInt()
+            : int.tryParse('$messageId');
+    if (resolvedMessageId == null || chatRaw is! Map) {
+      return;
+    }
+    final chatIdRaw = chatRaw['id'];
+    final callbackChatId = chatIdRaw is int
+        ? chatIdRaw
+        : chatIdRaw is num
+            ? chatIdRaw.toInt()
+            : int.tryParse('$chatIdRaw');
+    if (callbackChatId == null) {
+      return;
+    }
+    try {
+      await _sender.editMessageReplyMarkup(
+        callbackChatId,
+        messageId: resolvedMessageId,
+        replyMarkup: replyMarkup ?? const <String, Object?>{'inline_keyboard': <Object>[]},
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to refresh callback message markup: $error', stackTrace);
+    }
   }
 
   Future<int> _sendAdminMessage(

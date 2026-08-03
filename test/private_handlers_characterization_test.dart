@@ -3,6 +3,7 @@ import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
+import 'support/fakes.dart';
 import 'support/private_handlers_harness.dart';
 
 void main() {
@@ -61,7 +62,7 @@ void main() {
       expect(harness.booking.createCalls, 1);
       expect(harness.booking.lastCreatedTraining?.title, 'Second session');
       expect(harness.booking.lastCreatedUsername, 'second_user');
-      expect(harness.sender.messages.last.text, contains('записал тебя'));
+      expect(harness.sender.lastContentMessage.text, contains('записал тебя'));
     });
 
     test('quick book from selected hike action creates booking', () async {
@@ -101,7 +102,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(harness.booking.createCalls, 1);
-      expect(harness.sender.messages.last.text, contains('записал тебя'));
+      expect(harness.sender.lastContentMessage.text, contains('записал тебя'));
     });
 
     test('payment moderation callback keeps callback and notifications behavior', () async {
@@ -119,10 +120,11 @@ void main() {
       );
 
       expect(handled, isTrue);
-      expect(harness.sender.messages, hasLength(3));
+      expect(harness.sender.messages, hasLength(4));
       expect(harness.sender.messages[0].chatId, 1);
-      expect(harness.sender.messages[1].chatId, -100556);
-      expect(harness.sender.messages[2].chatId, 1950);
+      expect(harness.sender.messages[1].text, FakeSender.navHintText);
+      expect(harness.sender.messages[2].chatId, -100556);
+      expect(harness.sender.messages[3].chatId, 1950);
       expect(harness.sender.answeredCallbacks, hasLength(1));
       expect(harness.sender.answeredCallbacks.single.callbackQueryId, 'cbq-1');
     });

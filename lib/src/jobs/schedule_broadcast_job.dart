@@ -73,6 +73,7 @@ final class ScheduleBroadcastJob {
         ),
         parseMode: 'HTML',
         disableWebPagePreview: true,
+        replyMarkup: _templates.groupBookUrlKeyboard(),
       );
       if (!sent) {
         _releaseBroadcast(broadcastKey);

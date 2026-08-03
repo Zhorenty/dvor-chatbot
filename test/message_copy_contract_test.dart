@@ -77,10 +77,39 @@ void main() {
       final decision = TelegramKeyboards.paymentDecisionInlineKeyboard(42, approvePartial: true);
       final openQueue = TelegramKeyboards.openPaymentsQueueInlineKeyboard();
       final reminder = TelegramKeyboards.pendingPaymentReminderKeyboard(777);
+      final paymentCard = TelegramKeyboards.paymentCardInlineKeyboard(
+        12,
+        showStarterBonus: true,
+        showCancelBooking: true,
+        showOutdoorPaymentTypeChoice: true,
+        showPromoCodeEntry: true,
+      );
+      final bookingActions = TelegramKeyboards.bookingActionsInlineKeyboard(
+        bookingId: 34,
+        canReschedule: true,
+        canCancel: true,
+        canRepeat: true,
+        canContinuePayment: true,
+      );
+      final cancelConfirm = TelegramKeyboards.bookingCancelConfirmInlineKeyboard(56);
+      final feedback = TelegramKeyboards.trainingFeedbackInlineKeyboard(78);
+      final ctaBook = TelegramKeyboards.ctaBookInlineKeyboard();
+      final adminActions =
+          TelegramKeyboards.adminBookingActionsInlineKeyboard(90, canRestore: true);
+      final adminDelete = TelegramKeyboards.adminBookingDeleteConfirmInlineKeyboard(91);
+      final adminNotify = TelegramKeyboards.adminClientNotificationPreferenceInlineKeyboard();
       final callbacks = <String>{
         ..._inlineCallbacks(decision),
         ..._inlineCallbacks(openQueue),
         ..._inlineCallbacks(reminder),
+        ..._inlineCallbacks(paymentCard),
+        ..._inlineCallbacks(bookingActions),
+        ..._inlineCallbacks(cancelConfirm),
+        ..._inlineCallbacks(feedback),
+        ..._inlineCallbacks(ctaBook),
+        ..._inlineCallbacks(adminActions),
+        ..._inlineCallbacks(adminDelete),
+        ..._inlineCallbacks(adminNotify),
       };
 
       expect(
@@ -93,6 +122,27 @@ void main() {
       );
       expect(callbacks, contains(MessageCopy.callbackOpenPaymentsQueue));
       expect(callbacks, contains('${MessageCopy.callbackPayBookingPrefix}777'));
+      expect(callbacks, contains('${MessageCopy.callbackPayFullPrefix}12'));
+      expect(callbacks, contains('${MessageCopy.callbackPayPartialPrefix}12'));
+      expect(callbacks, contains('${MessageCopy.callbackUseBonusPrefix}12'));
+      expect(callbacks, contains('${MessageCopy.callbackEnterPromoPrefix}12'));
+      expect(callbacks, contains('${MessageCopy.callbackBookingCancelPrefix}12'));
+      expect(callbacks, contains('${MessageCopy.callbackBookingReschedulePrefix}34'));
+      expect(callbacks, contains('${MessageCopy.callbackBookingRepeatPrefix}34'));
+      expect(callbacks, contains('${MessageCopy.callbackBookingContinuePayPrefix}34'));
+      expect(callbacks, contains('${MessageCopy.callbackBookingCancelConfirmPrefix}56'));
+      expect(callbacks, contains('${MessageCopy.callbackBookingCancelKeepPrefix}56'));
+      expect(callbacks, contains('${MessageCopy.callbackFeedbackSkipPrefix}78'));
+      expect(
+          callbacks.any((item) => item.startsWith('${MessageCopy.callbackFeedbackRatePrefix}78:')),
+          isTrue);
+      expect(callbacks, contains(MessageCopy.callbackCtaBook));
+      expect(callbacks, contains('${MessageCopy.callbackAdminBookingEditPrefix}90'));
+      expect(callbacks, contains('${MessageCopy.callbackAdminBookingDeletePrefix}90'));
+      expect(callbacks, contains('${MessageCopy.callbackAdminBookingDeleteConfirmPrefix}91'));
+      expect(callbacks, contains('${MessageCopy.callbackAdminBookingDeleteAbortPrefix}91'));
+      expect(callbacks, contains(MessageCopy.callbackAdminNotifyYes));
+      expect(callbacks, contains(MessageCopy.callbackAdminNotifyNo));
     });
   });
 }

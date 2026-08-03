@@ -75,7 +75,7 @@ final class TrainingFeedbackJob {
           await _sender.sendMessage(
             booking.userId,
             _templates.trainingFeedbackAsk(trainingTitle: booking.trainingTitle),
-            replyMarkup: _templates.trainingFeedbackKeyboard(),
+            replyMarkup: _templates.trainingFeedbackInlineKeyboard(booking.id),
           );
           await _onAskFeedback(
             userId: booking.userId,

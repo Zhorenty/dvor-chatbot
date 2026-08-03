@@ -1322,6 +1322,99 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
+  Map<String, Object?> paymentCardInlineKeyboard(
+    int bookingId, {
+    required bool showStarterBonus,
+    bool showCancelBooking = false,
+    bool showOutdoorPaymentTypeChoice = false,
+    bool showPromoCodeEntry = false,
+  }) {
+    return TelegramKeyboards.paymentCardInlineKeyboard(
+      bookingId,
+      showStarterBonus: showStarterBonus,
+      showCancelBooking: showCancelBooking,
+      showOutdoorPaymentTypeChoice: showOutdoorPaymentTypeChoice,
+      showPromoCodeEntry: showPromoCodeEntry,
+    );
+  }
+
+  Map<String, Object?> bookingCancelConfirmInlineKeyboard(int bookingId) {
+    return TelegramKeyboards.bookingCancelConfirmInlineKeyboard(bookingId);
+  }
+
+  Map<String, Object?> bookingActionsInlineKeyboard({
+    required int bookingId,
+    required bool canReschedule,
+    required bool canCancel,
+    required bool canRepeat,
+    bool canCompletePayment = false,
+    bool canContinuePayment = false,
+  }) {
+    return TelegramKeyboards.bookingActionsInlineKeyboard(
+      bookingId: bookingId,
+      canReschedule: canReschedule,
+      canCancel: canCancel,
+      canRepeat: canRepeat,
+      canCompletePayment: canCompletePayment,
+      canContinuePayment: canContinuePayment,
+    );
+  }
+
+  Map<String, Object?> trainingFeedbackInlineKeyboard(int bookingId) {
+    return TelegramKeyboards.trainingFeedbackInlineKeyboard(bookingId);
+  }
+
+  Map<String, Object?> ctaBookInlineKeyboard({
+    String buttonLabel = MessageCopy.buttonBookTraining,
+  }) {
+    return TelegramKeyboards.ctaBookInlineKeyboard(buttonLabel: buttonLabel);
+  }
+
+  Map<String, Object?> urlCtaInlineKeyboard({
+    required String label,
+    required String url,
+  }) {
+    return TelegramKeyboards.urlCtaInlineKeyboard(label: label, url: url);
+  }
+
+  Map<String, Object?> adminBookingActionsInlineKeyboard(
+    int bookingId, {
+    required bool canRestore,
+  }) {
+    return TelegramKeyboards.adminBookingActionsInlineKeyboard(
+      bookingId,
+      canRestore: canRestore,
+    );
+  }
+
+  Map<String, Object?> adminBookingDeleteConfirmInlineKeyboard(int bookingId) {
+    return TelegramKeyboards.adminBookingDeleteConfirmInlineKeyboard(bookingId);
+  }
+
+  Map<String, Object?> adminClientNotificationPreferenceInlineKeyboard() {
+    return TelegramKeyboards.adminClientNotificationPreferenceInlineKeyboard();
+  }
+
+  String paymentCardNavHint() {
+    return 'Навигация 👇';
+  }
+
+  Map<String, Object?>? groupWelcomeUrlKeyboard() {
+    final link = _botStartDeepLink();
+    if (link == null) {
+      return null;
+    }
+    return urlCtaInlineKeyboard(label: 'Открыть бота', url: link);
+  }
+
+  Map<String, Object?>? groupBookUrlKeyboard() {
+    final link = _botDeepLink();
+    if (link == null) {
+      return null;
+    }
+    return urlCtaInlineKeyboard(label: MessageCopy.buttonBookTraining, url: link);
+  }
+
   Map<String, Object?> pendingPaymentReminderKeyboard(int bookingId) {
     return TelegramKeyboards.pendingPaymentReminderKeyboard(bookingId);
   }

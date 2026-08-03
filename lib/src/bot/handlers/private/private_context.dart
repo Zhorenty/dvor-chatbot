@@ -7,6 +7,7 @@ final class PrivateMessageContext {
     required this.text,
     required this.message,
     required this.callbackQueryId,
+    this.callbackMessage,
   });
 
   final Map<String, dynamic> chat;
@@ -14,6 +15,9 @@ final class PrivateMessageContext {
   final String? text;
   final Map<String, dynamic>? message;
   final String? callbackQueryId;
+
+  /// Source message of a callback query (for editMessageReplyMarkup).
+  final Map<String, dynamic>? callbackMessage;
 }
 
 final class PaymentProof {
@@ -49,6 +53,7 @@ PrivateMessageContext? extractPrivateMessageContext(Map<String, dynamic> update)
       text: text,
       message: null,
       callbackQueryId: callbackMap['id']?.toString(),
+      callbackMessage: callbackMessage,
     );
   }
 
@@ -175,6 +180,26 @@ String? callbackToCommandText(String? callbackData) {
     final bookingId = int.tryParse(rawId);
     return bookingId == null ? null : '/paid $bookingId';
   }
+  if (callbackData.startsWith(MessageCopy.callbackPayFullPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackPayFullPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/paid_full $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackPayPartialPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackPayPartialPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/paid_partial $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackUseBonusPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackUseBonusPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/use_bonus $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackEnterPromoPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackEnterPromoPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/enter_promo $bookingId';
+  }
   if (callbackData == MessageCopy.callbackOpenPaymentsQueue) {
     return '/payments_queue';
   }
@@ -209,6 +234,89 @@ String? callbackToCommandText(String? callbackData) {
   }
   if (callbackData == MessageCopy.callbackBroadcastCancel) {
     return '/broadcast_cancel';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackBookingCancelConfirmPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackBookingCancelConfirmPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/cancel_booking_confirm $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackBookingCancelKeepPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackBookingCancelKeepPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/cancel_booking_keep $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackBookingCancelPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackBookingCancelPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/cancel_booking $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackBookingReschedulePrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackBookingReschedulePrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/reschedule_booking $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackBookingRepeatPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackBookingRepeatPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/repeat_booking $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackBookingContinuePayPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackBookingContinuePayPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/paid $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackFeedbackSkipPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackFeedbackSkipPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/feedback_skip $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackFeedbackRatePrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackFeedbackRatePrefix.length);
+    final parts = rest.split(':');
+    if (parts.length != 2) {
+      return null;
+    }
+    final bookingId = int.tryParse(parts[0]);
+    final rating = parts[1].trim();
+    if (bookingId == null || rating.isEmpty) {
+      return null;
+    }
+    return '/feedback_rate $bookingId $rating';
+  }
+  if (callbackData == MessageCopy.callbackCtaBook) {
+    return MessageCopy.buttonBookTraining;
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminBookingEditPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackAdminBookingEditPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/admin_booking_edit $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminBookingDeleteConfirmPrefix)) {
+    final rawId =
+        callbackData.substring(MessageCopy.callbackAdminBookingDeleteConfirmPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/admin_booking_delete_confirm $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminBookingDeleteAbortPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackAdminBookingDeleteAbortPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/admin_booking_delete_abort $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminBookingDeletePrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackAdminBookingDeletePrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/admin_booking_delete $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminBookingRestorePrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackAdminBookingRestorePrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/admin_booking_restore $bookingId';
+  }
+  if (callbackData == MessageCopy.callbackAdminNotifyYes) {
+    return MessageCopy.buttonNotifyClientYes;
+  }
+  if (callbackData == MessageCopy.callbackAdminNotifyNo) {
+    return MessageCopy.buttonNotifyClientNo;
   }
   return null;
 }

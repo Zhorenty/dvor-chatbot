@@ -9,6 +9,199 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
     final showReturnToAdminMenu = ctx.showReturnToAdminMenu;
     final flowState = ctx.flowState;
 
+    if (userId != null && text != null) {
+      if (text.startsWith('/admin_booking_edit ')) {
+        final bookingId = _updateRouter.parseCommandId(text);
+        if (bookingId != null) {
+          final booking = await _resolveAdminBooking(
+            bookingId,
+            fromFlow: flowState?.selectedBooking,
+          );
+          if (booking == null) {
+            await _sendAdminMessage(
+              chatId,
+              _templates.bookingNotFound(bookingId),
+              replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin,
+                showReturnToAdminMenu: showReturnToAdminMenu,
+              ),
+            );
+            return true;
+          }
+          _flowByUserId[userId] = _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminBookingEditField,
+            availableTrainings: const <TrainingInfo>[],
+            selectedBooking: booking,
+          );
+          await _sendAdminMessage(
+            chatId,
+            _templates.chooseAdminBookingEditField(booking),
+            replyMarkup: _templates.adminBookingEditFieldsKeyboard(),
+          );
+          return true;
+        }
+      }
+      if (text.startsWith('/admin_booking_delete ')) {
+        final bookingId = _updateRouter.parseCommandId(text);
+        if (bookingId != null) {
+          final booking = await _resolveAdminBooking(
+            bookingId,
+            fromFlow: flowState?.selectedBooking,
+          );
+          if (booking == null) {
+            await _sendAdminMessage(
+              chatId,
+              _templates.bookingNotFound(bookingId),
+              replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin,
+                showReturnToAdminMenu: showReturnToAdminMenu,
+              ),
+            );
+            return true;
+          }
+          _flowByUserId[userId] = _PrivateFlowState(
+            step: _PrivateFlowStep.confirmingAdminBookingDelete,
+            availableTrainings: const <TrainingInfo>[],
+            selectedBooking: booking,
+          );
+          await _sendAdminBookingDeleteConfirmCard(chatId: chatId, booking: booking);
+          return true;
+        }
+      }
+      if (text.startsWith('/admin_booking_delete_confirm ')) {
+        final bookingId = _updateRouter.parseCommandId(text);
+        if (bookingId != null) {
+          final booking = await _resolveAdminBooking(
+            bookingId,
+            fromFlow: flowState?.selectedBooking,
+          );
+          if (booking == null) {
+            await _sendAdminMessage(
+              chatId,
+              _templates.bookingNotFound(bookingId),
+              replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin,
+                showReturnToAdminMenu: showReturnToAdminMenu,
+              ),
+            );
+            return true;
+          }
+          final archived = await _bookingRepository.adminArchiveBooking(booking.id);
+          if (archived == null) {
+            await _sendAdminMessage(
+              chatId,
+              _templates.bookingNotFound(booking.id),
+              replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin,
+                showReturnToAdminMenu: showReturnToAdminMenu,
+              ),
+            );
+            _flowByUserId.remove(userId);
+            return true;
+          }
+          await _openAdminClientNotificationStep(
+            chatId: chatId,
+            userId: userId,
+            action: _AdminClientNotificationAction.bookingDeleted,
+            booking: archived,
+          );
+          return true;
+        }
+      }
+      if (text.startsWith('/admin_booking_delete_abort ')) {
+        final bookingId = _updateRouter.parseCommandId(text);
+        if (bookingId != null) {
+          final booking = await _resolveAdminBooking(
+            bookingId,
+            fromFlow: flowState?.selectedBooking,
+          );
+          if (booking == null) {
+            await _sendAdminMessage(
+              chatId,
+              _templates.bookingNotFound(bookingId),
+              replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin,
+                showReturnToAdminMenu: showReturnToAdminMenu,
+              ),
+            );
+            return true;
+          }
+          _flowByUserId[userId] = _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminBookingAction,
+            availableTrainings: const <TrainingInfo>[],
+            selectedBooking: booking,
+          );
+          await _sendAdminBookingActionsCard(chatId: chatId, booking: booking);
+          return true;
+        }
+      }
+      if (text.startsWith('/admin_booking_restore ')) {
+        final bookingId = _updateRouter.parseCommandId(text);
+        if (bookingId != null) {
+          final selectedBooking = await _resolveAdminBooking(
+            bookingId,
+            fromFlow: flowState?.selectedBooking,
+          );
+          if (selectedBooking == null) {
+            await _sendAdminMessage(
+              chatId,
+              _templates.bookingNotFound(bookingId),
+              replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin,
+                showReturnToAdminMenu: showReturnToAdminMenu,
+              ),
+            );
+            return true;
+          }
+          if (!_canRestoreBooking(selectedBooking)) {
+            await _sendAdminMessage(
+              chatId,
+              _templates.adminBookingRestoreNotAllowed(selectedBooking),
+              replyMarkup: _adminBookingActionsInlineKeyboard(selectedBooking),
+            );
+            return true;
+          }
+          final TrainingBooking? restored;
+          try {
+            restored = await _bookingRepository.adminUpdateBooking(
+              bookingId: selectedBooking.id,
+              status: BookingStatus.pendingPayment,
+            );
+          } on BookingConflictException {
+            await _sendAdminMessage(
+              chatId,
+              _templates.adminBookingUpdateConflict(),
+              replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin,
+                showReturnToAdminMenu: showReturnToAdminMenu,
+              ),
+            );
+            _flowByUserId.remove(userId);
+            return true;
+          }
+          if (restored == null) {
+            await _sendAdminMessage(
+              chatId,
+              _templates.bookingNotFound(selectedBooking.id),
+              replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin,
+                showReturnToAdminMenu: showReturnToAdminMenu,
+              ),
+            );
+            _flowByUserId.remove(userId);
+            return true;
+          }
+          await _openAdminClientNotificationStep(
+            chatId: chatId,
+            userId: userId,
+            action: _AdminClientNotificationAction.bookingRestored,
+            booking: restored,
+          );
+          return true;
+        }
+      }
+    }
+
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.selectingAdminBookingManagementAction &&
         text != null) {
@@ -133,11 +326,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
         step: _PrivateFlowStep.selectingAdminBookingAction,
         selectedBooking: selectedBooking,
       );
-      await _sendAdminMessage(
-        chatId,
-        _templates.adminBookingActions(selectedBooking),
-        replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
-      );
+      await _sendAdminBookingActionsCard(chatId: chatId, booking: selectedBooking);
       return true;
     }
 
@@ -181,11 +370,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
       }
       _flowByUserId[userId] =
           flowState!.copyWith(step: _PrivateFlowStep.confirmingAdminBookingDelete);
-      await _sendAdminMessage(
-        chatId,
-        _templates.adminBookingDeleteConfirm(selectedBooking),
-        replyMarkup: _templates.adminBookingDeleteConfirmKeyboard(),
-      );
+      await _sendAdminBookingDeleteConfirmCard(chatId: chatId, booking: selectedBooking);
       return true;
     }
 
@@ -209,7 +394,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBookingActions(selectedBooking),
-          replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
+          replyMarkup: _adminBookingActionsInlineKeyboard(selectedBooking),
         );
         return true;
       }
@@ -254,7 +439,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBookingRestoreNotAllowed(selectedBooking),
-          replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
+          replyMarkup: _adminBookingActionsInlineKeyboard(selectedBooking),
         );
         return true;
       }
@@ -334,7 +519,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
           await _sender.sendMessage(
             chatId,
             _templates.noUpcomingForBooking(),
-            replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
+            replyMarkup: _adminBookingActionsInlineKeyboard(selectedBooking),
           );
           return true;
         }
@@ -743,7 +928,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
             booking: booking,
             actionLabel: _adminClientNotificationActionLabel(action),
           ),
-          replyMarkup: _templates.adminClientNotificationPreferenceKeyboard(),
+          replyMarkup: _templates.adminClientNotificationPreferenceInlineKeyboard(),
         );
         return true;
       }

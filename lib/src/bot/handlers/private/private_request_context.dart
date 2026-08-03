@@ -18,6 +18,7 @@ final class PrivateRequestContext {
     required this.paymentProof,
     required this.username,
     required this.message,
+    this.callbackMessage,
   });
 
   final int chatId;
@@ -34,4 +35,5 @@ final class PrivateRequestContext {
   final PaymentProof? paymentProof;
   final String? username;
   final Map<String, dynamic>? message;
+  final Map<String, dynamic>? callbackMessage;
 }

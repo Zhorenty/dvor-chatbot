@@ -262,6 +262,7 @@ final class TelegramKeyboards {
     );
   }
 
+  /// Secondary reply nav for payment step (primary CTAs are inline on the card).
   static Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
     bool showCancelBooking = false,
@@ -269,6 +270,7 @@ final class TelegramKeyboards {
     bool showPromoCodeEntry = false,
   }) {
     final rows = <List<Map<String, String>>>[];
+    // Legacy reply actions kept for backward-compatible reply taps during migration.
     if (showStarterBonus) {
       rows.add(
         <Map<String, String>>[
@@ -306,6 +308,67 @@ final class TelegramKeyboards {
       ],
     );
     return _replyKeyboard(rows);
+  }
+
+  /// Entity-bound payment CTAs under the requisites / reject card.
+  static Map<String, Object?> paymentCardInlineKeyboard(
+    int bookingId, {
+    required bool showStarterBonus,
+    bool showCancelBooking = false,
+    bool showOutdoorPaymentTypeChoice = false,
+    bool showPromoCodeEntry = false,
+  }) {
+    final rows = <List<Map<String, String>>>[];
+    if (showOutdoorPaymentTypeChoice) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonPayFully,
+            'callback_data': '${MessageCopy.callbackPayFullPrefix}$bookingId',
+          },
+          <String, String>{
+            'text': MessageCopy.buttonPayPartially,
+            'callback_data': '${MessageCopy.callbackPayPartialPrefix}$bookingId',
+          },
+        ],
+      );
+    } else {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonSubmitPayment,
+            'callback_data': '${MessageCopy.callbackPayBookingPrefix}$bookingId',
+          },
+        ],
+      );
+    }
+    if (showStarterBonus) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonUseStarterBonus,
+            'callback_data': '${MessageCopy.callbackUseBonusPrefix}$bookingId',
+          },
+        ],
+      );
+    }
+    if (showPromoCodeEntry || showCancelBooking) {
+      rows.add(
+        <Map<String, String>>[
+          if (showPromoCodeEntry)
+            <String, String>{
+              'text': MessageCopy.buttonEnterPromoCode,
+              'callback_data': '${MessageCopy.callbackEnterPromoPrefix}$bookingId',
+            },
+          if (showCancelBooking)
+            <String, String>{
+              'text': MessageCopy.buttonCancelBooking,
+              'callback_data': '${MessageCopy.callbackBookingCancelPrefix}$bookingId',
+            },
+        ],
+      );
+    }
+    return <String, Object?>{'inline_keyboard': rows};
   }
 
   static Map<String, Object?> simpleNavigationKeyboard() {
@@ -479,6 +542,85 @@ final class TelegramKeyboards {
     );
   }
 
+  static Map<String, Object?> bookingCancelConfirmInlineKeyboard(int bookingId) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonConfirmCancelBooking,
+            'callback_data': '${MessageCopy.callbackBookingCancelConfirmPrefix}$bookingId',
+          },
+          <String, String>{
+            'text': MessageCopy.buttonKeepBooking,
+            'callback_data': '${MessageCopy.callbackBookingCancelKeepPrefix}$bookingId',
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> bookingActionsInlineKeyboard({
+    required int bookingId,
+    required bool canReschedule,
+    required bool canCancel,
+    required bool canRepeat,
+    bool canCompletePayment = false,
+    bool canContinuePayment = false,
+  }) {
+    final rows = <List<Map<String, String>>>[];
+    if (canContinuePayment) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonContinuePayment,
+            'callback_data': '${MessageCopy.callbackBookingContinuePayPrefix}$bookingId',
+          },
+        ],
+      );
+    }
+    if (canReschedule) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonRescheduleBooking,
+            'callback_data': '${MessageCopy.callbackBookingReschedulePrefix}$bookingId',
+          },
+        ],
+      );
+    }
+    if (canCancel) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonCancelBooking,
+            'callback_data': '${MessageCopy.callbackBookingCancelPrefix}$bookingId',
+          },
+        ],
+      );
+    }
+    if (canRepeat) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonRepeatBooking,
+            'callback_data': '${MessageCopy.callbackBookingRepeatPrefix}$bookingId',
+          },
+        ],
+      );
+    }
+    if (canCompletePayment) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonCompletePayment,
+            'callback_data': '${MessageCopy.callbackBookingContinuePayPrefix}$bookingId',
+          },
+        ],
+      );
+    }
+    return <String, Object?>{'inline_keyboard': rows};
+  }
+
   static Map<String, Object?> pendingPaymentReminderKeyboard(int bookingId) {
     return <String, Object?>{
       'inline_keyboard': <List<Map<String, String>>>[
@@ -486,6 +628,127 @@ final class TelegramKeyboards {
           <String, String>{
             'text': MessageCopy.buttonSubmitPayment,
             'callback_data': '${MessageCopy.callbackPayBookingPrefix}$bookingId',
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> ctaBookInlineKeyboard({
+    String buttonLabel = MessageCopy.buttonBookTraining,
+  }) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': buttonLabel,
+            'callback_data': MessageCopy.callbackCtaBook,
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> urlCtaInlineKeyboard({
+    required String label,
+    required String url,
+  }) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': label,
+            'url': url,
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> trainingFeedbackInlineKeyboard(int bookingId) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonFeedbackGreat,
+            'callback_data': '${MessageCopy.callbackFeedbackRatePrefix}$bookingId:great',
+          },
+          <String, String>{
+            'text': MessageCopy.buttonFeedbackOk,
+            'callback_data': '${MessageCopy.callbackFeedbackRatePrefix}$bookingId:ok',
+          },
+          <String, String>{
+            'text': MessageCopy.buttonFeedbackWeak,
+            'callback_data': '${MessageCopy.callbackFeedbackRatePrefix}$bookingId:weak',
+          },
+        ],
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonFeedbackSkip,
+            'callback_data': '${MessageCopy.callbackFeedbackSkipPrefix}$bookingId',
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> adminBookingActionsInlineKeyboard(
+    int bookingId, {
+    required bool canRestore,
+  }) {
+    final rows = <List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonEditBooking,
+          'callback_data': '${MessageCopy.callbackAdminBookingEditPrefix}$bookingId',
+        },
+        <String, String>{
+          'text': MessageCopy.buttonDeleteBooking,
+          'callback_data': '${MessageCopy.callbackAdminBookingDeletePrefix}$bookingId',
+        },
+      ],
+    ];
+    if (canRestore) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonRestoreBooking,
+            'callback_data': '${MessageCopy.callbackAdminBookingRestorePrefix}$bookingId',
+          },
+        ],
+      );
+    }
+    return <String, Object?>{'inline_keyboard': rows};
+  }
+
+  static Map<String, Object?> adminBookingDeleteConfirmInlineKeyboard(int bookingId) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonConfirmDeleteBooking,
+            'callback_data': '${MessageCopy.callbackAdminBookingDeleteConfirmPrefix}$bookingId',
+          },
+          <String, String>{
+            'text': MessageCopy.buttonCancelDeleteBooking,
+            'callback_data': '${MessageCopy.callbackAdminBookingDeleteAbortPrefix}$bookingId',
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> adminClientNotificationPreferenceInlineKeyboard() {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonNotifyClientYes,
+            'callback_data': MessageCopy.callbackAdminNotifyYes,
+          },
+          <String, String>{
+            'text': MessageCopy.buttonNotifyClientNo,
+            'callback_data': MessageCopy.callbackAdminNotifyNo,
           },
         ],
       ],

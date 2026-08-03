@@ -56,6 +56,7 @@ final class SubscriptionRenewalJob {
           request.userId,
           _templates.subscriptionExpiryPromo(),
           parseMode: 'HTML',
+          replyMarkup: _templates.ctaBookInlineKeyboard(),
         );
         await _subscriptionRepository.markExpiryPromoSent(
           requestId: request.id,

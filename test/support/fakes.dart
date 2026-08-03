@@ -871,7 +871,21 @@ final class FakeSender implements MessageSender {
   final List<BannedMember> bannedMembers = <BannedMember>[];
   final List<PinnedMessage> pinnedMessages = <PinnedMessage>[];
   final List<AnsweredCallback> answeredCallbacks = <AnsweredCallback>[];
+  final List<EditedReplyMarkup> editedReplyMarkups = <EditedReplyMarkup>[];
   final Map<int, Exception> sendMessageFailuresByChatId = <int, Exception>{};
+
+  static const String navHintText = 'Навигация 👇';
+
+  SentMessage get lastContentMessage {
+    if (messages.isEmpty) {
+      throw StateError('No messages sent');
+    }
+    final last = messages.last;
+    if (last.text == navHintText && messages.length >= 2) {
+      return messages[messages.length - 2];
+    }
+    return last;
+  }
 
   @override
   Future<int> sendMessage(
@@ -978,6 +992,21 @@ final class FakeSender implements MessageSender {
       ),
     );
   }
+
+  @override
+  Future<void> editMessageReplyMarkup(
+    int chatId, {
+    required int messageId,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    editedReplyMarkups.add(
+      EditedReplyMarkup(
+        chatId: chatId,
+        messageId: messageId,
+        replyMarkup: replyMarkup,
+      ),
+    );
+  }
 }
 
 final class SentMessage {
@@ -1056,6 +1085,18 @@ final class AnsweredCallback {
   final String callbackQueryId;
   final String? text;
   final bool showAlert;
+}
+
+final class EditedReplyMarkup {
+  const EditedReplyMarkup({
+    required this.chatId,
+    required this.messageId,
+    required this.replyMarkup,
+  });
+
+  final int chatId;
+  final int messageId;
+  final Map<String, Object?>? replyMarkup;
 }
 
 final class FakeOnboardingRepository implements OnboardingRepository {
@@ -1652,19 +1693,30 @@ List<String> keyboardTexts(Map<String, Object?>? replyMarkup) {
   if (replyMarkup == null) {
     return const <String>[];
   }
-  final keyboard = replyMarkup['keyboard'];
-  if (keyboard is! List) {
-    return const <String>[];
-  }
-
   final texts = <String>[];
-  for (final row in keyboard) {
-    if (row is! List) {
-      continue;
+  final keyboard = replyMarkup['keyboard'];
+  if (keyboard is List) {
+    for (final row in keyboard) {
+      if (row is! List) {
+        continue;
+      }
+      for (final button in row) {
+        if (button is Map && button['text'] is String) {
+          texts.add(button['text'] as String);
+        }
+      }
     }
-    for (final button in row) {
-      if (button is Map && button['text'] is String) {
-        texts.add(button['text'] as String);
+  }
+  final inline = replyMarkup['inline_keyboard'];
+  if (inline is List) {
+    for (final row in inline) {
+      if (row is! List) {
+        continue;
+      }
+      for (final button in row) {
+        if (button is Map && button['text'] is String) {
+          texts.add(button['text'] as String);
+        }
       }
     }
   }

@@ -37,4 +37,10 @@ abstract interface class MessageSender {
     String? text,
     bool showAlert = false,
   });
+
+  Future<void> editMessageReplyMarkup(
+    int chatId, {
+    required int messageId,
+    Map<String, Object?>? replyMarkup,
+  });
 }

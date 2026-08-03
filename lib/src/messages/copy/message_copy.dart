@@ -127,6 +127,10 @@ final class MessageCopy {
   static const String callbackApprovePartialPaymentPrefix = 'payment:approve_partial:';
   static const String callbackRejectPaymentPrefix = 'payment:reject:';
   static const String callbackPayBookingPrefix = 'payment:pay:';
+  static const String callbackPayFullPrefix = 'payment:full:';
+  static const String callbackPayPartialPrefix = 'payment:partial:';
+  static const String callbackUseBonusPrefix = 'payment:bonus:';
+  static const String callbackEnterPromoPrefix = 'payment:promo:';
   static const String callbackOpenPaymentsQueue = 'payment:open_queue';
   static const String callbackNextPaymentInQueuePrefix = 'payment:next:';
   static const String callbackApproveSubscriptionPrefix = 'subscription:approve:';
@@ -136,6 +140,22 @@ final class MessageCopy {
   static const String callbackBroadcastToGroup = 'broadcast:group';
   static const String callbackBroadcastToUsersAndGroup = 'broadcast:users_and_group';
   static const String callbackBroadcastCancel = 'broadcast:cancel';
+  static const String callbackBookingCancelPrefix = 'booking:cancel:';
+  static const String callbackBookingCancelConfirmPrefix = 'booking:cancel_ok:';
+  static const String callbackBookingCancelKeepPrefix = 'booking:cancel_keep:';
+  static const String callbackBookingReschedulePrefix = 'booking:reschedule:';
+  static const String callbackBookingRepeatPrefix = 'booking:repeat:';
+  static const String callbackBookingContinuePayPrefix = 'booking:pay:';
+  static const String callbackFeedbackRatePrefix = 'feedback:rate:';
+  static const String callbackFeedbackSkipPrefix = 'feedback:skip:';
+  static const String callbackCtaBook = 'cta:book';
+  static const String callbackAdminBookingEditPrefix = 'admin:booking:edit:';
+  static const String callbackAdminBookingDeletePrefix = 'admin:booking:del:';
+  static const String callbackAdminBookingRestorePrefix = 'admin:booking:restore:';
+  static const String callbackAdminBookingDeleteConfirmPrefix = 'admin:booking:del_ok:';
+  static const String callbackAdminBookingDeleteAbortPrefix = 'admin:booking:del_no:';
+  static const String callbackAdminNotifyYes = 'admin:notify:yes';
+  static const String callbackAdminNotifyNo = 'admin:notify:no';
 
   static const String scheduleDocumentUrl =
       'https://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';

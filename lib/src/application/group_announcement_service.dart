@@ -62,6 +62,7 @@ final class GroupAnnouncementService {
     required String text,
     String? parseMode,
     bool disableWebPagePreview = false,
+    Map<String, Object?>? replyMarkup,
   }) {
     final completer = Completer<bool>();
     _chain = _chain.then((_) async {
@@ -72,6 +73,7 @@ final class GroupAnnouncementService {
           text: text,
           parseMode: parseMode,
           disableWebPagePreview: disableWebPagePreview,
+          replyMarkup: replyMarkup,
         );
         completer.complete(sent);
       } on Object catch (error, stackTrace) {
@@ -87,6 +89,7 @@ final class GroupAnnouncementService {
     required String text,
     required String? parseMode,
     required bool disableWebPagePreview,
+    Map<String, Object?>? replyMarkup,
   }) async {
     final now = _nowProvider();
     final active = _active;
@@ -116,6 +119,7 @@ final class GroupAnnouncementService {
       text,
       parseMode: parseMode,
       disableWebPagePreview: disableWebPagePreview,
+      replyMarkup: replyMarkup,
     );
     _active = _ActiveAnnouncement(
       messageId: messageId,

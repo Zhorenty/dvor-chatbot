@@ -148,9 +148,9 @@ void main() {
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Добро пожаловать в DVOR'));
       expect(sender.messages.first.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
-      expect(sender.messages.last.text, contains('бесплатная тренировка'));
-      expect(sender.messages.last.text, contains('Записаться'));
-      expect(sender.messages.last.text, contains(MessageTemplates.buttonUseStarterBonus));
+      expect(sender.lastContentMessage.text, contains('бесплатная тренировка'));
+      expect(sender.lastContentMessage.text, contains('Записаться'));
+      expect(sender.lastContentMessage.text, contains(MessageTemplates.buttonUseStarterBonus));
       expect(sender.pinnedMessages, hasLength(1));
       expect(sender.pinnedMessages.single.chatId, 112);
       expect(sender.pinnedMessages.single.messageId, 1);
@@ -247,7 +247,7 @@ void main() {
         'from': <String, dynamic>{'id': 9100},
         'text': MessageTemplates.buttonAdminAnalytics,
       });
-      final analyticsButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final analyticsButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(analyticsButtons, contains(MessageTemplates.buttonFunnelAnalytics));
       expect(analyticsButtons, contains(MessageTemplates.buttonFeedbackAnalytics));
       expect(analyticsButtons, contains(MessageTemplates.buttonEconomicSummary));
@@ -260,7 +260,7 @@ void main() {
         'from': <String, dynamic>{'id': 9100},
         'text': MessageTemplates.buttonClientMenu,
       });
-      final clientButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final clientButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(clientButtons, contains(MessageTemplates.buttonBookTraining));
       expect(clientButtons, contains(MessageTemplates.buttonProfile));
       expect(clientButtons, contains(MessageTemplates.buttonAdminMenu));
@@ -272,7 +272,7 @@ void main() {
         'from': <String, dynamic>{'id': 9100},
         'text': MessageTemplates.buttonAdminMenu,
       });
-      final adminButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final adminButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(adminButtons, contains(MessageTemplates.buttonAdminTools));
       expect(adminButtons, contains(MessageTemplates.buttonPaymentsQueue));
       expect(adminButtons, isNot(contains(MessageTemplates.buttonBookTraining)));
@@ -314,9 +314,9 @@ void main() {
         'text': MessageTemplates.buttonAdminRecentActions,
         'message_id': 100,
       });
-      expect(sender.messages.last.text, contains('Последние действия бота'));
-      expect(sender.messages.last.text, contains('client_one'));
-      expect(sender.messages.last.text, contains('хочу записаться'));
+      expect(sender.lastContentMessage.text, contains('Последние действия бота'));
+      expect(sender.lastContentMessage.text, contains('client_one'));
+      expect(sender.lastContentMessage.text, contains('хочу записаться'));
 
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
@@ -324,7 +324,7 @@ void main() {
         'text': MessageTemplates.buttonAdminUserDialog,
         'message_id': 101,
       });
-      expect(sender.messages.last.text, contains('Диалог с пользователем'));
+      expect(sender.lastContentMessage.text, contains('Диалог с пользователем'));
 
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 9100, 'type': 'private'},
@@ -341,7 +341,7 @@ void main() {
         sender.copiedMessages.map((item) => item.messageId).toList(),
         <int>[11, 12],
       );
-      expect(sender.messages.last.text, contains('переслано'));
+      expect(sender.lastContentMessage.text, contains('переслано'));
     });
 
     test('opens subscriptions filters directly for admin', () async {
@@ -597,7 +597,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(subscriptionRepository.submitCalls, 1);
-      expect(sender.messages.last.text, contains('Заявка на абонемент отправлена'));
+      expect(sender.lastContentMessage.text, contains('Заявка на абонемент отправлена'));
       expect(sender.messages.any((item) => item.chatId == -100500), isTrue);
     });
 
@@ -627,7 +627,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Твой статус: <b>PRO</b>'));
+      expect(sender.lastContentMessage.text, contains('Твой статус: <b>PRO</b>'));
     });
 
     test('admin can cancel active subscription by command', () async {
@@ -844,16 +844,16 @@ void main() {
       expect(sender.messages.first.text, contains('Силовые и функциональные тренировки'));
       expect(sender.messages.first.text, isNot(contains('📝')));
       expect(sender.messages[1].text, contains('Выбери тренера'));
-      expect(sender.messages.last.text, contains('<b>Мария Романова</b>'));
-      expect(sender.messages.last.text, contains('Направление'));
-      expect(sender.messages.last.text, contains('📝 <b>О тренере:</b>'));
+      expect(sender.lastContentMessage.text, contains('<b>Мария Романова</b>'));
+      expect(sender.lastContentMessage.text, contains('Направление'));
+      expect(sender.lastContentMessage.text, contains('📝 <b>О тренере:</b>'));
       expect(
-        sender.messages.last.text,
+        sender.lastContentMessage.text,
         contains('\n🔗 <b>Контакт:</b> <a href="https://t.me/maria_run">@maria_run</a>'),
       );
-      expect(sender.messages.last.text, contains('Беговые тренировки\n\nи восстановление'));
+      expect(sender.lastContentMessage.text, contains('Беговые тренировки\n\nи восстановление'));
       expect(sender.messages.first.disableWebPagePreview, isTrue);
-      expect(sender.messages.last.disableWebPagePreview, isTrue);
+      expect(sender.lastContentMessage.disableWebPagePreview, isTrue);
       expect(
         _keyboardTexts(sender.messages.first.replyMarkup),
         contains(MessageTemplates.buttonCoachDetails),
@@ -863,7 +863,7 @@ void main() {
         contains('👤 1. Алексей Петров'),
       );
       expect(
-        _keyboardTexts(sender.messages.last.replyMarkup),
+        _keyboardTexts(sender.lastContentMessage.replyMarkup),
         contains('👤 2. Мария Романова'),
       );
     });
@@ -928,17 +928,17 @@ void main() {
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Выбери раздел расписания'));
-      expect(sender.messages.last.text, contains('Ближайшие тренировки'));
-      expect(sender.messages.last.text, contains('Тестовая тренировка'));
+      expect(sender.lastContentMessage.text, contains('Ближайшие тренировки'));
+      expect(sender.lastContentMessage.text, contains('Тестовая тренировка'));
       expect(
-        sender.messages.last.text,
+        sender.lastContentMessage.text,
         contains('<a href="https://maps.example/test-gym">Тестовый зал</a>'),
       );
-      expect(sender.messages.last.text, contains('бесплатная'));
-      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
-      expect(sender.messages.last.parseMode, 'HTML');
-      expect(sender.messages.last.disableWebPagePreview, isTrue);
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('бесплатная'));
+      expect(sender.lastContentMessage.text, contains('Выбери мероприятие для записи'));
+      expect(sender.lastContentMessage.parseMode, 'HTML');
+      expect(sender.lastContentMessage.disableWebPagePreview, isTrue);
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
@@ -989,7 +989,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
-      final text = sender.messages.last.text;
+      final text = sender.lastContentMessage.text;
       expect(
         text,
         contains('<a href="https://t.me/alxpetrov">Алексей Петров</a>'),
@@ -1000,7 +1000,7 @@ void main() {
       );
       expect(text, contains('<a href="https://t.me/guest_coach">гость</a>'));
       expect(text, contains('🧑‍🏫 Тренеры:'));
-      expect(sender.messages.last.parseMode, 'HTML');
+      expect(sender.lastContentMessage.parseMode, 'HTML');
     });
 
     test('handles menu trainings button in private chat', () async {
@@ -1035,7 +1035,7 @@ void main() {
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages.last.text, contains('Тренировка из кнопки'));
+      expect(sender.lastContentMessage.text, contains('Тренировка из кнопки'));
     });
 
     test('opens hike selection in schedule category', () async {
@@ -1091,8 +1091,8 @@ void main() {
       expect(sender.messages[1].text, contains('50% предоплата при записи'));
       expect(sender.messages[1].text, contains('2500 ₽ (1250 ₽ предоплата 50%)'));
       expect(sender.messages[1].text, contains('Поход на водопады'));
-      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Выбери мероприятие для записи'));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains('🎯 1. 🥾 Поход: Поход на водопады'));
       expect(buttons, isNot(contains('Трейл перевал')));
     });
@@ -1134,8 +1134,8 @@ void main() {
       expect(sender.messages[1].text, contains('Ближайшие трейлы OUTDVOR'));
       expect(sender.messages[1].text, contains('50% предоплата при записи'));
       expect(sender.messages[1].text, contains('Трейл перевал'));
-      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Выбери мероприятие для записи'));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains('🎯 1. 🏃 Трейл: Трейл перевал'));
     });
 
@@ -1214,7 +1214,7 @@ void main() {
       expect(repository.refreshCalls, 1);
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Google Sheets обновлён'));
-      expect(sender.messages.last.text, contains(MessageTemplates.scheduleDocumentUrl));
+      expect(sender.lastContentMessage.text, contains(MessageTemplates.scheduleDocumentUrl));
     });
 
     test('ignores non-private chat messages', () async {
@@ -1369,8 +1369,8 @@ void main() {
         sender.messages.any((message) => message.text.contains('Экипировка')),
         isFalse,
       );
-      expect(sender.messages.last.text, contains('записал тебя'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('записал тебя'));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPayFully));
       expect(buttons, contains(MessageTemplates.buttonPayPartially));
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
@@ -1419,8 +1419,8 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Выбери мероприятие для записи'));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains('🎯 1. 🏃 Трейл: Трейл Фишт'));
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
@@ -1494,10 +1494,10 @@ void main() {
       expect(detailsMessage.text, contains('Выбери действие'));
       expect(detailsMessage.text, contains('Двухдневный маршрут'));
       expect(detailsMessage.text, contains('4100 ₽ (2050 ₽ предоплата 50%)'));
-      expect(sender.messages.last.text, contains('Экипировка'));
-      expect(sender.messages.last.text, contains('Поход на Бзерпинский карниз'));
-      expect(sender.messages.last.text, contains('Ботинки, дождевик, фонарь'));
-      expect(sender.messages.last.text, isNot(contains('Треккинговые палки')));
+      expect(sender.lastContentMessage.text, contains('Экипировка'));
+      expect(sender.lastContentMessage.text, contains('Поход на Бзерпинский карниз'));
+      expect(sender.lastContentMessage.text, contains('Ботинки, дождевик, фонарь'));
+      expect(sender.lastContentMessage.text, isNot(contains('Треккинговые палки')));
     });
 
     test('creates booking after selecting a training button', () async {
@@ -1544,8 +1544,8 @@ void main() {
       expect(bookingRepository.createCalls, 1);
       expect(bookingRepository.lastCreatedTraining?.title, 'Second session');
       expect(bookingRepository.lastCreatedUsername, 'second_user');
-      expect(sender.messages.last.text, contains('записал тебя'));
-      expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
+      expect(sender.lastContentMessage.text, contains('записал тебя'));
+      expect(sender.lastContentMessage.text, contains('Реквизиты для оплаты'));
     });
 
     test('does not send low-spots group notification for pending payment booking', () async {
@@ -1899,8 +1899,8 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 1);
-      expect(sender.messages.last.text, contains('свободных мест больше нет'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('свободных мест больше нет'));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains('🎯 1. Limited session'));
     });
 
@@ -1943,9 +1943,9 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.createCalls, 1);
-      expect(sender.messages.last.text, contains('Это бесплатная тренировка'));
-      expect(sender.messages.last.text, isNot(contains('Реквизиты для оплаты')));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Это бесплатная тренировка'));
+      expect(sender.lastContentMessage.text, isNot(contains('Реквизиты для оплаты')));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -1001612).text;
@@ -2004,9 +2004,9 @@ void main() {
       expect(bookingRepository.createCalls, 1);
       expect(bookingRepository.lastUpdatedBookingId, 99);
       expect(bookingRepository.lastUpdatedStatus, BookingStatus.paid);
-      expect(sender.messages.last.text, contains('Ты в списке тренеров'));
-      expect(sender.messages.last.text, isNot(contains('Реквизиты для оплаты')));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Ты в списке тренеров'));
+      expect(sender.lastContentMessage.text, isNot(contains('Реквизиты для оплаты')));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100111).text;
@@ -2073,9 +2073,9 @@ void main() {
         bookingRepository.lastUpdatedPaymentNote,
         MessageFormatters.proIncludedTrainingPaymentNoteMarker,
       );
-      expect(sender.messages.last.text, contains('Включено в PRO'));
-      expect(sender.messages.last.text, isNot(contains('Реквизиты для оплаты')));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Включено в PRO'));
+      expect(sender.lastContentMessage.text, isNot(contains('Реквизиты для оплаты')));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
     });
 
@@ -2117,7 +2117,7 @@ void main() {
         'text': '🎯 1. Starter session',
       });
 
-      final keyboardBefore = _keyboardTexts(sender.messages.last.replyMarkup);
+      final keyboardBefore = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(keyboardBefore, contains(MessageTemplates.buttonUseStarterBonus));
 
       final handled = await handlers.handle(<String, dynamic>{
@@ -2127,8 +2127,9 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Бесплатная тренировка активирована'));
-      expect(sender.messages.last.text, contains('Статус: Бесплатно: стартовая тренировка 🎁'));
+      expect(sender.lastContentMessage.text, contains('Бесплатная тренировка активирована'));
+      expect(
+          sender.lastContentMessage.text, contains('Статус: Бесплатно: стартовая тренировка 🎁'));
     });
 
     test('sends admin notification for starter bonus booking', () async {
@@ -2230,7 +2231,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('каждая 5-я бесплатно'));
+      expect(sender.lastContentMessage.text, contains('каждая 5-я бесплатно'));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100889).text;
       expect(adminMessage, contains('каждая 5-я'));
     });
@@ -2283,7 +2284,8 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Реферальная бесплатная тренировка активирована'));
+      expect(sender.lastContentMessage.text,
+          contains('Реферальная бесплатная тренировка активирована'));
       expect(bookingRepository.lastUpdatedPaymentNote,
           MessageFormatters.referralBonusPaymentNoteMarker);
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100445).text;
@@ -2368,8 +2370,8 @@ void main() {
       expect(adminNotify.text, contains('@curious_hiker'));
       expect(adminNotify.text, contains('Поход на хребет'));
       expect(adminNotify.text, contains('Лаго-Наки, старт от кордона'));
-      expect(sender.messages.last.chatId, 1621);
-      expect(sender.messages.last.text, contains('Выбери действие'));
+      expect(sender.lastContentMessage.chatId, 1621);
+      expect(sender.lastContentMessage.text, contains('Выбери действие'));
     });
 
     test('creates booking after selecting a hike category item', () async {
@@ -2408,11 +2410,12 @@ void main() {
         'from': <String, dynamic>{'id': 1620},
         'text': MessageTemplates.buttonCategoryHikes,
       });
-      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
-      expect(sender.messages.last.text, contains('1. 🥾 Поход: Поход на хребет'));
-      expect(sender.messages.last.text, contains('🕒 от 13.07.2026 до 14.07.2026'));
-      expect(sender.messages.last.text, contains('📍 Лаго-Наки, старт от кордона, взнос: 3200 ₽'));
-      final listButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Выбери мероприятие для записи'));
+      expect(sender.lastContentMessage.text, contains('1. 🥾 Поход: Поход на хребет'));
+      expect(sender.lastContentMessage.text, contains('🕒 от 13.07.2026 до 14.07.2026'));
+      expect(sender.lastContentMessage.text,
+          contains('📍 Лаго-Наки, старт от кордона, взнос: 3200 ₽'));
+      final listButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(listButtons, contains('🎯 1. 🥾 Поход: Поход на хребет'));
 
       await handlers.handle(<String, dynamic>{
@@ -2420,13 +2423,13 @@ void main() {
         'from': <String, dynamic>{'id': 1620},
         'text': '🎯 1. 🥾 Поход: Поход на хребет',
       });
-      final detailsText = sender.messages.last.text;
+      final detailsText = sender.lastContentMessage.text;
       expect(detailsText, contains('Поход на хребет'));
       expect(detailsText, contains('Ночевка в лагере'));
       expect(detailsText, contains('3200 ₽ (1600 ₽ предоплата 50%)'));
       expect(detailsText, contains('Выбери действие'));
       expect(bookingRepository.createCalls, 0);
-      final detailButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final detailButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(detailButtons, contains(MessageTemplates.buttonBookTraining));
       expect(detailButtons, contains(MessageTemplates.buttonOutdoorEquipment));
       expect(detailButtons, contains(MessageTemplates.buttonOutdoorItinerary));
@@ -2456,11 +2459,11 @@ void main() {
         sender.messages.any((message) => message.text.contains('Экипировка')),
         isFalse,
       );
-      expect(sender.messages.last.text, contains('записал тебя'));
-      expect(sender.messages.last.text, contains('Событие: 🥾 Поход: Поход на хребет'));
-      expect(sender.messages.last.text, isNot(contains('Тренировка:')));
-      expect(sender.messages.last.text, contains('📍 Где: Лаго-Наки, старт от кордона'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('записал тебя'));
+      expect(sender.lastContentMessage.text, contains('Событие: 🥾 Поход: Поход на хребет'));
+      expect(sender.lastContentMessage.text, isNot(contains('Тренировка:')));
+      expect(sender.lastContentMessage.text, contains('📍 Где: Лаго-Наки, старт от кордона'));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPayFully));
       expect(buttons, contains(MessageTemplates.buttonPayPartially));
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
@@ -2509,7 +2512,7 @@ void main() {
       });
       expect(submitted, isTrue);
       expect(bookingRepository.submitCalls, 0);
-      expect(sender.messages.last.text, contains('Пришли файл'));
+      expect(sender.lastContentMessage.text, contains('Пришли файл'));
     });
 
     test('asks for payment proof file when text is sent at confirmation step', () async {
@@ -2556,7 +2559,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 0);
-      expect(sender.messages.last.text, contains('Пришли файл'));
+      expect(sender.lastContentMessage.text, contains('Пришли файл'));
     });
 
     test('cancels outdoor pending booking from payment confirmation step', () async {
@@ -2617,7 +2620,7 @@ void main() {
         'text': MessageTemplates.buttonBookTraining,
       });
 
-      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      final keyboard = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(keyboard, contains(MessageTemplates.buttonCancelBooking));
 
       await handlers.handle(<String, dynamic>{
@@ -2634,7 +2637,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 1);
       expect(bookingRepository.lastCancelledBookingId, 99);
-      expect(sender.messages.last.text, contains('отменена'));
+      expect(sender.lastContentMessage.text, contains('отменена'));
     });
 
     test('cancels latest pending outdoor booking without active flow', () async {
@@ -2678,16 +2681,9 @@ void main() {
         'from': <String, dynamic>{'id': 2601},
         'text': MessageTemplates.buttonCancelBooking,
       });
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 269, 'type': 'private'},
-        'from': <String, dynamic>{'id': 2601},
-        'text': MessageTemplates.buttonConfirmCancelBooking,
-      });
-
-      expect(handled, isTrue);
-      expect(bookingRepository.cancelCalls, 1);
-      expect(bookingRepository.lastCancelledBookingId, 450);
-      expect(sender.messages.last.text, contains('отменена'));
+      expect(bookingRepository.cancelCalls, 0);
+      expect(sender.lastContentMessage.text, contains(MessageTemplates.buttonProfile));
+      expect(sender.lastContentMessage.text, contains(MessageTemplates.buttonProfileBookings));
     });
 
     test('submits payment after sending payment proof file', () async {
@@ -2738,7 +2734,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(bookingRepository.lastSubmittedBookingId, 99);
-      expect(sender.messages.last.text,
+      expect(sender.lastContentMessage.text,
           contains('файл с подтверждением оплаты отправил администратору'));
     });
 
@@ -3067,7 +3063,7 @@ void main() {
         'from': <String, dynamic>{'id': 2301},
         'text': '🧾 #301 Old session',
       });
-      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final actionButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(actionButtons, contains(MessageTemplates.buttonRescheduleBooking));
       expect(actionButtons, isNot(contains(MessageTemplates.buttonCancelBooking)));
 
@@ -3086,8 +3082,8 @@ void main() {
       expect(bookingRepository.rescheduleCalls, 1);
       expect(bookingRepository.lastRescheduledBookingId, 301);
       expect(bookingRepository.lastRescheduleTraining?.title, 'New session');
-      expect(sender.messages.last.chatId, 2301);
-      expect(sender.messages.last.text, contains('перенесена'));
+      expect(sender.lastContentMessage.chatId, 2301);
+      expect(sender.lastContentMessage.text, contains('перенесена'));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100601);
       expect(adminMessage.text, contains('Операционное событие: перенос записи'));
       expect(adminMessage.text, contains('Было: Old session'));
@@ -3160,7 +3156,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.rescheduleCalls, 0);
-      expect(sender.messages.last.text, contains('нельзя перенести на платную тренировку'));
+      expect(sender.lastContentMessage.text, contains('нельзя перенести на платную тренировку'));
     });
 
     test('does not allow rescheduling paid booking to free training', () async {
@@ -3230,7 +3226,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.rescheduleCalls, 0);
-      expect(sender.messages.last.text, contains('нельзя перенести на бесплатную тренировку'));
+      expect(sender.lastContentMessage.text, contains('нельзя перенести на бесплатную тренировку'));
     });
 
     test('does not allow rescheduling paid booking to training with different price', () async {
@@ -3300,7 +3296,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.rescheduleCalls, 0);
-      expect(sender.messages.last.text, contains('с другой стоимостью'));
+      expect(sender.lastContentMessage.text, contains('с другой стоимостью'));
     });
 
     test('does not allow rescheduling zero-price booking to paid training', () async {
@@ -3370,7 +3366,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.rescheduleCalls, 0);
-      expect(sender.messages.last.text, contains('нельзя перенести на платную тренировку'));
+      expect(sender.lastContentMessage.text, contains('нельзя перенести на платную тренировку'));
     });
 
     test('shows conflict message when rescheduling to already booked training', () async {
@@ -3438,7 +3434,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.rescheduleCalls, 1);
-      expect(sender.messages.last.text, contains('уже есть запись на выбранную тренировку'));
+      expect(sender.lastContentMessage.text, contains('уже есть запись на выбранную тренировку'));
     });
 
     test('keeps active booking manageable when history has many archived items', () async {
@@ -3486,7 +3482,7 @@ void main() {
         'text': MessageTemplates.buttonCurrentBookings,
       });
 
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains('🧾 #3699 🥾 Поход: Живой слот'));
       expect(buttons, isNot(contains('🧾 #3600 Архивный поход #0')));
     });
@@ -3538,7 +3534,7 @@ void main() {
         'from': <String, dynamic>{'id': 2401},
         'text': '🧾 #401 🥾 Поход: Архыз',
       });
-      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final actionButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(actionButtons, contains(MessageTemplates.buttonCancelBooking));
       expect(actionButtons, isNot(contains(MessageTemplates.buttonRescheduleBooking)));
 
@@ -3556,7 +3552,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 1);
       expect(bookingRepository.lastCancelledBookingId, 401);
-      expect(sender.messages.last.text, contains('отменена'));
+      expect(sender.lastContentMessage.text, contains('отменена'));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100602);
       expect(adminMessage.text, contains('Операционное событие: отмена записи'));
       expect(adminMessage.text, contains('🥾 Поход: Архыз'));
@@ -3623,7 +3619,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 1);
       expect(bookingRepository.lastCancelledBookingId, 411);
-      expect(sender.messages.last.text, contains('отменена'));
+      expect(sender.lastContentMessage.text, contains('отменена'));
       final adminMessages = sender.messages.where((message) => message.chatId == -100603).toList();
       expect(adminMessages, isEmpty);
     });
@@ -3670,7 +3666,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 0);
-      expect(sender.messages.last.text, contains('меньше 7 дней'));
+      expect(sender.lastContentMessage.text, contains('меньше 7 дней'));
     });
 
     test('cancels yoga booking when at least 24 hours left', () async {
@@ -3733,7 +3729,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 1);
       expect(bookingRepository.lastCancelledBookingId, 403);
-      expect(sender.messages.last.text, contains('отменена'));
+      expect(sender.lastContentMessage.text, contains('отменена'));
     });
 
     test('does not cancel yoga booking when less than 24 hours left', () async {
@@ -3778,8 +3774,8 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 0);
-      expect(sender.messages.last.text, contains('меньше 24 часов'));
-      expect(sender.messages.last.text, contains('@dvor_support'));
+      expect(sender.lastContentMessage.text, contains('меньше 24 часов'));
+      expect(sender.lastContentMessage.text, contains('@dvor_support'));
     });
 
     test('cancels free training even when less than 24 hours left', () async {
@@ -3830,7 +3826,7 @@ void main() {
         'from': <String, dynamic>{'id': 2405},
         'text': '🧾 #405 Free session',
       });
-      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final actionButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(actionButtons, contains(MessageTemplates.buttonCancelBooking));
 
       await handlers.handle(<String, dynamic>{
@@ -3847,7 +3843,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 1);
       expect(bookingRepository.lastCancelledBookingId, 405);
-      expect(sender.messages.last.text, contains('отменена'));
+      expect(sender.lastContentMessage.text, contains('отменена'));
     });
 
     test('cancels bonus free training even when less than 24 hours left', () async {
@@ -3900,7 +3896,7 @@ void main() {
         'from': <String, dynamic>{'id': 2406},
         'text': '🧾 #406 Bonus session',
       });
-      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final actionButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(actionButtons, contains(MessageTemplates.buttonCancelBooking));
 
       await handlers.handle(<String, dynamic>{
@@ -3917,7 +3913,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 1);
       expect(bookingRepository.lastCancelledBookingId, 406);
-      expect(sender.messages.last.text, contains('отменена'));
+      expect(sender.lastContentMessage.text, contains('отменена'));
     });
 
     test('shows participants list for selected admin category', () async {
@@ -4021,23 +4017,23 @@ void main() {
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Список записавшихся'));
-      expect(sender.messages.last.text, contains('Список записавшихся'));
-      expect(sender.messages.last.text, contains('👥 Участники: 1/∞'));
-      expect(sender.messages.last.text, contains('👤 Участники:'));
-      expect(sender.messages.last.text, contains('@runner_one'));
-      expect(sender.messages.last.text, contains('🧑‍🏫 Тренеры:'));
+      expect(sender.lastContentMessage.text, contains('Список записавшихся'));
+      expect(sender.lastContentMessage.text, contains('👥 Участники: 1/∞'));
+      expect(sender.lastContentMessage.text, contains('👤 Участники:'));
+      expect(sender.lastContentMessage.text, contains('@runner_one'));
+      expect(sender.lastContentMessage.text, contains('🧑‍🏫 Тренеры:'));
       expect(
-        sender.messages.last.text,
+        sender.lastContentMessage.text,
         contains('@nudden (Бесплатно: стартовая тренировка 🎁)'),
       );
-      expect(sender.messages.last.text, contains('@runner_cancelled (Отменено ❌)'));
+      expect(sender.lastContentMessage.text, contains('@runner_cancelled (Отменено ❌)'));
       expect(
-        sender.messages.last.text.indexOf('@runner_cancelled'),
-        greaterThan(sender.messages.last.text.indexOf('@nudden')),
+        sender.lastContentMessage.text.indexOf('@runner_cancelled'),
+        greaterThan(sender.lastContentMessage.text.indexOf('@nudden')),
       );
-      expect(sender.messages.last.text, isNot(contains('Old Run')));
-      expect(sender.messages.last.text, isNot(contains('@runner_archived (Оплачено ✅)')));
-      expect(sender.messages.last.text, isNot(contains('@runner_rejected')));
+      expect(sender.lastContentMessage.text, isNot(contains('Old Run')));
+      expect(sender.lastContentMessage.text, isNot(contains('@runner_archived (Оплачено ✅)')));
+      expect(sender.lastContentMessage.text, isNot(contains('@runner_rejected')));
     });
 
     test('shows yoga participants list directly for yoga trainer role', () async {
@@ -4253,7 +4249,7 @@ void main() {
       });
 
       expect(categoryHandled, isTrue);
-      final messageText = sender.messages.last.text;
+      final messageText = sender.lastContentMessage.text;
       expect(RegExp('🥾 Поход: DVORCAMP').allMatches(messageText).length, 1);
       expect(messageText, contains('🕒 03.07.2030'));
       expect(messageText, isNot(contains('🕒 02.07.2030')));
@@ -4351,7 +4347,7 @@ void main() {
       });
 
       expect(categoryHandled, isTrue);
-      final messageText = sender.messages.last.text;
+      final messageText = sender.lastContentMessage.text;
       expect(RegExp('🏃 Трейл: Лаго-Наки').allMatches(messageText).length, 1);
       expect(messageText, contains('🕒 12.08.2026'));
       expect(messageText, isNot(contains('🕒 10.08.2026')));
@@ -4433,7 +4429,7 @@ void main() {
       });
 
       expect(categoryHandled, isTrue);
-      final messageText = sender.messages.last.text;
+      final messageText = sender.lastContentMessage.text;
       expect(messageText, contains('@hike_user'));
       expect(messageText, contains('🧑‍🏫 Тренеры:'));
       expect(messageText, contains('@whatshapped'));
@@ -4516,7 +4512,7 @@ void main() {
       });
 
       expect(categoryHandled, isTrue);
-      final messageText = sender.messages.last.text;
+      final messageText = sender.lastContentMessage.text;
       expect(RegExp('Функционалка').allMatches(messageText).length, 1);
       expect(messageText, contains('🕒 02.09.2026 19:00'));
       expect(messageText, isNot(contains('🕒 01.09.2026 19:00')));
@@ -4664,7 +4660,7 @@ void main() {
       expect(handled, isTrue);
       expect(categoryHandled, isTrue);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages.last.text, contains('tg://user?id=7101'));
+      expect(sender.lastContentMessage.text, contains('tg://user?id=7101'));
     });
 
     test('opens admin booking management menu', () async {
@@ -4734,12 +4730,12 @@ void main() {
       });
 
       expect(firstPageHandled, isTrue);
-      expect(sender.messages.last.text, contains('Страница <b>1/2</b>'));
-      expect(sender.messages.last.text, contains('Записи на текущей странице'));
-      expect(sender.messages.last.text, contains('1. #601 Morning Run 1'));
-      expect(sender.messages.last.text, contains('8. #608 Morning Run 8'));
-      expect(sender.messages.last.text, isNot(contains('#609 Morning Run 9')));
-      final firstPageButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Страница <b>1/2</b>'));
+      expect(sender.lastContentMessage.text, contains('Записи на текущей странице'));
+      expect(sender.lastContentMessage.text, contains('1. #601 Morning Run 1'));
+      expect(sender.lastContentMessage.text, contains('8. #608 Morning Run 8'));
+      expect(sender.lastContentMessage.text, isNot(contains('#609 Morning Run 9')));
+      final firstPageButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(firstPageButtons, contains('🧾 #601 Morning Run 1'));
       expect(firstPageButtons, contains('🧾 #608 Morning Run 8'));
       expect(firstPageButtons, isNot(contains('🧾 #609 Morning Run 9')));
@@ -4753,10 +4749,10 @@ void main() {
       });
 
       expect(secondPageHandled, isTrue);
-      expect(sender.messages.last.text, contains('Страница <b>2/2</b>'));
-      expect(sender.messages.last.text, contains('1. #609 Morning Run 9'));
-      expect(sender.messages.last.text, isNot(contains('#608 Morning Run 8')));
-      final secondPageButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Страница <b>2/2</b>'));
+      expect(sender.lastContentMessage.text, contains('1. #609 Morning Run 9'));
+      expect(sender.lastContentMessage.text, isNot(contains('#608 Morning Run 8')));
+      final secondPageButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(secondPageButtons, contains('🧾 #609 Morning Run 9'));
       expect(secondPageButtons, contains(MessageTemplates.buttonBookingsPreviousPage));
       expect(secondPageButtons, isNot(contains(MessageTemplates.buttonBookingsNextPage)));
@@ -4820,10 +4816,10 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Future Run'));
-      expect(sender.messages.last.text, isNot(contains('Past Run')));
-      expect(sender.messages.last.text, isNot(contains('Cancelled Run')));
-      expect(sender.messages.last.text, contains('всего записей: <b>1</b>'));
+      expect(sender.lastContentMessage.text, contains('Future Run'));
+      expect(sender.lastContentMessage.text, isNot(contains('Past Run')));
+      expect(sender.lastContentMessage.text, isNot(contains('Cancelled Run')));
+      expect(sender.lastContentMessage.text, contains('всего записей: <b>1</b>'));
     });
 
     test('archives selected booking from admin management flow', () async {
@@ -4899,7 +4895,7 @@ void main() {
       final userNotification = sender.messages.firstWhere((message) => message.chatId == 9001).text;
       expect(userNotification, contains('запись #501 отменил администратор'));
       expect(userNotification, contains('@dvor_support'));
-      expect(sender.messages.last.text, contains('переведена в архив'));
+      expect(sender.lastContentMessage.text, contains('переведена в архив'));
     });
 
     test('reports client notification failure reason to admin', () async {
@@ -5047,7 +5043,7 @@ void main() {
       expect(handled, isTrue);
       expect(notifyHandled, isTrue);
       expect(bookingRepository.adminBookings.single.status, BookingStatus.pendingPayment);
-      expect(sender.messages.last.text, contains('восстановлена'));
+      expect(sender.lastContentMessage.text, contains('восстановлена'));
     });
 
     test('shows conflict message when admin edit collides with existing booking', () async {
@@ -5118,7 +5114,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('уже есть запись на выбранное мероприятие'));
+      expect(sender.lastContentMessage.text, contains('уже есть запись на выбранное мероприятие'));
     });
 
     test('creates booking from admin wizard', () async {
@@ -5183,7 +5179,7 @@ void main() {
       expect(bookingRepository.adminBookings, hasLength(1));
       expect(bookingRepository.adminBookings.single.userUsername, 'new_runner');
       expect(bookingRepository.adminBookings.single.status, BookingStatus.freeTraining);
-      expect(sender.messages.last.text, contains('создана'));
+      expect(sender.lastContentMessage.text, contains('создана'));
     });
 
     test('shows conflict message when admin create booking throws', () async {
@@ -5241,7 +5237,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.adminBookings, isEmpty);
-      expect(sender.messages.last.text, contains('уже есть запись на выбранное мероприятие'));
+      expect(sender.lastContentMessage.text, contains('уже есть запись на выбранное мероприятие'));
     });
 
     test('notifies user and admin chat on approve payment', () async {
@@ -5354,17 +5350,18 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(3));
+      expect(sender.messages, hasLength(4));
       expect(sender.messages[0].chatId, 1);
       expect(sender.messages[0].text, contains('отклонили'));
       expect(
         _keyboardTexts(sender.messages[0].replyMarkup),
         contains(MessageTemplates.buttonSubmitPayment),
       );
-      expect(sender.messages[1].chatId, -100556);
-      expect(sender.messages[1].text, contains('Проверил админ: @moderator_anna (1950)'));
-      expect(sender.messages[2].chatId, 1950);
-      expect(sender.messages[2].text, contains('Статус записи #22 обновлен'));
+      expect(sender.messages[1].text, FakeSender.navHintText);
+      expect(sender.messages[2].chatId, -100556);
+      expect(sender.messages[2].text, contains('Проверил админ: @moderator_anna (1950)'));
+      expect(sender.messages[3].chatId, 1950);
+      expect(sender.messages[3].text, contains('Статус записи #22 обновлен'));
       expect(sender.answeredCallbacks, hasLength(1));
       expect(sender.answeredCallbacks.single.callbackQueryId, 'cbq-1');
     });
@@ -5406,7 +5403,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(bookingRepository.lastSubmittedBookingId, 880);
-      expect(sender.messages.last.text, contains('отправил администратору'));
+      expect(sender.lastContentMessage.text, contains('отправил администратору'));
     });
 
     test('submits outdoor payment proof even when leftover outdoor detail flow is active',
@@ -5472,7 +5469,7 @@ void main() {
         'from': <String, dynamic>{'id': 28810, 'username': 'eseniya'},
         'text': '🎯 1. 🥾 Поход: КАНЬОН РЕКИ БЕШЕНКА 2',
       });
-      expect(sender.messages.last.text, contains('Выбери действие'));
+      expect(sender.lastContentMessage.text, contains('Выбери действие'));
 
       final handled = await handlers.handle(<String, dynamic>{
         'message': <String, dynamic>{
@@ -5485,8 +5482,8 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 0);
-      expect(sender.messages.last.text, contains('Чек уже получил'));
-      expect(_keyboardTexts(sender.messages.last.replyMarkup),
+      expect(sender.lastContentMessage.text, contains('Чек уже получил'));
+      expect(_keyboardTexts(sender.lastContentMessage.replyMarkup),
           contains(MessageTemplates.buttonPayPartially));
 
       final submitHandled = await handlers.handle(<String, dynamic>{
@@ -5497,7 +5494,7 @@ void main() {
       expect(submitHandled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(bookingRepository.lastSubmittedBookingId, 8810);
-      expect(sender.messages.last.text, contains('отправил администратору'));
+      expect(sender.lastContentMessage.text, contains('отправил администратору'));
     });
 
     test('keeps all managed party participants visible in outdoor participants list', () async {
@@ -5589,7 +5586,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      final messageText = sender.messages.last.text;
+      final messageText = sender.lastContentMessage.text;
       expect(messageText, contains('@nikita_medvedev (через @katya)'));
       expect(messageText, contains('Третий Человек'));
       expect(messageText, contains('Ещё Гость'));
@@ -5660,7 +5657,7 @@ void main() {
       expect(handled, isTrue);
       // Outdoor proof is stashed until the user picks full/partial payment.
       expect(bookingRepository.submitCalls, 0);
-      expect(sender.messages.last.text, contains('Чек уже получил'));
+      expect(sender.lastContentMessage.text, contains('Чек уже получил'));
 
       final submitHandled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 2881, 'type': 'private'},
@@ -5670,7 +5667,7 @@ void main() {
       expect(submitHandled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(bookingRepository.lastSubmittedBookingId, 881);
-      expect(sender.messages.last.text, contains('отправил администратору'));
+      expect(sender.lastContentMessage.text, contains('отправил администратору'));
     });
 
     test('handles partial payment moderation callback buttons for admin', () async {
@@ -5801,8 +5798,8 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages.any((message) => message.text.contains('Не понял выбор')), isFalse);
-      expect(sender.messages.last.chatId, 1951);
-      expect(sender.messages.last.text, contains('Статус записи #23 обновлен'));
+      expect(sender.lastContentMessage.chatId, 1951);
+      expect(sender.lastContentMessage.text, contains('Статус записи #23 обновлен'));
     });
 
     test('shows outdoor payment choice buttons in payment flow', () async {
@@ -5834,7 +5831,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPayPartially));
       expect(buttons, contains(MessageTemplates.buttonPayFully));
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
@@ -5869,7 +5866,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Не нашел активной записи'));
+      expect(sender.lastContentMessage.text, contains('Не нашел активной записи'));
     });
 
     test('prefers pending training over earlier partial paid hike on Я оплатил', () async {
@@ -5912,11 +5909,11 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
-      expect(sender.messages.last.text, isNot(contains('OUTDVOR')));
-      expect(sender.messages.last.text, isNot(contains('доплатить остаток')));
-      expect(sender.messages.last.text, isNot(contains('офлайн')));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Реквизиты для оплаты'));
+      expect(sender.lastContentMessage.text, isNot(contains('OUTDVOR')));
+      expect(sender.lastContentMessage.text, isNot(contains('доплатить остаток')));
+      expect(sender.lastContentMessage.text, isNot(contains('офлайн')));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonSubmitPayment));
       expect(buttons, isNot(contains(MessageTemplates.buttonPayPartially)));
     });
@@ -5957,8 +5954,8 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('несколько записей'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('несколько записей'));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons.any((item) => item.contains('#101')), isTrue);
       expect(buttons.any((item) => item.contains('#102')), isTrue);
     });
@@ -6007,9 +6004,9 @@ void main() {
 
       expect(handled, isTrue);
       // Pinned training #722, not the newer outdoor pending #100.
-      expect(sender.messages.last.text, contains('Реквизиты для оплаты'));
-      expect(sender.messages.last.text, isNot(contains('OUTDVOR')));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Реквизиты для оплаты'));
+      expect(sender.lastContentMessage.text, isNot(contains('OUTDVOR')));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, isNot(contains(MessageTemplates.buttonPayPartially)));
       expect(sender.answeredCallbacks, hasLength(1));
     });
@@ -6047,9 +6044,9 @@ void main() {
         'text': '🧾 #932 🥾 Поход: Архыз',
       });
 
-      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final actionButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(actionButtons, isNot(contains(MessageTemplates.buttonCompletePayment)));
-      expect(sender.messages.last.text, contains('офлайн'));
+      expect(sender.lastContentMessage.text, contains('офлайн'));
     });
 
     test('repeat booking action opens booking flow for same category', () async {
@@ -6096,7 +6093,7 @@ void main() {
         'text': '🧾 #901 🥾 Поход: Архыз',
       });
 
-      final actionButtons = _keyboardTexts(sender.messages.last.replyMarkup);
+      final actionButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(actionButtons, contains(MessageTemplates.buttonRepeatBooking));
 
       final handled = await handlers.handle(<String, dynamic>{
@@ -6106,9 +6103,9 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Выбери мероприятие для записи'));
-      expect(sender.messages.last.text, contains('1. 🥾 Поход: Архыз выходные'));
-      final buttons = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Выбери мероприятие для записи'));
+      expect(sender.lastContentMessage.text, contains('1. 🥾 Поход: Архыз выходные'));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains('🎯 1. 🥾 Поход: Архыз выходные'));
     });
 
@@ -6153,8 +6150,8 @@ void main() {
         'text': MessageTemplates.buttonSummaryPreviousWeek,
       });
       expect(sendHandled, isTrue);
-      expect(sender.messages.last.text, contains('Экономическая сводка'));
-      expect(sender.messages.last.text, contains('Финансы:'));
+      expect(sender.lastContentMessage.text, contains('Экономическая сводка'));
+      expect(sender.lastContentMessage.text, contains('Финансы:'));
     });
 
     test('supports economic summary command with period argument', () async {
@@ -6251,7 +6248,7 @@ void main() {
         userId: 3101,
       );
 
-      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      final keyboard = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(keyboard, contains(MessageTemplates.buttonEnterPromoCode));
     });
 
@@ -6272,8 +6269,8 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Введи текст промокода'));
-      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Введи текст промокода'));
+      final keyboard = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(keyboard, contains(MessageTemplates.buttonBack));
     });
 
@@ -6307,10 +6304,10 @@ void main() {
       expect(bookingRepository.lastPromoCode, 'SUMMER50');
       expect(bookingRepository.lastPromoDiscountPercent, 50);
       expect(bookingRepository.lastPromoDiscountedPrice, 750);
-      expect(sender.messages.last.text, contains('SUMMER50'));
-      expect(sender.messages.last.text, contains('−50%'));
+      expect(sender.lastContentMessage.text, contains('SUMMER50'));
+      expect(sender.lastContentMessage.text, contains('−50%'));
 
-      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      final keyboard = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(keyboard, isNot(contains(MessageTemplates.buttonEnterPromoCode)));
     });
 
@@ -6342,7 +6339,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.lastPromoDiscountedPrice, 0);
-      expect(sender.messages.last.text, contains('бесплатна'));
+      expect(sender.lastContentMessage.text, contains('бесплатна'));
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100999).text;
       expect(adminMessage, contains('Применен промокод'));
     });
@@ -6369,8 +6366,8 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('Такого промокода не нашел'));
-      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('Такого промокода не нашел'));
+      final keyboard = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(keyboard, contains(MessageTemplates.buttonEnterPromoCode));
     });
 
@@ -6403,7 +6400,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.last.text, contains('не действует для выбранного типа'));
+      expect(sender.lastContentMessage.text, contains('не действует для выбранного типа'));
     });
 
     test('back button from promo code entry returns to payment confirmation', () async {
@@ -6428,7 +6425,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      final keyboard = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(keyboard, contains(MessageTemplates.buttonEnterPromoCode));
     });
 
@@ -6443,7 +6440,7 @@ void main() {
         price: 0,
       );
 
-      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      final keyboard = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(keyboard, isNot(contains(MessageTemplates.buttonEnterPromoCode)));
     });
 
@@ -6474,8 +6471,8 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.applyPromoCodeCalls, 0);
-      expect(sender.messages.last.text, contains('уже был использован'));
-      final keyboard = _keyboardTexts(sender.messages.last.replyMarkup);
+      expect(sender.lastContentMessage.text, contains('уже был использован'));
+      final keyboard = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(keyboard, contains(MessageTemplates.buttonEnterPromoCode));
     });
 
@@ -6506,7 +6503,7 @@ void main() {
 
       expect(handled, isTrue);
       expect(bookingRepository.applyPromoCodeCalls, 1);
-      expect(sender.messages.last.text, contains('ONCE'));
+      expect(sender.lastContentMessage.text, contains('ONCE'));
     });
   });
 
@@ -6560,7 +6557,7 @@ void main() {
         ),
         isTrue,
       );
-      expect(sender.messages.last.text, contains('Рассылка завершена'));
+      expect(sender.lastContentMessage.text, contains('Рассылка завершена'));
     });
 
     test('broadcasts a photo album after media group is collected', () async {

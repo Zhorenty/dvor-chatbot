@@ -17,15 +17,22 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       if (userId == null) {
         return false;
       }
-      final targetBooking = flowState?.step == _PrivateFlowStep.paymentConfirmation
-          ? flowState?.activeBooking
-          : await _resolveLatestPendingPaymentBooking(userId);
+      TrainingBooking? targetBooking;
+      if (flowState?.step == _PrivateFlowStep.paymentConfirmation) {
+        targetBooking = flowState?.activeBooking;
+      } else if (flowState?.step == _PrivateFlowStep.selectingBookingAction ||
+          flowState?.step == _PrivateFlowStep.confirmingBookingCancel) {
+        targetBooking = flowState?.selectedBooking;
+      }
       if (targetBooking == null) {
         await _sender.sendMessage(
           chatId,
-          _templates.noPendingPayment(),
+          'Чтобы отменить запись, открой её в «${MessageTemplates.buttonProfile}» → '
+          '«${MessageTemplates.buttonProfileBookings}».',
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+          ),
         );
         return true;
       }
@@ -58,12 +65,7 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         selectedBooking: targetBooking,
         activeBooking: targetBooking,
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.bookingCancelConfirm(targetBooking),
-        replyMarkup: _templates.bookingCancelConfirmKeyboard(),
-        parseMode: 'HTML',
-      );
+      await _sendBookingCancelConfirmCard(chatId: chatId, booking: targetBooking);
       return true;
     }
 
@@ -108,19 +110,13 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       final needsPaymentChoice = activeBooking != null &&
           _shouldShowOutdoorPaymentTypeChoice(activeBooking) &&
           flowState?.paymentChoice == null;
-      await _sender.sendMessage(
-        chatId,
-        needsPaymentChoice
+      await _sendPaymentFlowRePrompt(
+        chatId: chatId,
+        flowState: flowState!,
+        text: needsPaymentChoice
             ? _templates.chooseOutdoorPaymentType()
             : _templates.paymentProofRequired(),
         parseMode: needsPaymentChoice ? 'HTML' : null,
-        replyMarkup: _templates.paymentConfirmationKeyboard(
-          showStarterBonus: flowState?.starterBonusOffered ?? false,
-          showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
-          showOutdoorPaymentTypeChoice:
-              activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-          showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-        ),
       );
       return true;
     }
@@ -134,16 +130,10 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       }
       final activeBooking = flowState.activeBooking;
       if (!_shouldShowPromoCodeEntry(activeBooking)) {
-        await _sender.sendMessage(
-          chatId,
-          _templates.promoCodeUnavailable(),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: flowState.starterBonusOffered,
-            showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
-            showOutdoorPaymentTypeChoice:
-                activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-          ),
+        await _sendPaymentFlowRePrompt(
+          chatId: chatId,
+          flowState: flowState,
+          text: _templates.promoCodeUnavailable(),
         );
         return true;
       }
@@ -179,31 +169,21 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       final category = _catalogService.categoryForBooking(activeBooking);
       if (promo == null || !promo.appliesTo(category)) {
         _flowByUserId[userId] = currentFlow.copyWith(step: _PrivateFlowStep.paymentConfirmation);
-        await _sender.sendMessage(
-          chatId,
-          promo == null
+        await _sendPaymentFlowRePrompt(
+          chatId: chatId,
+          flowState: currentFlow,
+          text: promo == null
               ? _templates.promoCodeInvalid()
               : _templates.promoCodeNotApplicableToCategory(),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: currentFlow.starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
-            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-          ),
         );
         return true;
       }
       if (promo.singleUse && await _bookingRepository.isPromoCodeUsed(promo.code, userId)) {
         _flowByUserId[userId] = currentFlow.copyWith(step: _PrivateFlowStep.paymentConfirmation);
-        await _sender.sendMessage(
-          chatId,
-          _templates.promoCodeAlreadyUsed(),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: currentFlow.starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
-            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-          ),
+        await _sendPaymentFlowRePrompt(
+          chatId: chatId,
+          flowState: currentFlow,
+          text: _templates.promoCodeAlreadyUsed(),
         );
         return true;
       }
@@ -219,15 +199,10 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       );
       if (updatedBooking == null) {
         _flowByUserId[userId] = currentFlow.copyWith(step: _PrivateFlowStep.paymentConfirmation);
-        await _sender.sendMessage(
-          chatId,
-          _templates.promoCodeInvalid(),
-          replyMarkup: _templates.paymentConfirmationKeyboard(
-            showStarterBonus: currentFlow.starterBonusOffered,
-            showCancelBooking: _canCancelBookingByPolicy(activeBooking),
-            showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-            showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-          ),
+        await _sendPaymentFlowRePrompt(
+          chatId: chatId,
+          flowState: currentFlow,
+          text: _templates.promoCodeInvalid(),
         );
         return true;
       }
@@ -251,16 +226,12 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         step: _PrivateFlowStep.paymentConfirmation,
         activeBooking: updatedBooking,
       );
-      await _sender.sendMessage(
-        chatId,
-        _templates.promoCodeApplied(updatedBooking, originalPrice: originalPrice),
+      await _sendPayableBookingCard(
+        chatId: chatId,
+        booking: updatedBooking,
+        text: _templates.promoCodeApplied(updatedBooking, originalPrice: originalPrice),
+        showStarterBonus: currentFlow.starterBonusOffered,
         parseMode: 'HTML',
-        replyMarkup: _templates.paymentConfirmationKeyboard(
-          showStarterBonus: currentFlow.starterBonusOffered,
-          showCancelBooking: _canCancelBookingByPolicy(updatedBooking),
-          showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(updatedBooking),
-          showPromoCodeEntry: _shouldShowPromoCodeEntry(updatedBooking),
-        ),
       );
       return true;
     }
@@ -273,19 +244,13 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       final needsPaymentChoice = activeBooking != null &&
           _shouldShowOutdoorPaymentTypeChoice(activeBooking) &&
           flowState.paymentChoice == null;
-      await _sender.sendMessage(
-        chatId,
-        needsPaymentChoice
+      await _sendPaymentFlowRePrompt(
+        chatId: chatId,
+        flowState: flowState,
+        text: needsPaymentChoice
             ? _templates.chooseOutdoorPaymentType()
             : _templates.paymentProofRequired(),
         parseMode: needsPaymentChoice ? 'HTML' : null,
-        replyMarkup: _templates.paymentConfirmationKeyboard(
-          showStarterBonus: flowState.starterBonusOffered,
-          showCancelBooking: activeBooking != null && _canCancelBookingByPolicy(activeBooking),
-          showOutdoorPaymentTypeChoice:
-              activeBooking != null && _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-          showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-        ),
       );
       return true;
     }

@@ -109,6 +109,19 @@ final class LoggingMessageSender implements MessageSender {
     );
   }
 
+  @override
+  Future<void> editMessageReplyMarkup(
+    int chatId, {
+    required int messageId,
+    Map<String, Object?>? replyMarkup,
+  }) {
+    return _inner.editMessageReplyMarkup(
+      chatId,
+      messageId: messageId,
+      replyMarkup: replyMarkup,
+    );
+  }
+
   Future<void> _safeAppend({
     required int chatId,
     required int telegramMessageId,

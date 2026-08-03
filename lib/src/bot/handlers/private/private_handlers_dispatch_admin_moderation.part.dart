@@ -58,6 +58,24 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
           bookingStatus: booking.status,
         );
       }
+      final successInlineMarkup = reviewResult.outcome == PaymentReviewOutcome.success &&
+              remainingInCategory > 0 &&
+              category != null
+          ? _templates.nextPaymentInQueueInlineKeyboard(
+              category: category,
+              remaining: remainingInCategory,
+            )
+          : reviewResult.outcome == PaymentReviewOutcome.success
+              ? _templates.openPaymentsQueueInlineKeyboard(total: queueCounters.total)
+              : null;
+      if (ctx.callbackMessage != null) {
+        // editMessageReplyMarkup accepts only inline keyboards.
+        await _refreshCallbackMessageMarkup(
+          ctx: ctx,
+          replyMarkup:
+              successInlineMarkup ?? const <String, Object?>{'inline_keyboard': <Object>[]},
+        );
+      }
       await _sendAdminMessage(
         chatId,
         switch (reviewResult.outcome) {
@@ -68,17 +86,11 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
           PaymentReviewOutcome.notFound => _templates.bookingNotFound(bookingId),
           PaymentReviewOutcome.invalidStatus => _templates.paymentAlreadyReviewed(bookingId),
         },
-        replyMarkup: reviewResult.outcome == PaymentReviewOutcome.success &&
-                remainingInCategory > 0 &&
-                category != null
-            ? _templates.nextPaymentInQueueInlineKeyboard(
-                category: category,
-                remaining: remainingInCategory,
-              )
-            : reviewResult.outcome == PaymentReviewOutcome.success
-                ? _templates.openPaymentsQueueInlineKeyboard(total: queueCounters.total)
-                : _templates.privateMenuKeyboard(
-                    isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        replyMarkup: successInlineMarkup ??
+            _templates.privateMenuKeyboard(
+              isAdmin: isAdmin,
+              showReturnToAdminMenu: showReturnToAdminMenu,
+            ),
       );
       return true;
     }

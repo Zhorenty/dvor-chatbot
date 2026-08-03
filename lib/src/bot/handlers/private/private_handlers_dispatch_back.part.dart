@@ -211,15 +211,10 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             return true;
           }
           _flowByUserId[userId] = flowState.copyWith(step: _PrivateFlowStep.paymentConfirmation);
-          await _sender.sendMessage(
-            chatId,
-            _templates.paymentProofRequired(),
-            replyMarkup: _templates.paymentConfirmationKeyboard(
-              showStarterBonus: flowState.starterBonusOffered,
-              showCancelBooking: _canCancelBookingByPolicy(activeBooking),
-              showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(activeBooking),
-              showPromoCodeEntry: _shouldShowPromoCodeEntry(activeBooking),
-            ),
+          await _sendPaymentFlowRePrompt(
+            chatId: chatId,
+            flowState: flowState,
+            text: _templates.paymentProofRequired(),
           );
           return true;
         case _PrivateFlowStep.confirmingSubscriptionPayment:
@@ -280,11 +275,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           }
           _flowByUserId[userId] =
               flowState!.copyWith(step: _PrivateFlowStep.selectingBookingAction);
-          await _sender.sendMessage(
-            chatId,
-            _templates.bookingActions(selectedBooking),
-            replyMarkup: _bookingActionsKeyboard(selectedBooking),
-          );
+          await _sendBookingActionsCard(chatId: chatId, booking: selectedBooking);
           return true;
         case _PrivateFlowStep.selectingBookingToManage:
           await _openMyBookingListSegment(chatId: chatId, userId: userId);
@@ -303,11 +294,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           }
           _flowByUserId[userId] =
               flowState!.copyWith(step: _PrivateFlowStep.selectingBookingAction);
-          await _sender.sendMessage(
-            chatId,
-            _templates.bookingActions(selectedBooking),
-            replyMarkup: _bookingActionsKeyboard(selectedBooking),
-          );
+          await _sendBookingActionsCard(chatId: chatId, booking: selectedBooking);
           return true;
         case _PrivateFlowStep.selectingAdminBookingManagementAction:
         case _PrivateFlowStep.selectingAdminToolsAction:
@@ -380,11 +367,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           }
           _flowByUserId[userId] =
               flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingAction);
-          await _sender.sendMessage(
-            chatId,
-            _templates.adminBookingActions(selectedBooking),
-            replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
-          );
+          await _sendAdminBookingActionsCard(chatId: chatId, booking: selectedBooking);
           return true;
         case _PrivateFlowStep.selectingAdminBookingEditStatus:
         case _PrivateFlowStep.enteringAdminBookingUsername:
@@ -422,11 +405,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           }
           _flowByUserId[userId] =
               flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingAction);
-          await _sender.sendMessage(
-            chatId,
-            _templates.adminBookingActions(selectedBooking),
-            replyMarkup: _adminBookingActionsKeyboard(selectedBooking),
-          );
+          await _sendAdminBookingActionsCard(chatId: chatId, booking: selectedBooking);
           return true;
         case _PrivateFlowStep.selectingAdminCreateCategory:
           _flowByUserId[userId] = const _PrivateFlowState(

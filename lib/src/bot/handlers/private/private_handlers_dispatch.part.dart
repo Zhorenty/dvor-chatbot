@@ -135,6 +135,7 @@ extension PrivateHandlersDispatch on PrivateHandlers {
       paymentProof: paymentProof,
       username: username,
       message: context.message,
+      callbackMessage: context.callbackMessage,
     );
 
     if (await _dispatchBackNavigation(request)) {

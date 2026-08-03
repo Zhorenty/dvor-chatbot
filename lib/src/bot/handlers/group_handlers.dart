@@ -344,6 +344,7 @@ final class GroupHandlers {
         ),
         disableNotification: true,
         parseMode: 'HTML',
+        replyMarkup: _templates.groupWelcomeUrlKeyboard(),
       );
       await _onboardingRepository.registerGroupWelcome(
         userId: userId,

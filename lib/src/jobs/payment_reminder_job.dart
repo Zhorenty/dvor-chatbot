@@ -40,7 +40,7 @@ final class PaymentReminderJob {
           await _sender.sendMessage(
             booking.userId,
             _templates.pendingPaymentExpired(booking),
-            replyMarkup: _templates.simpleNavigationKeyboard(),
+            replyMarkup: _templates.ctaBookInlineKeyboard(),
           );
         } on Object catch (error, stackTrace) {
           l.w(

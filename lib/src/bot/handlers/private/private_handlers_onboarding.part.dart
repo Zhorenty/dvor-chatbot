@@ -225,6 +225,43 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     required bool isAdmin,
     required bool showReturnToAdminMenu,
   }) async {
+    if (text.startsWith('/feedback_skip ')) {
+      final bookingId = _updateRouter.parseCommandId(text);
+      if (bookingId != null) {
+        await _ensureTrainingFeedbackFlow(userId: userId, bookingId: bookingId);
+        return _handleTrainingFeedbackFlow(
+          text: MessageTemplates.buttonFeedbackSkip,
+          chatId: chatId,
+          userId: userId,
+          isAdmin: isAdmin,
+          showReturnToAdminMenu: showReturnToAdminMenu,
+        );
+      }
+    }
+    if (text.startsWith('/feedback_rate ')) {
+      final parts = text.trim().split(RegExp(r'\s+'));
+      if (parts.length >= 3) {
+        final bookingId = int.tryParse(parts[1]);
+        final rating = TrainingFeedbackRatingX.tryParse(parts[2]);
+        if (bookingId != null && rating != null) {
+          await _ensureTrainingFeedbackFlow(userId: userId, bookingId: bookingId);
+          final ratingText = switch (rating) {
+            TrainingFeedbackRating.great => MessageTemplates.buttonFeedbackGreat,
+            TrainingFeedbackRating.ok => MessageTemplates.buttonFeedbackOk,
+            TrainingFeedbackRating.weak => MessageTemplates.buttonFeedbackWeak,
+            TrainingFeedbackRating.skipped => MessageTemplates.buttonFeedbackSkip,
+          };
+          return _handleTrainingFeedbackFlow(
+            text: ratingText,
+            chatId: chatId,
+            userId: userId,
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+          );
+        }
+      }
+    }
+
     final flow = _flowByUserId[userId];
     final step = flow?.step;
     if (step == PrivateFlowStep.awaitingTrainingFeedbackRating) {
@@ -236,12 +273,15 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         _ => null,
       };
       if (rating == null) {
+        final bookingId = flow?.feedbackBookingId;
         await _sender.sendMessage(
           chatId,
           _templates.trainingFeedbackAsk(
             trainingTitle: flow?.feedbackTrainingTitle ?? 'тренировка',
           ),
-          replyMarkup: _templates.trainingFeedbackKeyboard(),
+          replyMarkup: bookingId == null
+              ? _templates.trainingFeedbackKeyboard()
+              : _templates.trainingFeedbackInlineKeyboard(bookingId),
         );
         return true;
       }
@@ -435,5 +475,35 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
       return ConversationContentType.document;
     }
     return ConversationContentType.other;
+  }
+
+  Future<void> _ensureTrainingFeedbackFlow({
+    required int userId,
+    required int bookingId,
+  }) async {
+    final flow = _flowByUserId[userId];
+    if (flow?.step == PrivateFlowStep.awaitingTrainingFeedbackRating &&
+        flow?.feedbackBookingId == bookingId) {
+      return;
+    }
+    final request = await _onboardingRepository.getTrainingFeedbackRequest(bookingId);
+    if (request != null && request.userId == userId) {
+      beginTrainingFeedbackFlow(
+        userId: userId,
+        bookingId: request.bookingId,
+        sessionKey: request.sessionKey,
+        trainingTitle: request.trainingTitle,
+      );
+      return;
+    }
+    final booking = await _findUserBooking(userId, bookingId);
+    if (booking != null) {
+      beginTrainingFeedbackFlow(
+        userId: userId,
+        bookingId: booking.id,
+        sessionKey: booking.trainingKey,
+        trainingTitle: booking.trainingTitle,
+      );
+    }
   }
 }

@@ -367,6 +367,13 @@ final class _FakeSender implements MessageSender {
   }) async {
     throw UnimplementedError('answerCallbackQuery is not used in group handlers tests');
   }
+
+  @override
+  Future<void> editMessageReplyMarkup(
+    int chatId, {
+    required int messageId,
+    Map<String, Object?>? replyMarkup,
+  }) async {}
 }
 
 final class _SentMessage {

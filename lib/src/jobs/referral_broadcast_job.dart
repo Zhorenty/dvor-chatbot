@@ -53,6 +53,7 @@ final class ReferralBroadcastJob {
         text: _templates.groupReferralBroadcast(),
         parseMode: 'HTML',
         disableWebPagePreview: true,
+        replyMarkup: _templates.groupBookUrlKeyboard(),
       );
       if (!sent) {
         _releaseBroadcast(broadcastKey);

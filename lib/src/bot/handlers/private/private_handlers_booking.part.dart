@@ -148,26 +148,22 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         : '<b>Что дальше:</b>\n'
             '1) Оплати полную сумму за группу.\n'
             '2) Нажми «${MessageTemplates.buttonSubmitPayment}» и отправь файл чека в этот чат 📎';
-    await _sender.sendMessage(
-      chatId,
-      '${_templates.bookingGroupCreated(
+    await _sendPayableBookingCard(
+      chatId: chatId,
+      booking: first,
+      text: '${_templates.bookingGroupCreated(
         bookings: group.bookings,
         unitPrice: unitPrice,
         totalPrice: totalPrice,
       )}\n\n'
-      '${_templates.paymentInstructionsForGroup(
+          '${_templates.paymentInstructionsForGroup(
         booking: first,
         participantsCount: group.bookings.length,
         unitPrice: unitPrice,
         totalPrice: totalPrice,
       )}\n\n'
-      '$nextSteps',
-      replyMarkup: _templates.paymentConfirmationKeyboard(
-        showStarterBonus: false,
-        showCancelBooking: _canCancelBookingByPolicy(first),
-        showOutdoorPaymentTypeChoice: outdoorPaymentChoice,
-        showPromoCodeEntry: false,
-      ),
+          '$nextSteps',
+      showStarterBonus: false,
       parseMode: 'HTML',
     );
   }
@@ -292,17 +288,13 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         parseMode: 'HTML',
       );
     }
-    await _sender.sendMessage(
-      chatId,
-      result.created
+    await _sendPayableBookingCard(
+      chatId: chatId,
+      booking: result.booking,
+      text: result.created
           ? _templates.bookingCreated(result.booking)
           : _templates.bookingAlreadyExists(result.booking),
-      replyMarkup: _templates.paymentConfirmationKeyboard(
-        showStarterBonus: starterBonusOffered,
-        showCancelBooking: _canCancelBookingByPolicy(result.booking),
-        showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(result.booking),
-        showPromoCodeEntry: _shouldShowPromoCodeEntry(result.booking),
-      ),
+      showStarterBonus: starterBonusOffered,
       parseMode: 'HTML',
     );
   }
@@ -511,18 +503,63 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     return _bookingPolicyService.isOutdoorCategory(category);
   }
 
-  Map<String, Object?> _bookingActionsKeyboard(TrainingBooking? booking) {
+  Map<String, Object?> _bookingActionsInlineKeyboard(TrainingBooking? booking) {
     if (booking == null) {
       return _templates.simpleNavigationKeyboard();
     }
     final canContinuePayment = _isPayableForProof(booking);
-    return _templates.bookingActionsKeyboard(
+    return _templates.bookingActionsInlineKeyboard(
+      bookingId: booking.id,
       canReschedule: _bookingPolicyService.canReschedule(booking),
       canCancel: _canCancelBookingByPolicy(booking),
       canRepeat: !canContinuePayment && booking.status != BookingStatus.partialPaid,
       canCompletePayment: false,
       canContinuePayment: canContinuePayment,
     );
+  }
+
+  Future<void> _sendBookingActionsCard({
+    required int chatId,
+    required TrainingBooking booking,
+  }) async {
+    await _sender.sendMessage(
+      chatId,
+      _templates.bookingActions(booking),
+      replyMarkup: _bookingActionsInlineKeyboard(booking),
+      parseMode: 'HTML',
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.paymentCardNavHint(),
+      replyMarkup: _templates.simpleNavigationKeyboard(),
+    );
+  }
+
+  Future<void> _sendBookingCancelConfirmCard({
+    required int chatId,
+    required TrainingBooking booking,
+  }) async {
+    await _sender.sendMessage(
+      chatId,
+      _templates.bookingCancelConfirm(booking),
+      replyMarkup: _templates.bookingCancelConfirmInlineKeyboard(booking.id),
+      parseMode: 'HTML',
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.paymentCardNavHint(),
+      replyMarkup: _templates.simpleNavigationKeyboard(),
+    );
+  }
+
+  Future<TrainingBooking?> _findUserBooking(int userId, int bookingId) async {
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 100);
+    for (final booking in bookings) {
+      if (booking.id == bookingId) {
+        return booking;
+      }
+    }
+    return null;
   }
 
   Future<void> _maybeNotifyGroupAboutCapacity(

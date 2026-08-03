@@ -32,6 +32,7 @@ final class StarterBonusReminderJob {
           await _sender.sendMessage(
             target.userId,
             _templates.starterBonusExpiryReminder(expiresAt: target.expiresAt),
+            replyMarkup: _templates.ctaBookInlineKeyboard(),
           );
           await _onboardingRepository.markStarterBonusReminderSent(
             target.userId,

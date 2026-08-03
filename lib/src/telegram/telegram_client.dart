@@ -348,6 +348,22 @@ final class TelegramClient implements MessageSender {
     }
   }
 
+  @override
+  Future<void> editMessageReplyMarkup(
+    int chatId, {
+    required int messageId,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    await _post(
+      'editMessageReplyMarkup',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'message_id': messageId,
+        if (replyMarkup != null) 'reply_markup': replyMarkup,
+      },
+    );
+  }
+
   void close() {
     _httpClient.close();
   }

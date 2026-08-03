@@ -183,6 +183,14 @@ extension MessageTemplatesHelpers on MessageTemplates {
     return 'https://t.me/$botUsername?start=book';
   }
 
+  String? _botStartDeepLink() {
+    final botUsername = _botUsername;
+    if (botUsername == null || botUsername.isEmpty) {
+      return null;
+    }
+    return 'https://t.me/$botUsername?start=start';
+  }
+
   String? _botReferralLink(int userId) {
     final botUsername = _botUsername;
     if (botUsername == null || botUsername.isEmpty) {
