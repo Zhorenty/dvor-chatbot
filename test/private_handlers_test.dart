@@ -2320,6 +2320,58 @@ void main() {
       expect(adminNotify, contains('@unlock_user'));
     });
 
+    test('notifies admin when user opens a hike card from the list', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Поход на хребет',
+              dateFrom: DateTime(2026, 7, 13),
+              dateTo: DateTime(2026, 7, 14, 23, 59, 59),
+              location: 'Лаго-Наки, старт от кордона',
+              description: 'Ночевка в лагере',
+              price: 3200,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -1001621,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1621, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1621, 'username': 'curious_hiker'},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1621, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1621, 'username': 'curious_hiker'},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1621, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1621, 'username': 'curious_hiker'},
+        'text': '🎯 1. 🥾 Поход: Поход на хребет',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.createCalls, 0);
+      final adminNotify = sender.messages.firstWhere((message) => message.chatId == -1001621);
+      expect(adminNotify.text, contains('Кто-то заинтересовался походом'));
+      expect(adminNotify.text, contains('@curious_hiker'));
+      expect(adminNotify.text, contains('Поход на хребет'));
+      expect(adminNotify.text, contains('Лаго-Наки, старт от кордона'));
+      expect(sender.messages.last.chatId, 1621);
+      expect(sender.messages.last.text, contains('Выбери действие'));
+    });
+
     test('creates booking after selecting a hike category item', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();

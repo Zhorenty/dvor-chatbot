@@ -358,4 +358,27 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       l.w('Failed to notify admin chat about trainer booking creation: $error', stackTrace);
     }
   }
+
+  Future<void> _notifyAdminAboutOutdoorInterest({
+    required int userId,
+    required String? username,
+    required OutdoorActivityInfo activity,
+  }) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.outdoorInterestAdminNotification(
+          userId: userId,
+          username: username,
+          activity: activity,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about outdoor interest: $error', stackTrace);
+    }
+  }
 }

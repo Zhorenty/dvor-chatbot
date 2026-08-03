@@ -227,6 +227,11 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         step: _PrivateFlowStep.selectingOutdoorDetailType,
         selectedOutdoorActivity: selectedOutdoor,
       );
+      await _notifyAdminAboutOutdoorInterest(
+        userId: userId,
+        username: username,
+        activity: selectedOutdoor,
+      );
       await _sender.sendMessage(
         chatId,
         _templates.chooseOutdoorDetailType(selectedOutdoor),

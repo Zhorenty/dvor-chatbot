@@ -284,13 +284,6 @@ final class TelegramKeyboards {
         ],
       );
     }
-    if (showPromoCodeEntry) {
-      rows.add(
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonEnterPromoCode},
-        ],
-      );
-    }
     if (!showOutdoorPaymentTypeChoice) {
       rows.add(
         <Map<String, String>>[
@@ -298,10 +291,11 @@ final class TelegramKeyboards {
         ],
       );
     }
-    if (showCancelBooking) {
+    if (showPromoCodeEntry || showCancelBooking) {
       rows.add(
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonCancelBooking},
+          if (showPromoCodeEntry) <String, String>{'text': MessageCopy.buttonEnterPromoCode},
+          if (showCancelBooking) <String, String>{'text': MessageCopy.buttonCancelBooking},
         ],
       );
     }

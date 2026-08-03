@@ -415,6 +415,29 @@ void main() {
       expect(text, contains('Выбери действие'));
     });
 
+    test('renders outdoor interest admin notification', () {
+      final text = templates.outdoorInterestAdminNotification(
+        userId: 42,
+        username: 'hike_fan',
+        activity: OutdoorActivityInfo(
+          type: OutdoorActivityType.hike,
+          title: 'Поход на Ачишхо',
+          dateFrom: DateTime(2026, 7, 21),
+          dateTo: DateTime(2026, 7, 21, 23, 59, 59),
+          location: 'Красная Поляна',
+          description: 'Дневной маршрут',
+          price: 2500,
+        ),
+      );
+
+      expect(text, contains('Кто-то заинтересовался походом'));
+      expect(text, contains('@hike_fan'));
+      expect(text, contains('(42)'));
+      expect(text, contains('Поход на Ачишхо'));
+      expect(text, contains('Красная Поляна'));
+      expect(text, contains('записи ещё нет'));
+    });
+
     test('renders from-to dates for multi-day hikes in schedule', () {
       final text = templates.hikes(<OutdoorActivityInfo>[
         OutdoorActivityInfo(

@@ -1851,6 +1851,24 @@ extension MessageTemplatesContent on MessageTemplates {
         'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
   }
 
+  String outdoorInterestAdminNotification({
+    required int userId,
+    required String? username,
+    required OutdoorActivityInfo activity,
+  }) {
+    final typeLabel = activity.type == OutdoorActivityType.hike ? 'походом' : 'трейлом';
+    final location = activity.location?.trim();
+    final lines = <String>[
+      '👀 <b>Кто-то заинтересовался $typeLabel</b>',
+      'Пользователь: ${_escapeHtml(_userTagById(userId, username: username))} ($userId)',
+      'Событие: ${_escapeHtml(activity.title)}',
+      'Дата: ${MessageFormatters.outdoorDateLabel(activity.dateFrom, activity.dateTo)}',
+      if (location != null && location.isNotEmpty) 'Локация: ${_escapeHtml(location)}',
+      'Пока только открыл карточку — записи ещё нет.',
+    ];
+    return lines.join('\n');
+  }
+
   String pendingPaymentReminder(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
