@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
+import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
@@ -14,6 +15,7 @@ final class PrivateHandlersHarness {
     List<TrainingInfo> trainings = const <TrainingInfo>[],
     List<OutdoorActivityInfo> outdoorActivities = const <OutdoorActivityInfo>[],
     List<TrainerInfo> trainers = const <TrainerInfo>[],
+    DvorTeamRepository? dvorTeamRepository,
     Set<int> adminUserIds = const <int>{},
     int? adminChatId,
     int? targetChatId,
@@ -31,6 +33,7 @@ final class PrivateHandlersHarness {
         booking = bookingRepository ?? FakeBookingRepository(),
         onboarding = onboardingRepository ?? FakeOnboardingRepository(),
         trainerDirectoryRepository = FakeTrainerDirectoryRepository(trainers),
+        dvorTeamRepository = dvorTeamRepository ?? const NoopDvorTeamRepository(),
         _templates = templates,
         _adminUserIds = adminUserIds,
         _adminChatId = adminChatId,
@@ -43,6 +46,7 @@ final class PrivateHandlersHarness {
       subscriptionRepository: subscriptionRepository,
       onboardingRepository: onboarding,
       trainerDirectoryRepository: trainerDirectoryRepository,
+      dvorTeamRepository: this.dvorTeamRepository,
       templates: _templates,
       adminUserIds: _adminUserIds,
       adminChatId: _adminChatId,
@@ -57,6 +61,7 @@ final class PrivateHandlersHarness {
   final FakeBookingRepository booking;
   final FakeOnboardingRepository onboarding;
   final TrainerDirectoryRepository trainerDirectoryRepository;
+  final DvorTeamRepository dvorTeamRepository;
   final MessageTemplates _templates;
   final Set<int> _adminUserIds;
   final int? _adminChatId;

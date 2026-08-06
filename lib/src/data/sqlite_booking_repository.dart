@@ -18,6 +18,7 @@ final class SqliteBookingRepository implements BookingRepository {
   static const String _everyFifthBonusPaymentNoteMarker = '__every_fifth_bonus__';
   static const String _referralBonusPaymentNoteMarker = '__referral_bonus__';
   static const String _proIncludedTrainingPaymentNoteMarker = '__pro_included_training__';
+  static const String _dvorTeamFreePaymentNoteMarker = '__dvor_team_free__';
 
   SqliteBookingRepository({
     String? dbPath,
@@ -1778,7 +1779,7 @@ final class SqliteBookingRepository implements BookingRepository {
         AND starts_at < ?
         AND ($trainingsCondition)
         AND (training_price IS NULL OR training_price > 0)
-        AND (payment_note IS NULL OR payment_note NOT IN (?, ?, ?, ?));
+        AND (payment_note IS NULL OR payment_note NOT IN (?, ?, ?, ?, ?));
       ''',
       <Object?>[
         userId,
@@ -1789,6 +1790,7 @@ final class SqliteBookingRepository implements BookingRepository {
         _everyFifthBonusPaymentNoteMarker,
         _referralBonusPaymentNoteMarker,
         _proIncludedTrainingPaymentNoteMarker,
+        _dvorTeamFreePaymentNoteMarker,
       ],
     );
     final usedResult = db.select(
@@ -1840,7 +1842,7 @@ final class SqliteBookingRepository implements BookingRepository {
             AND b.starts_at < ?
             AND b.training_price > 0
             AND ($trainingsCondition)
-            AND (b.payment_note IS NULL OR b.payment_note NOT IN (?, ?, ?, ?))
+            AND (b.payment_note IS NULL OR b.payment_note NOT IN (?, ?, ?, ?, ?))
         );
       ''',
       <Object?>[
@@ -1851,6 +1853,7 @@ final class SqliteBookingRepository implements BookingRepository {
         _everyFifthBonusPaymentNoteMarker,
         _referralBonusPaymentNoteMarker,
         _proIncludedTrainingPaymentNoteMarker,
+        _dvorTeamFreePaymentNoteMarker,
       ],
     );
     final usedResult = db.select(

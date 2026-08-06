@@ -2004,7 +2004,7 @@ void main() {
       expect(bookingRepository.createCalls, 1);
       expect(bookingRepository.lastUpdatedBookingId, 99);
       expect(bookingRepository.lastUpdatedStatus, BookingStatus.paid);
-      expect(sender.lastContentMessage.text, contains('Ты в списке тренеров'));
+      expect(sender.lastContentMessage.text, contains('Ты в тренерском штабе DVOR'));
       expect(sender.lastContentMessage.text, isNot(contains('Реквизиты для оплаты')));
       final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
@@ -2012,6 +2012,132 @@ void main() {
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100111).text;
       expect(adminMessage, contains('тренер записался'));
       expect(adminMessage, contains('tg://user?id=1'));
+    });
+
+    test('skips payment confirmation flow for dvor team member booking', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final dvorTeamRepository = FakeDvorTeamRepository(
+        usernames: const <String>{'@dvor_athlete'},
+      );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Paid session',
+              startsAt: DateTime(2026, 7, 12, 20, 0),
+              location: 'Main hall',
+              price: 1200,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        dvorTeamRepository: dvorTeamRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100222,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4242, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 4242,
+          'username': 'dvor_athlete',
+        },
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4242, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 4242,
+          'username': 'dvor_athlete',
+        },
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4242, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 4242,
+          'username': 'dvor_athlete',
+        },
+        'text': '🎯 1. Paid session',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.createCalls, 1);
+      expect(bookingRepository.lastUpdatedBookingId, 99);
+      expect(bookingRepository.lastUpdatedStatus, BookingStatus.paid);
+      expect(
+        bookingRepository.lastUpdatedPaymentNote,
+        MessageFormatters.dvorTeamFreePaymentNoteMarker,
+      );
+      expect(dvorTeamRepository.refreshCalls, greaterThanOrEqualTo(1));
+      expect(sender.lastContentMessage.text, contains('Ты в команде DVOR'));
+      expect(sender.lastContentMessage.text, isNot(contains('Реквизиты для оплаты')));
+      final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100222).text;
+      expect(adminMessage, contains('участник команды DVOR записался'));
+    });
+
+    test('prefers coaching staff free booking message when user is also in dvor team', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      expect(isTrainerBookingWhitelisted(userId: 857655217, username: '@whatshapped'), isTrue);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Paid session',
+              startsAt: DateTime(2026, 7, 12, 20, 0),
+              location: 'Main hall',
+              price: 1200,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        dvorTeamRepository: FakeDvorTeamRepository(
+          usernames: const <String>{'@whatshapped'},
+        ),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100333,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 857655217,
+          'username': 'whatshapped',
+        },
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 857655217,
+          'username': 'whatshapped',
+        },
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 857655217,
+          'username': 'whatshapped',
+        },
+        'text': '🎯 1. Paid session',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.lastContentMessage.text, contains('Ты в тренерском штабе DVOR'));
+      expect(sender.lastContentMessage.text, isNot(contains('Ты в команде DVOR')));
+      expect(bookingRepository.lastUpdatedPaymentNote, isNull);
+      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100333).text;
+      expect(adminMessage, contains('тренер записался'));
     });
 
     test('auto-applies included PRO training when subscription is active', () async {

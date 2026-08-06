@@ -241,6 +241,33 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       );
       return;
     }
+    if (await _isDvorTeamMember(username: username)) {
+      final paidBooking = await _bookingRepository.updateStatus(
+        result.booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.dvorTeamFreePaymentNoteMarker,
+      );
+      final bookingForResponse =
+          _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+      _flowByUserId.remove(userId);
+      if (result.created) {
+        await _maybeNotifyGroupAboutCapacity(
+          selectedTraining,
+          bookingStatus: bookingForResponse.status,
+        );
+        await _sendOutdoorPrepDetails(chatId, bookingForResponse);
+      }
+      await _notifyAdminAboutDvorTeamBookingCreated(bookingForResponse);
+      await _sender.sendMessage(
+        chatId,
+        result.created
+            ? _templates.bookingCreatedForDvorTeamMember(bookingForResponse)
+            : _templates.bookingAlreadyExists(bookingForResponse),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
+        parseMode: 'HTML',
+      );
+      return;
+    }
     final proIncludedAvailable = await _hasProIncludedTrainingAvailable(
       userId: userId,
       training: selectedTraining,
@@ -650,6 +677,14 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required String? username,
   }) {
     return isTrainerBookingWhitelisted(userId: userId, username: username);
+  }
+
+  Future<bool> _isDvorTeamMember({required String? username}) async {
+    final refreshOk = await _dvorTeamRepository.refresh();
+    if (!refreshOk) {
+      l.w('Dvor team refresh failed before free-booking check. Using cached usernames.');
+    }
+    return _dvorTeamRepository.containsUsername(username);
   }
 
   bool _isWhitelistedTrainerBookingByBooking(TrainingBooking booking) {

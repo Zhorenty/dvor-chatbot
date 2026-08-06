@@ -1,6 +1,7 @@
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
+import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
@@ -799,6 +800,32 @@ final class FakeTrainerDirectoryRepository implements TrainerDirectoryRepository
 
   @override
   List<TrainerInfo> list({int limit = 20}) => items.take(limit).toList(growable: false);
+
+  @override
+  Future<bool> refresh({bool force = false}) async {
+    refreshCalls += 1;
+    return refreshResult;
+  }
+}
+
+final class FakeDvorTeamRepository implements DvorTeamRepository {
+  FakeDvorTeamRepository({
+    Set<String> usernames = const <String>{},
+    this.refreshResult = true,
+  }) : _usernames = usernames.map(normalizeTelegramUsername).whereType<String>().toSet();
+
+  final Set<String> _usernames;
+  final bool refreshResult;
+  int refreshCalls = 0;
+
+  @override
+  Set<String> usernames() => Set<String>.unmodifiable(_usernames);
+
+  @override
+  bool containsUsername(String? username) {
+    final normalized = normalizeTelegramUsername(username);
+    return normalized != null && _usernames.contains(normalized);
+  }
 
   @override
   Future<bool> refresh({bool force = false}) async {

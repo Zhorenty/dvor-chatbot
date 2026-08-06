@@ -462,7 +462,21 @@ extension MessageTemplatesContent on MessageTemplates {
         'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
         '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
-        'Ты в списке тренеров: подтверждение оплаты не требуется, это только информирование о записи.';
+        'Ты в тренерском штабе DVOR, поэтому тренировка для тебя бесплатная — '
+        'подтверждение оплаты не нужно.';
+  }
+
+  String bookingCreatedForDvorTeamMember(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Готово, ты записан на тренировку ✅\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
+        'Номер записи: ${booking.id}\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}\n\n'
+        'Ты в команде DVOR, поэтому тренировка для тебя бесплатная — '
+        'подтверждение оплаты не нужно.';
   }
 
   String bookingAlreadyExists(TrainingBooking booking) {
@@ -1937,6 +1951,17 @@ extension MessageTemplatesContent on MessageTemplates {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return '🧑‍🏫 <b>Операционное событие: тренер записался</b>\n'
+        'Запись: <b>#${booking.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
+        'Событие: ${_escapeHtml(booking.trainingTitle)}\n'
+        'Дата: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}';
+  }
+
+  String dvorTeamBookingCreatedAdminNotification(TrainingBooking booking) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return '🖤 <b>Операционное событие: участник команды DVOR записался</b>\n'
         'Запись: <b>#${booking.id}</b>\n'
         'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
         'Событие: ${_escapeHtml(booking.trainingTitle)}\n'

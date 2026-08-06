@@ -6,6 +6,8 @@ import 'package:dvor_chatbot/src/bot/bot_runner.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
+import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
+import 'package:dvor_chatbot/src/data/google_sheets_dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_schedule_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_trainer_directory_repository.dart';
@@ -41,6 +43,7 @@ void main(List<String> args) {
       final templates = MessageTemplates(botUsername: botUsername);
       final scheduleRepository = _createScheduleRepository(config);
       final trainerDirectoryRepository = _createTrainerDirectoryRepository(config);
+      final dvorTeamRepository = _createDvorTeamRepository(config);
       final promoCodeRepository = _createPromoCodeRepository(config);
       final databaseHandle = SqliteDatabaseHandle.open(config.bookingsDbPath);
       final jobDedupeRepository = JobDedupeRepository(databaseHandle: databaseHandle)..initSchema();
@@ -86,6 +89,7 @@ void main(List<String> args) {
           onboardingRepository: onboardingRepository,
           conversationLogRepository: conversationLogRepository,
           trainerDirectoryRepository: trainerDirectoryRepository,
+          dvorTeamRepository: dvorTeamRepository,
           promoCodeRepository: promoCodeRepository,
           templates: templates,
           adminUserIds: config.adminUserIds,
@@ -152,6 +156,24 @@ TrainerDirectoryRepository _createTrainerDirectoryRepository(AppConfig config) {
       );
     case ScheduleSource.staticData:
       return const StaticTrainerDirectoryRepository();
+  }
+}
+
+DvorTeamRepository _createDvorTeamRepository(AppConfig config) {
+  switch (config.scheduleSource) {
+    case ScheduleSource.googleSheets:
+      final rawUrl = config.googleSheetsCsvUrl;
+      if (rawUrl == null || rawUrl.isEmpty) {
+        throw ArgumentError(
+          'GOOGLE_SHEETS_CSV_URL is required when SCHEDULE_SOURCE=google_sheets.',
+        );
+      }
+      return GoogleSheetsDvorTeamRepository(
+        csvUrl: Uri.parse(rawUrl),
+        minRefreshInterval: Duration(seconds: config.scheduleSyncIntervalSeconds),
+      );
+    case ScheduleSource.staticData:
+      return const StaticDvorTeamRepository();
   }
 }
 

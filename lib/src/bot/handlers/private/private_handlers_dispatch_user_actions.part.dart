@@ -271,11 +271,16 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       if (!trainersRefreshOk) {
         l.w('Trainer directory refresh failed during /refresh_schedule.');
       }
+      final dvorTeamRefreshOk = await _dvorTeamRepository.refresh(force: true);
+      if (!dvorTeamRefreshOk) {
+        l.w('Dvor team refresh failed during /refresh_schedule.');
+      }
       final promoCodesRefreshOk = await _promoCodeRepository.refresh(force: true);
       if (!promoCodesRefreshOk) {
         l.w('Promo codes refresh failed during /refresh_schedule.');
       }
-      final refreshOk = scheduleRefreshOk && trainersRefreshOk && promoCodesRefreshOk;
+      final refreshOk =
+          scheduleRefreshOk && trainersRefreshOk && dvorTeamRefreshOk && promoCodesRefreshOk;
       await _sendAdminMessage(
         chatId,
         refreshOk ? _templates.scheduleRefreshDone() : _templates.scheduleRefreshFailed(),

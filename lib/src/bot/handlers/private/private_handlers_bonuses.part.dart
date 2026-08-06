@@ -359,6 +359,21 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     }
   }
 
+  Future<void> _notifyAdminAboutDvorTeamBookingCreated(TrainingBooking booking) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.dvorTeamBookingCreatedAdminNotification(booking),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about dvor team booking creation: $error', stackTrace);
+    }
+  }
+
   Future<void> _notifyAdminAboutOutdoorInterest({
     required int userId,
     required String? username,

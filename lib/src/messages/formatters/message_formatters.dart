@@ -11,6 +11,7 @@ final class MessageFormatters {
   static const String everyFifthBonusPaymentNoteMarker = '__every_fifth_bonus__';
   static const String referralBonusPaymentNoteMarker = '__referral_bonus__';
   static const String proIncludedTrainingPaymentNoteMarker = '__pro_included_training__';
+  static const String dvorTeamFreePaymentNoteMarker = '__dvor_team_free__';
 
   static String statusLabel(BookingStatus status) {
     return switch (status) {
@@ -47,6 +48,9 @@ final class MessageFormatters {
     }
     if (booking.paymentNote == proIncludedTrainingPaymentNoteMarker) {
       return 'Включено в PRO (из 8 тренировок) 💎';
+    }
+    if (booking.paymentNote == dvorTeamFreePaymentNoteMarker) {
+      return 'Бесплатно: команда DVOR 🖤';
     }
     final price = booking.trainingPrice;
     if (price != null && price <= 0) {

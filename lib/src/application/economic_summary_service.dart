@@ -102,6 +102,11 @@ final class EconomicSummaryService {
         regularFreeBookingsCount++;
         continue;
       }
+      if (paymentNote == MessageFormatters.dvorTeamFreePaymentNoteMarker) {
+        freeBookingsCount++;
+        regularFreeBookingsCount++;
+        continue;
+      }
       if (price != null && price <= 0) {
         freeBookingsCount++;
         regularFreeBookingsCount++;

@@ -33,6 +33,11 @@ void main() {
         paymentNote: MessageFormatters.referralBonusPaymentNoteMarker,
         trainingPrice: 700,
       );
+      final dvorTeamFree = fakeBooking(
+        status: BookingStatus.paid,
+        paymentNote: MessageFormatters.dvorTeamFreePaymentNoteMarker,
+        trainingPrice: 700,
+      );
 
       expect(MessageFormatters.bookingStatusLabel(regularFree), 'Бесплатно 🎁');
       expect(
@@ -46,6 +51,10 @@ void main() {
       expect(
         MessageFormatters.bookingStatusLabel(referralFree),
         'Бесплатно: реферальная тренировка 🎁',
+      );
+      expect(
+        MessageFormatters.bookingStatusLabel(dvorTeamFree),
+        'Бесплатно: команда DVOR 🖤',
       );
     });
 

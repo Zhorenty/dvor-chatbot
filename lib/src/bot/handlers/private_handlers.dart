@@ -22,6 +22,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
+import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
@@ -81,6 +82,7 @@ final class PrivateHandlers {
     OnboardingRepository onboardingRepository = const NoopOnboardingRepository(),
     ConversationLogRepository conversationLogRepository = const NoopConversationLogRepository(),
     TrainerDirectoryRepository trainerDirectoryRepository = const NoopTrainerDirectoryRepository(),
+    DvorTeamRepository dvorTeamRepository = const NoopDvorTeamRepository(),
     PromoCodeRepository promoCodeRepository = const NoopPromoCodeRepository(),
     required MessageTemplates templates,
     required Set<int> adminUserIds,
@@ -96,6 +98,7 @@ final class PrivateHandlers {
         _onboardingRepository = onboardingRepository,
         _conversationLogRepository = conversationLogRepository,
         _trainerDirectoryRepository = trainerDirectoryRepository,
+        _dvorTeamRepository = dvorTeamRepository,
         _promoCodeRepository = promoCodeRepository,
         _templates = templates,
         _adminUserIds = adminUserIds,
@@ -115,6 +118,7 @@ final class PrivateHandlers {
   final OnboardingRepository _onboardingRepository;
   final ConversationLogRepository _conversationLogRepository;
   final TrainerDirectoryRepository _trainerDirectoryRepository;
+  final DvorTeamRepository _dvorTeamRepository;
   final PromoCodeRepository _promoCodeRepository;
   final MessageTemplates _templates;
   final Set<int> _adminUserIds;
