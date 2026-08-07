@@ -111,11 +111,12 @@ extension MessageTemplatesHelpers on MessageTemplates {
   }
 
   String _outdoorPrepaymentAmountLabel(TrainingBooking booking) {
+    final percent = MessageFormatters.resolveOutdoorPrepayPercent(booking.trainingPrepayPercent);
     final price = booking.trainingPrice;
     if (price == null || price <= 0) {
-      return '50% от полной стоимости';
+      return '$percent% от полной стоимости';
     }
-    final prepayment = (price / 2).ceil();
+    final prepayment = MessageFormatters.outdoorPrepaymentAmount(price, prepayPercent: percent);
     return MessageFormatters.trainingPriceLabel(prepayment);
   }
 

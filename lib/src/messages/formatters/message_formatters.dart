@@ -99,6 +99,24 @@ final class MessageFormatters {
     return '$price ₽';
   }
 
+  static const int defaultOutdoorPrepayPercent = 50;
+
+  static int resolveOutdoorPrepayPercent(int? percent) {
+    if (percent == null || percent < 1 || percent > 100) {
+      return defaultOutdoorPrepayPercent;
+    }
+    return percent;
+  }
+
+  static int outdoorPrepaymentAmount(int price, {int? prepayPercent}) {
+    final percent = resolveOutdoorPrepayPercent(prepayPercent);
+    return (price * percent / 100).ceil();
+  }
+
+  static int outdoorRemainderPercent(int? prepayPercent) {
+    return 100 - resolveOutdoorPrepayPercent(prepayPercent);
+  }
+
   static String outdoorDateLabel(
     DateTime from,
     DateTime to, {

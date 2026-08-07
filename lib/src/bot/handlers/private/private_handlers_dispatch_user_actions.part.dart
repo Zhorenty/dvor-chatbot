@@ -113,7 +113,9 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         chatId: chatId,
         flowState: flowState!,
         text: needsPaymentChoice
-            ? _templates.chooseOutdoorPaymentType()
+            ? _templates.chooseOutdoorPaymentType(
+                prepayPercent: activeBooking.trainingPrepayPercent,
+              )
             : _templates.paymentProofRequired(),
         parseMode: needsPaymentChoice ? 'HTML' : null,
       );
@@ -247,7 +249,9 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         chatId: chatId,
         flowState: flowState,
         text: needsPaymentChoice
-            ? _templates.chooseOutdoorPaymentType()
+            ? _templates.chooseOutdoorPaymentType(
+                prepayPercent: activeBooking.trainingPrepayPercent,
+              )
             : _templates.paymentProofRequired(),
         parseMode: needsPaymentChoice ? 'HTML' : null,
       );

@@ -141,6 +141,7 @@ final class ActivityCatalogService {
       location: (location == null || location.isEmpty) ? item.description : location,
       category: category,
       price: item.price,
+      prepayPercent: item.prepayPercent,
       participantsLimit: item.participantsLimit,
       includeTrainersInParticipants: true,
       notes: 'Даты: ${dateRangeLabel(item)}',

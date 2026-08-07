@@ -118,7 +118,10 @@ final class EconomicSummaryService {
       }
       final category = _catalogService.categoryForBooking(booking);
       if (booking.status == BookingStatus.partialPaid) {
-        final prepayment = (price / 2).ceil();
+        final prepayment = MessageFormatters.outdoorPrepaymentAmount(
+          price,
+          prepayPercent: booking.trainingPrepayPercent,
+        );
         partialPaidBookingsCount++;
         partialPaidRevenue += prepayment;
         totalRevenue += prepayment;

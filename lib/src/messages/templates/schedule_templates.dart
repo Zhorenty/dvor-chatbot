@@ -146,7 +146,8 @@ final class ScheduleTemplates {
       '🏷 <b>${_escapeHtml(item.title)}</b>',
       '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
       if (location != null && location.isNotEmpty) '📍 ${_escapeHtml(location)}',
-      if (item.price != null) '💳 ${_outdoorPriceWithPrepayment(item.price!)}',
+      if (item.price != null)
+        '💳 ${_outdoorPriceWithPrepayment(item.price!, prepayPercent: item.prepayPercent)}',
     ];
     if (description != null) {
       lines.addAll(<String>[
@@ -256,7 +257,7 @@ final class ScheduleTemplates {
     }
     final lines = <String>[
       '<b>${_escapeHtml(title)}</b>',
-      '💳 <b>Оплата:</b> 50% предоплата при записи, оставшиеся 50% — $finalPaymentAfter.',
+      _outdoorPaymentRuleLine(items, finalPaymentAfter),
     ];
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
@@ -267,7 +268,8 @@ final class ScheduleTemplates {
         '🏷 <b>${index + 1}. $icon ${_escapeHtml(item.title)}</b>',
         '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
         if (location != null && location.isNotEmpty) '📍 Где: ${_escapeHtml(location)}',
-        if (item.price != null) '💳 ${_outdoorPriceWithPrepayment(item.price!)}',
+        if (item.price != null)
+          '💳 ${_outdoorPriceWithPrepayment(item.price!, prepayPercent: item.prepayPercent)}',
         if (description != null) '📝 <b>Описание:</b>',
         if (description != null) _escapeHtml(description),
       ]);
@@ -577,9 +579,24 @@ final class ScheduleTemplates {
     return raw.replaceAll('\r\n', '\n').replaceAll('\n', ' ').trim();
   }
 
-  String _outdoorPriceWithPrepayment(int price) {
+  String _outdoorPaymentRuleLine(List<OutdoorActivityInfo> items, String finalPaymentAfter) {
+    final percents = items.map((item) => item.prepayPercent).toSet();
+    if (percents.length == 1) {
+      final percent = MessageFormatters.resolveOutdoorPrepayPercent(percents.single);
+      final remainder = MessageFormatters.outdoorRemainderPercent(percent);
+      return '💳 <b>Оплата:</b> $percent% предоплата при записи, оставшиеся $remainder% — '
+          '$finalPaymentAfter.';
+    }
+    return '💳 <b>Оплата:</b> предоплата при записи (доля указана у каждого события), '
+        'остаток — $finalPaymentAfter.';
+  }
+
+  String _outdoorPriceWithPrepayment(int price, {int prepayPercent = 50}) {
+    final percent = MessageFormatters.resolveOutdoorPrepayPercent(prepayPercent);
     final totalLabel = MessageFormatters.trainingPriceLabel(price);
-    final prepaymentLabel = MessageFormatters.trainingPriceLabel((price / 2).ceil());
-    return '$totalLabel (${_escapeHtml(prepaymentLabel)} предоплата 50%)';
+    final prepaymentLabel = MessageFormatters.trainingPriceLabel(
+      MessageFormatters.outdoorPrepaymentAmount(price, prepayPercent: percent),
+    );
+    return '$totalLabel (${_escapeHtml(prepaymentLabel)} предоплата $percent%)';
   }
 }

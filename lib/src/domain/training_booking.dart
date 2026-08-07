@@ -14,6 +14,7 @@ final class TrainingBooking {
     required this.trainingPrice,
     required this.createdAt,
     required this.updatedAt,
+    this.trainingPrepayPercent,
     this.paymentNote,
     this.paymentProofChatId,
     this.paymentProofMessageId,
@@ -40,6 +41,10 @@ final class TrainingBooking {
   final String location;
   final BookingStatus status;
   final int? trainingPrice;
+
+  /// Snapshot of outdoor prepayment share (1–100) at booking time.
+  /// Null for trainings or legacy rows (treated as 50% for outdoor).
+  final int? trainingPrepayPercent;
   final String? paymentNote;
   final int? paymentProofChatId;
   final int? paymentProofMessageId;

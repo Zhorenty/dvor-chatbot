@@ -457,7 +457,9 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         await _sendPayableBookingCard(
           chatId: chatId,
           booking: selectedBooking,
-          text: '${_templates.chooseOutdoorPaymentType()}\n\n'
+          text: '${_templates.chooseOutdoorPaymentType(
+            prepayPercent: selectedBooking.trainingPrepayPercent,
+          )}\n\n'
               'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
           showStarterBonus: openedFlow.starterBonusOffered,
           parseMode: 'HTML',
@@ -819,7 +821,9 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         await _sendPayableBookingCard(
           chatId: chatId,
           booking: activeBooking,
-          text: '${_templates.chooseOutdoorPaymentType()}\n\n'
+          text: '${_templates.chooseOutdoorPaymentType(
+            prepayPercent: activeBooking.trainingPrepayPercent,
+          )}\n\n'
               'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
           showStarterBonus: currentFlow.starterBonusOffered,
           parseMode: 'HTML',
@@ -896,7 +900,9 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         await _sendPayableBookingCard(
           chatId: chatId,
           booking: target,
-          text: '${_templates.chooseOutdoorPaymentType()}\n\n'
+          text: '${_templates.chooseOutdoorPaymentType(
+            prepayPercent: target.trainingPrepayPercent,
+          )}\n\n'
               'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
           showStarterBonus: _flowByUserId[userId]?.starterBonusOffered ?? false,
           parseMode: 'HTML',

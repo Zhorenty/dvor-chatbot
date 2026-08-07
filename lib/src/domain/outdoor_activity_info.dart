@@ -14,6 +14,7 @@ final class OutdoorActivityInfo {
     this.equipment,
     this.itinerary,
     this.price,
+    this.prepayPercent = 50,
     this.participantsLimit,
   });
 
@@ -26,5 +27,8 @@ final class OutdoorActivityInfo {
   final String? equipment;
   final String? itinerary;
   final int? price;
+
+  /// Prepayment share for outdoor events (1–100). Defaults to 50.
+  final int prepayPercent;
   final int? participantsLimit;
 }

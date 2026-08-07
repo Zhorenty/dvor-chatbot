@@ -286,6 +286,17 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
       ],
     );
     final priceIndex = headers.indexOf('price');
+    final prepayPercentIndex = _firstHeaderIndex(
+      headers,
+      const <String>[
+        'prepay_percent',
+        'prepayment_percent',
+        'prepaid_percent',
+        'prepay',
+        'предоплата',
+        'процент_предоплаты',
+      ],
+    );
     final participantsLimitIndex = _firstHeaderIndex(
       headers,
       const <String>[
@@ -336,6 +347,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           equipment: _optionalCell(row, equipmentIndex),
           itinerary: _optionalCell(row, itineraryIndex),
           price: _parsePrice(_optionalCell(row, priceIndex)),
+          prepayPercent: _parsePrepayPercent(_optionalCell(row, prepayPercentIndex)),
           participantsLimit: _parseParticipantsLimit(_optionalCell(row, participantsLimitIndex)),
         ),
       );
@@ -552,6 +564,26 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     final parsed = _parsePrice(raw);
     if (parsed == null || parsed <= 0) {
       return null;
+    }
+    return parsed;
+  }
+
+  int _parsePrepayPercent(String? raw) {
+    const defaultPercent = 50;
+    if (raw == null) {
+      return defaultPercent;
+    }
+    final normalized = raw.trim();
+    if (normalized.isEmpty) {
+      return defaultPercent;
+    }
+    final digitsOnly = normalized.replaceAll(RegExp(r'[^\d]'), '');
+    if (digitsOnly.isEmpty) {
+      return defaultPercent;
+    }
+    final parsed = int.tryParse(digitsOnly);
+    if (parsed == null || parsed < 1 || parsed > 100) {
+      return defaultPercent;
     }
     return parsed;
   }

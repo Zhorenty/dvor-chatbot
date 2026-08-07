@@ -215,15 +215,20 @@ extension MessageTemplatesKeyboards on MessageTemplates {
   }) {
     if (MessageFormatters.isOutdoorBooking(booking)) {
       final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
-      final groupPrepayment = totalPrice <= 0 ? 0 : (totalPrice / 2).ceil();
+      final prepayPercent =
+          MessageFormatters.resolveOutdoorPrepayPercent(booking.trainingPrepayPercent);
+      final remainderPercent = MessageFormatters.outdoorRemainderPercent(prepayPercent);
+      final groupPrepayment = totalPrice <= 0
+          ? 0
+          : MessageFormatters.outdoorPrepaymentAmount(totalPrice, prepayPercent: prepayPercent);
       return '💳 <b>Реквизиты OUTDVOR</b>\n'
           '• Получатель: <b>Денис Р.</b>\n'
           '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
           '• Полная сумма за группу: <b>$participantsCount × ${_trainingPriceLabel(unitPrice)} = '
           '${_trainingPriceLabel(totalPrice)}</b>\n'
           '• К оплате сейчас при предоплате: <b>${_trainingPriceLabel(groupPrepayment)}</b> '
-          '(50% от суммы группы)\n'
-          '• Остальные 50% — $outdoorFinalPaymentAfter.\n'
+          '($prepayPercent% от суммы группы)\n'
+          '• Остальные $remainderPercent% — $outdoorFinalPaymentAfter.\n'
           '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n\n'
           '⏳ Если не оплатить в течение <b>30 минут</b> — запись отменится автоматически. '
           'После отмены нужно записаться заново.';

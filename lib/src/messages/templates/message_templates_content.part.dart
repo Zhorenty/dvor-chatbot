@@ -523,10 +523,11 @@ extension MessageTemplatesContent on MessageTemplates {
         'Следующий шаг: дождись результата модерации, бот сообщит автоматически.';
   }
 
-  String chooseOutdoorPaymentType() {
+  String chooseOutdoorPaymentType({int? prepayPercent}) {
+    final percent = MessageFormatters.resolveOutdoorPrepayPercent(prepayPercent);
     return 'Выбери тип оплаты:\n'
         '• «${MessageCopy.buttonPayFully}» — полная сумма\n'
-        '• «${MessageCopy.buttonPayPartially}» — предоплата <b>50%</b>\n'
+        '• «${MessageCopy.buttonPayPartially}» — предоплата <b>$percent%</b>\n'
         'После выбора пришли файл с подтверждением оплаты (документ или фото чека) 📎';
   }
 
@@ -1774,11 +1775,15 @@ extension MessageTemplatesContent on MessageTemplates {
   String paymentInstructions(TrainingBooking booking) {
     final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
     if (MessageFormatters.isOutdoorBooking(booking)) {
+      final prepayPercent =
+          MessageFormatters.resolveOutdoorPrepayPercent(booking.trainingPrepayPercent);
+      final remainderPercent = MessageFormatters.outdoorRemainderPercent(prepayPercent);
       return '💳 <b>Реквизиты OUTDVOR</b>\n'
           '• Получатель: <b>Денис Р.</b>\n'
           '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
-          '• К оплате сейчас: <b>${_outdoorPrepaymentAmountLabel(booking)}</b> (50% предоплата)\n'
-          '• Остальные 50% — $outdoorFinalPaymentAfter.\n'
+          '• К оплате сейчас: <b>${_outdoorPrepaymentAmountLabel(booking)}</b> '
+          '($prepayPercent% предоплата)\n'
+          '• Остальные $remainderPercent% — $outdoorFinalPaymentAfter.\n'
           '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n\n'
           '⏳ Если не оплатить в течение <b>30 минут</b> — запись отменится автоматически. После отмены нужно записаться заново.';
     }
@@ -1801,9 +1806,13 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String outdoorBookingRule(TrainingBooking booking) {
     final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
+    final prepayPercent =
+        MessageFormatters.resolveOutdoorPrepayPercent(booking.trainingPrepayPercent);
+    final remainderPercent = MessageFormatters.outdoorRemainderPercent(prepayPercent);
     return '🚸 <b>Правило OUTDVOR</b>\n\n'
         '• Предоплата невозвратна при отмене за 7 дней и менее до старта.\n'
-        '• Сначала вносится 50% предоплаты, оставшиеся 50% — офлайн $outdoorFinalPaymentAfter.';
+        '• Сначала вносится $prepayPercent% предоплаты, оставшиеся $remainderPercent% — '
+        'офлайн $outdoorFinalPaymentAfter.';
   }
 
   String paymentApprovedForUser(TrainingBooking booking) {

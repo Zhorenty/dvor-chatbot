@@ -146,6 +146,7 @@ void main() {
       expect(outdoor.first.participantsLimit, 24);
       expect(outdoor.first.equipment, 'Waterproof jacket, trekking shoes');
       expect(outdoor.first.itinerary, 'Gathering 06:30, start 08:00');
+      expect(outdoor.first.prepayPercent, 30);
       expect(outdoor.last.type, OutdoorActivityType.trail);
       expect(outdoor.last.title, 'Mountain trail');
       expect(outdoor.last.location, 'Lago-Naki Plateau');
@@ -153,6 +154,7 @@ void main() {
       expect(outdoor.last.participantsLimit, isNull);
       expect(outdoor.last.equipment, 'Headlamp, warm layer');
       expect(outdoor.last.itinerary, 'Day 1 climb, day 2 ridge');
+      expect(outdoor.last.prepayPercent, 50);
     });
   });
 }
@@ -161,8 +163,8 @@ Future<http.Response> _mockCsvResponse(http.Request request) async {
   final gid = request.url.queryParameters['gid'];
   if (gid == '294119056') {
     return http.Response(
-      'title,date_from,date_to,location,description,equipment,itinerary,price,participants_limit\n'
-      'Hike to waterfalls,2030-06-05,,Sochi National Park,One day route,"Waterproof jacket, trekking shoes","Gathering 06:30, start 08:00",2000,24',
+      'title,date_from,date_to,location,description,equipment,itinerary,price,prepay_percent,participants_limit\n'
+      'Hike to waterfalls,2030-06-05,,Sochi National Park,One day route,"Waterproof jacket, trekking shoes","Gathering 06:30, start 08:00",2000,30,24',
       200,
     );
   }

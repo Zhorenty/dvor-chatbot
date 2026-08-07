@@ -125,6 +125,7 @@ final class FakeBookingRepository implements BookingRepository {
         startsAt: training.startsAt,
         location: training.location,
         trainingPrice: training.price,
+        trainingPrepayPercent: training.prepayPercent,
       ),
       created: true,
     );
@@ -155,6 +156,7 @@ final class FakeBookingRepository implements BookingRepository {
           startsAt: training.startsAt,
           location: training.location,
           trainingPrice: training.price,
+          trainingPrepayPercent: training.prepayPercent,
           paymentGroupId: groupId,
           participantType: participants[index].type,
           participantUsername: participants[index].username,
@@ -297,6 +299,7 @@ final class FakeBookingRepository implements BookingRepository {
       startsAt: training?.startsAt,
       location: training?.location ?? 'Hall',
       trainingPrice: training?.price,
+      trainingPrepayPercent: training?.prepayPercent,
     );
   }
 
@@ -320,6 +323,7 @@ final class FakeBookingRepository implements BookingRepository {
       startsAt: training?.startsAt,
       location: training?.location ?? 'Hall',
       trainingPrice: discountedPrice,
+      trainingPrepayPercent: training?.prepayPercent,
       promoCode: code,
       promoDiscountPercent: discountPercent,
     );
@@ -836,6 +840,7 @@ TrainingBooking fakeBooking({
   String location = 'Hall',
   BookingStatus status = BookingStatus.pendingPayment,
   int? trainingPrice,
+  int? trainingPrepayPercent,
   String? paymentNote,
   String? promoCode,
   int? promoDiscountPercent,
@@ -862,6 +867,7 @@ TrainingBooking fakeBooking({
     location: location,
     status: status,
     trainingPrice: trainingPrice,
+    trainingPrepayPercent: trainingPrepayPercent,
     paymentNote: paymentNote,
     paymentProofChatId: paymentProofChatId,
     paymentProofMessageId: paymentProofMessageId,

@@ -246,6 +246,22 @@ void main() {
       expect(text, contains('Остальные 50% — после похода.'));
     });
 
+    test('shows custom outdoor prepay percent in requisites', () {
+      final text = templates.paymentInstructions(
+        _booking(
+          trainingKey: 'hikes|2026-06-14T00:00:00.000Z|🥾 Поход: ПИК ЗАКАН|Магито',
+          trainingTitle: '🥾 Поход: ПИК ЗАКАН',
+          location: 'Вершина хребта Магито в Карачаево-Черкесии',
+          trainingPrice: 2000,
+          trainingPrepayPercent: 30,
+        ),
+      );
+
+      expect(text, contains('600 ₽'));
+      expect(text, contains('(30% предоплата)'));
+      expect(text, contains('Остальные 70% — после похода.'));
+    });
+
     test('shows trail-specific final payment wording in requisites', () {
       final text = templates.paymentInstructions(
         _booking(
@@ -415,6 +431,23 @@ void main() {
       expect(text, contains('Выбери действие'));
     });
 
+    test('renders custom prepay percent on outdoor detail card', () {
+      final text = templates.chooseOutdoorDetailType(
+        OutdoorActivityInfo(
+          type: OutdoorActivityType.hike,
+          title: 'Поход на Ачишхо',
+          dateFrom: DateTime(2026, 7, 21),
+          dateTo: DateTime(2026, 7, 21, 23, 59, 59),
+          location: 'Красная Поляна',
+          description: 'Дневной маршрут',
+          price: 2500,
+          prepayPercent: 40,
+        ),
+      );
+
+      expect(text, contains('2500 ₽ (1000 ₽ предоплата 40%)'));
+    });
+
     test('renders outdoor interest admin notification', () {
       final text = templates.outdoorInterestAdminNotification(
         userId: 42,
@@ -494,6 +527,7 @@ TrainingBooking _booking({
   required String trainingTitle,
   required String location,
   int? trainingPrice,
+  int? trainingPrepayPercent,
   String? promoCode,
   int? promoDiscountPercent,
   BookingStatus status = BookingStatus.pendingPayment,
@@ -509,6 +543,7 @@ TrainingBooking _booking({
     location: location,
     status: status,
     trainingPrice: trainingPrice ?? 1500,
+    trainingPrepayPercent: trainingPrepayPercent,
     promoCode: promoCode,
     promoDiscountPercent: promoDiscountPercent,
     createdAt: now,

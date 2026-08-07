@@ -9,6 +9,7 @@ final class TrainingInfo {
     this.locationUrl,
     this.category = ActivityCategory.trainings,
     this.price,
+    this.prepayPercent,
     this.participantsLimit,
     this.includeTrainersInParticipants = false,
     this.coach,
@@ -25,6 +26,9 @@ final class TrainingInfo {
   final String? locationUrl;
   final ActivityCategory category;
   final int? price;
+
+  /// Outdoor prepayment share (1–100). Null for regular trainings.
+  final int? prepayPercent;
   final int? participantsLimit;
   final bool includeTrainersInParticipants;
   final String? coach;

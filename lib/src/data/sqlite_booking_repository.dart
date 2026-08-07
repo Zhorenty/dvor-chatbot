@@ -74,6 +74,7 @@ final class SqliteBookingRepository implements BookingRepository {
         starts_at TEXT NOT NULL,
         location TEXT NOT NULL,
         training_price INTEGER,
+        training_prepay_percent INTEGER,
         status TEXT NOT NULL,
         payment_note TEXT,
         payment_proof_chat_id INTEGER,
@@ -92,6 +93,7 @@ final class SqliteBookingRepository implements BookingRepository {
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN payment_proof_chat_id INTEGER;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN payment_proof_message_id INTEGER;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN training_price INTEGER;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN training_prepay_percent INTEGER;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN promo_code TEXT;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN promo_discount_percent INTEGER;');
     _migrateBookingsParticipantModel(db);
@@ -247,6 +249,7 @@ final class SqliteBookingRepository implements BookingRepository {
           starts_at,
           location,
           training_price,
+          training_prepay_percent,
           status,
           payment_note,
           manager_user_id,
@@ -257,7 +260,7 @@ final class SqliteBookingRepository implements BookingRepository {
           payment_group_id,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           userId,
@@ -267,6 +270,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training.startsAt.toUtc().toIso8601String(),
           training.location,
           training.price,
+          training.prepayPercent,
           BookingStatus.pendingPayment.dbValue,
           null,
           userId,
@@ -434,6 +438,7 @@ final class SqliteBookingRepository implements BookingRepository {
                 starts_at = ?,
                 location = ?,
                 training_price = ?,
+                training_prepay_percent = ?,
                 updated_at = ?
             WHERE id = ?;
             ''',
@@ -448,6 +453,7 @@ final class SqliteBookingRepository implements BookingRepository {
               training.startsAt.toUtc().toIso8601String(),
               training.location,
               training.price,
+              training.prepayPercent,
               nowIso,
               reactivated.id,
             ],
@@ -469,6 +475,7 @@ final class SqliteBookingRepository implements BookingRepository {
             starts_at,
             location,
             training_price,
+            training_prepay_percent,
             status,
             payment_note,
             manager_user_id,
@@ -479,7 +486,7 @@ final class SqliteBookingRepository implements BookingRepository {
             payment_group_id,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           ''',
           <Object?>[
             managerUserId,
@@ -489,6 +496,7 @@ final class SqliteBookingRepository implements BookingRepository {
             training.startsAt.toUtc().toIso8601String(),
             training.location,
             training.price,
+            training.prepayPercent,
             BookingStatus.pendingPayment.dbValue,
             null,
             managerUserId,
@@ -661,6 +669,7 @@ final class SqliteBookingRepository implements BookingRepository {
             starts_at = ?,
             location = ?,
             training_price = ?,
+            training_prepay_percent = ?,
             updated_at = ?
         WHERE id = ? AND user_id = ?;
         ''',
@@ -670,6 +679,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training.startsAt.toUtc().toIso8601String(),
           training.location,
           training.price,
+          training.prepayPercent,
           nowIso,
           bookingId,
           userId,
@@ -1572,6 +1582,7 @@ final class SqliteBookingRepository implements BookingRepository {
           starts_at,
           location,
           training_price,
+          training_prepay_percent,
           status,
           payment_note,
           manager_user_id,
@@ -1582,7 +1593,7 @@ final class SqliteBookingRepository implements BookingRepository {
           payment_group_id,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           effectiveUserId,
@@ -1592,6 +1603,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training.startsAt.toUtc().toIso8601String(),
           training.location,
           training.price,
+          training.prepayPercent,
           status.dbValue,
           null,
           effectiveUserId,
@@ -1712,6 +1724,8 @@ final class SqliteBookingRepository implements BookingRepository {
       args.add(training.location);
       columns.add('training_price = ?');
       args.add(training.price);
+      columns.add('training_prepay_percent = ?');
+      args.add(training.prepayPercent);
     }
     if (status != null) {
       columns.add('status = ?');
@@ -2185,6 +2199,7 @@ final class SqliteBookingRepository implements BookingRepository {
       location: row['location'] as String,
       status: BookingStatus.fromDbValue(row['status'] as String),
       trainingPrice: row['training_price'] as int?,
+      trainingPrepayPercent: _optionalIntColumn(row, 'training_prepay_percent'),
       paymentNote: row['payment_note'] as String?,
       paymentProofChatId: row['payment_proof_chat_id'] as int?,
       paymentProofMessageId: row['payment_proof_message_id'] as int?,
@@ -2279,6 +2294,7 @@ final class SqliteBookingRepository implements BookingRepository {
         starts_at TEXT NOT NULL,
         location TEXT NOT NULL,
         training_price INTEGER,
+        training_prepay_percent INTEGER,
         status TEXT NOT NULL,
         payment_note TEXT,
         payment_proof_chat_id INTEGER,
@@ -2300,14 +2316,16 @@ final class SqliteBookingRepository implements BookingRepository {
     db.execute('''
       INSERT INTO bookings_participant_migrated (
         id, user_id, user_username, training_key, training_title, starts_at, location,
-        training_price, status, payment_note, payment_proof_chat_id, payment_proof_message_id,
+        training_price, training_prepay_percent, status, payment_note, payment_proof_chat_id,
+        payment_proof_message_id,
         reminder_count, last_reminder_at, created_at, updated_at, promo_code, promo_discount_percent,
         manager_user_id, participant_type, participant_user_id, participant_username,
         participant_name, payment_group_id
       )
       SELECT
         id, user_id, user_username, training_key, training_title, starts_at, location,
-        training_price, status, payment_note, payment_proof_chat_id, payment_proof_message_id,
+        training_price, training_prepay_percent, status, payment_note, payment_proof_chat_id,
+        payment_proof_message_id,
         COALESCE(reminder_count, 0), last_reminder_at, created_at, updated_at, promo_code,
         promo_discount_percent,
         COALESCE(manager_user_id, user_id),
