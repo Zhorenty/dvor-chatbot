@@ -30,7 +30,7 @@ void main() {
       );
       await repository.updateOnboardingProgress(
         userId: 1,
-        quizGoal: OnboardingQuizGoal.yogaRecovery,
+        quizGoal: OnboardingQuizGoal.enduranceRun,
         quizExperience: OnboardingQuizExperience.beginner,
         selectedTrack: OnboardingTrack.oneOff,
         phase: OnboardingPhase.phase2Activation,
@@ -68,13 +68,13 @@ void main() {
       await repository.recordTrainingFeedbackRequest(
         bookingId: 10,
         userId: 1,
-        sessionKey: 'yoga|1',
-        trainingTitle: 'Йога утро',
+        sessionKey: 'trainings|1',
+        trainingTitle: 'Утренняя тренировка',
         sentAt: now,
       );
       await repository.submitTrainingFeedback(
         bookingId: 10,
-        sessionKey: 'yoga|1',
+        sessionKey: 'trainings|1',
         rating: TrainingFeedbackRating.great,
         submittedAt: now,
         comment: 'очень мягко и четко',
@@ -82,13 +82,13 @@ void main() {
       await repository.recordTrainingFeedbackRequest(
         bookingId: 11,
         userId: 2,
-        sessionKey: 'yoga|1',
-        trainingTitle: 'Йога утро',
+        sessionKey: 'trainings|1',
+        trainingTitle: 'Утренняя тренировка',
         sentAt: now,
       );
       await repository.submitTrainingFeedback(
         bookingId: 11,
-        sessionKey: 'yoga|1',
+        sessionKey: 'trainings|1',
         rating: TrainingFeedbackRating.ok,
         submittedAt: now,
       );
@@ -96,14 +96,14 @@ void main() {
       final analytics = await repository.getFunnelAnalytics(now: now);
       expect(analytics.funnelUsers, greaterThanOrEqualTo(2));
       expect(analytics.activationsTotal, 1);
-      expect(analytics.quizGoalCounts['yoga_recovery'], 1);
+      expect(analytics.quizGoalCounts['endurance_run'], 1);
       expect(analytics.trackCounts['outdoor'], 1);
       expect(analytics.nudgeKeyCounts['p1_30m'], 1);
       expect(analytics.feedbackRequestsSent, 2);
       expect(analytics.feedbackResponses, 2);
       expect(analytics.feedbackCommentsCount, 1);
       expect(analytics.recentFeedbackComments, isNotEmpty);
-      expect(analytics.topFeedbackSessions.first.trainingTitle, 'Йога утро');
+      expect(analytics.topFeedbackSessions.first.trainingTitle, 'Утренняя тренировка');
       expect(analytics.topFeedbackSessions.first.greatCount, 1);
       expect(analytics.activationRate21Days, isNotNull);
       expect(analytics.avgTimeToValueDays, isNotNull);
@@ -211,7 +211,7 @@ void main() {
         userId: 88,
         bookingId: 502,
         sessionKey: 'session-2',
-        trainingTitle: 'Йога',
+        trainingTitle: 'Силовая',
       );
 
       await harness.handleText(
@@ -221,7 +221,7 @@ void main() {
       );
       final adminMessages = harness.messagesTo(-100501);
       expect(adminMessages, hasLength(1));
-      expect(adminMessages.single.text, contains('Йога'));
+      expect(adminMessages.single.text, contains('Силовая'));
       expect(adminMessages.single.text, contains('пропуск'));
     });
   });

@@ -23,23 +23,6 @@ final class ScheduleTemplates {
     );
   }
 
-  String yoga(
-    List<TrainingInfo> items, {
-    List<TrainerInfo> trainers = const <TrainerInfo>[],
-  }) {
-    final list = _indoorActivitiesList(
-      title: 'Ближайшая йога DVOR 🧘',
-      icon: '🧘',
-      items: items,
-      trainers: trainers,
-      emptyText: 'Пока йоги в расписании нет 😌 Скоро добавим новые даты!',
-      includeWeekdayShortInDate: false,
-    );
-    return '$list\n\n'
-        'По вопросам теории и практики можно написать тренеру-йоги.\n'
-        'По организационным вопросам: @dvor_support.';
-  }
-
   String _indoorActivitiesList({
     required String title,
     required String icon,

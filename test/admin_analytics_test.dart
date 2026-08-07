@@ -66,10 +66,10 @@ void main() {
       await onboarding.ensureStartedUser(12, startedAt: now);
 
       final training = TrainingInfo(
-        title: 'Йога',
+        title: 'Силовая',
         startsAt: now.add(const Duration(days: 2)),
         location: 'Зал',
-        category: ActivityCategory.yoga,
+        category: ActivityCategory.trainings,
         price: 0,
       );
       final created = await bookings.createPendingBooking(

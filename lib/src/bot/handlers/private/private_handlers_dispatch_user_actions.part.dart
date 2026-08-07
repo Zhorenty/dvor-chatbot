@@ -9,7 +9,6 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
     final showReturnToAdminMenu = ctx.showReturnToAdminMenu;
     final canRunAdminAction = ctx.canRunAdminAction;
     final canRunParticipantsAction = ctx.canRunParticipantsAction;
-    final isYogaTrainer = ctx.isYogaTrainer;
     final isWhitelistedTrainer = ctx.isWhitelistedTrainer;
     final flowState = ctx.flowState;
 
@@ -315,7 +314,6 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         _templates.choosePaymentsQueueCategory(),
         replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
           trainings: counters.trainings,
-          yoga: counters.yoga,
           hikes: counters.hikes,
           trails: counters.trails,
         ),
@@ -500,16 +498,6 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       }
       if (userId == null) {
         return false;
-      }
-      if (isYogaTrainer && !canRunAdminAction) {
-        _flowByUserId.remove(userId);
-        await _sendParticipantsByCategory(
-          chatId: chatId,
-          category: _ActivityCategory.yoga,
-          isAdmin: isAdmin,
-          canViewParticipantsList: canRunParticipantsAction,
-        );
-        return true;
       }
       if (isWhitelistedTrainer && !canRunAdminAction) {
         _flowByUserId.remove(userId);

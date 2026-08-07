@@ -21,8 +21,6 @@ final class ScheduleQueryService {
     return switch (category) {
       ActivityCategory.trainings =>
         _templates.trainings(_catalogService.bookableItems(category), trainers: trainers),
-      ActivityCategory.yoga =>
-        _templates.yoga(_catalogService.bookableItems(category), trainers: trainers),
       ActivityCategory.hikes => _templates.hikes(_catalogService.outdoorItems(category)),
       ActivityCategory.trails => _templates.trails(_catalogService.outdoorItems(category)),
     };

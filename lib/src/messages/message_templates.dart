@@ -67,7 +67,6 @@ final class MessageTemplates {
   static const String buttonOnboardingSkipQuiz = MessageCopy.buttonOnboardingSkipQuiz;
   static const String buttonQuizGoalForm = MessageCopy.buttonQuizGoalForm;
   static const String buttonQuizGoalEndurance = MessageCopy.buttonQuizGoalEndurance;
-  static const String buttonQuizGoalYoga = MessageCopy.buttonQuizGoalYoga;
   static const String buttonQuizGoalOutdoor = MessageCopy.buttonQuizGoalOutdoor;
   static const String buttonQuizGoalUnknown = MessageCopy.buttonQuizGoalUnknown;
   static const String buttonQuizExpBeginner = MessageCopy.buttonQuizExpBeginner;
@@ -80,7 +79,6 @@ final class MessageTemplates {
   static const String buttonFeedbackWeak = MessageCopy.buttonFeedbackWeak;
   static const String buttonFeedbackSkip = MessageCopy.buttonFeedbackSkip;
   static const String buttonCategoryTrainings = MessageCopy.buttonCategoryTrainings;
-  static const String buttonCategoryYoga = MessageCopy.buttonCategoryYoga;
   static const String buttonCategoryHikes = MessageCopy.buttonCategoryHikes;
   static const String buttonCategoryTrails = MessageCopy.buttonCategoryTrails;
   static const String buttonOutdoorEquipment = MessageCopy.buttonOutdoorEquipment;

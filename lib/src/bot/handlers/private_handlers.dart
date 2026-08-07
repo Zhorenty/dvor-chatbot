@@ -72,7 +72,6 @@ final class PrivateHandlers {
   static const int _proIncludedTrainingsPerPeriod = 8;
   static const int _adminBookingsPageSize = 8;
   static const int _myBookingsPageSize = 8;
-  static const int _yogaTrainerUserId = 857655217;
 
   PrivateHandlers({
     required MessageSender sender,

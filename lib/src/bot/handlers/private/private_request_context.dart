@@ -12,7 +12,6 @@ final class PrivateRequestContext {
     required this.showReturnToAdminMenu,
     required this.canRunAdminAction,
     required this.canRunParticipantsAction,
-    required this.isYogaTrainer,
     required this.isWhitelistedTrainer,
     required this.flowState,
     required this.paymentProof,
@@ -29,7 +28,6 @@ final class PrivateRequestContext {
   final bool showReturnToAdminMenu;
   final bool canRunAdminAction;
   final bool canRunParticipantsAction;
-  final bool isYogaTrainer;
   final bool isWhitelistedTrainer;
   final PrivateFlowState? flowState;
   final PaymentProof? paymentProof;

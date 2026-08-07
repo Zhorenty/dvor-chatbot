@@ -1411,13 +1411,6 @@ final class SqliteBookingRepository implements BookingRepository {
         ''',
         <Object?>[...confirmedStatuses],
       ),
-      'yoga': count(
-        '''
-        SELECT COUNT(*) AS c FROM bookings
-        WHERE status IN ($confirmedIn) AND ${_categoryConditionSql(ActivityCategory.yoga)};
-        ''',
-        <Object?>[...confirmedStatuses],
-      ),
       'hikes': count(
         '''
         SELECT COUNT(*) AS c FROM bookings
@@ -2729,11 +2722,9 @@ final class SqliteBookingRepository implements BookingRepository {
   String _categoryConditionSql(ActivityCategory category) {
     return switch (category) {
       ActivityCategory.trainings => "(training_key LIKE 'trainings|%' OR "
-          "(training_key NOT LIKE 'yoga|%' AND training_key NOT LIKE 'hikes|%' "
+          "(training_key NOT LIKE 'hikes|%' "
           "AND training_key NOT LIKE 'trails|%' "
-          "AND training_title NOT LIKE '🧘 Йога:%' "
           "AND training_title NOT LIKE '🥾 Поход:%' AND training_title NOT LIKE '🏃 Трейл:%'))",
-      ActivityCategory.yoga => "(training_key LIKE 'yoga|%' OR training_title LIKE '🧘 Йога:%')",
       ActivityCategory.hikes => "(training_key LIKE 'hikes|%' OR training_title LIKE '🥾 Поход:%')",
       ActivityCategory.trails =>
         "(training_key LIKE 'trails|%' OR training_title LIKE '🏃 Трейл:%')",

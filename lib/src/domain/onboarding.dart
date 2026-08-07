@@ -27,7 +27,6 @@ enum OnboardingStep {
 enum OnboardingQuizGoal {
   formStrength,
   enduranceRun,
-  yogaRecovery,
   outdoorHikes,
   unknown,
 }
@@ -109,7 +108,6 @@ extension OnboardingQuizGoalX on OnboardingQuizGoal {
   String get storageValue => switch (this) {
         OnboardingQuizGoal.formStrength => 'form_strength',
         OnboardingQuizGoal.enduranceRun => 'endurance_run',
-        OnboardingQuizGoal.yogaRecovery => 'yoga_recovery',
         OnboardingQuizGoal.outdoorHikes => 'outdoor_hikes',
         OnboardingQuizGoal.unknown => 'unknown',
       };
@@ -226,9 +224,6 @@ final class OnboardingUserState {
   ActivityCategory get preferredBookingCategory {
     if (selectedTrack == OnboardingTrack.outdoor || quizGoal == OnboardingQuizGoal.outdoorHikes) {
       return ActivityCategory.hikes;
-    }
-    if (quizGoal == OnboardingQuizGoal.yogaRecovery) {
-      return ActivityCategory.yoga;
     }
     return ActivityCategory.trainings;
   }

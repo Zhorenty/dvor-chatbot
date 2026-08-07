@@ -37,12 +37,8 @@ final class BookingPolicyService {
     return category == ActivityCategory.hikes || category == ActivityCategory.trails;
   }
 
-  bool isYogaCategory(ActivityCategory category) {
-    return category == ActivityCategory.yoga;
-  }
-
   bool supportsCancellation(ActivityCategory category) {
-    return isOutdoorCategory(category) || isYogaCategory(category);
+    return isOutdoorCategory(category);
   }
 
   bool supportsCancellationForBooking(TrainingBooking booking) {
@@ -55,7 +51,7 @@ final class BookingPolicyService {
 
   bool canReschedule(TrainingBooking booking) {
     final category = categoryForBooking(booking);
-    return category == ActivityCategory.trainings || category == ActivityCategory.yoga;
+    return category == ActivityCategory.trainings;
   }
 
   void ensureReschedulePaymentTypeAllowed({
@@ -95,7 +91,7 @@ final class BookingPolicyService {
     if (isOutdoorCategory(category)) {
       return booking.startsAt.difference(now) >= const Duration(days: 7);
     }
-    return booking.startsAt.difference(now) >= const Duration(hours: 24);
+    return false;
   }
 
   bool shouldShowOutdoorPaymentTypeChoice(TrainingBooking booking) {

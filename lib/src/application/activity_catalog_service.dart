@@ -16,9 +16,6 @@ final class ActivityCatalogService {
     if (normalized.contains('трениров')) {
       return ActivityCategory.trainings;
     }
-    if (normalized.contains('йог')) {
-      return ActivityCategory.yoga;
-    }
     if (normalized.contains('поход')) {
       return ActivityCategory.hikes;
     }
@@ -31,7 +28,6 @@ final class ActivityCatalogService {
   List<TrainingInfo> bookableItems(ActivityCategory category, {int limit = 8}) {
     return switch (category) {
       ActivityCategory.trainings => _scheduleRepository.upcoming(limit: limit),
-      ActivityCategory.yoga => _scheduleRepository.upcomingYoga(limit: limit),
       ActivityCategory.hikes => _scheduleRepository
           .upcomingOutdoorActivities(limit: 20)
           .where((item) => item.type == OutdoorActivityType.hike)
@@ -50,7 +46,6 @@ final class ActivityCatalogService {
   List<TrainingInfo> participantItems(ActivityCategory category, {int limit = 12}) {
     return switch (category) {
       ActivityCategory.trainings => _scheduleRepository.upcoming(limit: limit),
-      ActivityCategory.yoga => _scheduleRepository.upcomingYoga(limit: limit),
       ActivityCategory.hikes => _scheduleRepository
           .upcomingOutdoorActivities(limit: 24)
           .where((item) => item.type == OutdoorActivityType.hike)
@@ -70,7 +65,6 @@ final class ActivityCatalogService {
     return _scheduleRepository.upcomingOutdoorActivities().where((item) {
       return switch (category) {
         ActivityCategory.trainings => false,
-        ActivityCategory.yoga => false,
         ActivityCategory.hikes => item.type == OutdoorActivityType.hike,
         ActivityCategory.trails => item.type == OutdoorActivityType.trail,
       };
@@ -131,9 +125,6 @@ final class ActivityCatalogService {
     }
     if (title.startsWith('🏃 Трейл:')) {
       return ActivityCategory.trails;
-    }
-    if (title.startsWith('🧘 Йога:')) {
-      return ActivityCategory.yoga;
     }
     return ActivityCategory.trainings;
   }

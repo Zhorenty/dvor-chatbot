@@ -156,7 +156,6 @@ extension MessageTemplatesHelpers on MessageTemplates {
   String _groupLowSpotsTitle(ActivityCategory category) {
     return switch (category) {
       ActivityCategory.trainings => 'На тренировке почти не осталось мест!',
-      ActivityCategory.yoga => 'На йоге почти не осталось мест!',
       ActivityCategory.hikes => 'В походе почти не осталось мест!',
       ActivityCategory.trails => 'На трейле почти не осталось мест!',
     };
@@ -165,7 +164,6 @@ extension MessageTemplatesHelpers on MessageTemplates {
   String _groupNoSpotsTitle(ActivityCategory category) {
     return switch (category) {
       ActivityCategory.trainings => 'Места на эту тренировку закончились',
-      ActivityCategory.yoga => 'Места на эту йогу закончились',
       ActivityCategory.hikes => 'В походе не осталось мест',
       ActivityCategory.trails => 'На трейле не осталось мест',
     };
@@ -202,7 +200,6 @@ extension MessageTemplatesHelpers on MessageTemplates {
   String _categoryLabel(ActivityCategory category) {
     return switch (category) {
       ActivityCategory.trainings => 'Тренировки',
-      ActivityCategory.yoga => 'Йога',
       ActivityCategory.hikes => 'Походы',
       ActivityCategory.trails => 'Трейлы',
     };

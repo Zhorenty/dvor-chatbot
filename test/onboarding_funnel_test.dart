@@ -52,7 +52,7 @@ void main() {
       await harness.handleText(
         chatId: 202,
         userId: 202,
-        text: MessageTemplates.buttonQuizGoalYoga,
+        text: MessageTemplates.buttonQuizGoalForm,
       );
       await harness.handleText(
         chatId: 202,
@@ -66,14 +66,14 @@ void main() {
       );
 
       final state = await harness.onboarding.getOnboardingState(202);
-      expect(state?.quizGoal, OnboardingQuizGoal.yogaRecovery);
+      expect(state?.quizGoal, OnboardingQuizGoal.formStrength);
       expect(state?.selectedTrack, OnboardingTrack.oneOff);
       expect(state?.phase, OnboardingPhase.phase2Activation);
       expect(
         harness.messagesTo(202).last.text,
         contains('как устроен DVOR'),
       );
-      expect(state?.preferredBookingCategory.name, 'yoga');
+      expect(state?.preferredBookingCategory.name, 'trainings');
     });
 
     test('cold start has no starter bonus', () async {

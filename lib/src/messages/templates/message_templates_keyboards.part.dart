@@ -91,13 +91,11 @@ extension MessageTemplatesKeyboards on MessageTemplates {
 
   Map<String, Object?> paymentsQueueCategorySelectionKeyboard({
     required int trainings,
-    required int yoga,
     required int hikes,
     required int trails,
   }) {
     return TelegramKeyboards.categorySelectionKeyboard(
       trainingsLabel: _labelWithCount(MessageCopy.buttonCategoryTrainings, trainings),
-      yogaLabel: _labelWithCount(MessageCopy.buttonCategoryYoga, yoga),
       hikesLabel: _labelWithCount(MessageCopy.buttonCategoryHikes, hikes),
       trailsLabel: _labelWithCount(MessageCopy.buttonCategoryTrails, trails),
     );

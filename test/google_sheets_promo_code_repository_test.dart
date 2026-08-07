@@ -43,7 +43,7 @@ void main() {
         httpClient: MockClient((request) async {
           return http.Response(
             'промокод,скидка,тип\n'
-            'YOGA20,20%,йога',
+            'HIKE20,20%,поход',
             200,
             headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
           );
@@ -51,10 +51,10 @@ void main() {
       );
 
       await repository.refresh(force: true);
-      final promo = repository.findByCode('yoga20');
+      final promo = repository.findByCode('hike20');
       expect(promo, isNotNull);
       expect(promo!.discountPercent, 20);
-      expect(promo.categories, <ActivityCategory>{ActivityCategory.yoga});
+      expect(promo.categories, <ActivityCategory>{ActivityCategory.hikes});
     });
 
     test('supports multiple categories separated by comma or semicolon', () async {
@@ -237,16 +237,16 @@ void main() {
     test('appliesTo returns true for empty categories set', () {
       const promo = PromoCode(code: 'ALL', discountPercent: 10);
       expect(promo.appliesTo(ActivityCategory.trainings), isTrue);
-      expect(promo.appliesTo(ActivityCategory.yoga), isTrue);
+      expect(promo.appliesTo(ActivityCategory.hikes), isTrue);
     });
 
     test('appliesTo restricts to configured categories', () {
       const promo = PromoCode(
-        code: 'YOGA',
+        code: 'HIKE',
         discountPercent: 10,
-        categories: <ActivityCategory>{ActivityCategory.yoga},
+        categories: <ActivityCategory>{ActivityCategory.hikes},
       );
-      expect(promo.appliesTo(ActivityCategory.yoga), isTrue);
+      expect(promo.appliesTo(ActivityCategory.hikes), isTrue);
       expect(promo.appliesTo(ActivityCategory.trainings), isFalse);
     });
   });

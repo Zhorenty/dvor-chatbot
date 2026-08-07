@@ -33,15 +33,12 @@ final class PaymentReviewService {
     );
     final deduped = _dedupePaymentGroups(queue);
     var trainings = 0;
-    var yoga = 0;
     var hikes = 0;
     var trails = 0;
     for (final booking in deduped) {
       switch (_catalogService.categoryForBooking(booking)) {
         case ActivityCategory.trainings:
           trainings++;
-        case ActivityCategory.yoga:
-          yoga++;
         case ActivityCategory.hikes:
           hikes++;
         case ActivityCategory.trails:
@@ -51,7 +48,6 @@ final class PaymentReviewService {
     return PaymentQueueCounters(
       total: deduped.length,
       trainings: trainings,
-      yoga: yoga,
       hikes: hikes,
       trails: trails,
     );
@@ -77,14 +73,12 @@ final class PaymentQueueCounters {
   const PaymentQueueCounters({
     required this.total,
     required this.trainings,
-    required this.yoga,
     required this.hikes,
     required this.trails,
   });
 
   final int total;
   final int trainings;
-  final int yoga;
   final int hikes;
   final int trails;
 }

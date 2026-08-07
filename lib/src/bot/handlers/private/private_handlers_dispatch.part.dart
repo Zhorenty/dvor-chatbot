@@ -35,11 +35,10 @@ extension PrivateHandlersDispatch on PrivateHandlers {
     final isAdmin = userId != null && isConfiguredAdmin && !_adminsInClientMode.contains(userId);
     final showReturnToAdminMenu = isConfiguredAdmin && !isAdmin;
     final username = context.from?['username']?.toString();
-    final isYogaTrainer = userId == PrivateHandlers._yogaTrainerUserId;
     final isWhitelistedTrainer =
         userId != null && isTrainerBookingWhitelisted(userId: userId, username: username);
     final canRunAdminAction = _adminHandler.canRunAdminAction(isAdmin: isConfiguredAdmin);
-    final canRunParticipantsAction = canRunAdminAction || isYogaTrainer || isWhitelistedTrainer;
+    final canRunParticipantsAction = canRunAdminAction || isWhitelistedTrainer;
     final flowState = userId == null ? null : _flowByUserId[userId];
     final paymentProof = extractPaymentProof(context.message);
     if (_isIgnorableServiceMessage(context.message)) {
@@ -129,7 +128,6 @@ extension PrivateHandlersDispatch on PrivateHandlers {
       showReturnToAdminMenu: showReturnToAdminMenu,
       canRunAdminAction: canRunAdminAction,
       canRunParticipantsAction: canRunParticipantsAction,
-      isYogaTrainer: isYogaTrainer,
       isWhitelistedTrainer: isWhitelistedTrainer,
       flowState: flowState,
       paymentProof: paymentProof,

@@ -728,9 +728,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     TrainingBooking booking, {
     required _ActivityCategory category,
   }) {
-    if (category == _ActivityCategory.yoga) {
-      return _templates.yogaCancellationTooLate(booking);
-    }
     if (category == _ActivityCategory.trainings) {
       return _templates.freeTrainingCancellationTooLate(booking);
     }

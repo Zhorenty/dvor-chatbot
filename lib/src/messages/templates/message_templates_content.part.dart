@@ -12,13 +12,6 @@ extension MessageTemplatesContent on MessageTemplates {
     return _scheduleTemplates.hikes(items);
   }
 
-  String yoga(
-    List<TrainingInfo> items, {
-    List<TrainerInfo> trainers = const <TrainerInfo>[],
-  }) {
-    return _scheduleTemplates.yoga(items, trainers: trainers);
-  }
-
   String trails(List<OutdoorActivityInfo> items) {
     return _scheduleTemplates.trails(items);
   }
@@ -89,7 +82,7 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String unknownCategory() {
     return 'Не понял категорию.\n'
-        'Нажми одну из кнопок ниже (Тренировки / Йога / Походы / Трейлы) 👇';
+        'Нажми одну из кнопок ниже (Тренировки / Походы / Трейлы) 👇';
   }
 
   String chooseParticipantsCategory() {
@@ -1173,7 +1166,7 @@ extension MessageTemplatesContent on MessageTemplates {
     if (booking == null) {
       return 'Не нашел запись для переноса. Выбери запись заново.';
     }
-    return 'Перенос доступен только для тренировок и йоги.\n'
+    return 'Перенос доступен только для тренировок.\n'
         'Для записи #${booking.id} используй другие действия.';
   }
 
@@ -1183,7 +1176,7 @@ extension MessageTemplatesContent on MessageTemplates {
     }
     return 'Самостоятельно отменить платную тренировку нельзя.\n'
         'Для записи #${booking.id} напиши в поддержку: @dvor_support.\n'
-        'Отмена доступна самостоятельно для бесплатных тренировок, йоги, походов и трейлов.';
+        'Отмена доступна самостоятельно для бесплатных тренировок, походов и трейлов.';
   }
 
   String bookingCancelConfirm(TrainingBooking booking) {
@@ -1216,8 +1209,8 @@ extension MessageTemplatesContent on MessageTemplates {
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
         'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n\n'
         'Правила:\n'
-        '• Перенос — только тренировки/йога на слот той же цены.\n'
-        '• Отмена outdoor — за 7+ дней, йога — за 24+ часа, бесплатные — всегда.\n'
+        '• Перенос — только тренировки на слот той же цены.\n'
+        '• Отмена outdoor — за 7+ дней, бесплатные — всегда.\n'
         '• Платные тренировки — через @dvor_support.\n\n'
         'Выбери действие 👇\n'
         '$hint';
@@ -1294,15 +1287,6 @@ extension MessageTemplatesContent on MessageTemplates {
     return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
         'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
         'осталось меньше 7 дней.';
-  }
-
-  String yogaCancellationTooLate(TrainingBooking booking) {
-    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
-    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
-        'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
-        'осталось меньше 24 часов.\n\n'
-        '${_yogaContactsHint()}';
   }
 
   String paymentsQueueEmpty() => 'Очередь подтверждения оплат пока пустая ✨';
@@ -1789,15 +1773,6 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String paymentInstructions(TrainingBooking booking) {
     final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
-    if (MessageFormatters.isYogaBooking(booking)) {
-      final promoAmountLine = _promoAmountLine(booking);
-      return '💳 <b>Реквизиты для оплаты</b>\n'
-          '• Получатель: <b>Елена П.</b>\n'
-          '• Банк: <b>🟨 Т-БАНК 🟨</b>\n'
-          '• Номер телефона: <b>+7(961)313-11-44</b>\n'
-          '$promoAmountLine\n'
-          '⏳ Если не оплатить в течение <b>30 минут</b> — запись отменится автоматически. После отмены нужно записаться заново.';
-    }
     if (MessageFormatters.isOutdoorBooking(booking)) {
       return '💳 <b>Реквизиты OUTDVOR</b>\n'
           '• Получатель: <b>Денис Р.</b>\n'
@@ -1822,14 +1797,6 @@ extension MessageTemplatesContent on MessageTemplates {
           '(промокод ${_escapeHtml(booking.promoCode!)}, −${booking.promoDiscountPercent ?? 0}%)\n';
     }
     return '• К оплате: <b>${_trainingPriceLabel(booking.trainingPrice)}</b>\n';
-  }
-
-  String _promoAmountLine(TrainingBooking booking) {
-    if (booking.promoCode == null) {
-      return '';
-    }
-    return '• К оплате: <b>${_trainingPriceLabel(booking.trainingPrice)}</b> '
-        '(промокод ${_escapeHtml(booking.promoCode!)}, −${booking.promoDiscountPercent ?? 0}%)\n';
   }
 
   String outdoorBookingRule(TrainingBooking booking) {
@@ -2039,13 +2006,11 @@ extension MessageTemplatesContent on MessageTemplates {
       return partialPaidRemainderOffline(booking);
     }
     if (!MessageFormatters.isOutdoorBooking(booking)) {
-      final yogaHint = MessageFormatters.isYogaBooking(booking) ? '\n\n${_yogaContactsHint()}' : '';
       return '${paymentInstructions(booking)}\n\n'
           '<b>Что дальше:</b>\n'
           '1) Оплати по реквизитам выше.\n'
           '2) Нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека (документ/фото) в этот чат 📎\n\n'
-          '⚠️ <b>Важно:</b> без файла подтверждения заявка не уйдёт на проверку.'
-          '$yogaHint';
+          '⚠️ <b>Важно:</b> без файла подтверждения заявка не уйдёт на проверку.';
     }
 
     return '${paymentInstructions(booking)}\n\n'
@@ -2054,11 +2019,6 @@ extension MessageTemplatesContent on MessageTemplates {
         '2) Выбери тип оплаты: «${MessageCopy.buttonPayFully}» или «${MessageCopy.buttonPayPartially}».\n'
         '3) Пришли файл чека (документ/фото) в этот чат 📎\n\n'
         '⚠️ <b>Важно:</b> без файла подтверждения заявка не уйдёт на проверку.';
-  }
-
-  String _yogaContactsHint() {
-    return 'По вопросам теории и практики можно написать тренеру-йоги.\n'
-        'По организационным вопросам: @dvor_support.';
   }
 
   String paymentProofRequired() {
@@ -2327,7 +2287,6 @@ extension MessageTemplatesContent on MessageTemplates {
     return switch (raw) {
       'form_strength' => 'форма / сила',
       'endurance_run' => 'выносливость / бег',
-      'yoga_recovery' => 'йога / восстановление',
       'outdoor_hikes' => 'outdoor / походы',
       'unknown' => 'пока не знаю',
       _ => raw,
@@ -2378,7 +2337,6 @@ extension MessageTemplatesContent on MessageTemplates {
   String _activityCategoryLabel(String raw) {
     return switch (raw) {
       'trainings' => 'тренировки',
-      'yoga' => 'йога',
       'hikes' => 'походы',
       'trails' => 'трейлы',
       _ => raw,

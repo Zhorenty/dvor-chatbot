@@ -108,7 +108,6 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
       final goal = switch (text) {
         MessageTemplates.buttonQuizGoalForm => OnboardingQuizGoal.formStrength,
         MessageTemplates.buttonQuizGoalEndurance => OnboardingQuizGoal.enduranceRun,
-        MessageTemplates.buttonQuizGoalYoga => OnboardingQuizGoal.yogaRecovery,
         MessageTemplates.buttonQuizGoalOutdoor => OnboardingQuizGoal.outdoorHikes,
         MessageTemplates.buttonQuizGoalUnknown => OnboardingQuizGoal.unknown,
         _ => null,

@@ -386,7 +386,6 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
           _templates.unknownCategory(),
           replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
             trainings: counters.trainings,
-            yoga: counters.yoga,
             hikes: counters.hikes,
             trails: counters.trails,
           ),

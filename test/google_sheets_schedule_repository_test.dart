@@ -1,5 +1,4 @@
 import 'package:dvor_chatbot/src/data/google_sheets_schedule_repository.dart';
-import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -155,25 +154,6 @@ void main() {
       expect(outdoor.last.equipment, 'Headlamp, warm layer');
       expect(outdoor.last.itinerary, 'Day 1 climb, day 2 ridge');
     });
-
-    test('loads upcoming yoga from dedicated sheet id', () async {
-      final repository = GoogleSheetsScheduleRepository(
-        csvUrl: Uri.parse('https://example.com/schedule.csv?gid=0'),
-        httpClient: MockClient(_mockCsvResponse),
-      );
-
-      final refreshed = await repository.refresh(force: true);
-      expect(refreshed, isTrue);
-
-      final yoga = repository.upcomingYoga(now: DateTime(2030, 6, 1), limit: 10);
-      expect(yoga, hasLength(1));
-      expect(yoga.single.title, 'Morning flow');
-      expect(yoga.single.category, ActivityCategory.yoga);
-      expect(yoga.single.startsAt, DateTime(2030, 6, 3, 8, 30));
-      expect(yoga.single.location, 'Studio C');
-      expect(yoga.single.participantsLimit, 12);
-      expect(yoga.single.coach, 'Mia');
-    });
   });
 }
 
@@ -190,13 +170,6 @@ Future<http.Response> _mockCsvResponse(http.Request request) async {
     return http.Response(
       'title,date_from,date_to,location,description,equipment,itinerary,price,participants_limit\n'
       'Mountain trail,2030-06-12,2030-06-14,Lago-Naki Plateau,Three day route,"Headlamp, warm layer","Day 1 climb, day 2 ridge",4500,0',
-      200,
-    );
-  }
-  if (gid == '469715453') {
-    return http.Response(
-      'title,starts_at,location,price,participants_limit,coaches\n'
-      'Morning flow,2030-06-03 08:30,Studio C,600,12,Mia',
       200,
     );
   }

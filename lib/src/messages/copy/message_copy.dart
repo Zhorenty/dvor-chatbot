@@ -32,7 +32,6 @@ final class MessageCopy {
   static const String buttonOnboardingSkipQuiz = 'Пропустить';
   static const String buttonQuizGoalForm = 'Форма / сила';
   static const String buttonQuizGoalEndurance = 'Выносливость / бег';
-  static const String buttonQuizGoalYoga = 'Йога / восстановление';
   static const String buttonQuizGoalOutdoor = 'Outdoor / походы';
   static const String buttonQuizGoalUnknown = 'Пока не знаю';
   static const String buttonQuizExpBeginner = 'Новичок';
@@ -47,7 +46,6 @@ final class MessageCopy {
   static const String buttonFeedbackWeak = 'Слабо';
   static const String buttonFeedbackSkip = 'Пропустить';
   static const String buttonCategoryTrainings = '🏋️ Тренировки';
-  static const String buttonCategoryYoga = '🧘 Йога';
   static const String buttonCategoryHikes = '🥾 Походы';
   static const String buttonCategoryTrails = '🏃 Трейлы';
   static const String buttonOutdoorEquipment = '🎒 Экипировка';

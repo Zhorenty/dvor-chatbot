@@ -109,7 +109,6 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
       final categoryKey = parts.length >= 2 ? parts[1].trim().toLowerCase() : '';
       final category = switch (categoryKey) {
         'trainings' => ActivityCategory.trainings,
-        'yoga' => ActivityCategory.yoga,
         'hikes' => ActivityCategory.hikes,
         'trails' => ActivityCategory.trails,
         _ => null,
@@ -121,7 +120,6 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
           _templates.choosePaymentsQueueCategory(),
           replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
             trainings: counters.trainings,
-            yoga: counters.yoga,
             hikes: counters.hikes,
             trails: counters.trails,
           ),
