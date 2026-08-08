@@ -382,6 +382,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         _templates.dvorXFrankPromo(),
         replyMarkup: _templates.dvorXFrankPromoKeyboard(),
         parseMode: 'HTML',
+        disableWebPagePreview: true,
       );
       return;
     }
@@ -397,6 +398,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         showReturnToAdminMenu: showReturnToAdminMenu,
       ),
       parseMode: 'HTML',
+      disableWebPagePreview: true,
     );
     await _sender.sendMessage(
       chatId,

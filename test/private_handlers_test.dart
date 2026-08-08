@@ -422,7 +422,12 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages.single.text, contains('ДВОР БЕЖИТ В FRANK BY БАСТА'));
       expect(sender.messages.single.text, contains('полностью бесплатное'));
+      expect(
+        sender.messages.single.text,
+        contains('<a href="https://yandex.ru/maps/-/CTSRUQ98">Моста Поцелуев</a>'),
+      );
       expect(sender.messages.single.parseMode, 'HTML');
+      expect(sender.messages.single.disableWebPagePreview, isTrue);
       expect(
         _keyboardTexts(sender.messages.single.replyMarkup),
         contains(MessageTemplates.buttonBookTraining),
@@ -485,6 +490,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('ДВОР БЕЖИТ В FRANK BY БАСТА'));
+      expect(sender.messages.first.disableWebPagePreview, isTrue);
       expect(sender.messages.last.text, contains('не нашли забег'));
       expect(
         _keyboardTexts(sender.messages.last.replyMarkup),
