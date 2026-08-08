@@ -22,6 +22,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.selectingPaymentsQueueCategory:
         case _PrivateFlowStep.viewingSubscriptionOverview:
         case _PrivateFlowStep.selectingBookingListSegment:
+        case _PrivateFlowStep.viewingFrankPromo:
           _flowByUserId.remove(userId);
           await _sender.sendMessage(
             chatId,

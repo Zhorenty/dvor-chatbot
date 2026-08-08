@@ -260,6 +260,20 @@ final class TelegramKeyboards {
     );
   }
 
+  static Map<String, Object?> dvorXFrankPromoKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBookTraining},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
   /// Secondary reply nav for payment step (primary CTAs are inline on the card).
   static Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,

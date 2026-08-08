@@ -369,6 +369,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
     return switch (flowState.step) {
       _PrivateFlowStep.selectingOutdoorDetailType ||
       _PrivateFlowStep.selectingOutdoorDetailEvent ||
+      _PrivateFlowStep.viewingFrankPromo ||
       _PrivateFlowStep.selectingBookingCategory ||
       _PrivateFlowStep.selectingBookFriendCategory ||
       _PrivateFlowStep.selectingBookFriendEvent ||

@@ -231,6 +231,10 @@ final class MessageTemplates {
     return _privateNavigationTemplates.dvorXFrankPromo();
   }
 
+  String dvorXFrankPromoUnavailable() {
+    return _privateNavigationTemplates.dvorXFrankPromoUnavailable();
+  }
+
   String privateFallback() {
     return _privateNavigationTemplates.privateFallback();
   }

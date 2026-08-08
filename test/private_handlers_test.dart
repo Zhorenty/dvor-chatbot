@@ -396,7 +396,77 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonSubscription)));
     });
 
-    test('opens DVOR x FRANK promo teaser for regular users', () async {
+    test('opens DVOR x FRANK promo with booking CTA when schedule has event', () async {
+      final sender = _FakeSender();
+      final frankTraining = TrainingInfo(
+        title: '🔴 DVORSPORT | FRANK BY BASTA',
+        startsAt: DateTime(2026, 8, 15, 8, 30),
+        location: 'Мост Поцелуев, Кубанская набережная',
+        price: 0,
+      );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[frankTraining]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 8, 8, 12),
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9101, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9101},
+        'text': MessageTemplates.buttonDvorXFrank,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('ДВОР БЕЖИТ В FRANK BY БАСТА'));
+      expect(sender.messages.single.text, contains('полностью бесплатное'));
+      expect(sender.messages.single.parseMode, 'HTML');
+      expect(
+        _keyboardTexts(sender.messages.single.replyMarkup),
+        contains(MessageTemplates.buttonBookTraining),
+      );
+    });
+
+    test('books FRANK BY BASTA from promo using schedule sessionKey', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final frankTraining = TrainingInfo(
+        title: '🔴 DVORSPORT | FRANK BY BASTA',
+        startsAt: DateTime(2026, 8, 15, 8, 30),
+        location: 'Мост Поцелуев, Кубанская набережная',
+        price: 0,
+      );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[frankTraining]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -1009102,
+        nowProvider: () => DateTime(2026, 8, 8, 12),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9102, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9102},
+        'text': MessageTemplates.buttonDvorXFrank,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9102, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9102},
+        'text': MessageTemplates.buttonBookTraining,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.createCalls, 1);
+      expect(bookingRepository.lastCreatedTraining?.sessionKey, frankTraining.sessionKey);
+      expect(bookingRepository.lastCreatedTraining?.title, frankTraining.title);
+      expect(sender.lastContentMessage.text, contains('Это бесплатная тренировка'));
+    });
+
+    test('shows FRANK promo unavailable note when event missing from schedule', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -413,11 +483,11 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.single.text, contains('DVOR x FRANK by БАСТА'));
-      expect(sender.messages.single.text, contains('Здесь скоро будет что-то интересное'));
-      expect(sender.messages.single.parseMode, 'HTML');
+      expect(sender.messages, hasLength(2));
+      expect(sender.messages.first.text, contains('ДВОР БЕЖИТ В FRANK BY БАСТА'));
+      expect(sender.messages.last.text, contains('не нашли забег'));
       expect(
-        _keyboardTexts(sender.messages.single.replyMarkup),
+        _keyboardTexts(sender.messages.last.replyMarkup),
         contains(MessageTemplates.buttonDvorXFrank),
       );
     });

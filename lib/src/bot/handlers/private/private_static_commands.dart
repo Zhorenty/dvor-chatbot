@@ -26,6 +26,13 @@ typedef BookingCategoryOpener = Future<void> Function({
   required bool canViewParticipantsList,
   required bool showReturnToAdminMenu,
 });
+typedef FrankPromoOpener = Future<void> Function({
+  required int chatId,
+  required int? userId,
+  required bool isAdmin,
+  required bool canViewParticipantsList,
+  required bool showReturnToAdminMenu,
+});
 
 final class PrivateStaticCommands {
   const PrivateStaticCommands();
@@ -48,6 +55,7 @@ final class PrivateStaticCommands {
     required WelcomePinner onPinWelcomeMessage,
     required NowProvider nowProvider,
     required BookingCategoryOpener onOpenBookingCategories,
+    required FrankPromoOpener onOpenFrankPromo,
     String? username,
   }) async {
     if (text == null) {
@@ -222,18 +230,12 @@ final class PrivateStaticCommands {
     }
 
     if (text == MessageTemplates.buttonDvorXFrank) {
-      if (userId != null) {
-        flowByUserId.remove(userId);
-      }
-      await sender.sendMessage(
-        chatId,
-        templates.dvorXFrankPromo(),
-        replyMarkup: templates.privateMenuKeyboard(
-          isAdmin: isAdmin,
-          canViewParticipantsList: canViewParticipantsList,
-          showReturnToAdminMenu: showReturnToAdminMenu,
-        ),
-        parseMode: 'HTML',
+      await onOpenFrankPromo(
+        chatId: chatId,
+        userId: userId,
+        isAdmin: isAdmin,
+        canViewParticipantsList: canViewParticipantsList,
+        showReturnToAdminMenu: showReturnToAdminMenu,
       );
       return true;
     }

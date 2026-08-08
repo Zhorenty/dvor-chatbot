@@ -25,6 +25,7 @@ enum PrivateFlowStep {
   viewingScheduleCategory,
   selectingOutdoorDetailEvent,
   selectingOutdoorDetailType,
+  viewingFrankPromo,
   selectingBookingCategory,
   selectingBookFriendCategory,
   selectingBookFriendEvent,
