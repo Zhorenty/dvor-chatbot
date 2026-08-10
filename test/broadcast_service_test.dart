@@ -25,6 +25,7 @@ void main() {
       expect(result.total, 2);
       expect(sender.messages.map((item) => item.chatId), containsAll(<int>[11, 22]));
       expect(sender.messages.every((item) => item.parseMode == 'HTML'), isTrue);
+      expect(sender.messages.every((item) => item.disableWebPagePreview), isTrue);
       expect(sender.copiedMessages, isEmpty);
     });
 

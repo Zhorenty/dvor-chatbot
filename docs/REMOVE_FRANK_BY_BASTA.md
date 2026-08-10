@@ -24,6 +24,7 @@
 
 - `lib/src/domain/frank_by_basta.dart`
 - `test/frank_by_basta_test.dart`
+- `docs/FRANK_BY_BASTA_BROADCAST.md`
 - этот файл: `docs/REMOVE_FRANK_BY_BASTA.md`
 
 ### 2. UI / copy / templates
@@ -41,7 +42,8 @@
 | Файл | Что убрать |
 |------|------------|
 | `lib/src/bot/handlers/private/private_flow_store.dart` | enum `viewingFrankPromo` |
-| `lib/src/bot/handlers/private/private_static_commands.dart` | `FrankPromoOpener`, параметр `onOpenFrankPromo`, ветка `buttonDvorXFrank` |
+| `lib/src/bot/handlers/private/private_static_commands.dart` | `FrankPromoOpener`, параметр `onOpenFrankPromo`, ветка `buttonDvorXFrank`, deep link `start=frank` |
+| `lib/src/application/broadcast_service.dart` | оставить `disableWebPagePreview` — это общий фикс рассылок, не Frank-only |
 | `lib/src/bot/handlers/private/private_handlers_dispatch.part.dart` | передачу `onOpenFrankPromo` / вызов `_openFrankByBastaPromo` |
 | `lib/src/bot/handlers/private/private_handlers_booking.part.dart` | метод `_openFrankByBastaPromo` |
 | `lib/src/bot/handlers/private/private_handlers_dispatch_user_booking.part.dart` | ветку `viewingFrankPromo` в обработчике `✍️ Записаться` |
@@ -73,6 +75,7 @@
 |------|------------|
 | `README.md` | пункт про кнопку `DVOR x FRANK by БАСТА` |
 | `docs/BUSINESS_CHEATSHEET.md` | пункт про кнопку Frank |
+| `docs/FRANK_BY_BASTA_BROADCAST.md` | текст рассылки |
 | `docs/REMOVE_FRANK_BY_BASTA.md` | этот чеклист |
 
 ### 7. Проверка «ничего не осталось»

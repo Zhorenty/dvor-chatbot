@@ -145,7 +145,7 @@ final class PrivateStaticCommands {
           );
         }
 
-        if (startPayload == 'book') {
+        if (startPayload == 'book' || startPayload == 'frank') {
           await sender.sendMessage(
             chatId,
             'Сначала короткий старт — пара вопросов, затем запись.\n'
@@ -177,6 +177,16 @@ final class PrivateStaticCommands {
             showReturnToAdminMenu: showReturnToAdminMenu,
           ),
         );
+      }
+      if (startPayload == 'frank' && userId != null) {
+        await onOpenFrankPromo(
+          chatId: chatId,
+          userId: userId,
+          isAdmin: isAdmin,
+          canViewParticipantsList: canViewParticipantsList,
+          showReturnToAdminMenu: showReturnToAdminMenu,
+        );
+        return true;
       }
       if (startPayload == 'book' && userId != null) {
         await onOpenBookingCategories(

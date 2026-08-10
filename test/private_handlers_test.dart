@@ -471,6 +471,40 @@ void main() {
       expect(sender.lastContentMessage.text, contains('Это бесплатная тренировка'));
     });
 
+    test('opens FRANK promo from /start frank deep link', () async {
+      final sender = _FakeSender();
+      final frankTraining = TrainingInfo(
+        title: '🔴 DVORSPORT | FRANK BY BASTA',
+        startsAt: DateTime(2026, 8, 15, 8, 30),
+        location: 'Мост Поцелуев, Кубанская набережная',
+        price: 0,
+      );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[frankTraining]),
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 8, 8, 12),
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9103, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9103},
+        'text': '/start frank',
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.length, greaterThanOrEqualTo(2));
+      expect(sender.messages.first.text, contains('Добро пожаловать в DVOR'));
+      expect(sender.lastContentMessage.text, contains('ДВОР БЕЖИТ В FRANK BY БАСТА'));
+      expect(
+        _keyboardTexts(sender.lastContentMessage.replyMarkup),
+        contains(MessageTemplates.buttonBookTraining),
+      );
+      expect(sender.lastContentMessage.disableWebPagePreview, isTrue);
+    });
+
     test('shows FRANK promo unavailable note when event missing from schedule', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
