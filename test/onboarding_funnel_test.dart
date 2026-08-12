@@ -1,11 +1,14 @@
 import 'dart:io';
 
+import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
+import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
+import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/jobs/onboarding_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/training_feedback_job.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -223,7 +226,7 @@ void main() {
           id: 11,
           userId: 808,
           userUsername: 'u808',
-          trainingKey: 'k',
+          trainingKey: 'trainings|k',
           trainingTitle: 'Силовая',
           startsAt: startsAt,
           location: 'Зал',
@@ -260,6 +263,128 @@ void main() {
       expect(flowStarts, 1);
       expect(sender.messages.where((m) => m.chatId == 808).length, 1);
       expect(onboarding.feedbackRequestBookingIds, contains(11));
+      expect(sender.messages.first.text, contains('Как прошла тренировка'));
+    });
+
+    test('hike feedback asks next day at noon after single-day end', () async {
+      // Business noon on 15 June (UTC+3) = 09:00 UTC.
+      final now = DateTime.utc(2026, 6, 15, 9, 5);
+      final bookingRepo = FakeBookingRepository();
+      final startsAt = DateTime(2026, 6, 14);
+      bookingRepo.queue = <TrainingBooking>[
+        TrainingBooking(
+          id: 21,
+          userId: 909,
+          userUsername: 'hiker',
+          trainingKey: 'hikes|2026-06-14T00:00:00.000Z|🥾 Поход: Ачишхо|Локация',
+          trainingTitle: '🥾 Поход: Ачишхо',
+          startsAt: startsAt,
+          location: 'Локация',
+          status: BookingStatus.paid,
+          trainingPrice: 3000,
+          createdAt: startsAt.subtract(const Duration(days: 3)),
+          updatedAt: startsAt.subtract(const Duration(days: 3)),
+        ),
+      ];
+      final schedule = FakeScheduleRepository(
+        const <TrainingInfo>[],
+        outdoorItems: <OutdoorActivityInfo>[
+          OutdoorActivityInfo(
+            type: OutdoorActivityType.hike,
+            title: 'Ачишхо',
+            dateFrom: DateTime(2026, 6, 14),
+            dateTo: DateTime(2026, 6, 14, 23, 59, 59),
+            description: 'однодневный',
+          ),
+        ],
+      );
+      final onboarding = FakeOnboardingRepository()
+        ..seedUser(userId: 909, phase: OnboardingPhase.legacySkipped);
+      final sender = FakeSender();
+      final job = TrainingFeedbackJob(
+        bookingRepository: bookingRepo,
+        onboardingRepository: onboarding,
+        sender: sender,
+        templates: const MessageTemplates(),
+        enabled: true,
+        catalogService: ActivityCatalogService(scheduleRepository: schedule),
+        timezoneOffsetHours: 3,
+        nowProvider: () => now,
+        onAskFeedback: ({
+          required int userId,
+          required int bookingId,
+          required String sessionKey,
+          required String trainingTitle,
+        }) async {},
+      );
+
+      await job.run();
+
+      expect(onboarding.feedbackRequestBookingIds, contains(21));
+      expect(sender.messages.single.text, contains('Как прошел поход'));
+      expect(sender.messages.single.text, isNot(contains('Как прошла тренировка')));
+    });
+
+    test('multi-day hike feedback waits until day after dateTo at noon', () async {
+      final tooEarly = DateTime.utc(2026, 6, 22, 9, 5); // noon business on end day
+      final due = DateTime.utc(2026, 6, 23, 9, 5); // noon+ business day after end
+      final bookingRepo = FakeBookingRepository();
+      final startsAt = DateTime(2026, 6, 20);
+      final booking = TrainingBooking(
+        id: 22,
+        userId: 910,
+        userUsername: 'trekker',
+        trainingKey: 'hikes|2026-06-20T00:00:00.000Z|🥾 Поход: Карниз|Локация',
+        trainingTitle: '🥾 Поход: Карниз',
+        startsAt: startsAt,
+        location: 'Локация',
+        status: BookingStatus.paid,
+        trainingPrice: 5000,
+        createdAt: startsAt.subtract(const Duration(days: 5)),
+        updatedAt: startsAt.subtract(const Duration(days: 5)),
+      );
+      bookingRepo.queue = <TrainingBooking>[booking];
+      final schedule = FakeScheduleRepository(
+        const <TrainingInfo>[],
+        outdoorItems: <OutdoorActivityInfo>[
+          OutdoorActivityInfo(
+            type: OutdoorActivityType.hike,
+            title: 'Карниз',
+            dateFrom: DateTime(2026, 6, 20),
+            dateTo: DateTime(2026, 6, 22, 23, 59, 59),
+            description: 'многодневный',
+          ),
+        ],
+      );
+      final onboarding = FakeOnboardingRepository()
+        ..seedUser(userId: 910, phase: OnboardingPhase.legacySkipped);
+      final sender = FakeSender();
+      TrainingFeedbackJob buildJob(DateTime now) {
+        return TrainingFeedbackJob(
+          bookingRepository: bookingRepo,
+          onboardingRepository: onboarding,
+          sender: sender,
+          templates: const MessageTemplates(),
+          enabled: true,
+          catalogService: ActivityCatalogService(scheduleRepository: schedule),
+          timezoneOffsetHours: 3,
+          nowProvider: () => now,
+          onAskFeedback: ({
+            required int userId,
+            required int bookingId,
+            required String sessionKey,
+            required String trainingTitle,
+          }) async {},
+        );
+      }
+
+      await buildJob(tooEarly).run();
+      expect(onboarding.feedbackRequestBookingIds, isEmpty);
+      expect(sender.messages, isEmpty);
+
+      await buildJob(due).run();
+      expect(onboarding.feedbackRequestBookingIds, contains(22));
+      expect(sender.messages.single.text, contains('Как прошел поход'));
     });
 
     test('group welcome deep link uses start=start', () {

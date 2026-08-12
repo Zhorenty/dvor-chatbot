@@ -90,7 +90,7 @@ final class AppConfig {
       )
       ..addOption(
         'training-feedback-enabled',
-        help: 'Ask anonymous feedback 2h after training (default: true)',
+        help: 'Ask anonymous feedback after trainings/hikes (default: true)',
       )
       ..addOption('log-level', help: 'Log level: debug/info/warn/error');
 

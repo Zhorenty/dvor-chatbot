@@ -40,7 +40,7 @@ final class FakeScheduleRepository implements TrainingScheduleRepository {
 
   @override
   List<OutdoorActivityInfo> upcomingOutdoorActivities({DateTime? now, int limit = 8}) =>
-      outdoorItems.take(limit).toList();
+      outdoorItems.take(limit).toList(growable: false);
 
   @override
   Future<bool> refresh({bool force = false}) async {

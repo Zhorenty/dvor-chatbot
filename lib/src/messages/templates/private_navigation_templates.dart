@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 
 final class PrivateNavigationTemplates {
@@ -82,9 +83,16 @@ final class PrivateNavigationTemplates {
         'или «${MessageCopy.buttonTrainings}». Я рядом.';
   }
 
-  String trainingFeedbackAsk({required String trainingTitle}) {
-    return 'Как прошла тренировка «$trainingTitle»?\n'
-        'Ответ анонимный — только чтобы становилось лучше.';
+  String trainingFeedbackAsk({
+    required String trainingTitle,
+    ActivityCategory category = ActivityCategory.trainings,
+  }) {
+    final question = switch (category) {
+      ActivityCategory.hikes => 'Как прошел поход «$trainingTitle»?',
+      ActivityCategory.trails => 'Как прошел трейл «$trainingTitle»?',
+      ActivityCategory.trainings => 'Как прошла тренировка «$trainingTitle»?',
+    };
+    return '$question\nОтвет анонимный — только чтобы становилось лучше.';
   }
 
   String trainingFeedbackCommentAsk() {
@@ -100,9 +108,15 @@ final class PrivateNavigationTemplates {
     required String trainingTitle,
     required String ratingLabel,
     String? comment,
+    ActivityCategory category = ActivityCategory.trainings,
   }) {
+    final subject = switch (category) {
+      ActivityCategory.hikes => 'походе',
+      ActivityCategory.trails => 'трейле',
+      ActivityCategory.trainings => 'тренировке',
+    };
     final lines = <String>[
-      '📝 <b>Новый анонимный отзыв о тренировке</b>',
+      '📝 <b>Новый анонимный отзыв о $subject</b>',
       'Занятие: <b>$trainingTitle</b>',
       'Оценка: <b>$ratingLabel</b>',
     ];

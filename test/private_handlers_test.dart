@@ -4276,13 +4276,13 @@ void main() {
       final sender = _FakeSender();
       final oldTrail = TrainingInfo(
         title: '🏃 Трейл: Лаго-Наки',
-        startsAt: DateTime(2026, 8, 10),
+        startsAt: DateTime(2030, 8, 10),
         location: 'Описание версии 1',
         category: ActivityCategory.trails,
       );
       final newTrail = TrainingInfo(
         title: '🏃 Трейл: Лаго-Наки',
-        startsAt: DateTime(2026, 8, 12),
+        startsAt: DateTime(2030, 8, 12),
         location: 'Описание версии 2',
         category: ActivityCategory.trails,
       );
@@ -4364,8 +4364,8 @@ void main() {
       expect(categoryHandled, isTrue);
       final messageText = sender.lastContentMessage.text;
       expect(RegExp('🏃 Трейл: Лаго-Наки').allMatches(messageText).length, 1);
-      expect(messageText, contains('🕒 12.08.2026'));
-      expect(messageText, isNot(contains('🕒 10.08.2026')));
+      expect(messageText, contains('🕒 12.08.2030'));
+      expect(messageText, isNot(contains('🕒 10.08.2030')));
       expect(RegExp('@trail_runner').allMatches(messageText).length, 1);
       expect(messageText, isNot(contains('@trail_cancelled (Отменено ❌)')));
     });

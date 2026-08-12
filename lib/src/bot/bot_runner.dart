@@ -117,6 +117,8 @@ final class BotRunner {
           sender: sender,
           templates: templates,
           enabled: config.trainingFeedbackEnabled,
+          catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
+          timezoneOffsetHours: config.timezoneOffsetHours,
           onAskFeedback: ({
             required int userId,
             required int bookingId,

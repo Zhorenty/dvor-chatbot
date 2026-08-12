@@ -277,6 +277,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
           chatId,
           _templates.trainingFeedbackAsk(
             trainingTitle: flow?.feedbackTrainingTitle ?? 'тренировка',
+            category: _feedbackCategoryFromFlow(flow),
           ),
           replyMarkup: bookingId == null
               ? _templates.trainingFeedbackKeyboard()
@@ -309,6 +310,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         await _notifyAdminAboutTrainingFeedback(
           trainingTitle: flow?.feedbackTrainingTitle ?? 'Тренировка',
           rating: rating,
+          category: _feedbackCategoryFromFlow(flow),
         );
         return true;
       }
@@ -360,6 +362,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         trainingTitle: trainingTitle,
         rating: rating,
         comment: comment,
+        category: _feedbackCategoryFromFlow(flow),
       );
       return true;
     }
@@ -367,10 +370,18 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     return false;
   }
 
+  _ActivityCategory _feedbackCategoryFromFlow(_PrivateFlowState? flow) {
+    return _catalogService.categoryForKeyAndTitle(
+      trainingKey: flow?.feedbackSessionKey ?? '',
+      trainingTitle: flow?.feedbackTrainingTitle ?? '',
+    );
+  }
+
   Future<void> _notifyAdminAboutTrainingFeedback({
     required String trainingTitle,
     required TrainingFeedbackRating rating,
     String? comment,
+    _ActivityCategory category = _ActivityCategory.trainings,
   }) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
@@ -383,6 +394,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
           trainingTitle: trainingTitle,
           rating: rating,
           comment: comment,
+          category: category,
         ),
       );
     } on Object catch (error, stackTrace) {

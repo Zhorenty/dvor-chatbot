@@ -76,7 +76,17 @@ final class ActivityCatalogService {
     if (category != ActivityCategory.hikes && category != ActivityCategory.trails) {
       return null;
     }
-    final items = outdoorItems(category);
+    final type =
+        category == ActivityCategory.hikes ? OutdoorActivityType.hike : OutdoorActivityType.trail;
+    // Look back from the booking start so recently finished multi-day events
+    // are still resolvable for post-trip feedback timing.
+    final items = _scheduleRepository
+        .upcomingOutdoorActivities(
+          now: booking.startsAt.subtract(const Duration(days: 1)),
+          limit: 100,
+        )
+        .where((item) => item.type == type)
+        .toList(growable: false);
     if (items.isEmpty) {
       return null;
     }
@@ -108,7 +118,17 @@ final class ActivityCatalogService {
   }
 
   ActivityCategory categoryForBooking(TrainingBooking booking) {
-    final keyPrefix = booking.trainingKey.split('|').firstOrNull;
+    return categoryForKeyAndTitle(
+      trainingKey: booking.trainingKey,
+      trainingTitle: booking.trainingTitle,
+    );
+  }
+
+  ActivityCategory categoryForKeyAndTitle({
+    required String trainingKey,
+    required String trainingTitle,
+  }) {
+    final keyPrefix = trainingKey.split('|').firstOrNull;
     if (keyPrefix != null) {
       for (final category in ActivityCategory.values) {
         if (category.name == keyPrefix) {
@@ -119,11 +139,10 @@ final class ActivityCatalogService {
 
     // Backward-compatible fallback for older rows that were created before
     // category was embedded into the session key.
-    final title = booking.trainingTitle;
-    if (title.startsWith('🥾 Поход:')) {
+    if (trainingTitle.startsWith('🥾 Поход:')) {
       return ActivityCategory.hikes;
     }
-    if (title.startsWith('🏃 Трейл:')) {
+    if (trainingTitle.startsWith('🏃 Трейл:')) {
       return ActivityCategory.trails;
     }
     return ActivityCategory.trainings;

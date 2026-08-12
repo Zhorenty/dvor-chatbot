@@ -203,8 +203,14 @@ final class MessageTemplates {
 
   String onboardingSnoozeAck() => _privateNavigationTemplates.onboardingSnoozeAck();
 
-  String trainingFeedbackAsk({required String trainingTitle}) {
-    return _privateNavigationTemplates.trainingFeedbackAsk(trainingTitle: trainingTitle);
+  String trainingFeedbackAsk({
+    required String trainingTitle,
+    ActivityCategory category = ActivityCategory.trainings,
+  }) {
+    return _privateNavigationTemplates.trainingFeedbackAsk(
+      trainingTitle: trainingTitle,
+      category: category,
+    );
   }
 
   String trainingFeedbackCommentAsk() => _privateNavigationTemplates.trainingFeedbackCommentAsk();
@@ -215,11 +221,13 @@ final class MessageTemplates {
     required String trainingTitle,
     required TrainingFeedbackRating rating,
     String? comment,
+    ActivityCategory category = ActivityCategory.trainings,
   }) {
     return _privateNavigationTemplates.trainingFeedbackAdminNotification(
       trainingTitle: _escapeHtml(trainingTitle),
       ratingLabel: _escapeHtml(_feedbackRatingLabel(rating.storageValue)),
       comment: comment == null ? null : _escapeHtml(comment),
+      category: category,
     );
   }
 
