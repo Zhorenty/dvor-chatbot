@@ -34,6 +34,7 @@ Project guidance for AI/code agents in this repository.
 - Conversation log: `lib/src/data/sqlite_conversation_log_repository.dart` (+ `LoggingMessageSender`)
 - Message text/templates: `lib/src/messages/message_templates.dart` (+ `templates/*.part.dart`)
 - HTML escaping: `lib/src/messages/html_escaper.dart`
+- Club voice / copy: `docs/VOICE.md` (read before generating or editing user-facing text)
 
 ## Architecture and Coding Rules
 
@@ -45,6 +46,21 @@ Project guidance for AI/code agents in this repository.
 - Preserve repository abstraction (`TrainingScheduleRepository`) when adding/changing schedule sources.
 - Use package imports only (`analysis_options.yaml`).
 - Avoid experimental APIs unless there is a strong reason.
+
+## Voice and Copy
+
+When asked to write or edit user-facing text (group posts, broadcasts, congratulations, onboarding, templates), follow `docs/VOICE.md`. Do not invent a new tone. Do not rewrite existing `message_templates` copy to match the milestone example unless the task is explicitly about copy.
+
+- DVOR is a sports club people train *with*, not a gym brand or a sales funnel. Brand spelling: `DVOR`.
+- Address one person (DM, named welcome) as «ты»; the group as a whole as «вы». Do not mix in one text.
+- Meaning before hype. Concrete life of the club over abstract «сообщество». Name only the activities the text is about.
+- Short sentences, 1–3 line paragraphs, air between blocks. One emoji as a headline anchor, not a shower of emoji.
+- Pick a genre first (milestone, welcome, schedule/promo, referral/payment, bot UX, onboarding, admin). The milestone skeleton is for community posts only.
+- Community posts have no hard sell and close physically (`До встречи на площадке. DVOR 🤝`). CTA only when the message is about an action; then one CTA, factual scarcity OK, FOMO is not.
+- Bot UX: fact → status → one next step. No club signature. Onboarding: one question or one step, not the whole club.
+- Do not invent dates, coaches, prices, address, or headcount. Escape user-provided strings. HTML, `<b>` on headline/key words only.
+
+Avoid: «дорогие друзья», «от лица команды», «администрация», «не упусти шанс», «эксклюзив», walls of text, `!!!`, mixing English slang except product terms already in use (`Start`, `PRO`).
 
 ## Telegram Behavior Contract
 
@@ -102,6 +118,7 @@ Update docs when behavior/config/operations change:
 - `README.md` (commands, config, behavior)
 - `.env.example` (if env vars changed)
 - deployment docs where relevant (notably `docs/DAILY_OPS_TIMEWEB.md`)
+- `docs/VOICE.md` (if club voice, copy rhythm, or user-facing tone changes; keep the AGENTS.md Voice and Copy section in sync)
 
 ## Production Defaults (Timeweb Cloud)
 
