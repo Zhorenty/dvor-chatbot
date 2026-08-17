@@ -36,7 +36,6 @@ final class MessageTemplates {
   final ScheduleTemplates _scheduleTemplates = const ScheduleTemplates();
   GroupTemplates get _groupTemplates => GroupTemplates(botUsername: _botUsername);
 
-  static const String buttonDvorXFrank = MessageCopy.buttonDvorXFrank;
   static const String buttonTrainings = MessageCopy.buttonTrainings;
   static const String buttonCoachingStaff = MessageCopy.buttonCoachingStaff;
   static const String buttonCoachDetails = MessageCopy.buttonCoachDetails;
@@ -233,14 +232,6 @@ final class MessageTemplates {
 
   String privateHelp() {
     return _privateNavigationTemplates.privateHelp();
-  }
-
-  String dvorXFrankPromo() {
-    return _privateNavigationTemplates.dvorXFrankPromo();
-  }
-
-  String dvorXFrankPromoUnavailable() {
-    return _privateNavigationTemplates.dvorXFrankPromoUnavailable();
   }
 
   String privateFallback() {

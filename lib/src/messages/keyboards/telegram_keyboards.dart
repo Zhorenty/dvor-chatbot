@@ -38,9 +38,6 @@ final class TelegramKeyboards {
 
     final rows = <List<Map<String, String>>>[
       <Map<String, String>>[
-        <String, String>{'text': MessageCopy.buttonDvorXFrank},
-      ],
-      <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonBookTraining},
         <String, String>{'text': MessageCopy.buttonBookFriend},
       ],
@@ -251,20 +248,6 @@ final class TelegramKeyboards {
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonOutdoorItinerary},
           <String, String>{'text': MessageCopy.buttonOutdoorEquipment},
-        ],
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonBack},
-          <String, String>{'text': MessageCopy.buttonMainMenu},
-        ],
-      ],
-    );
-  }
-
-  static Map<String, Object?> dvorXFrankPromoKeyboard() {
-    return _replyKeyboard(
-      <List<Map<String, String>>>[
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonBookTraining},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},

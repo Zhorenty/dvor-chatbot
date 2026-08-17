@@ -358,59 +358,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     );
   }
 
-  Future<void> _openFrankByBastaPromo({
-    required int chatId,
-    required int? userId,
-    required bool isAdmin,
-    required bool canViewParticipantsList,
-    required bool showReturnToAdminMenu,
-  }) async {
-    final refreshOk = await _scheduleRepository.refresh();
-    if (!refreshOk) {
-      l.w('Schedule refresh failed before FRANK BY BASTA promo. Using cached schedule.');
-    }
-    final frankTraining = FrankByBasta.findIn(
-      _scheduleRepository.upcoming(now: _nowProvider(), limit: 200),
-    );
-    if (userId != null && frankTraining != null) {
-      _flowByUserId[userId] = _PrivateFlowState(
-        step: _PrivateFlowStep.viewingFrankPromo,
-        availableTrainings: <TrainingInfo>[frankTraining],
-      );
-      await _sender.sendMessage(
-        chatId,
-        _templates.dvorXFrankPromo(),
-        replyMarkup: _templates.dvorXFrankPromoKeyboard(),
-        parseMode: 'HTML',
-        disableWebPagePreview: true,
-      );
-      return;
-    }
-    if (userId != null) {
-      _flowByUserId.remove(userId);
-    }
-    await _sender.sendMessage(
-      chatId,
-      _templates.dvorXFrankPromo(),
-      replyMarkup: _templates.privateMenuKeyboard(
-        isAdmin: isAdmin,
-        canViewParticipantsList: canViewParticipantsList,
-        showReturnToAdminMenu: showReturnToAdminMenu,
-      ),
-      parseMode: 'HTML',
-      disableWebPagePreview: true,
-    );
-    await _sender.sendMessage(
-      chatId,
-      _templates.dvorXFrankPromoUnavailable(),
-      replyMarkup: _templates.privateMenuKeyboard(
-        isAdmin: isAdmin,
-        canViewParticipantsList: canViewParticipantsList,
-        showReturnToAdminMenu: showReturnToAdminMenu,
-      ),
-    );
-  }
-
   Future<void> _openBookingByCategory({
     required int chatId,
     required int userId,

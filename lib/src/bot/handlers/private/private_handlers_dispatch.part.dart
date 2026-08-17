@@ -89,21 +89,6 @@ extension PrivateHandlersDispatch on PrivateHandlers {
           replyMarkup: _templates.categorySelectionKeyboard(),
         );
       },
-      onOpenFrankPromo: ({
-        required int chatId,
-        required int? userId,
-        required bool isAdmin,
-        required bool canViewParticipantsList,
-        required bool showReturnToAdminMenu,
-      }) async {
-        await _openFrankByBastaPromo(
-          chatId: chatId,
-          userId: userId,
-          isAdmin: isAdmin,
-          canViewParticipantsList: canViewParticipantsList,
-          showReturnToAdminMenu: showReturnToAdminMenu,
-        );
-      },
       username: username,
     );
     if (handledStaticCommand) {

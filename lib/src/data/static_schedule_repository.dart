@@ -27,14 +27,6 @@ final class StaticScheduleRepository implements TrainingScheduleRepository {
 
 final List<TrainingInfo> _items = <TrainingInfo>[
   TrainingInfo(
-    title: '🔴 DVORSPORT | FRANK BY BASTA',
-    startsAt: DateTime(2026, 8, 15, 8, 30),
-    location: 'Мост Поцелуев, Кубанская набережная',
-    price: 0,
-    participantsLimit: 100,
-    notes: 'Бесплатный забег 5 км + силовая. Старт у моста Поцелуев.',
-  ),
-  TrainingInfo(
     title: 'Функциональная тренировка',
     startsAt: DateTime(2026, 6, 2, 19, 0),
     location: 'Спортзал DVOR, ул. Центральная, 10',

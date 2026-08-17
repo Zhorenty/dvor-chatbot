@@ -26,13 +26,6 @@ typedef BookingCategoryOpener = Future<void> Function({
   required bool canViewParticipantsList,
   required bool showReturnToAdminMenu,
 });
-typedef FrankPromoOpener = Future<void> Function({
-  required int chatId,
-  required int? userId,
-  required bool isAdmin,
-  required bool canViewParticipantsList,
-  required bool showReturnToAdminMenu,
-});
 
 final class PrivateStaticCommands {
   const PrivateStaticCommands();
@@ -55,7 +48,6 @@ final class PrivateStaticCommands {
     required WelcomePinner onPinWelcomeMessage,
     required NowProvider nowProvider,
     required BookingCategoryOpener onOpenBookingCategories,
-    required FrankPromoOpener onOpenFrankPromo,
     String? username,
   }) async {
     if (text == null) {
@@ -145,7 +137,7 @@ final class PrivateStaticCommands {
           );
         }
 
-        if (startPayload == 'book' || startPayload == 'frank') {
+        if (startPayload == 'book') {
           await sender.sendMessage(
             chatId,
             'Сначала короткий старт — пара вопросов, затем запись.\n'
@@ -177,16 +169,6 @@ final class PrivateStaticCommands {
             showReturnToAdminMenu: showReturnToAdminMenu,
           ),
         );
-      }
-      if (startPayload == 'frank' && userId != null) {
-        await onOpenFrankPromo(
-          chatId: chatId,
-          userId: userId,
-          isAdmin: isAdmin,
-          canViewParticipantsList: canViewParticipantsList,
-          showReturnToAdminMenu: showReturnToAdminMenu,
-        );
-        return true;
       }
       if (startPayload == 'book' && userId != null) {
         await onOpenBookingCategories(
@@ -235,17 +217,6 @@ final class PrivateStaticCommands {
         replyMarkup: templates.coachingStaffActionsKeyboard(),
         parseMode: 'HTML',
         disableWebPagePreview: true,
-      );
-      return true;
-    }
-
-    if (text == MessageTemplates.buttonDvorXFrank) {
-      await onOpenFrankPromo(
-        chatId: chatId,
-        userId: userId,
-        isAdmin: isAdmin,
-        canViewParticipantsList: canViewParticipantsList,
-        showReturnToAdminMenu: showReturnToAdminMenu,
       );
       return true;
     }

@@ -20,20 +20,6 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         chatId: chatId,
         username: username,
       );
-      if (flowState?.step == _PrivateFlowStep.viewingFrankPromo &&
-          flowState!.availableTrainings.isNotEmpty) {
-        final selectedTraining = flowState.availableTrainings.first;
-        await _createOrContinueBooking(
-          chatId: chatId,
-          userId: userId,
-          isAdmin: isAdmin,
-          flowState: flowState,
-          selectedTraining: selectedTraining,
-          username: username,
-          onParticipantsLimitReplyMarkup: _templates.dvorXFrankPromoKeyboard(),
-        );
-        return true;
-      }
       if (flowState?.step == _PrivateFlowStep.selectingOutdoorDetailType &&
           flowState?.selectedOutdoorActivity != null) {
         final selectedTraining =

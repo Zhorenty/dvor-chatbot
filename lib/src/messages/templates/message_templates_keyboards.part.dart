@@ -89,10 +89,6 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     return TelegramKeyboards.outdoorDetailTypeKeyboard();
   }
 
-  Map<String, Object?> dvorXFrankPromoKeyboard() {
-    return TelegramKeyboards.dvorXFrankPromoKeyboard();
-  }
-
   Map<String, Object?> paymentsQueueCategorySelectionKeyboard({
     required int trainings,
     required int hikes,
