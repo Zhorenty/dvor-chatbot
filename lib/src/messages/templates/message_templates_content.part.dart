@@ -2086,46 +2086,127 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String funnelAnalyticsOnboarding(FunnelAnalytics analytics) {
     final generated = DateFormat('dd.MM.yyyy HH:mm').format(analytics.generatedAt.toLocal());
+    final started = analytics.funnelUsers;
     final lines = <String>[
       '📈 <b>Воронка онбординга</b>',
       'Срез: <b>$generated</b>',
       '',
-      '<b>Пользователи:</b>',
-      '• С /start: <b>${analytics.startedUsersTotal}</b>',
-      '• В воронке (не legacy): <b>${analytics.funnelUsers}</b>',
-      '• Legacy (без drip): <b>${analytics.legacyUsers}</b>',
-      '• Completed: <b>${analytics.completedUsers}</b>',
-      '• /start за 7д: <b>${analytics.startedLast7Days}</b>',
-      '• /start за 30д: <b>${analytics.startedLast30Days}</b>',
+      'Как читать: в «Пути новичка» число — сколько людей дошли до шага. '
+          '% — доля от тех, кто начал квиз. Шаг считается пройденным, даже если человек уже ушёл дальше.',
       '',
-      '<b>Activation:</b>',
+      '<b>Коротко</b>',
+      '• Нажали Start когда-либо: <b>${analytics.startedUsersTotal}</b>',
+      '• Из них в новой воронке: <b>${analytics.funnelUsers}</b>',
+      '• Старые пользователи без квиза: <b>${analytics.legacyUsers}</b>',
+      '• Новых Start за 7 дней: <b>${analytics.startedLast7Days}</b>',
+      '• Новых Start за 30 дней: <b>${analytics.startedLast30Days}</b>',
+      '',
+      '<b>Путь новичка</b>',
+      _funnelStepLine(
+        index: 1,
+        title: 'Начали квиз',
+        count: analytics.funnelUsers,
+        startCount: started,
+      ),
+      _funnelStepLine(
+        index: 2,
+        title: 'Ответили, что сейчас важнее',
+        count: analytics.quizGoalAnsweredCount,
+        previousCount: analytics.funnelUsers,
+        startCount: started,
+      ),
+      _funnelStepLine(
+        index: 3,
+        title: 'Указали опыт',
+        count: analytics.quizExperienceAnsweredCount,
+        previousCount: analytics.quizGoalAnsweredCount,
+        startCount: started,
+      ),
+      _funnelStepLine(
+        index: 4,
+        title: 'Выбрали формат и увидели карту клуба',
+        count: analytics.trackChosenCount,
+        previousCount: analytics.quizExperienceAnsweredCount,
+        startCount: started,
+      ),
+      _funnelStepLine(
+        index: 5,
+        title: 'Первая тренировка (активация)',
+        count: analytics.activationsTotal,
+        previousCount: analytics.trackChosenCount,
+        startCount: started,
+      ),
+      '',
+      'Пропуск квиза сразу ведёт на шаг 4, поэтому шаги 2–3 могут быть меньше шага 4.',
+      '',
+      '<b>Первая тренировка</b>',
+      'Активация — первая подтверждённая запись: оплата, бонус или слот команды.',
       '• Всего: <b>${analytics.activationsTotal}</b>',
-      '• За 7д: <b>${analytics.activationsLast7Days}</b>',
-      '• За 30д: <b>${analytics.activationsLast30Days}</b>',
-      '• Rate ≤21д: <b>${_percentOrDash(analytics.activationRate21Days)}</b>',
-      '• Средний TTV: <b>${_daysOrDash(analytics.avgTimeToValueDays)}</b>',
-      '• Сейчас в snooze: <b>${analytics.snoozeActiveNow}</b>',
+      '• За 7 дней: <b>${analytics.activationsLast7Days}</b>',
+      '• За 30 дней: <b>${analytics.activationsLast30Days}</b>',
+      '• Дошли за 21 день от старта квиза: '
+          '<b>${_percentOrDash(analytics.activationRate21Days)}</b>',
+      '• Среднее время до первой тренировки: '
+          '<b>${_daysOrDash(analytics.avgTimeToValueDays)}</b>',
+      '• С карты клуба до записи: '
+          '<b>${_percentOrDash(analytics.mapToActivationRate)}</b>',
+      '• Сейчас на паузе «нужно больше времени»: <b>${analytics.snoozeActiveNow}</b>',
       '',
-      '<b>Фазы:</b>',
-      ..._mapLines(analytics.phaseCounts, _onboardingPhaseLabel),
+      '<b>Где люди сейчас</b>',
+      'Снимок, не воронка: на каком шаге человек в этот момент.',
+      ..._orderedCountLines(
+        analytics.phaseCounts,
+        order: const <String>[
+          'phase1_quiz',
+          'phase1_track',
+          'phase1_map',
+          'phase2_activation',
+          'paused',
+          'phase3_integration',
+          'phase4_completion',
+          'completed',
+          'returning',
+          'not_started',
+          'legacy_skipped',
+          'null',
+        ],
+        labelOf: _onboardingPhaseLabel,
+      ),
       '',
-      '<b>Вход:</b>',
-      ..._mapLines(analytics.entryTypeCounts, _entryTypeLabel),
+      '<b>Откуда пришли</b>',
+      ..._orderedCountLines(
+        analytics.entryTypeCounts,
+        order: const <String>['group', 'referral', 'cold', 'returning', 'legacy', 'unknown'],
+        labelOf: _entryTypeLabel,
+        total: analytics.startedUsersTotal,
+      ),
       '',
-      '<b>Цель квиза:</b>',
-      ..._mapLines(analytics.quizGoalCounts, _quizGoalLabel),
+      '<b>Что выбрали в квизе</b>',
+      '<i>Цель</i>',
+      ..._orderedCountLines(
+        analytics.quizGoalCounts,
+        order: const <String>['form_strength', 'endurance_run', 'outdoor_hikes', 'unknown'],
+        labelOf: _quizGoalLabel,
+        total: analytics.quizGoalAnsweredCount,
+      ),
+      '<i>Опыт</i>',
+      ..._orderedCountLines(
+        analytics.quizExperienceCounts,
+        order: const <String>['beginner', 'returning', 'regular'],
+        labelOf: _quizExperienceLabel,
+        total: analytics.quizExperienceAnsweredCount,
+      ),
+      '<i>Формат старта</i>',
+      ..._orderedCountLines(
+        analytics.trackCounts,
+        order: const <String>['one_off', 'outdoor'],
+        labelOf: _trackLabel,
+        total: analytics.trackChosenCount,
+      ),
       '',
-      '<b>Опыт:</b>',
-      ..._mapLines(analytics.quizExperienceCounts, _quizExperienceLabel),
-      '',
-      '<b>Трек:</b>',
-      ..._mapLines(analytics.trackCounts, _trackLabel),
-      '',
-      '<b>Nudges (idempotent keys):</b>',
-      if (analytics.nudgeKeyCounts.isEmpty) '• Пока нет',
-      ...analytics.nudgeKeyCounts.entries
-          .take(12)
-          .map((e) => '• ${_escapeHtml(e.key)}: <b>${e.value}</b>'),
+      '<b>Напоминания</b>',
+      'Каждое уходит один раз. Число — скольким людям бот уже дожимал.',
+      ..._nudgeCountLines(analytics.nudgeKeyCounts),
     ];
     return lines.join('\n');
   }
@@ -2248,6 +2329,76 @@ extension MessageTemplatesContent on MessageTemplates {
         .toList(growable: false);
   }
 
+  String _funnelStepLine({
+    required int index,
+    required String title,
+    required int count,
+    required int startCount,
+    int? previousCount,
+  }) {
+    final parts = <String>['$index. $title — <b>$count</b>'];
+    if (startCount > 0) {
+      parts.add('${_shareOf(count, startCount)} от старта');
+    }
+    if (previousCount != null && previousCount > 0 && count <= previousCount) {
+      parts.add('${_shareOf(count, previousCount)} от предыдущего');
+    }
+    return '• ${parts.join(' · ')}';
+  }
+
+  List<String> _orderedCountLines(
+    Map<String, int> counts, {
+    required List<String> order,
+    required String Function(String) labelOf,
+    int? total,
+  }) {
+    if (counts.isEmpty) {
+      return const <String>['• Пока нет'];
+    }
+    final seen = <String>{};
+    final lines = <String>[];
+    for (final key in order) {
+      final value = counts[key];
+      if (value == null) {
+        continue;
+      }
+      seen.add(key);
+      lines.add(_countShareLine(labelOf(key), value, total));
+    }
+    final remaining = counts.entries.where((entry) => !seen.contains(entry.key)).toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    for (final entry in remaining) {
+      lines.add(_countShareLine(labelOf(entry.key), entry.value, total));
+    }
+    return lines;
+  }
+
+  String _countShareLine(String label, int value, int? total) {
+    if (total == null || total <= 0) {
+      return '• ${_escapeHtml(label)}: <b>$value</b>';
+    }
+    return '• ${_escapeHtml(label)}: <b>$value</b> (${_shareOf(value, total)})';
+  }
+
+  List<String> _nudgeCountLines(Map<String, int> counts) {
+    if (counts.isEmpty) {
+      return const <String>['• Пока нет'];
+    }
+    const order = <String>['p1_30m', 'p1_2h', 'p1_6h', 'p1_24h', 'p2_d2', 'p2_d5', 'p2_d7'];
+    return _orderedCountLines(
+      counts,
+      order: order,
+      labelOf: _onboardingNudgeLabel,
+    );
+  }
+
+  String _shareOf(int part, int total) {
+    if (total <= 0) {
+      return '—';
+    }
+    return '${(part * 100 / total).toStringAsFixed(0)}%';
+  }
+
   String _percentOrDash(double? value) {
     if (value == null) {
       return '—';
@@ -2264,18 +2415,18 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String _onboardingPhaseLabel(String raw) {
     return switch (raw) {
-      'legacy_skipped' => 'legacy',
-      'phase1_quiz' => 'фаза 1 · квиз',
-      'phase1_track' => 'фаза 1 · трек',
-      'phase1_map' => 'фаза 1 · карта',
-      'phase2_activation' => 'фаза 2 · активация',
-      'phase3_integration' => 'фаза 3 · интеграция',
-      'phase4_completion' => 'фаза 4 · завершение',
-      'completed' => 'completed',
-      'paused' => 'paused / snooze',
-      'returning' => 'returning',
-      'not_started' => 'not_started',
-      'null' => 'без фазы',
+      'legacy_skipped' => 'старые пользователи, без квиза',
+      'phase1_quiz' => 'квиз: приветствие или цель',
+      'phase1_track' => 'квиз: выбор формата',
+      'phase1_map' => 'карта клуба',
+      'phase2_activation' => 'ждут первую запись',
+      'phase3_integration' => 'первая тренировка уже есть',
+      'phase4_completion' => 'завершение (экран пока не используется)',
+      'completed' => 'воронка закрыта (экран пока не используется)',
+      'paused' => 'пауза «нужно больше времени»',
+      'returning' => 'вернулись позже',
+      'not_started' => 'ещё не начали',
+      'null' => 'фаза не проставлена',
       _ => raw,
     };
   }
@@ -2283,11 +2434,24 @@ extension MessageTemplatesContent on MessageTemplates {
   String _entryTypeLabel(String raw) {
     return switch (raw) {
       'group' => 'из группы',
-      'cold' => 'холодный DM',
-      'referral' => 'реферал',
-      'returning' => 'возврат',
-      'legacy' => 'legacy',
+      'cold' => 'напрямую в личку',
+      'referral' => 'по реферальной ссылке',
+      'returning' => 'вернулись',
+      'legacy' => 'были в боте до воронки',
       'unknown' => 'не указан',
+      _ => raw,
+    };
+  }
+
+  String _onboardingNudgeLabel(String raw) {
+    return switch (raw) {
+      'p1_30m' => 'через 30 минут: дожать квиз',
+      'p1_2h' => 'через 2 часа: дожать квиз',
+      'p1_6h' => 'через 6 часов: предложить помощь',
+      'p1_24h' => 'через сутки: показать расписание',
+      'p2_d2' => 'день 2: записаться',
+      'p2_d5' => 'день 5: попробовать другой формат',
+      'p2_d7' => 'день 7: записаться, иначе поддержка',
       _ => raw,
     };
   }
@@ -2313,8 +2477,8 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String _trackLabel(String raw) {
     return switch (raw) {
-      'one_off' => 'разовая',
-      'outdoor' => 'outdoor',
+      'one_off' => 'разовая тренировка',
+      'outdoor' => 'outdoor / походы',
       // TODO(subscription): label для трека pro.
       _ => raw,
     };

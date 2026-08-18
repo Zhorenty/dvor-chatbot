@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -96,8 +97,12 @@ void main() {
       final analytics = await repository.getFunnelAnalytics(now: now);
       expect(analytics.funnelUsers, greaterThanOrEqualTo(2));
       expect(analytics.activationsTotal, 1);
+      expect(analytics.quizGoalAnsweredCount, 2);
+      expect(analytics.quizExperienceAnsweredCount, 1);
+      expect(analytics.trackChosenCount, 2);
       expect(analytics.quizGoalCounts['endurance_run'], 1);
       expect(analytics.trackCounts['outdoor'], 1);
+      expect(analytics.mapToActivationRate, 0.5);
       expect(analytics.nudgeKeyCounts['p1_30m'], 1);
       expect(analytics.feedbackRequestsSent, 2);
       expect(analytics.feedbackResponses, 2);
@@ -107,6 +112,75 @@ void main() {
       expect(analytics.topFeedbackSessions.first.greatCount, 1);
       expect(analytics.activationRate21Days, isNotNull);
       expect(analytics.avgTimeToValueDays, isNotNull);
+    });
+
+    test('onboarding funnel report explains steps in plain language', () {
+      const templates = MessageTemplates();
+      final text = templates.funnelAnalyticsOnboarding(
+        FunnelAnalytics(
+          generatedAt: DateTime.utc(2026, 8, 18, 8, 25),
+          startedUsersTotal: 120,
+          legacyUsers: 75,
+          funnelUsers: 45,
+          completedUsers: 0,
+          phaseCounts: const <String, int>{
+            'phase1_quiz': 8,
+            'phase2_activation': 12,
+            'phase3_integration': 10,
+            'legacy_skipped': 75,
+          },
+          entryTypeCounts: const <String, int>{
+            'group': 30,
+            'cold': 10,
+            'referral': 5,
+            'legacy': 75,
+          },
+          quizGoalCounts: const <String, int>{
+            'form_strength': 16,
+            'endurance_run': 10,
+            'outdoor_hikes': 4,
+            'unknown': 2,
+          },
+          quizExperienceCounts: const <String, int>{
+            'beginner': 18,
+            'returning': 8,
+            'regular': 4,
+          },
+          trackCounts: const <String, int>{
+            'one_off': 22,
+            'outdoor': 8,
+          },
+          startedLast7Days: 8,
+          startedLast30Days: 22,
+          activationsTotal: 12,
+          activationsLast7Days: 3,
+          activationsLast30Days: 8,
+          activationRate21Days: 0.27,
+          avgTimeToValueDays: 4.2,
+          snoozeActiveNow: 2,
+          nudgeKeyCounts: const <String, int>{
+            'p1_30m': 10,
+            'p2_d2': 4,
+          },
+          feedbackRequestsSent: 0,
+          feedbackResponses: 0,
+          feedbackSkipped: 0,
+          feedbackRatingCounts: const <String, int>{},
+          feedbackCommentsCount: 0,
+          recentFeedbackComments: const <RecentFeedbackComment>[],
+          topFeedbackSessions: const <FeedbackSessionSummary>[],
+        ),
+      );
+
+      expect(text, contains('Путь новичка'));
+      expect(text, contains('Начали квиз'));
+      expect(text, contains('Первая тренировка (активация)'));
+      expect(text, contains('из группы: <b>30</b> (25%)'));
+      expect(text, contains('через 30 минут: дожать квиз'));
+      expect(text, contains('ждут первую запись'));
+      expect(text, isNot(contains('TTV')));
+      expect(text, isNot(contains('idempotent')));
+      expect(text, isNot(contains('Activation')));
     });
 
     test('admin tools button opens analytics menu with segments', () async {
@@ -154,7 +228,9 @@ void main() {
       );
       final funnelText = harness.messagesTo(42).last.text;
       expect(funnelText, contains('Воронка онбординга'));
-      expect(funnelText, contains('Activation'));
+      expect(funnelText, contains('Путь новичка'));
+      expect(funnelText, contains('Первая тренировка'));
+      expect(funnelText, isNot(contains('Activation')));
       expect(funnelText, isNot(contains('Анонимный фидбэк')));
 
       await harness.handleText(

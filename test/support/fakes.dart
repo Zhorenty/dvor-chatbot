@@ -1526,12 +1526,36 @@ final class FakeOnboardingRepository implements OnboardingRepository {
         .length;
     final activations = _stateByUserId.values.where((s) => s.activationAt != null).length;
     final phaseCounts = <String, int>{};
+    final entryTypeCounts = <String, int>{};
+    final quizGoalCounts = <String, int>{};
+    final quizExperienceCounts = <String, int>{};
+    final trackCounts = <String, int>{};
     for (final state in _stateByUserId.values) {
       final phase = state.phase;
-      if (phase == null) {
+      if (phase != null) {
+        phaseCounts.update(phase.storageValue, (value) => value + 1, ifAbsent: () => 1);
+      }
+      final entry = state.entryType;
+      if (state.startedAt != null) {
+        final entryKey = entry?.storageValue ?? 'unknown';
+        entryTypeCounts.update(entryKey, (value) => value + 1, ifAbsent: () => 1);
+      }
+      if (phase == OnboardingPhase.legacySkipped) {
         continue;
       }
-      phaseCounts.update(phase.storageValue, (value) => value + 1, ifAbsent: () => 1);
+      final goal = state.quizGoal;
+      if (goal != null) {
+        quizGoalCounts.update(goal.storageValue, (value) => value + 1, ifAbsent: () => 1);
+      }
+      final experience = state.quizExperience;
+      if (experience != null) {
+        quizExperienceCounts.update(experience.storageValue, (value) => value + 1,
+            ifAbsent: () => 1);
+      }
+      final track = state.selectedTrack;
+      if (track != null) {
+        trackCounts.update(track.storageValue, (value) => value + 1, ifAbsent: () => 1);
+      }
     }
     final nudgeCounts = <String, int>{};
     for (final key in sentNudgeKeys) {
@@ -1546,10 +1570,10 @@ final class FakeOnboardingRepository implements OnboardingRepository {
       completedUsers:
           _stateByUserId.values.where((s) => s.phase == OnboardingPhase.completed).length,
       phaseCounts: phaseCounts,
-      entryTypeCounts: const <String, int>{},
-      quizGoalCounts: const <String, int>{},
-      quizExperienceCounts: const <String, int>{},
-      trackCounts: const <String, int>{},
+      entryTypeCounts: entryTypeCounts,
+      quizGoalCounts: quizGoalCounts,
+      quizExperienceCounts: quizExperienceCounts,
+      trackCounts: trackCounts,
       startedLast7Days: started,
       startedLast30Days: started,
       activationsTotal: activations,

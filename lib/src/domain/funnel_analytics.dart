@@ -60,11 +60,29 @@ final class FunnelAnalytics {
   final List<RecentFeedbackComment> recentFeedbackComments;
   final List<FeedbackSessionSummary> topFeedbackSessions;
 
+  int get quizGoalAnsweredCount => _sumCounts(quizGoalCounts);
+
+  int get quizExperienceAnsweredCount => _sumCounts(quizExperienceCounts);
+
+  int get trackChosenCount => _sumCounts(trackCounts);
+
+  /// Share of people who chose a format and then got a first training.
+  double? get mapToActivationRate {
+    if (trackChosenCount <= 0) {
+      return null;
+    }
+    return activationsTotal / trackChosenCount;
+  }
+
   double? get feedbackResponseRate {
     if (feedbackRequestsSent <= 0) {
       return null;
     }
     return feedbackResponses / feedbackRequestsSent;
+  }
+
+  static int _sumCounts(Map<String, int> counts) {
+    return counts.values.fold(0, (sum, value) => sum + value);
   }
 }
 
