@@ -161,11 +161,11 @@ final class GoogleSheetsPromoCodeRepository implements PromoCodeRepository {
       if (token.isEmpty) {
         continue;
       }
-      if (token.contains('трениров')) {
+      if (token.contains('трениров') || token == 'trainings' || token == 'training') {
         categories.add(ActivityCategory.trainings);
-      } else if (token.contains('поход')) {
+      } else if (token.contains('поход') || token == 'hikes' || token == 'hike') {
         categories.add(ActivityCategory.hikes);
-      } else if (token.contains('трейл')) {
+      } else if (token.contains('трейл') || token == 'trails' || token == 'trail') {
         categories.add(ActivityCategory.trails);
       }
     }

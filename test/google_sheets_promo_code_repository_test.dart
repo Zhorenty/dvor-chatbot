@@ -57,6 +57,30 @@ void main() {
       expect(promo.categories, <ActivityCategory>{ActivityCategory.hikes});
     });
 
+    test('parses English category tokens trainings/hikes/trails', () async {
+      final repository = GoogleSheetsPromoCodeRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'code,discount_percent,categories\n'
+            'ENG,15,"trainings,hikes,trails"',
+            200,
+            headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+          );
+        }),
+      );
+
+      await repository.refresh(force: true);
+      expect(
+        repository.findByCode('ENG')!.categories,
+        <ActivityCategory>{
+          ActivityCategory.trainings,
+          ActivityCategory.hikes,
+          ActivityCategory.trails,
+        },
+      );
+    });
+
     test('supports multiple categories separated by comma or semicolon', () async {
       final repository = GoogleSheetsPromoCodeRepository(
         csvUrl: Uri.parse('https://example.com/schedule.csv'),
