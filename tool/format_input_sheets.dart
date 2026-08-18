@@ -62,8 +62,6 @@ final class _FormatInputSheets {
     await _ensureLegendSheet(meta);
     meta = await _loadMeta();
 
-    final cleanup = <Request>[];
-    final format = <Request>[];
     for (final spec in GoogleSheetsInputUi.sheets) {
       final live = _sheetByGid(meta, spec.gid);
       if (live == null) {
@@ -78,14 +76,15 @@ final class _FormatInputSheets {
         'Sheet gid=${spec.gid} "${live.properties?.title}" → "${spec.title}"',
       );
       final plan = await _planSheet(spec, live);
-      cleanup.addAll(plan.cleanup);
-      format.addAll(plan.format);
+      await _batch(plan.cleanup);
+      await _batch(plan.format);
+      meta = await _loadMeta();
     }
 
     final funnel = _sheetByTitle(meta, GoogleSheetsInputUi.funnelTitle);
     if (funnel != null) {
-      cleanup.addAll(_cleanupProtections(funnel, headerOnly: false));
-      format.add(
+      await _batch(_cleanupProtections(funnel, headerOnly: false));
+      await _batch(<Request>[
         Request(
           addProtectedRange: AddProtectedRangeRequest(
             protectedRange: ProtectedRange(
@@ -95,11 +94,8 @@ final class _FormatInputSheets {
             ),
           ),
         ),
-      );
+      ]);
     }
-
-    await _batch(cleanup);
-    await _batch(format);
     await _writeLegend();
     await _verifyCsvHeaders();
     stdout.writeln('Done. Input sheets formatted in place; FUNNEL was not rebuilt.');
@@ -280,6 +276,18 @@ final class _FormatInputSheets {
     final cleanup = <Request>[
       ..._cleanupLook(live),
       ..._cleanupAllProtections(live),
+      Request(
+        setDataValidation: SetDataValidationRequest(
+          range: GridRange(sheetId: sheetId),
+        ),
+      ),
+      Request(
+        repeatCell: RepeatCellRequest(
+          range: GridRange(sheetId: sheetId),
+          cell: CellData(),
+          fields: 'dataValidation',
+        ),
+      ),
     ];
     if (live.basicFilter != null) {
       cleanup.add(
@@ -440,7 +448,7 @@ final class _FormatInputSheets {
         continue;
       }
       final range = protection.range;
-      if (range != null && range.sheetId != null && range.sheetId != sheetId) {
+      if (range?.sheetId != sheetId) {
         continue;
       }
       requests.add(
@@ -743,55 +751,46 @@ final class _FormatInputSheets {
     return requests;
   }
 
+  String _cellA1(int index, {int row = 2}) => '${GoogleSheetsInputUi.columnLetter(index)}$row';
+
+  String _blankOrFormula(int index, String rest) {
+    return '=OR(${_cellA1(index)}=""$_formulaSep $rest)';
+  }
+
   DataValidationRule? _validationRule(GoogleSheetsInputColumn column, int index) {
     switch (column.kind) {
       case GoogleSheetsInputColumnKind.date:
         return DataValidationRule(
           condition: BooleanCondition(type: 'DATE_IS_VALID'),
-          inputMessage: 'Выбери дату в календаре.',
+          inputMessage: 'Выбери дату в календаре. Пусто можно.',
           showCustomUi: true,
           strict: false,
         );
       case GoogleSheetsInputColumnKind.time:
-        final letter = GoogleSheetsInputUi.columnLetter(index);
         return DataValidationRule(
           condition: BooleanCondition(
             type: 'CUSTOM_FORMULA',
             values: <ConditionValue>[
               ConditionValue(
-                userEnteredValue: '=OR(${letter}2=""$_formulaSep ISNUMBER(${letter}2)$_formulaSep '
-                    'REGEXMATCH(TO_TEXT(${letter}2)$_formulaSep '
-                    '"^[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?\$"))',
+                userEnteredValue: _blankOrFormula(
+                  index,
+                  'ISNUMBER(${_cellA1(index)})$_formulaSep '
+                  'REGEXMATCH(TO_TEXT(${_cellA1(index)})$_formulaSep '
+                  '"^[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?\$")',
+                ),
               ),
             ],
           ),
-          inputMessage: 'Время, например 19:30 или 8:30.',
+          inputMessage: 'Время, например 19:30 или 8:30. Пусто можно.',
           showCustomUi: true,
           strict: false,
         );
       case GoogleSheetsInputColumnKind.number:
-        return DataValidationRule(
-          condition: BooleanCondition(
-            type: 'NUMBER_GREATER_THAN_EQ',
-            values: <ConditionValue>[ConditionValue(userEnteredValue: '0')],
-          ),
-          inputMessage: 'Число ≥ 0.',
-          showCustomUi: true,
-          strict: false,
-        );
       case GoogleSheetsInputColumnKind.percent:
-        return DataValidationRule(
-          condition: BooleanCondition(
-            type: 'NUMBER_BETWEEN',
-            values: <ConditionValue>[
-              ConditionValue(userEnteredValue: '1'),
-              ConditionValue(userEnteredValue: '100'),
-            ],
-          ),
-          inputMessage: 'Число 1–100. Пусто можно.',
-          showCustomUi: true,
-          strict: false,
-        );
+      case GoogleSheetsInputColumnKind.url:
+      case GoogleSheetsInputColumnKind.text:
+      case GoogleSheetsInputColumnKind.status:
+        return null;
       case GoogleSheetsInputColumnKind.checkbox:
         return DataValidationRule(
           condition: BooleanCondition(type: 'BOOLEAN'),
@@ -811,13 +810,6 @@ final class _FormatInputSheets {
           showCustomUi: true,
           strict: false,
         );
-      case GoogleSheetsInputColumnKind.url:
-        return DataValidationRule(
-          condition: BooleanCondition(type: 'TEXT_IS_URL'),
-          inputMessage: 'Ссылка https://…',
-          showCustomUi: true,
-          strict: false,
-        );
       case GoogleSheetsInputColumnKind.coach:
         return DataValidationRule(
           condition: BooleanCondition(
@@ -833,9 +825,6 @@ final class _FormatInputSheets {
           showCustomUi: true,
           strict: false,
         );
-      case GoogleSheetsInputColumnKind.text:
-      case GoogleSheetsInputColumnKind.status:
-        return null;
     }
   }
 
@@ -990,9 +979,19 @@ final class _FormatInputSheets {
             final match = _percentPattern.firstMatch(raw);
             if (match != null) {
               writes.add(_CellWrite(row: row, column: index, value: match.group(1)!));
+            } else if (_plainNumberPattern.hasMatch(raw)) {
+              writes.add(_CellWrite(row: row, column: index, value: raw));
+            }
+          case GoogleSheetsInputColumnKind.number:
+            if (_plainNumberPattern.hasMatch(raw)) {
+              writes.add(_CellWrite(row: row, column: index, value: raw));
+            } else {
+              final digits = raw.replaceAll(RegExp(r'[^\d]'), '');
+              if (digits.isNotEmpty && raw.contains('₽')) {
+                writes.add(_CellWrite(row: row, column: index, value: digits));
+              }
             }
           case GoogleSheetsInputColumnKind.text:
-          case GoogleSheetsInputColumnKind.number:
           case GoogleSheetsInputColumnKind.checkbox:
           case GoogleSheetsInputColumnKind.categories:
           case GoogleSheetsInputColumnKind.url:
@@ -1321,6 +1320,7 @@ final Border _innerBorder = Border(
 final RegExp _datePattern = RegExp(r'^(\d{1,2}\.\d{1,2}\.\d{4}|\d{4}-\d{2}-\d{2})$');
 final RegExp _timePattern = RegExp(r'^\d{1,2}:\d{2}(:\d{2})?$');
 final RegExp _percentPattern = RegExp(r'^(\d{1,3})\s*%$');
+final RegExp _plainNumberPattern = RegExp(r'^\d+([.,]\d+)?$');
 
 Color _color(GoogleSheetsRgb rgb) => Color(red: rgb.red, green: rgb.green, blue: rgb.blue);
 
