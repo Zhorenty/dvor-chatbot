@@ -17,7 +17,6 @@ abstract final class GoogleSheetsFunnelDashboard {
   static const GoogleSheetsRgb kpiC = GoogleSheetsRgb(0.86, 0.91, 0.94);
   static const GoogleSheetsRgb section = GoogleSheetsRgb(0.22, 0.38, 0.30);
   static const GoogleSheetsRgb tableHead = GoogleSheetsRgb(0.83, 0.88, 0.83);
-  static const GoogleSheetsRgb tableRow = GoogleSheetsRgb(0.95, 0.96, 0.94);
 
   static final DateFormat _stamp = DateFormat('dd.MM.yyyy HH:mm');
 
@@ -41,6 +40,7 @@ abstract final class GoogleSheetsFunnelDashboard {
       rows: sheet.rows,
       charts: sheet.charts.where((chart) => chart.hasData).toList(growable: false),
       styles: sheet.styles,
+      bandedTables: sheet.bandedTables,
       columnWidthsPx: const <int>[250, 110, 120, 250, 110, 120, 200, 90, 90, 90, 90, 180],
     );
   }
@@ -49,6 +49,7 @@ abstract final class GoogleSheetsFunnelDashboard {
 final class _FunnelSheetBuilder {
   final List<List<Object?>> rows = <List<Object?>>[];
   final List<GoogleSheetsRangeStyle> styles = <GoogleSheetsRangeStyle>[];
+  final List<GoogleSheetsBandedTable> bandedTables = <GoogleSheetsBandedTable>[];
   final List<GoogleSheetsChart> charts = <GoogleSheetsChart>[];
 
   int get nextRow => rows.length;
@@ -139,6 +140,9 @@ final class _FunnelSheetBuilder {
       ],
     );
     final valueRow = nextRow;
+    final activationRate = _ratioOrDash(analytics.activationRate21Days);
+    final daysToTraining = _daysOrDash(analytics.avgTimeToValueDays);
+    final feedbackRate = _ratioOrDash(analytics.feedbackResponseRate);
     _add(
       <Object?>[
         analytics.startedUsersTotal,
@@ -147,11 +151,11 @@ final class _FunnelSheetBuilder {
         '',
         analytics.activationsTotal,
         '',
-        _ratioOrDash(analytics.activationRate21Days),
+        activationRate,
         '',
-        _daysOrDash(analytics.avgTimeToValueDays),
+        daysToTraining,
         '',
-        _ratioOrDash(analytics.feedbackResponseRate),
+        feedbackRate,
         '',
       ],
     );
@@ -181,93 +185,74 @@ final class _FunnelSheetBuilder {
       (10, GoogleSheetsFunnelDashboard.kpiC),
     ];
     for (final card in cards) {
-      for (final row in <int>[labelRow, valueRow, hintRow]) {
-        styles.add(
-          GoogleSheetsRangeStyle(
-            startRow: row,
-            endRowExclusive: row + 1,
-            startColumn: card.$1,
-            endColumnExclusive: card.$1 + 2,
-            background: card.$2,
-            merge: true,
-            horizontalAlignment: 'CENTER',
-            verticalAlignment: 'MIDDLE',
-            wrap: true,
-          ),
-        );
-      }
+      styles.add(
+        GoogleSheetsRangeStyle(
+          startRow: labelRow,
+          endRowExclusive: labelRow + 1,
+          startColumn: card.$1,
+          endColumnExclusive: card.$1 + 2,
+          background: card.$2,
+          foreground: GoogleSheetsFunnelDashboard.muted,
+          bold: true,
+          fontSize: 9,
+          merge: true,
+          horizontalAlignment: 'CENTER',
+          verticalAlignment: 'MIDDLE',
+          wrap: true,
+        ),
+      );
+      styles.add(
+        GoogleSheetsRangeStyle(
+          startRow: valueRow,
+          endRowExclusive: valueRow + 1,
+          startColumn: card.$1,
+          endColumnExclusive: card.$1 + 2,
+          background: card.$2,
+          foreground: GoogleSheetsFunnelDashboard.ink,
+          bold: true,
+          fontSize: 18,
+          merge: true,
+          horizontalAlignment: 'CENTER',
+          verticalAlignment: 'MIDDLE',
+          numberFormatType: _kpiNumberType(card.$1, activationRate, daysToTraining, feedbackRate),
+          numberFormatPattern: _kpiNumberPattern(card.$1),
+        ),
+      );
+      styles.add(
+        GoogleSheetsRangeStyle(
+          startRow: hintRow,
+          endRowExclusive: hintRow + 1,
+          startColumn: card.$1,
+          endColumnExclusive: card.$1 + 2,
+          background: card.$2,
+          foreground: GoogleSheetsFunnelDashboard.muted,
+          fontSize: 9,
+          merge: true,
+          horizontalAlignment: 'CENTER',
+          verticalAlignment: 'MIDDLE',
+          wrap: true,
+        ),
+      );
+      styles.add(
+        GoogleSheetsRangeStyle(
+          startRow: labelRow,
+          endRowExclusive: hintRow + 1,
+          startColumn: card.$1,
+          endColumnExclusive: card.$1 + 2,
+          borders: true,
+        ),
+      );
     }
-    styles.add(
-      GoogleSheetsRangeStyle(
-        startRow: labelRow,
-        endRowExclusive: labelRow + 1,
-        startColumn: 0,
-        endColumnExclusive: GoogleSheetsFunnelDashboard.columnCount,
-        bold: true,
-        fontSize: 9,
-        foreground: GoogleSheetsFunnelDashboard.muted,
-        horizontalAlignment: 'CENTER',
-      ),
-    );
-    styles.add(
-      GoogleSheetsRangeStyle(
-        startRow: valueRow,
-        endRowExclusive: valueRow + 1,
-        startColumn: 0,
-        endColumnExclusive: GoogleSheetsFunnelDashboard.columnCount,
-        bold: true,
-        fontSize: 18,
-        foreground: GoogleSheetsFunnelDashboard.ink,
-        horizontalAlignment: 'CENTER',
-        verticalAlignment: 'MIDDLE',
-      ),
-    );
-    for (final column in const <int>[6, 10]) {
-      if (_ratioOrDash(
-          column == 6 ? analytics.activationRate21Days : analytics.feedbackResponseRate) is num) {
-        styles.add(
-          GoogleSheetsRangeStyle(
-            startRow: valueRow,
-            endRowExclusive: valueRow + 1,
-            startColumn: column,
-            endColumnExclusive: column + 1,
-            numberFormatType: 'PERCENT',
-            numberFormatPattern: '0.0%',
-            bold: true,
-            fontSize: 18,
-            horizontalAlignment: 'CENTER',
-          ),
-        );
-      }
-    }
-    styles.add(
-      GoogleSheetsRangeStyle(
-        startRow: hintRow,
-        endRowExclusive: hintRow + 1,
-        startColumn: 0,
-        endColumnExclusive: GoogleSheetsFunnelDashboard.columnCount,
-        fontSize: 9,
-        foreground: GoogleSheetsFunnelDashboard.muted,
-        horizontalAlignment: 'CENTER',
-        wrap: true,
-      ),
-    );
     _blank();
   }
 
   void writeFunnel(FunnelAnalytics analytics) {
     _section('Путь новичка');
-    _add(
-      const <Object?>[
-        'Шаг',
-        'Люди',
-        'От старта',
-        'От предыдущего',
-        'Пропуск квиза сразу ведёт на шаг 4, поэтому 2–3 могут быть меньше шага 4.',
-      ],
+    _subtitle(
+      'Пропуск квиза сразу ведёт на шаг 4, поэтому шаги 2–3 могут быть меньше шага 4.',
     );
+    _add(const <Object?>['Шаг', 'Люди', 'От старта', 'От предыдущего']);
     final headerRow = nextRow - 1;
-    _tableHeader(headerRow, 0, 4);
     final started = analytics.funnelUsers;
     final steps = <(String, int)>[
       ('1. Начали квиз', analytics.funnelUsers),
@@ -289,8 +274,8 @@ final class _FunnelSheetBuilder {
       );
       previous = step.$2;
     }
+    _table(headerRow, nextRow, 0, 4);
     _percentColumns(firstData, nextRow, const <int>[2, 3]);
-    _zebra(firstData, nextRow, 0, 4);
     charts.add(
       GoogleSheetsChart(
         title: 'Путь новичка',
@@ -313,11 +298,9 @@ final class _FunnelSheetBuilder {
     _section('Старт и активации');
     _add(const <Object?>['Период', 'Start', 'Активации']);
     final headerRow = nextRow - 1;
-    _tableHeader(headerRow, 0, 3);
-    final firstData = nextRow;
     _add(<Object?>['7 дней', analytics.startedLast7Days, analytics.activationsLast7Days]);
     _add(<Object?>['30 дней', analytics.startedLast30Days, analytics.activationsLast30Days]);
-    _zebra(firstData, nextRow, 0, 3);
+    _table(headerRow, nextRow, 0, 3);
     charts.add(
       GoogleSheetsChart(
         title: '7 / 30 дней',
@@ -354,8 +337,6 @@ final class _FunnelSheetBuilder {
     _section('Где люди сейчас  ·  Откуда пришли');
     final headerRow = nextRow;
     _add(const <Object?>['Сейчас на шаге', 'Люди', '', 'Источник', 'Люди']);
-    _tableHeader(headerRow, 0, 2);
-    _tableHeader(headerRow, 3, 5);
     final phases = _ordered(
       analytics.phaseCounts,
       const <String>[
@@ -394,8 +375,8 @@ final class _FunnelSheetBuilder {
         ],
       );
     }
-    _zebra(firstData, nextRow, 0, 2);
-    _zebra(firstData, nextRow, 3, 5);
+    _table(headerRow, firstData + phases.length, 0, 2);
+    _table(headerRow, firstData + entries.length, 3, 5);
     if (phases.any((item) => item.$2 > 0)) {
       charts.add(
         GoogleSheetsChart(
@@ -444,9 +425,6 @@ final class _FunnelSheetBuilder {
     _section('Что выбрали в квизе');
     final headerRow = nextRow;
     _add(const <Object?>['Цель', 'Люди', '', 'Опыт', 'Люди', '', 'Формат старта', 'Люди']);
-    _tableHeader(headerRow, 0, 2);
-    _tableHeader(headerRow, 3, 5);
-    _tableHeader(headerRow, 6, 8);
     final goals = _ordered(
       analytics.quizGoalCounts,
       const <String>['form_strength', 'endurance_run', 'outdoor_hikes', 'unknown'],
@@ -480,6 +458,9 @@ final class _FunnelSheetBuilder {
         ],
       );
     }
+    _table(headerRow, firstData + goals.length, 0, 2);
+    _table(headerRow, firstData + experience.length, 3, 5);
+    _table(headerRow, firstData + tracks.length, 6, 8);
     if (goals.any((item) => item.$2 > 0)) {
       charts.add(
         GoogleSheetsChart(
@@ -549,8 +530,6 @@ final class _FunnelSheetBuilder {
     );
     _add(const <Object?>['Оценка', 'Ответов', '', 'Занятие', 'Отзывов', '👍', '🙂', '👎']);
     final headerRow = nextRow - 1;
-    _tableHeader(headerRow, 0, 2);
-    _tableHeader(headerRow, 3, 8);
     final ratings = _ordered(
       analytics.feedbackRatingCounts,
       const <String>['great', 'ok', 'weak', 'skipped'],
@@ -575,6 +554,8 @@ final class _FunnelSheetBuilder {
         ],
       );
     }
+    _table(headerRow, firstData + ratings.length, 0, 2);
+    _table(headerRow, firstData + sessions.length, 3, 8);
     if (ratings.any((item) => item.$2 > 0)) {
       charts.add(
         GoogleSheetsChart(
@@ -605,7 +586,6 @@ final class _FunnelSheetBuilder {
     _section('Напоминания · каждое уходит один раз');
     _add(const <Object?>['Напоминание', 'Людям']);
     final headerRow = nextRow - 1;
-    _tableHeader(headerRow, 0, 2);
     final nudges = _ordered(
       analytics.nudgeKeyCounts,
       const <String>[
@@ -622,7 +602,6 @@ final class _FunnelSheetBuilder {
       ],
       _nudgeLabel,
     );
-    final firstData = nextRow;
     if (nudges.isEmpty) {
       _add(const <Object?>['Пока нет', 0]);
     } else {
@@ -630,7 +609,7 @@ final class _FunnelSheetBuilder {
         _add(<Object?>[nudge.$1, nudge.$2]);
       }
     }
-    _zebra(firstData, nextRow, 0, 2);
+    _table(headerRow, nextRow, 0, 2);
     if (nudges.any((item) => item.$2 > 0)) {
       charts.add(
         GoogleSheetsChart(
@@ -655,8 +634,6 @@ final class _FunnelSheetBuilder {
     _section('Последние комментарии · анонимно');
     _add(const <Object?>['Когда', 'Оценка', 'Занятие', 'Комментарий']);
     final headerRow = nextRow - 1;
-    _tableHeader(headerRow, 0, 4);
-    final firstData = nextRow;
     if (analytics.recentFeedbackComments.isEmpty) {
       _add(const <Object?>['Пока нет', '', '', '']);
     } else {
@@ -673,7 +650,7 @@ final class _FunnelSheetBuilder {
         );
       }
     }
-    _zebra(firstData, nextRow, 0, 4);
+    _table(headerRow, nextRow, 0, 4);
   }
 
   void _section(String title) {
@@ -695,34 +672,58 @@ final class _FunnelSheetBuilder {
     );
   }
 
-  void _tableHeader(int row, int startColumn, int endColumnExclusive) {
+  void _subtitle(String text) {
+    final row = nextRow;
+    _add(<Object?>[text]);
     styles.add(
       GoogleSheetsRangeStyle(
         startRow: row,
         endRowExclusive: row + 1,
-        startColumn: startColumn,
-        endColumnExclusive: endColumnExclusive,
-        background: GoogleSheetsFunnelDashboard.tableHead,
-        bold: true,
-        fontSize: 10,
+        startColumn: 0,
+        endColumnExclusive: GoogleSheetsFunnelDashboard.columnCount,
+        foreground: GoogleSheetsFunnelDashboard.muted,
+        fontSize: 9,
+        merge: true,
+        wrap: true,
       ),
     );
   }
 
-  void _zebra(int startRow, int endRowExclusive, int startColumn, int endColumnExclusive) {
-    for (var row = startRow; row < endRowExclusive; row++) {
-      if ((row - startRow).isEven) {
-        styles.add(
-          GoogleSheetsRangeStyle(
-            startRow: row,
-            endRowExclusive: row + 1,
-            startColumn: startColumn,
-            endColumnExclusive: endColumnExclusive,
-            background: GoogleSheetsFunnelDashboard.tableRow,
-          ),
-        );
-      }
+  void _table(int headerRow, int endRowExclusive, int startColumn, int endColumnExclusive) {
+    if (endRowExclusive <= headerRow || endColumnExclusive <= startColumn) {
+      return;
     }
+    styles.add(
+      GoogleSheetsRangeStyle(
+        startRow: headerRow,
+        endRowExclusive: headerRow + 1,
+        startColumn: startColumn,
+        endColumnExclusive: endColumnExclusive,
+        background: GoogleSheetsFunnelDashboard.tableHead,
+        foreground: GoogleSheetsFunnelDashboard.ink,
+        bold: true,
+        fontSize: 10,
+        verticalAlignment: 'MIDDLE',
+      ),
+    );
+    styles.add(
+      GoogleSheetsRangeStyle(
+        startRow: headerRow,
+        endRowExclusive: endRowExclusive,
+        startColumn: startColumn,
+        endColumnExclusive: endColumnExclusive,
+        borders: true,
+        innerBorders: true,
+      ),
+    );
+    bandedTables.add(
+      GoogleSheetsBandedTable(
+        startRow: headerRow,
+        endRowExclusive: endRowExclusive,
+        startColumn: startColumn,
+        endColumnExclusive: endColumnExclusive,
+      ),
+    );
   }
 
   void _percentColumns(int startRow, int endRowExclusive, List<int> columns) {
@@ -756,6 +757,34 @@ final class _FunnelSheetBuilder {
   Object _ratioOrDash(double? value) => value ?? '—';
 
   Object _daysOrDash(double? value) => value ?? '—';
+
+  String? _kpiNumberType(
+    int startColumn,
+    Object activationRate,
+    Object daysToTraining,
+    Object feedbackRate,
+  ) {
+    if (startColumn == 6 && activationRate is num) {
+      return 'PERCENT';
+    }
+    if (startColumn == 8 && daysToTraining is num) {
+      return 'NUMBER';
+    }
+    if (startColumn == 10 && feedbackRate is num) {
+      return 'PERCENT';
+    }
+    return null;
+  }
+
+  String? _kpiNumberPattern(int startColumn) {
+    if (startColumn == 6 || startColumn == 10) {
+      return '0.0%';
+    }
+    if (startColumn == 8) {
+      return '0.0" дн."';
+    }
+    return null;
+  }
 
   String _percentLabel(double? value) {
     if (value == null) {

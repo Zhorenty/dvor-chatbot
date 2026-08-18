@@ -59,6 +59,8 @@ final class GoogleSheetsRangeStyle {
     this.numberFormatType,
     this.numberFormatPattern,
     this.wrap = false,
+    this.borders = false,
+    this.innerBorders = false,
   });
 
   final int startRow;
@@ -75,6 +77,22 @@ final class GoogleSheetsRangeStyle {
   final String? numberFormatType;
   final String? numberFormatPattern;
   final bool wrap;
+  final bool borders;
+  final bool innerBorders;
+}
+
+final class GoogleSheetsBandedTable {
+  const GoogleSheetsBandedTable({
+    required this.startRow,
+    required this.endRowExclusive,
+    required this.startColumn,
+    required this.endColumnExclusive,
+  });
+
+  final int startRow;
+  final int endRowExclusive;
+  final int startColumn;
+  final int endColumnExclusive;
 }
 
 final class GoogleSheetsDashboard {
@@ -83,6 +101,7 @@ final class GoogleSheetsDashboard {
     required this.rows,
     required this.charts,
     required this.styles,
+    this.bandedTables = const <GoogleSheetsBandedTable>[],
     this.columnWidthsPx = const <int>[],
     this.obsoleteSheetTitles = const <String>['bot_bookings'],
   });
@@ -91,6 +110,7 @@ final class GoogleSheetsDashboard {
   final List<List<Object?>> rows;
   final List<GoogleSheetsChart> charts;
   final List<GoogleSheetsRangeStyle> styles;
+  final List<GoogleSheetsBandedTable> bandedTables;
   final List<int> columnWidthsPx;
   final List<String> obsoleteSheetTitles;
 }

@@ -136,7 +136,7 @@ LOG_LEVEL=info
 
 ### Дашборд воронки в Google Sheets
 
-SQLite остаётся источником правды. Если включить запись, бот раз в `GOOGLE_SHEETS_WRITE_INTERVAL_SECONDS` **пересобирает** лист `FUNNEL`: KPI, путь новичка, графики, квиз, фидбек. Расписание и другие листы не трогает. Старый лист `bot_bookings` удаляется.
+SQLite остаётся источником правды. Если включить запись, бот раз в `GOOGLE_SHEETS_WRITE_INTERVAL_SECONDS` **пересобирает** лист `FUNNEL`: KPI-карточки, таблицы с рамками, графики, квиз, фидбек. Расписание и другие листы не трогает. Старый лист `bot_bookings` удаляется.
 
 Лист `FUNNEL` руками не редактировать — следующий sync пересоздаёт его.
 
@@ -260,6 +260,11 @@ Whitelist тренеров для автозаписи без шага подт�
   - `dart test`
 
 ## Деплой
+
+Прод: Timeweb, `/opt/dvor-chatbot-project`. Подробнее: [`docs/DAILY_OPS_TIMEWEB.md`](docs/DAILY_OPS_TIMEWEB.md).
+
+- Обычный апдейт на сервере: `bash scripts/update_and_logs.sh` (`git pull` + сборка с кэшем Docker).
+- Полный деплой (новые пакеты, Dockerfile, `.env`, воронка Sheets): с Mac после commit + push — `./scripts/full_deploy.sh`. На VPS — `bash scripts/full_deploy.sh` (сборка **без кэша**, recreate контейнера).
 
 ### Вариант 1: Docker
 

@@ -19,11 +19,29 @@ void main() {
         isTrue,
       );
       expect(dashboard.charts, isNotEmpty);
+      expect(dashboard.bandedTables, isNotEmpty);
+      expect(dashboard.styles.any((style) => style.merge), isTrue);
+      expect(dashboard.styles.any((style) => style.borders), isTrue);
+      expect(
+        dashboard.styles.any((style) => style.numberFormatType == 'PERCENT'),
+        isTrue,
+      );
       expect(
         dashboard.charts.map((chart) => chart.title),
         containsAll(<String>['Путь новичка', 'Откуда пришли', 'Оценки']),
       );
-      expect(dashboard.styles.any((style) => style.merge), isTrue);
+      final funnelHeader = dashboard.rows.firstWhere(
+        (row) => row.isNotEmpty && row.first == 'Шаг',
+      );
+      expect(
+          funnelHeader.take(4).toList(), <Object?>['Шаг', 'Люди', 'От старта', 'От предыдущего']);
+      expect(
+        dashboard.rows.any(
+          (row) =>
+              row.isNotEmpty && row.first.toString().contains('Пропуск квиза сразу ведёт на шаг 4'),
+        ),
+        isTrue,
+      );
     });
   });
 }

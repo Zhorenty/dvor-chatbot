@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Incremental prod update: git pull + cached `docker compose up --build` + logs.
+# Enough for ordinary Dart/code edits. For new packages, Dockerfile, compose,
+# or a stale image use `scripts/full_deploy.sh` instead.
 set -euo pipefail
 
 cd /opt/dvor-chatbot-project

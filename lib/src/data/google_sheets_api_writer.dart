@@ -9,6 +9,7 @@ import 'package:dvor_chatbot/src/telegram/retry.dart';
 import 'package:googleapis/sheets/v4.dart';
 import 'package:googleapis_auth/auth_io.dart';
 import 'package:http/http.dart' as http;
+import 'package:l/l.dart';
 
 final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
   GoogleSheetsApiWriter({
@@ -270,18 +271,29 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     required int sheetId,
     required GoogleSheetsDashboard dashboard,
   }) async {
-    final requests = <Request>[
+    final formatRequests = <Request>[
       ..._columnWidthRequests(sheetId, dashboard.columnWidthsPx),
       ..._styleRequests(sheetId, dashboard.styles),
-      ..._chartRequests(sheetId, dashboard.charts),
+      ..._bandingRequests(sheetId, dashboard.bandedTables),
     ];
-    if (requests.isEmpty) {
+    if (formatRequests.isNotEmpty) {
+      await _api.spreadsheets.batchUpdate(
+        BatchUpdateSpreadsheetRequest(requests: formatRequests),
+        _spreadsheetId,
+      );
+    }
+    final chartRequests = _chartRequests(sheetId, dashboard.charts);
+    if (chartRequests.isEmpty) {
       return;
     }
-    await _api.spreadsheets.batchUpdate(
-      BatchUpdateSpreadsheetRequest(requests: requests),
-      _spreadsheetId,
-    );
+    try {
+      await _api.spreadsheets.batchUpdate(
+        BatchUpdateSpreadsheetRequest(requests: chartRequests),
+        _spreadsheetId,
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Google Sheets funnel charts failed: $error', stackTrace);
+    }
   }
 
   List<Request> _columnWidthRequests(int sheetId, List<int> widths) {
@@ -324,20 +336,71 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
       }
       final format = _cellFormat(style);
       final fields = _formatFields(style);
-      if (format == null || fields == null) {
-        continue;
-      }
-      requests.add(
-        Request(
-          repeatCell: RepeatCellRequest(
-            range: range,
-            cell: CellData(userEnteredFormat: format),
-            fields: 'userEnteredFormat($fields)',
+      if (format != null && fields != null) {
+        requests.add(
+          Request(
+            repeatCell: RepeatCellRequest(
+              range: range,
+              cell: CellData(userEnteredFormat: format),
+              fields: 'userEnteredFormat($fields)',
+            ),
           ),
-        ),
-      );
+        );
+      }
+      if (style.borders) {
+        requests.add(_borderRequest(range, inner: style.innerBorders));
+      }
     }
     return requests;
+  }
+
+  Request _borderRequest(GridRange range, {required bool inner}) {
+    final outer = Border(
+      style: 'SOLID_MEDIUM',
+      width: 2,
+      color: Color(red: 0.42, green: 0.50, blue: 0.44),
+    );
+    final grid = Border(
+      style: 'SOLID',
+      width: 1,
+      color: Color(red: 0.62, green: 0.68, blue: 0.63),
+    );
+    return Request(
+      updateBorders: UpdateBordersRequest(
+        range: range,
+        top: outer,
+        bottom: outer,
+        left: outer,
+        right: outer,
+        innerHorizontal: inner ? grid : null,
+        innerVertical: inner ? grid : null,
+      ),
+    );
+  }
+
+  List<Request> _bandingRequests(int sheetId, List<GoogleSheetsBandedTable> tables) {
+    return [
+      for (final table in tables)
+        if (table.endRowExclusive > table.startRow && table.endColumnExclusive > table.startColumn)
+          Request(
+            addBanding: AddBandingRequest(
+              bandedRange: BandedRange(
+                range: GridRange(
+                  sheetId: sheetId,
+                  startRowIndex: table.startRow,
+                  endRowIndex: table.endRowExclusive,
+                  startColumnIndex: table.startColumn,
+                  endColumnIndex: table.endColumnExclusive,
+                ),
+                rowProperties: BandingProperties(
+                  headerColor: Color(red: 0.83, green: 0.88, blue: 0.83),
+                  firstBandColor: Color(red: 0.99, green: 0.99, blue: 0.97),
+                  secondBandColor: Color(red: 0.93, green: 0.95, blue: 0.93),
+                ),
+              ),
+            ),
+          ),
+    ];
   }
 
   CellFormat? _cellFormat(GoogleSheetsRangeStyle style) {
@@ -411,16 +474,18 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   }
 
   EmbeddedChart _embeddedChart(int sheetId, GoogleSheetsChart chart) {
+    final dataStartRow =
+        chart.kind == GoogleSheetsChartKind.pie ? chart.headerRow + 1 : chart.headerRow;
     final labels = _chartData(
       sheetId: sheetId,
-      startRow: chart.headerRow,
+      startRow: dataStartRow,
       endRow: chart.endRowExclusive,
       startColumn: chart.labelColumn,
       endColumn: chart.labelColumn + 1,
     );
     final values = _chartData(
       sheetId: sheetId,
-      startRow: chart.headerRow,
+      startRow: dataStartRow,
       endRow: chart.endRowExclusive,
       startColumn: chart.valueColumn,
       endColumn: chart.valueColumn + 1,
