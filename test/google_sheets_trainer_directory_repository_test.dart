@@ -70,6 +70,26 @@ void main() {
       expect(repository.list().single.role, isEmpty);
     });
 
+    test('parses Russian headers and skips incomplete rows', () async {
+      final repository = GoogleSheetsTrainerDirectoryRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'имя,username,роль,описание,статус\n'
+            'Alex,@alex,Strength,Head coach,готово\n'
+            'NoContact,,,Has bio,нет username\n',
+            200,
+            headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+          );
+        }),
+      );
+
+      expect(await repository.refresh(force: true), isTrue);
+      expect(repository.list(), hasLength(1));
+      expect(repository.list().single.name, 'Alex');
+      expect(repository.list().single.role, 'Strength');
+    });
+
     test('normalizes t.me links without protocol', () async {
       final repository = GoogleSheetsTrainerDirectoryRepository(
         csvUrl: Uri.parse('https://example.com/schedule.csv'),

@@ -37,6 +37,30 @@ void main() {
       );
     });
 
+    test('parses live Russian promo headers and ignores status', () async {
+      final repository = GoogleSheetsPromoCodeRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'промокод,скидка,категории,одноразовый,статус\n'
+            'DVOR2026,100,Тренировки,TRUE,готово\n'
+            ',50,все,FALSE,нет промокода\n',
+            200,
+            headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+          );
+        }),
+      );
+
+      await repository.refresh(force: true);
+      expect(repository.all(), hasLength(1));
+      expect(repository.findByCode('DVOR2026')!.discountPercent, 100);
+      expect(
+        repository.findByCode('DVOR2026')!.categories,
+        <ActivityCategory>{ActivityCategory.trainings},
+      );
+      expect(repository.findByCode('DVOR2026')!.singleUse, isTrue);
+    });
+
     test('supports column aliases and percent sign', () async {
       final repository = GoogleSheetsPromoCodeRepository(
         csvUrl: Uri.parse('https://example.com/schedule.csv'),

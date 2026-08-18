@@ -31,6 +31,25 @@ void main() {
       expect(repository.usernames(), <String>{'team_runner', 'another_member'});
     });
 
+    test('reads username next to имя and ignores status', () async {
+      final repository = GoogleSheetsDvorTeamRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'имя,username,статус\n'
+            'Родион,@oh_rodya,готово\n'
+            'Без ника,,нет username\n',
+            200,
+            headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+          );
+        }),
+      );
+
+      expect(await repository.refresh(force: true), isTrue);
+      expect(repository.containsUsername('oh_rodya'), isTrue);
+      expect(repository.usernames(), <String>{'oh_rodya'});
+    });
+
     test('supports username column aliases', () async {
       final repository = GoogleSheetsDvorTeamRepository(
         csvUrl: Uri.parse('https://example.com/schedule.csv'),

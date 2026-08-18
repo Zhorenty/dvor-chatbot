@@ -7,7 +7,9 @@ abstract final class GoogleSheetsInputUi {
   static const String spreadsheetId = '1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q';
   static const String legendTitle = 'КАК ЗАПОЛНЯТЬ';
   static const String funnelTitle = 'FUNNEL';
-  static const int extraRows = 40;
+  static const String coachesTitle = 'Тренерский штаб';
+  static const int extraRows = 180;
+  static const String statusHeader = 'статус';
 
   static const GoogleSheetsRgb paper = GoogleSheetsFunnelDashboard.paper;
   static const GoogleSheetsRgb ink = GoogleSheetsFunnelDashboard.ink;
@@ -30,73 +32,108 @@ abstract final class GoogleSheetsInputUi {
     gid: 0,
     title: 'Тренировки',
     tabColor: headerTab,
-    requiredHeaders: <String>['title', 'location'],
-    requiredDateHeaders: <String>['date', 'time'],
+    requiredHeaders: <String>['название', 'место'],
+    requiredDateHeaders: <String>['дата', 'время'],
     columns: <GoogleSheetsInputColumn>[
       GoogleSheetsInputColumn(
-        header: 'title',
+        header: 'название',
+        aliases: <String>['title'],
         widthPx: 280,
+        missingLabel: 'нет названия',
         note: 'Название. Пример: BOXING DVOR. Пустую строку бот пропускает.',
       ),
       GoogleSheetsInputColumn(
-        header: 'date',
+        header: 'дата',
+        aliases: <String>['date'],
         widthPx: 110,
         kind: GoogleSheetsInputColumnKind.date,
+        missingLabel: 'нет даты',
         note: 'Дата. Выбери в календаре. Формат 19.08.2026.',
       ),
       GoogleSheetsInputColumn(
-        header: 'time',
-        widthPx: 80,
+        header: 'время',
+        aliases: <String>['time'],
+        widthPx: 90,
         kind: GoogleSheetsInputColumnKind.time,
-        note: 'Время начала. Пример: 19:30.',
+        missingLabel: 'нет времени',
+        note: 'Время начала. Пиши 19:30 или 8:30.',
       ),
       GoogleSheetsInputColumn(
-        header: 'location',
+        header: 'место',
+        aliases: <String>['location', 'where', 'place'],
         widthPx: 240,
         wrap: true,
+        missingLabel: 'нет места',
         note: 'Место. Пример: Стадион Кубань.',
       ),
       GoogleSheetsInputColumn(
-        header: 'location_url',
+        header: 'карта',
+        aliases: <String>['location_url', 'location_link', 'maps_url', 'map_url'],
         widthPx: 220,
         kind: GoogleSheetsInputColumnKind.url,
         note: 'Ссылка на карту. Необязательно.',
       ),
       GoogleSheetsInputColumn(
-        header: 'include_trainers',
-        widthPx: 130,
-        kind: GoogleSheetsInputColumnKind.checkbox,
-        note: 'Галка: считать тренеров в лимите мест. CSV: TRUE/FALSE.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'promo_restricted',
-        widthPx: 130,
-        kind: GoogleSheetsInputColumnKind.checkbox,
-        note: 'Галка: промокод на эту тренировку не действует.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'coach',
+        header: 'тренер',
+        aliases: <String>['coach', 'coaches', 'trainer', 'trainers', 'тренеры'],
         widthPx: 170,
-        note: 'Имя тренера. Необязательно.',
+        kind: GoogleSheetsInputColumnKind.coach,
+        note: 'Имя из штаба или разовое. Необязательно.',
       ),
       GoogleSheetsInputColumn(
-        header: 'price',
+        header: 'цена',
+        aliases: <String>['price'],
         widthPx: 80,
         kind: GoogleSheetsInputColumnKind.number,
         note: 'Цена в рублях, число. Можно 350 или 350₽.',
       ),
       GoogleSheetsInputColumn(
-        header: 'limit',
+        header: 'лимит',
+        aliases: <String>[
+          'limit',
+          'participants_limit',
+          'participant_limit',
+          'participants',
+        ],
         widthPx: 80,
         kind: GoogleSheetsInputColumnKind.number,
-        note: 'Лимит мест, число. Алиас participants_limit.',
+        note: 'Лимит мест, число.',
       ),
       GoogleSheetsInputColumn(
-        header: 'notes',
+        header: 'заметки',
+        aliases: <String>['notes', 'примечание'],
         widthPx: 360,
         wrap: true,
         note: 'Текст в карточке бота. Необязательно.',
       ),
+      GoogleSheetsInputColumn(
+        header: 'тренеры_в_лимите',
+        aliases: <String>[
+          'include_trainers',
+          'include_trainers_in_participants',
+          'include_coaches_in_participants',
+          'count_trainers_as_participants',
+          'тренеры_в_участниках',
+          'включать_тренеров_в_участников',
+        ],
+        widthPx: 150,
+        kind: GoogleSheetsInputColumnKind.checkbox,
+        note: 'Галка: считать тренеров в лимите мест. Не «пригласить тренера».',
+      ),
+      GoogleSheetsInputColumn(
+        header: 'без_промокода',
+        aliases: <String>[
+          'promo_restricted',
+          'no_promo',
+          'restrict_promo',
+          'without_promo',
+          'без_скидок',
+        ],
+        widthPx: 140,
+        kind: GoogleSheetsInputColumnKind.checkbox,
+        note: 'Галка: промокод на эту тренировку не действует.',
+      ),
+      _statusColumn,
     ],
   );
 
@@ -104,148 +141,143 @@ abstract final class GoogleSheetsInputUi {
     gid: 294119056,
     title: 'Походы',
     tabColor: GoogleSheetsFunnelDashboard.section,
-    requiredHeaders: <String>['title', 'date_from', 'description'],
-    columns: <GoogleSheetsInputColumn>[
-      GoogleSheetsInputColumn(
-        header: 'title',
-        widthPx: 280,
-        note: 'Название похода. Пустую строку бот пропускает.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'date_from',
-        widthPx: 120,
-        kind: GoogleSheetsInputColumnKind.date,
-        note: 'Дата начала. Выбери в календаре.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'date_to',
-        widthPx: 120,
-        kind: GoogleSheetsInputColumnKind.date,
-        note: 'Дата окончания. Пусто = один день.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'location',
-        widthPx: 200,
-        wrap: true,
-        note: 'Место / регион. Необязательно.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'price',
-        widthPx: 80,
-        kind: GoogleSheetsInputColumnKind.number,
-        note: 'Цена в рублях, число.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'prepay_percent',
-        widthPx: 120,
-        kind: GoogleSheetsInputColumnKind.percent,
-        note: 'Предоплата 1–100. Пусто = 50%.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'limit',
-        widthPx: 80,
-        kind: GoogleSheetsInputColumnKind.number,
-        note: 'Лимит мест, число.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'equipment',
-        widthPx: 280,
-        wrap: true,
-        note: 'Экипировка. Необязательно.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'itinerary',
-        widthPx: 280,
-        wrap: true,
-        note: 'Расписание / план дня. Необязательно.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'description',
-        widthPx: 420,
-        wrap: true,
-        note: 'Описание в карточке бота. Обязательно, если есть название.',
-      ),
-    ],
+    requiredHeaders: <String>['название', 'дата_с', 'описание'],
+    columns: outdoorColumns,
   );
 
   static const GoogleSheetsInputSheetSpec trails = GoogleSheetsInputSheetSpec(
     gid: 1220729038,
     title: 'Трейлы',
     tabColor: GoogleSheetsFunnelDashboard.kpiB,
-    requiredHeaders: <String>['title', 'date_from', 'description'],
-    columns: <GoogleSheetsInputColumn>[
-      GoogleSheetsInputColumn(
-        header: 'title',
-        widthPx: 240,
-        note: 'Название трейла. Пустую строку бот пропускает.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'date_from',
-        widthPx: 120,
-        kind: GoogleSheetsInputColumnKind.date,
-        note: 'Дата начала. Выбери в календаре.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'date_to',
-        widthPx: 120,
-        kind: GoogleSheetsInputColumnKind.date,
-        note: 'Дата окончания. Пусто = один день.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'location',
-        widthPx: 180,
-        wrap: true,
-        note: 'Место старта. Необязательно.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'description',
-        widthPx: 420,
-        wrap: true,
-        note: 'Описание в карточке бота. Обязательно, если есть название.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'price',
-        widthPx: 80,
-        kind: GoogleSheetsInputColumnKind.number,
-        note: 'Цена в рублях, число.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'limit',
-        widthPx: 80,
-        kind: GoogleSheetsInputColumnKind.number,
-        note: 'Лимит мест, число.',
-      ),
-    ],
+    requiredHeaders: <String>['название', 'дата_с', 'описание'],
+    columns: outdoorColumns,
   );
+
+  static const List<GoogleSheetsInputColumn> outdoorColumns = <GoogleSheetsInputColumn>[
+    GoogleSheetsInputColumn(
+      header: 'название',
+      aliases: <String>['title'],
+      widthPx: 280,
+      missingLabel: 'нет названия',
+      note: 'Название. Пустую строку бот пропускает.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'дата_с',
+      aliases: <String>['date_from', 'дата_начала'],
+      widthPx: 120,
+      kind: GoogleSheetsInputColumnKind.date,
+      missingLabel: 'нет даты_с',
+      note: 'Дата начала. Выбери в календаре.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'дата_по',
+      aliases: <String>['date_to', 'дата_окончания'],
+      widthPx: 120,
+      kind: GoogleSheetsInputColumnKind.date,
+      emptyHint: 'дата_по пусто = один день',
+      note: 'Дата окончания. Пусто = один день. Не подставляй дату_с сами.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'описание',
+      aliases: <String>['description'],
+      widthPx: 420,
+      wrap: true,
+      missingLabel: 'нет описания',
+      note: 'Описание в карточке бота. Обязательно, если есть название.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'место',
+      aliases: <String>['location', 'where', 'place', 'где'],
+      widthPx: 200,
+      wrap: true,
+      note: 'Место / регион. Необязательно.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'цена',
+      aliases: <String>['price'],
+      widthPx: 80,
+      kind: GoogleSheetsInputColumnKind.number,
+      note: 'Цена в рублях, число.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'предоплата',
+      aliases: <String>[
+        'prepay_percent',
+        'prepayment_percent',
+        'prepaid_percent',
+        'prepay',
+        'процент_предоплаты',
+      ],
+      widthPx: 120,
+      kind: GoogleSheetsInputColumnKind.percent,
+      emptyHint: 'предоплата 50% по умолчанию',
+      note: 'Предоплата 1–100. Пусто = 50%. Не подставляй 50 в пустую ячейку.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'лимит',
+      aliases: <String>[
+        'limit',
+        'participants_limit',
+        'participant_limit',
+        'participants',
+      ],
+      widthPx: 80,
+      kind: GoogleSheetsInputColumnKind.number,
+      note: 'Лимит мест, число.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'экипировка',
+      aliases: <String>['equipment', 'gear', 'kit'],
+      widthPx: 280,
+      wrap: true,
+      note: 'Экипировка. Необязательно.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'план',
+      aliases: <String>['itinerary', 'schedule', 'timeline', 'program', 'расписание', 'тайминг'],
+      widthPx: 280,
+      wrap: true,
+      note: 'Расписание / план дня. Необязательно.',
+    ),
+    _statusColumn,
+  ];
 
   static const GoogleSheetsInputSheetSpec coaches = GoogleSheetsInputSheetSpec(
     gid: 195037978,
-    title: 'Тренерский штаб',
+    title: coachesTitle,
     tabColor: GoogleSheetsFunnelDashboard.kpiC,
-    requiredHeaders: <String>['name', 'username', 'description'],
+    requiredHeaders: <String>['имя', 'username', 'описание'],
     columns: <GoogleSheetsInputColumn>[
       GoogleSheetsInputColumn(
-        header: 'name',
+        header: 'имя',
+        aliases: <String>['name', 'trainer_name', 'coach', 'fio'],
         widthPx: 200,
-        note: 'Имя. Строка без имени / контакта / описания пропускается.',
+        missingLabel: 'нет имени',
+        note: 'Имя. Строка без имени / username / описания пропускается.',
       ),
       GoogleSheetsInputColumn(
         header: 'username',
+        aliases: <String>['link', 'telegram', 'tg', 'ат', '@', 'ссылка'],
         widthPx: 180,
-        note: 'Контакт: @username или URL. Колонка — алиас link.',
+        missingLabel: 'нет username',
+        note: '@username или URL. Без контакта бот строку пропускает.',
       ),
       GoogleSheetsInputColumn(
-        header: 'role',
+        header: 'роль',
+        aliases: <String>['role', 'specialization', 'direction', 'направление'],
         widthPx: 220,
         wrap: true,
         note: 'Роль в кратком списке. Необязательно.',
       ),
       GoogleSheetsInputColumn(
-        header: 'description',
+        header: 'описание',
+        aliases: <String>['description', 'about', 'bio', 'desc'],
         widthPx: 420,
         wrap: true,
-        note: 'Текст в карточке тренера. Обязательно вместе с именем и контактом.',
+        missingLabel: 'нет описания',
+        note: 'Текст в карточке тренера. Обязательно вместе с именем и username.',
       ),
+      _statusColumn,
     ],
   );
 
@@ -256,15 +288,28 @@ abstract final class GoogleSheetsInputUi {
     requiredHeaders: <String>['username'],
     columns: <GoogleSheetsInputColumn>[
       GoogleSheetsInputColumn(
-        header: 'name',
+        header: 'имя',
+        aliases: <String>['name'],
         widthPx: 200,
-        note: 'ФИО для людей. Бот эту колонку не читает.',
+        note: 'ФИО для людей. Бот эту колонку не читает. Не клади ФИО в username.',
       ),
       GoogleSheetsInputColumn(
         header: 'username',
+        aliases: <String>[
+          'user_name',
+          'telegram',
+          'tg',
+          'link',
+          'ат',
+          '@',
+          'юзернейм',
+          'username_telegram',
+        ],
         widthPx: 200,
+        missingLabel: 'нет username',
         note: '@name или name. Только ник. Whitelist бесплатной записи.',
       ),
+      _statusColumn,
     ],
   );
 
@@ -272,34 +317,55 @@ abstract final class GoogleSheetsInputUi {
     gid: 432112868,
     title: 'Промокоды',
     tabColor: GoogleSheetsFunnelDashboard.kpiB,
-    requiredHeaders: <String>['code', 'discount_percent'],
-    highlightDuplicateHeader: 'code',
+    requiredHeaders: <String>['промокод', 'скидка'],
+    highlightDuplicateHeader: 'промокод',
     columns: <GoogleSheetsInputColumn>[
       GoogleSheetsInputColumn(
-        header: 'code',
+        header: 'промокод',
+        aliases: <String>['code', 'promocode', 'код'],
         widthPx: 160,
+        missingLabel: 'нет промокода',
         note: 'Код. При дубле побеждает последняя строка.',
       ),
       GoogleSheetsInputColumn(
-        header: 'discount_percent',
+        header: 'скидка',
+        aliases: <String>['discount_percent', 'discount', 'percent', 'процент'],
         widthPx: 140,
         kind: GoogleSheetsInputColumnKind.percent,
+        missingLabel: 'нет скидки',
         note: 'Скидка 1–100. Знак % можно.',
       ),
       GoogleSheetsInputColumn(
-        header: 'categories',
-        widthPx: 280,
+        header: 'категории',
+        aliases: <String>[
+          'categories',
+          'category',
+          'категория',
+          'тип',
+          'тип_мероприятия',
+          'мероприятия',
+        ],
+        widthPx: 220,
         kind: GoogleSheetsInputColumnKind.categories,
-        note: 'Категории через запятую. Пусто / все / all = все категории. '
-            'Живые значения: Тренировки, Походы, Трейлы.',
+        note: 'все / Тренировки / Походы / Трейлы. Можно через запятую. Пусто = все.',
       ),
       GoogleSheetsInputColumn(
-        header: 'single_use',
+        header: 'одноразовый',
+        aliases: <String>['single_use', 'singleuse', 'одноразовая', 'одноразовое'],
         widthPx: 120,
         kind: GoogleSheetsInputColumnKind.checkbox,
         note: 'Галка: одноразовый промокод.',
       ),
+      _statusColumn,
     ],
+  );
+
+  static const GoogleSheetsInputColumn _statusColumn = GoogleSheetsInputColumn(
+    header: statusHeader,
+    widthPx: 280,
+    wrap: true,
+    kind: GoogleSheetsInputColumnKind.status,
+    note: 'Готово или чего не хватает. Формула. Бот колонку не читает.',
   );
 
   static const List<String> categoryDropdownValues = <String>[
@@ -307,15 +373,71 @@ abstract final class GoogleSheetsInputUi {
     'Тренировки',
     'Походы',
     'Трейлы',
-    'Тренировки, Походы',
-    'Тренировки, Трейлы',
-    'Походы, Трейлы',
-    'Походы, Тренировки, Трейлы',
-    'Тренировки, Походы, Трейлы',
   ];
 
   static String normalizeHeader(String value) {
     return value.trim().toLowerCase().replaceAll(' ', '_').replaceAll('ё', 'е');
+  }
+
+  static String columnLetter(int column) {
+    var n = column + 1;
+    final buffer = StringBuffer();
+    while (n > 0) {
+      n -= 1;
+      buffer.writeCharCode(65 + n % 26);
+      n ~/= 26;
+    }
+    return buffer.toString().split('').reversed.join();
+  }
+
+  /// Locale-aware status formula for data row [row] (1-based A1, header is 1).
+  static String statusFormula({
+    required GoogleSheetsInputSheetSpec spec,
+    required String formulaSep,
+    required int targetRows,
+    int row = 2,
+  }) {
+    String cell(String header) {
+      final index = spec.indexOfHeader(header);
+      if (index == null) {
+        throw StateError('${spec.title}: header "$header" is missing from spec.');
+      }
+      return '${columnLetter(index)}$row';
+    }
+
+    final startedParts = <String>[
+      for (final column in spec.dataColumns) '${cell(column.header)}<>""',
+    ];
+    final requiredHeaders = <String>[...spec.requiredHeaders, ...spec.requiredDateHeaders];
+    final requiredParts = <String>[
+      for (final header in requiredHeaders) '${cell(header)}<>""',
+    ];
+    final missingParts = <String>[
+      for (final header in requiredHeaders)
+        'IF(${cell(header)}="";"${spec.columnNamed(header)!.missingLabel}";"")',
+    ];
+    final hintParts = <String>[
+      for (final column in spec.columns)
+        if (column.emptyHint != null) 'IF(${cell(column.header)}="";"${column.emptyHint}";"")',
+    ];
+    final duplicateHeader = spec.highlightDuplicateHeader;
+    if (duplicateHeader != null) {
+      final letter = columnLetter(spec.indexOfHeader(duplicateHeader)!);
+      final dupIf = 'IF(AND(${cell(duplicateHeader)}<>""$formulaSep '
+          'COUNTIF(\$$letter\$2:\$$letter\$$targetRows$formulaSep ${cell(duplicateHeader)})>1);'
+          '"дубль кода";"")';
+      hintParts.add(dupIf);
+      missingParts.add(dupIf);
+    }
+
+    final started = startedParts.join('$formulaSep ');
+    final allRequired = requiredParts.join('$formulaSep ');
+    final missingJoin = missingParts.join('$formulaSep ');
+    final completeParts = <String>['"готово"', ...hintParts];
+    final completeJoin = completeParts.join('$formulaSep ');
+    return '=IF(NOT(OR($started));"";IF(AND($allRequired);'
+        'TEXTJOIN("; "$formulaSep TRUE$formulaSep $completeJoin);'
+        'TEXTJOIN("; "$formulaSep TRUE$formulaSep $missingJoin)))';
   }
 }
 
@@ -328,6 +450,8 @@ enum GoogleSheetsInputColumnKind {
   checkbox,
   categories,
   url,
+  coach,
+  status,
 }
 
 final class GoogleSheetsInputColumn {
@@ -335,15 +459,37 @@ final class GoogleSheetsInputColumn {
     required this.header,
     required this.widthPx,
     required this.note,
+    this.aliases = const <String>[],
     this.kind = GoogleSheetsInputColumnKind.text,
     this.wrap = false,
+    this.missingLabel = '',
+    this.emptyHint,
   });
 
   final String header;
+  final List<String> aliases;
   final int widthPx;
   final String note;
   final GoogleSheetsInputColumnKind kind;
   final bool wrap;
+  final String missingLabel;
+  final String? emptyHint;
+
+  bool get isStatus => kind == GoogleSheetsInputColumnKind.status;
+
+  bool get isCheckbox => kind == GoogleSheetsInputColumnKind.checkbox;
+
+  bool matches(String normalizedLiveHeader) {
+    if (GoogleSheetsInputUi.normalizeHeader(header) == normalizedLiveHeader) {
+      return true;
+    }
+    for (final alias in aliases) {
+      if (GoogleSheetsInputUi.normalizeHeader(alias) == normalizedLiveHeader) {
+        return true;
+      }
+    }
+    return false;
+  }
 }
 
 final class GoogleSheetsInputSheetSpec {
@@ -365,8 +511,44 @@ final class GoogleSheetsInputSheetSpec {
   final List<String> requiredDateHeaders;
   final String? highlightDuplicateHeader;
 
+  Iterable<GoogleSheetsInputColumn> get dataColumns =>
+      columns.where((column) => !column.isStatus && !column.isCheckbox);
+
   Set<String> get checkboxHeaders => columns
-      .where((column) => column.kind == GoogleSheetsInputColumnKind.checkbox)
+      .where((column) => column.isCheckbox)
       .map((column) => GoogleSheetsInputUi.normalizeHeader(column.header))
       .toSet();
+
+  GoogleSheetsInputColumn? columnNamed(String header) {
+    final key = GoogleSheetsInputUi.normalizeHeader(header);
+    for (final column in columns) {
+      if (GoogleSheetsInputUi.normalizeHeader(column.header) == key) {
+        return column;
+      }
+    }
+    return null;
+  }
+
+  int? indexOfHeader(String header) {
+    final key = GoogleSheetsInputUi.normalizeHeader(header);
+    for (var i = 0; i < columns.length; i++) {
+      if (GoogleSheetsInputUi.normalizeHeader(columns[i].header) == key) {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  GoogleSheetsInputColumn? matchingColumn(String liveHeader) {
+    final normalized = GoogleSheetsInputUi.normalizeHeader(liveHeader);
+    if (normalized.isEmpty) {
+      return null;
+    }
+    for (final column in columns) {
+      if (column.matches(normalized)) {
+        return column;
+      }
+    }
+    return null;
+  }
 }

@@ -153,8 +153,8 @@ final class _FormatInputSheets {
                 tabColorStyle: ColorStyle(rgbColor: _color(GoogleSheetsInputUi.headerTab)),
                 gridProperties: GridProperties(
                   frozenRowCount: 1,
-                  rowCount: 20,
-                  columnCount: 4,
+                  rowCount: 16,
+                  columnCount: 2,
                 ),
               ),
             ),
@@ -168,47 +168,118 @@ final class _FormatInputSheets {
   Future<_SheetPlan> _planSheet(GoogleSheetsInputSheetSpec spec, Sheet live) async {
     final sheetId = live.properties!.sheetId!;
     final quoted = quoteA1SheetTitle(live.properties!.title ?? spec.title);
-    final formatted = await _api.spreadsheets.values.get(
+    var formatted = await _api.spreadsheets.values.get(
       _spreadsheetId,
       '$quoted!A:Z',
     );
-    final rows = _asStringRows(formatted.values);
+    var rows = _asStringRows(formatted.values);
     if (rows.isEmpty) {
       throw StateError('${spec.title}: empty sheet, expected a header row.');
     }
-    final headers = [
+    var headers = [
       for (final cell in rows.first) GoogleSheetsInputUi.normalizeHeader(cell),
     ];
     _assertRequiredHeaders(spec, headers);
 
-    final indexByHeader = <String, int>{};
+    final skipCols = <int>{};
     for (var i = 0; i < headers.length; i++) {
-      if (headers[i].isEmpty) {
-        continue;
+      final column = spec.matchingColumn(headers[i]);
+      if (column != null && (column.isCheckbox || column.isStatus)) {
+        skipCols.add(i);
       }
-      indexByHeader.putIfAbsent(headers[i], () => i);
     }
-    final checkboxCols = <int>{
-      for (final header in spec.checkboxHeaders)
-        if (indexByHeader.containsKey(header)) indexByHeader[header]!,
+    final leadingEmpty = _leadingEmptyCount(rows, skipCols);
+    if (leadingEmpty > 0) {
+      await _batch(<Request>[
+        Request(
+          deleteDimension: DeleteDimensionRequest(
+            range: DimensionRange(
+              sheetId: sheetId,
+              dimension: 'ROWS',
+              startIndex: 1,
+              endIndex: 1 + leadingEmpty,
+            ),
+          ),
+        ),
+      ]);
+      stdout.writeln('  deleted $leadingEmpty empty row(s) under header');
+      formatted = await _api.spreadsheets.values.get(
+        _spreadsheetId,
+        '$quoted!A:Z',
+      );
+      rows = _asStringRows(formatted.values);
+      headers = [
+        for (final cell in rows.first) GoogleSheetsInputUi.normalizeHeader(cell),
+      ];
+      skipCols
+        ..clear()
+        ..addAll({
+          for (var i = 0; i < headers.length; i++)
+            if (spec.matchingColumn(headers[i])?.isCheckbox == true ||
+                spec.matchingColumn(headers[i])?.isStatus == true)
+              i,
+        });
+    }
+
+    final lastContent = _lastContentRow(rows, skipCols);
+    final reshaped = _reshapeRows(spec, rows, lastContent);
+    final indexByHeader = <String, int>{
+      for (var i = 0; i < spec.columns.length; i++)
+        GoogleSheetsInputUi.normalizeHeader(spec.columns[i].header): i,
     };
-    final lastContent = _lastContentRow(rows, checkboxCols);
-    final usedColumns = math.max(
-      spec.columns.length,
-      _lastUsedColumn(rows) + 1,
-    );
+    final usedColumns = spec.columns.length;
     final targetRows = math.max(
-      lastContent + 1 + GoogleSheetsInputUi.extraRows,
+      (reshaped.length - 1) + 1 + GoogleSheetsInputUi.extraRows,
       1 + GoogleSheetsInputUi.extraRows,
     );
     stdout.writeln(
-      '  headers=${headers.take(usedColumns).join(", ")} '
-      'contentRows=$lastContent target=${targetRows}x$usedColumns',
+      '  headers=${spec.columns.map((column) => column.header).join(", ")} '
+      'contentRows=${reshaped.length - 1} target=${targetRows}x$usedColumns',
+    );
+
+    await _batch(<Request>[
+      Request(
+        updateSheetProperties: UpdateSheetPropertiesRequest(
+          properties: SheetProperties(
+            sheetId: sheetId,
+            gridProperties: GridProperties(
+              rowCount: targetRows,
+              columnCount: usedColumns,
+            ),
+          ),
+          fields: 'gridProperties.rowCount,gridProperties.columnCount',
+        ),
+      ),
+    ]);
+
+    final write = _gridWithStatus(spec, reshaped, targetRows);
+    final statusIndex =
+        spec.indexOfHeader(GoogleSheetsInputUi.statusHeader) ?? spec.columns.length - 1;
+    final dataCols = statusIndex;
+    await _api.spreadsheets.values.update(
+      ValueRange(
+        values: [
+          for (final row in write) row.sublist(0, dataCols),
+        ],
+      ),
+      _spreadsheetId,
+      '$quoted!A1',
+      valueInputOption: 'RAW',
+    );
+    await _api.spreadsheets.values.update(
+      ValueRange(
+        values: [
+          for (final row in write) <Object?>[row[statusIndex]],
+        ],
+      ),
+      _spreadsheetId,
+      '$quoted!${GoogleSheetsInputUi.columnLetter(statusIndex)}1',
+      valueInputOption: 'USER_ENTERED',
     );
 
     final cleanup = <Request>[
       ..._cleanupLook(live),
-      ..._cleanupProtections(live, headerOnly: true),
+      ..._cleanupAllProtections(live),
     ];
     if (live.basicFilter != null) {
       cleanup.add(
@@ -222,8 +293,8 @@ final class _FormatInputSheets {
     final conversions = _conversionUpdates(
       spec: spec,
       indexByHeader: indexByHeader,
-      rows: rows,
-      lastContent: lastContent,
+      rows: reshaped,
+      lastContent: reshaped.length - 1,
     );
     if (conversions.isNotEmpty) {
       final title = live.properties?.title ?? spec.title;
@@ -287,7 +358,7 @@ final class _FormatInputSheets {
       Request(
         addProtectedRange: AddProtectedRangeRequest(
           protectedRange: ProtectedRange(
-            description: 'Шапка CSV. Не меняй заголовки — их читает бот.',
+            description: 'Шапка. Не переименовывай колонки — их читает бот.',
             warningOnly: true,
             range: GridRange(
               sheetId: sheetId,
@@ -300,19 +371,33 @@ final class _FormatInputSheets {
         ),
       ),
     );
+    format.add(
+      Request(
+        addProtectedRange: AddProtectedRangeRequest(
+          protectedRange: ProtectedRange(
+            description: 'Колонка статус — формула. Бот её не читает.',
+            warningOnly: true,
+            range: GridRange(
+              sheetId: sheetId,
+              startRowIndex: 1,
+              endRowIndex: targetRows,
+              startColumnIndex: statusIndex,
+              endColumnIndex: statusIndex + 1,
+            ),
+          ),
+        ),
+      ),
+    );
     return _SheetPlan(cleanup: cleanup, format: format);
   }
 
   void _assertRequiredHeaders(GoogleSheetsInputSheetSpec spec, List<String> headers) {
     final missing = <String>[];
-    for (final required in spec.requiredHeaders) {
-      if (!headers.contains(GoogleSheetsInputUi.normalizeHeader(required))) {
+    for (final required in [...spec.requiredHeaders, ...spec.requiredDateHeaders]) {
+      final column = spec.columnNamed(required);
+      final found = column != null && headers.any(column.matches);
+      if (!found) {
         missing.add(required);
-      }
-    }
-    for (final header in spec.requiredDateHeaders) {
-      if (!headers.contains(GoogleSheetsInputUi.normalizeHeader(header))) {
-        missing.add(header);
       }
     }
     if (missing.isNotEmpty) {
@@ -341,6 +426,25 @@ final class _FormatInputSheets {
             index: index,
           ),
         ),
+      );
+    }
+    return requests;
+  }
+
+  List<Request> _cleanupAllProtections(Sheet live) {
+    final sheetId = live.properties!.sheetId!;
+    final requests = <Request>[];
+    for (final protection in live.protectedRanges ?? const <ProtectedRange>[]) {
+      final id = protection.protectedRangeId;
+      if (id == null) {
+        continue;
+      }
+      final range = protection.range;
+      if (range != null && range.sheetId != null && range.sheetId != sheetId) {
+        continue;
+      }
+      requests.add(
+        Request(deleteProtectedRange: DeleteProtectedRangeRequest(protectedRangeId: id)),
       );
     }
     return requests;
@@ -617,7 +721,7 @@ final class _FormatInputSheets {
       if (index == null) {
         continue;
       }
-      final rule = _validationRule(column.kind);
+      final rule = _validationRule(column, index);
       if (rule == null) {
         continue;
       }
@@ -639,12 +743,29 @@ final class _FormatInputSheets {
     return requests;
   }
 
-  DataValidationRule? _validationRule(GoogleSheetsInputColumnKind kind) {
-    switch (kind) {
+  DataValidationRule? _validationRule(GoogleSheetsInputColumn column, int index) {
+    switch (column.kind) {
       case GoogleSheetsInputColumnKind.date:
         return DataValidationRule(
           condition: BooleanCondition(type: 'DATE_IS_VALID'),
           inputMessage: 'Выбери дату в календаре.',
+          showCustomUi: true,
+          strict: false,
+        );
+      case GoogleSheetsInputColumnKind.time:
+        final letter = GoogleSheetsInputUi.columnLetter(index);
+        return DataValidationRule(
+          condition: BooleanCondition(
+            type: 'CUSTOM_FORMULA',
+            values: <ConditionValue>[
+              ConditionValue(
+                userEnteredValue: '=OR(${letter}2=""$_formulaSep ISNUMBER(${letter}2)$_formulaSep '
+                    'REGEXMATCH(TO_TEXT(${letter}2)$_formulaSep '
+                    '"^[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?\$"))',
+              ),
+            ],
+          ),
+          inputMessage: 'Время, например 19:30 или 8:30.',
           showCustomUi: true,
           strict: false,
         );
@@ -686,7 +807,7 @@ final class _FormatInputSheets {
                 ConditionValue(userEnteredValue: value),
             ],
           ),
-          inputMessage: 'Категории или «все».',
+          inputMessage: 'все / Тренировки / Походы / Трейлы. Можно через запятую.',
           showCustomUi: true,
           strict: false,
         );
@@ -697,8 +818,23 @@ final class _FormatInputSheets {
           showCustomUi: true,
           strict: false,
         );
-      case GoogleSheetsInputColumnKind.time:
+      case GoogleSheetsInputColumnKind.coach:
+        return DataValidationRule(
+          condition: BooleanCondition(
+            type: 'ONE_OF_RANGE',
+            values: <ConditionValue>[
+              ConditionValue(
+                userEnteredValue:
+                    '=${quoteA1SheetTitle(GoogleSheetsInputUi.coachesTitle)}!\$A\$2:\$A\$500',
+              ),
+            ],
+          ),
+          inputMessage: 'Имя из штаба или своё.',
+          showCustomUi: true,
+          strict: false,
+        );
       case GoogleSheetsInputColumnKind.text:
+      case GoogleSheetsInputColumnKind.status:
         return null;
     }
   }
@@ -716,6 +852,8 @@ final class _FormatInputSheets {
       case GoogleSheetsInputColumnKind.checkbox:
       case GoogleSheetsInputColumnKind.categories:
       case GoogleSheetsInputColumnKind.url:
+      case GoogleSheetsInputColumnKind.coach:
+      case GoogleSheetsInputColumnKind.status:
         return null;
     }
   }
@@ -736,6 +874,7 @@ final class _FormatInputSheets {
     final content = <int>[
       for (final column in spec.columns)
         if (column.kind != GoogleSheetsInputColumnKind.checkbox &&
+            column.kind != GoogleSheetsInputColumnKind.status &&
             indexByHeader.containsKey(GoogleSheetsInputUi.normalizeHeader(column.header)))
           indexByHeader[GoogleSheetsInputUi.normalizeHeader(column.header)]!,
     ];
@@ -857,11 +996,85 @@ final class _FormatInputSheets {
           case GoogleSheetsInputColumnKind.checkbox:
           case GoogleSheetsInputColumnKind.categories:
           case GoogleSheetsInputColumnKind.url:
+          case GoogleSheetsInputColumnKind.coach:
+          case GoogleSheetsInputColumnKind.status:
             break;
         }
       }
     }
     return writes;
+  }
+
+  List<List<String>> _reshapeRows(
+    GoogleSheetsInputSheetSpec spec,
+    List<List<String>> rows,
+    int lastContent,
+  ) {
+    final liveHeaders = [
+      for (final cell in rows.first) GoogleSheetsInputUi.normalizeHeader(cell),
+    ];
+    final sourceBySpec = <String, int>{};
+    for (var i = 0; i < liveHeaders.length; i++) {
+      final column = spec.matchingColumn(liveHeaders[i]);
+      if (column == null || column.isStatus) {
+        continue;
+      }
+      sourceBySpec.putIfAbsent(GoogleSheetsInputUi.normalizeHeader(column.header), () => i);
+    }
+    const titleKeys = <String>{'название', 'имя'};
+    final result = <List<String>>[
+      [for (final column in spec.columns) column.header],
+    ];
+    for (var r = 1; r <= lastContent && r < rows.length; r++) {
+      final next = <String>[];
+      for (final column in spec.columns) {
+        if (column.isStatus) {
+          next.add('');
+          continue;
+        }
+        final source = sourceBySpec[GoogleSheetsInputUi.normalizeHeader(column.header)];
+        var value = source == null ? '' : _cell(rows[r], source);
+        if (titleKeys.contains(GoogleSheetsInputUi.normalizeHeader(column.header))) {
+          value = value.trim();
+        }
+        next.add(value);
+      }
+      result.add(next);
+    }
+    return result;
+  }
+
+  List<List<Object?>> _gridWithStatus(
+    GoogleSheetsInputSheetSpec spec,
+    List<List<String>> reshaped,
+    int targetRows,
+  ) {
+    final statusIndex =
+        spec.indexOfHeader(GoogleSheetsInputUi.statusHeader) ?? spec.columns.length - 1;
+    final grid = <List<Object?>>[];
+    for (var r = 0; r < targetRows; r++) {
+      final row = <Object?>[];
+      for (var c = 0; c < spec.columns.length; c++) {
+        if (r == 0) {
+          row.add(spec.columns[c].header);
+        } else if (c == statusIndex) {
+          row.add(
+            GoogleSheetsInputUi.statusFormula(
+              spec: spec,
+              formulaSep: _formulaSep,
+              targetRows: targetRows,
+              row: r + 1,
+            ),
+          );
+        } else if (r < reshaped.length && c < reshaped[r].length) {
+          row.add(reshaped[r][c]);
+        } else {
+          row.add('');
+        }
+      }
+      grid.add(row);
+    }
+    return grid;
   }
 
   Future<void> _writeLegend() async {
@@ -871,26 +1084,53 @@ final class _FormatInputSheets {
     }
     final sheetId = live.properties!.sheetId!;
     final rows = <List<Object?>>[
-      <Object?>['Лист', 'gid', 'Что заполнять', 'Как открыть'],
-      for (final spec in GoogleSheetsInputUi.sheets)
-        <Object?>[
-          spec.title,
-          spec.gid,
-          spec.columns.map((column) => column.header).join(', '),
-          '=HYPERLINK("#gid=${spec.gid}"$_formulaSep"${spec.title}")',
-        ],
+      <Object?>['Как заполнять', ''],
+      <Object?>[
+        'После правок в боте: Админ-меню → Обновить Google Sheets. Лист FUNNEL руками не трогать.',
+        '',
+      ],
+      <Object?>['', ''],
+      <Object?>[
+        '=HYPERLINK("#gid=0"$_formulaSep"Тренировки")',
+        'Обязательно: название, дата, время, место. Иначе бот строку пропустит — смотри колонку статус.',
+      ],
+      <Object?>[
+        '',
+        'тренеры_в_лимите — считать тренеров в лимите мест, не «пригласить». '
+            'без_промокода — промо на эту тренировку не действует. Время как 19:30.',
+      ],
+      <Object?>[
+        '=HYPERLINK("#gid=294119056"$_formulaSep"Походы")',
+        'Обязательно: название, дата_с, описание. дата_по пусто = один день. '
+            'предоплата пусто = 50% (не пиши 50 в пустую ячейку).',
+      ],
+      <Object?>[
+        '=HYPERLINK("#gid=1220729038"$_formulaSep"Трейлы")',
+        'Те же поля, что у походов. Пустая предоплата тоже 50%.',
+      ],
+      <Object?>[
+        '=HYPERLINK("#gid=195037978"$_formulaSep"Тренерский штаб")',
+        'Обязательно: имя, username, описание. Без username строка не попадёт в бота.',
+      ],
+      <Object?>[
+        '=HYPERLINK("#gid=2001400867"$_formulaSep"Команда DVOR")',
+        'В username только ник (@name). Колонка имя — для людей, бот её не читает.',
+      ],
+      <Object?>[
+        '=HYPERLINK("#gid=432112868"$_formulaSep"Промокоды")',
+        'Обязательно: промокод и скидка. Категории: все / Тренировки / Походы / Трейлы. '
+            'Пусто или «все» = все категории. Дубль кода: побеждает нижняя строка.',
+      ],
+      <Object?>['', ''],
       <Object?>[
         GoogleSheetsInputUi.funnelTitle,
-        'бот',
         'Не заполнять. Лист пересобирает бот.',
-        GoogleSheetsInputUi.funnelTitle,
       ],
-      <Object?>[],
+      <Object?>['', ''],
       <Object?>[
-        'Шапка (строка 1) — технические имена колонок для CSV. Подсказка — в заметке шапки.',
-      ],
-      <Object?>[
-        'Даты выбирай в календаре. Да/нет — галка. После правок в боте: Обновить Google Sheets.',
+        'gid (админу)',
+        'Тренировки 0 · Походы 294119056 · Трейлы 1220729038 · '
+            'Тренерский штаб 195037978 · Команда DVOR 2001400867 · Промокоды 432112868',
       ],
     ];
     final quoted = quoteA1SheetTitle(GoogleSheetsInputUi.legendTitle);
@@ -912,7 +1152,7 @@ final class _FormatInputSheets {
             gridProperties: GridProperties(
               frozenRowCount: 1,
               rowCount: 16,
-              columnCount: 4,
+              columnCount: 2,
               hideGridlines: false,
             ),
           ),
@@ -927,7 +1167,7 @@ final class _FormatInputSheets {
             startRowIndex: 0,
             endRowIndex: 16,
             startColumnIndex: 0,
-            endColumnIndex: 4,
+            endColumnIndex: 2,
           ),
           cell: CellData(
             userEnteredFormat: CellFormat(
@@ -950,7 +1190,7 @@ final class _FormatInputSheets {
             startRowIndex: 0,
             endRowIndex: 1,
             startColumnIndex: 0,
-            endColumnIndex: 4,
+            endColumnIndex: 2,
           ),
           cell: CellData(
             userEnteredFormat: CellFormat(
@@ -973,7 +1213,7 @@ final class _FormatInputSheets {
             startIndex: 0,
             endIndex: 1,
           ),
-          properties: DimensionProperties(pixelSize: 180),
+          properties: DimensionProperties(pixelSize: 200),
           fields: 'pixelSize',
         ),
       ),
@@ -985,31 +1225,7 @@ final class _FormatInputSheets {
             startIndex: 1,
             endIndex: 2,
           ),
-          properties: DimensionProperties(pixelSize: 120),
-          fields: 'pixelSize',
-        ),
-      ),
-      Request(
-        updateDimensionProperties: UpdateDimensionPropertiesRequest(
-          range: DimensionRange(
-            sheetId: sheetId,
-            dimension: 'COLUMNS',
-            startIndex: 2,
-            endIndex: 3,
-          ),
-          properties: DimensionProperties(pixelSize: 420),
-          fields: 'pixelSize',
-        ),
-      ),
-      Request(
-        updateDimensionProperties: UpdateDimensionPropertiesRequest(
-          range: DimensionRange(
-            sheetId: sheetId,
-            dimension: 'COLUMNS',
-            startIndex: 3,
-            endIndex: 4,
-          ),
-          properties: DimensionProperties(pixelSize: 180),
+          properties: DimensionProperties(pixelSize: 640),
           fields: 'pixelSize',
         ),
       ),
@@ -1117,6 +1333,27 @@ List<List<String>> _asStringRows(List<List<Object?>>? values) {
   ];
 }
 
+int _leadingEmptyCount(List<List<String>> rows, Set<int> skipCols) {
+  var count = 0;
+  for (var row = 1; row < rows.length; row++) {
+    var empty = true;
+    for (var column = 0; column < rows[row].length; column++) {
+      if (skipCols.contains(column)) {
+        continue;
+      }
+      if (rows[row][column].trim().isNotEmpty) {
+        empty = false;
+        break;
+      }
+    }
+    if (!empty) {
+      break;
+    }
+    count += 1;
+  }
+  return count;
+}
+
 int _lastContentRow(List<List<String>> rows, Set<int> checkboxCols) {
   var last = 0;
   for (var row = 1; row < rows.length; row++) {
@@ -1133,18 +1370,6 @@ int _lastContentRow(List<List<String>> rows, Set<int> checkboxCols) {
   return last;
 }
 
-int _lastUsedColumn(List<List<String>> rows) {
-  var last = 0;
-  for (final row in rows) {
-    for (var column = 0; column < row.length; column++) {
-      if (row[column].trim().isNotEmpty) {
-        last = math.max(last, column);
-      }
-    }
-  }
-  return last;
-}
-
 String _cell(List<String> row, int index) {
   if (index < 0 || index >= row.length) {
     return '';
@@ -1152,13 +1377,4 @@ String _cell(List<String> row, int index) {
   return row[index].trim();
 }
 
-String _a1(int column) {
-  var n = column + 1;
-  final buffer = StringBuffer();
-  while (n > 0) {
-    n -= 1;
-    buffer.writeCharCode(65 + n % 26);
-    n ~/= 26;
-  }
-  return buffer.toString().split('').reversed.join();
-}
+String _a1(int column) => GoogleSheetsInputUi.columnLetter(column);

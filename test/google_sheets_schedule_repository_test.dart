@@ -156,6 +156,74 @@ void main() {
       expect(outdoor.last.itinerary, 'Day 1 climb, day 2 ridge');
       expect(outdoor.last.prepayPercent, 50);
     });
+
+    test('parses Russian training headers and ignores status column', () async {
+      final repository = GoogleSheetsScheduleRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          final gid = request.url.queryParameters['gid'];
+          if (gid == null || gid == '0') {
+            return http.Response(
+              'название,дата,время,место,карта,тренер,цена,лимит,заметки,тренеры_в_лимите,без_промокода,статус\n'
+              'Cardio,02.06.2030,18:30,Stadium B,,Alex,500,12,вода,FALSE,FALSE,готово\n'
+              'Hole,03.06.2030,,Gym A,,,,,,FALSE,FALSE,нет времени\n',
+              200,
+              headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+            );
+          }
+          return _mockCsvResponse(request);
+        }),
+      );
+
+      await repository.refresh(force: true);
+      final upcoming = repository.upcoming(now: DateTime(2030, 6, 1), limit: 5);
+      expect(upcoming, hasLength(1));
+      expect(upcoming.single.title, 'Cardio');
+      expect(upcoming.single.startsAt, DateTime(2030, 6, 2, 18, 30));
+      expect(upcoming.single.location, 'Stadium B');
+      expect(upcoming.single.price, 500);
+      expect(upcoming.single.participantsLimit, 12);
+      expect(upcoming.single.includeTrainersInParticipants, isFalse);
+      expect(upcoming.single.promoRestricted, isFalse);
+    });
+
+    test('parses Russian outdoor headers including empty prepay default', () async {
+      final repository = GoogleSheetsScheduleRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv?gid=0'),
+        httpClient: MockClient((request) async {
+          final gid = request.url.queryParameters['gid'];
+          if (gid == '294119056') {
+            return http.Response(
+              'название,дата_с,дата_по,описание,место,цена,предоплата,лимит,экипировка,план,статус\n'
+              'Hike,05.06.2030,,One day route,Sochi,2000,,24,jacket,start 08:00,готово\n',
+              200,
+              headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+            );
+          }
+          if (gid == '1220729038') {
+            return http.Response(
+              'название,дата_с,дата_по,описание,место,цена,предоплата,лимит,экипировка,план,статус\n'
+              'Trail,12.06.2030,14.06.2030,Three day,Lago-Naki,4500,,0,,,\n',
+              200,
+              headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+            );
+          }
+          return _mockCsvResponse(request);
+        }),
+      );
+
+      await repository.refresh(force: true);
+      final outdoor = repository.upcomingOutdoorActivities(now: DateTime(2030, 6, 1), limit: 10);
+      expect(outdoor, hasLength(2));
+      expect(outdoor.first.title, 'Hike');
+      expect(outdoor.first.dateFrom, DateTime(2030, 6, 5));
+      expect(outdoor.first.dateTo, DateTime(2030, 6, 5, 23, 59, 59));
+      expect(outdoor.first.prepayPercent, 50);
+      expect(outdoor.first.participantsLimit, 24);
+      expect(outdoor.last.title, 'Trail');
+      expect(outdoor.last.price, 4500);
+      expect(outdoor.last.prepayPercent, 50);
+    });
   });
 }
 

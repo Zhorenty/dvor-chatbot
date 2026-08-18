@@ -131,11 +131,14 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
 
     final headers =
         rows.first.map((cell) => _normalizeHeader(cell.toString())).toList(growable: false);
-    final titleIndex = headers.indexOf('title');
+    final titleIndex = _firstHeaderIndex(headers, const <String>['title', 'название']);
     final startsAtIndex = headers.indexOf('starts_at');
-    final dateIndex = headers.indexOf('date');
-    final timeIndex = headers.indexOf('time');
-    final locationIndex = headers.indexOf('location');
+    final dateIndex = _firstHeaderIndex(headers, const <String>['date', 'дата']);
+    final timeIndex = _firstHeaderIndex(headers, const <String>['time', 'время']);
+    final locationIndex = _firstHeaderIndex(
+      headers,
+      const <String>['location', 'место', 'where', 'place'],
+    );
     final locationUrlIndex = _firstHeaderIndex(
       headers,
       const <String>[
@@ -143,9 +146,10 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'location_link',
         'maps_url',
         'map_url',
+        'карта',
       ],
     );
-    final priceIndex = headers.indexOf('price');
+    final priceIndex = _firstHeaderIndex(headers, const <String>['price', 'цена']);
     final participantsLimitIndex = _firstHeaderIndex(
       headers,
       const <String>[
@@ -153,6 +157,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'participant_limit',
         'participants',
         'limit',
+        'лимит',
       ],
     );
     final includeTrainersInParticipantsIndex = _firstHeaderIndex(
@@ -167,6 +172,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'include_trainers',
         'включать_тренеров_в_участников',
         'тренеры_в_участниках',
+        'тренеры_в_лимите',
       ],
     );
     final coachIndex = _firstHeaderIndex(
@@ -180,7 +186,10 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'тренеры',
       ],
     );
-    final notesIndex = headers.indexOf('notes');
+    final notesIndex = _firstHeaderIndex(
+      headers,
+      const <String>['notes', 'заметки', 'примечание'],
+    );
     final promoRestrictedIndex = _firstHeaderIndex(
       headers,
       const <String>[
@@ -250,9 +259,15 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
 
     final headers =
         rows.first.map((cell) => _normalizeHeader(cell.toString())).toList(growable: false);
-    final titleIndex = headers.indexOf('title');
-    final dateFromIndex = headers.indexOf('date_from');
-    final dateToIndex = headers.indexOf('date_to');
+    final titleIndex = _firstHeaderIndex(headers, const <String>['title', 'название']);
+    final dateFromIndex = _firstHeaderIndex(
+      headers,
+      const <String>['date_from', 'дата_с', 'дата_начала'],
+    );
+    final dateToIndex = _firstHeaderIndex(
+      headers,
+      const <String>['date_to', 'дата_по', 'дата_окончания'],
+    );
     final locationIndex = _firstHeaderIndex(
       headers,
       const <String>[
@@ -263,7 +278,10 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'где',
       ],
     );
-    final descriptionIndex = headers.indexOf('description');
+    final descriptionIndex = _firstHeaderIndex(
+      headers,
+      const <String>['description', 'описание'],
+    );
     final equipmentIndex = _firstHeaderIndex(
       headers,
       const <String>[
@@ -285,7 +303,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'план',
       ],
     );
-    final priceIndex = headers.indexOf('price');
+    final priceIndex = _firstHeaderIndex(headers, const <String>['price', 'цена']);
     final prepayPercentIndex = _firstHeaderIndex(
       headers,
       const <String>[
@@ -304,6 +322,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'participant_limit',
         'participants',
         'limit',
+        'лимит',
       ],
     );
 
@@ -632,7 +651,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
   }
 
   String _normalizeHeader(String value) {
-    return value.trim().toLowerCase().replaceAll(' ', '_');
+    return value.trim().toLowerCase().replaceAll(' ', '_').replaceAll('ё', 'е');
   }
 
   static Uri _replaceGid(Uri source, int gid) {
