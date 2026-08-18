@@ -45,10 +45,12 @@ void main() {
         sender.messages[0].text,
         contains('Привет, <a href="https://t.me/new_runner">Аня</a>!'),
       );
+      expect(sender.messages[0].disableWebPagePreview, isTrue);
       expect(
         sender.messages[1].text,
         contains('Привет, <a href="tg://user?id=1002">Иван</a>!'),
       );
+      expect(sender.messages[1].disableWebPagePreview, isTrue);
       expect(sender.messages[0].text, contains('подарок за старт'));
       expect(onboarding.records, hasLength(2));
       expect(onboarding.records[0].userId, 1001);
@@ -143,6 +145,7 @@ void main() {
         sender.messages.single.text,
         contains('Привет, <a href="https://t.me/joined_via_link">Лена</a>!'),
       );
+      expect(sender.messages.single.disableWebPagePreview, isTrue);
       expect(onboarding.records, hasLength(1));
       expect(onboarding.records.single.userId, 777);
     });
@@ -357,7 +360,7 @@ final class _FakeSender implements MessageSender {
     int chatId,
     String text, {
     bool disableNotification = true,
-    bool disableWebPagePreview = false,
+    bool disableWebPagePreview = true,
     Map<String, Object?>? replyMarkup,
     String? parseMode,
   }) async {
@@ -366,6 +369,7 @@ final class _FakeSender implements MessageSender {
         chatId: chatId,
         text: text,
         disableNotification: disableNotification,
+        disableWebPagePreview: disableWebPagePreview,
       ),
     );
     return messages.length;
@@ -437,11 +441,13 @@ final class _SentMessage {
     required this.chatId,
     required this.text,
     required this.disableNotification,
+    required this.disableWebPagePreview,
   });
 
   final int chatId;
   final String text;
   final bool disableNotification;
+  final bool disableWebPagePreview;
 }
 
 final class _DeletedMessage {

@@ -20,6 +20,7 @@ void main() {
     expect(sent, isTrue);
     expect(sender.messages, hasLength(1));
     expect(sender.messages.single.text, 'referral');
+    expect(sender.messages.single.disableWebPagePreview, isTrue);
     expect(sender.deletedMessages, isEmpty);
   });
 

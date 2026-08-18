@@ -56,6 +56,8 @@ void main() {
     expect(sendMessageBodies[1]['reply_markup'], isNotNull);
     expect(sendMessageBodies[0]['parse_mode'], equals('HTML'));
     expect(sendMessageBodies[1]['parse_mode'], equals('HTML'));
+    expect(sendMessageBodies[0]['disable_web_page_preview'], isTrue);
+    expect(sendMessageBodies[1]['disable_web_page_preview'], isTrue);
     expect(messageId, equals(2));
 
     client.close();

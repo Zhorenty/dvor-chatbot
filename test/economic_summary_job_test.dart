@@ -130,7 +130,7 @@ final class _FlakySender implements MessageSender {
     int chatId,
     String text, {
     bool disableNotification = true,
-    bool disableWebPagePreview = false,
+    bool disableWebPagePreview = true,
     Map<String, Object?>? replyMarkup,
     String? parseMode,
   }) async {

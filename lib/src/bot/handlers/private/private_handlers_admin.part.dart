@@ -594,7 +594,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     int chatId,
     String text, {
     bool disableNotification = true,
-    bool disableWebPagePreview = false,
+    bool disableWebPagePreview = true,
     Map<String, Object?>? replyMarkup,
   }) {
     return _sender.sendMessage(

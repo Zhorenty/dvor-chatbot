@@ -61,7 +61,7 @@ final class GroupAnnouncementService {
     required GroupAnnouncementType type,
     required String text,
     String? parseMode,
-    bool disableWebPagePreview = false,
+    bool disableWebPagePreview = true,
     Map<String, Object?>? replyMarkup,
   }) {
     final completer = Completer<bool>();

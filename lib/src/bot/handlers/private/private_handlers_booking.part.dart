@@ -366,7 +366,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required bool fromSchedulePreview,
     String? messageText,
     String? parseMode,
-    bool disableWebPagePreview = false,
+    bool disableWebPagePreview = true,
   }) async {
     if (_isOutdoorCategory(category)) {
       final outdoorItems = _catalogService.outdoorItems(category);
