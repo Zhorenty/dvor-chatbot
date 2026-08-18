@@ -15,7 +15,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
-import 'package:dvor_chatbot/src/jobs/google_sheets_bookings_export_job.dart';
+import 'package:dvor_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:dvor_chatbot/src/jobs/group_invite_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/job_scheduler.dart';
 import 'package:dvor_chatbot/src/jobs/onboarding_nudge_job.dart';
@@ -152,8 +152,8 @@ final class BotRunner {
         _googleSheetsWriter = googleSheetsWriter,
         _googleSheetsExportJob = googleSheetsWriter == null
             ? null
-            : GoogleSheetsBookingsExportJob(
-                bookingRepository: bookingRepository,
+            : GoogleSheetsFunnelExportJob(
+                onboardingRepository: onboardingRepository,
                 writer: googleSheetsWriter,
                 sheetTitle: config.googleSheetsWriteSheetTitle,
               );
@@ -177,7 +177,7 @@ final class BotRunner {
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
   final GoogleSheetsWriter? _googleSheetsWriter;
-  final GoogleSheetsBookingsExportJob? _googleSheetsExportJob;
+  final GoogleSheetsFunnelExportJob? _googleSheetsExportJob;
 
   static const int _maxConflictRetries = 3;
 
@@ -225,10 +225,10 @@ final class BotRunner {
     if (googleSheetsExportJob != null) {
       _schedulePeriodic(
         Duration(seconds: _config.googleSheetsWriteIntervalSeconds),
-        'google sheets bookings export',
+        'google sheets funnel export',
         googleSheetsExportJob.run,
       );
-      _jobScheduler.launch('google sheets bookings export', googleSheetsExportJob.run);
+      _jobScheduler.launch('google sheets funnel export', googleSheetsExportJob.run);
     }
     _jobScheduler.launch('economic summary', _economicSummaryJob.run);
     _jobScheduler.launch('subscription renewal', _subscriptionRenewalJob.run);

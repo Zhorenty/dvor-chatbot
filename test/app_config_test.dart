@@ -45,7 +45,7 @@ void main() {
       expect(config.logLevel, 'debug');
       expect(config.antiSpamEnabled, isTrue);
       expect(config.googleSheetsWriteEnabled, isFalse);
-      expect(config.googleSheetsWriteSheetTitle, 'bot_bookings');
+      expect(config.googleSheetsWriteSheetTitle, 'FUNNEL');
       expect(config.googleSheetsWriteIntervalSeconds, 300);
     });
 
@@ -118,7 +118,7 @@ void main() {
         '--google-sheets-csv-url',
         'https://docs.google.com/spreadsheets/d/sheetABC123/export?format=csv&gid=0',
         '--google-sheets-write-sheet-title',
-        'bot_bookings',
+        'FUNNEL',
         '--google-sheets-write-interval-seconds',
         '120',
       ]);
@@ -126,8 +126,19 @@ void main() {
       expect(config.googleSheetsWriteEnabled, isTrue);
       expect(config.googleSheetsCredentialsPath, '/tmp/sheets.json');
       expect(config.googleSheetsSpreadsheetId, 'sheetABC123');
-      expect(config.googleSheetsWriteSheetTitle, 'bot_bookings');
+      expect(config.googleSheetsWriteSheetTitle, 'FUNNEL');
       expect(config.googleSheetsWriteIntervalSeconds, 120);
+    });
+
+    test('maps legacy bot_bookings sheet title to FUNNEL', () {
+      final config = AppConfig.fromArgs(<String>[
+        '--token',
+        'cli-token',
+        '--google-sheets-write-sheet-title',
+        'bot_bookings',
+      ]);
+
+      expect(config.googleSheetsWriteSheetTitle, 'FUNNEL');
     });
   });
 }

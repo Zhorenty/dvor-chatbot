@@ -107,9 +107,6 @@ abstract interface class BookingRepository {
 
   Future<List<TrainingBooking>> listUserBookings(int userId, {int limit = 10});
 
-  /// All bookings for ops export (newest events first). Source of truth stays SQLite.
-  Future<List<TrainingBooking>> listAllBookings({int limit = 10000});
-
   Future<BookingActionResult> cancelBooking({
     required int userId,
     required int bookingId,

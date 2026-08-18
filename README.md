@@ -94,7 +94,7 @@ MVP-бот для спортивного объединения DVOR на Dart.
 - `lib/src/application/group_spam_detector.dart` — эвристики рекламы заработка / удалёнки
 - `lib/src/data/static_schedule_repository.dart` — статичное расписание тренировок
 - `lib/src/data/google_sheets_schedule_repository.dart` — расписание из Google Sheets CSV
-- `lib/src/data/google_sheets_api_writer.dart` — запись в Google Sheets API (лист `bot_bookings`)
+- `lib/src/data/google_sheets_api_writer.dart` — запись дашборда воронки в Google Sheets (лист `FUNNEL`)
 - `lib/src/data/sqlite_booking_repository.dart` — SQLite-хранилище записей и оплат
 - `lib/src/data/job_dedupe_repository.dart` — идемпотентность promo/broadcast джобов
 - `lib/src/messages/message_templates.dart` — шаблоны сообщений (+ `templates/*.part.dart`)
@@ -125,7 +125,7 @@ GROUP_INVITE_NUDGE_ENABLED=true
 GOOGLE_SHEETS_WRITE_ENABLED=false
 GOOGLE_SHEETS_CREDENTIALS_PATH=
 GOOGLE_SHEETS_SPREADSHEET_ID=
-GOOGLE_SHEETS_WRITE_SHEET_TITLE=bot_bookings
+GOOGLE_SHEETS_WRITE_SHEET_TITLE=FUNNEL
 GOOGLE_SHEETS_WRITE_INTERVAL_SECONDS=300
 LOG_LEVEL=info
 ```
@@ -134,14 +134,14 @@ LOG_LEVEL=info
 - `TRAINING_FEEDBACK_ENABLED` — анонимный отзыв: тренировки через ~2ч после `startsAt`; походы/трейлы на следующий день после даты окончания в `12:00` (таймзона `TIMEZONE_OFFSET_HOURS`).
 - `GROUP_INVITE_NUDGE_ENABLED` — мягкие напоминания в личку тем, кто пользуется ботом, но не состоит в группе DVOR. Нужны `TARGET_CHAT_ID` и бот-админ в группе (`getChatMember` + `chat_member` leave). Максимум 3 сообщения: через сутки после Start, затем через 7 и 14 дней.
 
-### Запись записей в Google Sheets
+### Дашборд воронки в Google Sheets
 
-SQLite остаётся источником правды. Если включить запись, бот раз в `GOOGLE_SHEETS_WRITE_INTERVAL_SECONDS` **перезаписывает** отдельный лист (по умолчанию `bot_bookings`) актуальным списком записей. Расписание и другие листы бот не трогает.
+SQLite остаётся источником правды. Если включить запись, бот раз в `GOOGLE_SHEETS_WRITE_INTERVAL_SECONDS` **пересобирает** лист `FUNNEL`: KPI, путь новичка, графики, квиз, фидбек. Расписание и другие листы не трогает. Старый лист `bot_bookings` удаляется.
 
-Это не живой append из хендлеров: команда открывает таблицу и видит текущее состояние. Лист `bot_bookings` руками не редактировать — следующий sync затрёт правки.
+Лист `FUNNEL` руками не редактировать — следующий sync пересоздаёт его.
 
 1. В Google Cloud: включить **Google Sheets API**, создать **service account**, скачать JSON-ключ.
-2. В таблице: «Настройки доступа» → email сервис-аккаунта (`...@....iam.gserviceaccount.com`) с правом **Редактор**.
+2. В таблице: «Настройки доступа» → email сервис-аккаунта с правом **Редактор**.
 3. Положить JSON на сервер (не в git), например `secrets/google-sheets.json`.
 4. В `.env`:
 
@@ -149,13 +149,11 @@ SQLite остаётся источником правды. Если включи
 GOOGLE_SHEETS_WRITE_ENABLED=true
 GOOGLE_SHEETS_CREDENTIALS_PATH=/app/secrets/google-sheets.json
 GOOGLE_SHEETS_SPREADSHEET_ID=1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q
-GOOGLE_SHEETS_WRITE_SHEET_TITLE=bot_bookings
+GOOGLE_SHEETS_WRITE_SHEET_TITLE=FUNNEL
 GOOGLE_SHEETS_WRITE_INTERVAL_SECONDS=300
 ```
 
 `GOOGLE_SHEETS_SPREADSHEET_ID` можно не задавать, если в `GOOGLE_SHEETS_CSV_URL` уже есть `/spreadsheets/d/<id>/`. В Docker JSON монтируется через `./secrets:/app/secrets:ro` в `compose.yaml`. После изменения `.env` — перезапуск compose.
-
-Колонки листа: `id`, `user_id`, `username`, `participant`, `participant_type`, `status`, `category`, `title`, `starts_at`, `location`, `price`, `promo_code`, `promo_discount_percent`, `created_at`, `updated_at`, `payment_group_id`. Чеки и `payment_note` не выгружаются.
 
 Можно задавать и через CLI (имеет более высокий приоритет):
 

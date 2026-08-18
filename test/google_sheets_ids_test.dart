@@ -27,7 +27,7 @@ void main() {
 
   group('quoteA1SheetTitle', () {
     test('quotes and escapes single quotes', () {
-      expect(quoteA1SheetTitle('bot_bookings'), "'bot_bookings'");
+      expect(quoteA1SheetTitle('FUNNEL'), "'FUNNEL'");
       expect(quoteA1SheetTitle("O'Brien"), "'O''Brien'");
     });
   });

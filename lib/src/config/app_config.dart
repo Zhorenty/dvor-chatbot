@@ -28,7 +28,7 @@ final class AppConfig {
     this.googleSheetsCredentialsPath,
     this.googleSheetsCredentialsJson,
     this.googleSheetsSpreadsheetId,
-    this.googleSheetsWriteSheetTitle = 'bot_bookings',
+    this.googleSheetsWriteSheetTitle = 'FUNNEL',
     this.googleSheetsWriteIntervalSeconds = 300,
   });
 
@@ -129,7 +129,7 @@ final class AppConfig {
       )
       ..addOption(
         'google-sheets-write-sheet-title',
-        help: 'Sheet tab name overwritten by bookings export (default: bot_bookings)',
+        help: 'Sheet tab name overwritten by funnel dashboard (default: FUNNEL)',
       )
       ..addOption(
         'google-sheets-write-interval-seconds',
@@ -214,6 +214,11 @@ final class AppConfig {
         resolve('GOOGLE_SHEETS_SPREADSHEET_ID', 'google-sheets-spreadsheet-id');
     final googleSheetsWriteSheetTitleRaw =
         resolve('GOOGLE_SHEETS_WRITE_SHEET_TITLE', 'google-sheets-write-sheet-title');
+    final resolvedWriteSheetTitle = googleSheetsWriteSheetTitleRaw?.trim() ?? '';
+    final googleSheetsWriteSheetTitle =
+        resolvedWriteSheetTitle.isEmpty || resolvedWriteSheetTitle == 'bot_bookings'
+            ? 'FUNNEL'
+            : resolvedWriteSheetTitle;
     final googleSheetsWriteIntervalRaw = resolve(
       'GOOGLE_SHEETS_WRITE_INTERVAL_SECONDS',
       'google-sheets-write-interval-seconds',
@@ -234,10 +239,6 @@ final class AppConfig {
         (googleSheetsSpreadsheetIdRaw != null && googleSheetsSpreadsheetIdRaw.isNotEmpty)
             ? googleSheetsSpreadsheetIdRaw
             : spreadsheetIdFromSheetsUrl(googleSheetsCsvUrl);
-    final googleSheetsWriteSheetTitle =
-        (googleSheetsWriteSheetTitleRaw != null && googleSheetsWriteSheetTitleRaw.trim().isNotEmpty)
-            ? googleSheetsWriteSheetTitleRaw.trim()
-            : 'bot_bookings';
     if (googleSheetsWriteEnabled) {
       final hasCredentials =
           (googleSheetsCredentialsPath != null && googleSheetsCredentialsPath.isNotEmpty) ||

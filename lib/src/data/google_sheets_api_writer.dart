@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_credentials.dart';
+import 'package:dvor_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_ids.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_writer.dart';
 import 'package:dvor_chatbot/src/telegram/retry.dart';
@@ -12,7 +13,7 @@ import 'package:http/http.dart' as http;
 final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
   GoogleSheetsApiWriter({
     required GoogleSheetsSpreadsheetGateway gateway,
-    Duration requestTimeout = const Duration(seconds: 20),
+    Duration requestTimeout = const Duration(seconds: 25),
   })  : _gateway = gateway,
         _requestTimeout = requestTimeout;
 
@@ -40,7 +41,7 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
   static Future<GoogleSheetsApiWriter> connect({
     required Map<String, Object?> credentialsJson,
     required String spreadsheetId,
-    Duration requestTimeout = const Duration(seconds: 20),
+    Duration requestTimeout = const Duration(seconds: 25),
   }) async {
     final credentials = ServiceAccountCredentials.fromJson(credentialsJson);
     final client = await clientViaServiceAccount(
@@ -68,6 +69,14 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
     );
   }
 
+  @override
+  Future<void> replaceDashboard(GoogleSheetsDashboard dashboard) {
+    return retry(
+      () => _replaceDashboardOnce(dashboard),
+      shouldRetry: _shouldRetry,
+    );
+  }
+
   Future<void> _replaceSheetOnce({
     required String sheetTitle,
     required List<List<Object?>> rows,
@@ -82,6 +91,58 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
       return;
     }
     await _gateway.updateValues(a1Range: '$quoted!A1', rows: rows).timeout(_requestTimeout);
+  }
+
+  Future<void> _replaceDashboardOnce(GoogleSheetsDashboard dashboard) async {
+    var sheets = await _gateway.describeSheets().timeout(_requestTimeout);
+    for (final obsolete in dashboard.obsoleteSheetTitles) {
+      sheets = await _deleteNamed(sheets, obsolete, keepTitle: dashboard.sheetTitle);
+    }
+    sheets = await _deleteNamed(sheets, dashboard.sheetTitle, keepTitle: null);
+    await _gateway.addSheet(dashboard.sheetTitle).timeout(_requestTimeout);
+    sheets = await _gateway.describeSheets().timeout(_requestTimeout);
+    final target = _named(sheets, dashboard.sheetTitle);
+    if (target == null) {
+      throw StateError('Failed to create Google Sheets tab ${dashboard.sheetTitle}.');
+    }
+    final quoted = quoteA1SheetTitle(dashboard.sheetTitle);
+    if (dashboard.rows.isNotEmpty) {
+      await _gateway
+          .updateValues(
+            a1Range: '$quoted!A1',
+            rows: dashboard.rows,
+            valueInputOption: 'USER_ENTERED',
+          )
+          .timeout(_requestTimeout);
+    }
+    await _gateway
+        .applyDashboardLook(sheetId: target.sheetId, dashboard: dashboard)
+        .timeout(_requestTimeout);
+  }
+
+  Future<List<GoogleSheetsSheetInfo>> _deleteNamed(
+    List<GoogleSheetsSheetInfo> sheets,
+    String title, {
+    required String? keepTitle,
+  }) async {
+    final match = _named(sheets, title);
+    if (match == null || match.title == keepTitle) {
+      return sheets;
+    }
+    if (sheets.length <= 1) {
+      return sheets;
+    }
+    await _gateway.deleteSheet(match.sheetId).timeout(_requestTimeout);
+    return _gateway.describeSheets().timeout(_requestTimeout);
+  }
+
+  GoogleSheetsSheetInfo? _named(List<GoogleSheetsSheetInfo> sheets, String title) {
+    for (final sheet in sheets) {
+      if (sheet.title == title) {
+        return sheet;
+      }
+    }
+    return null;
   }
 
   @override
@@ -114,15 +175,36 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
 
   @override
   Future<Set<String>> listSheetTitles() async {
+    final sheets = await describeSheets();
+    return sheets.map((sheet) => sheet.title).toSet();
+  }
+
+  @override
+  Future<List<GoogleSheetsSheetInfo>> describeSheets() async {
     final spreadsheet = await _api.spreadsheets.get(
       _spreadsheetId,
-      $fields: 'sheets.properties.title',
+      $fields: 'sheets.properties(sheetId,title),sheets.charts.chartId',
     );
-    return spreadsheet.sheets
-            ?.map((sheet) => sheet.properties?.title)
-            .whereType<String>()
-            .toSet() ??
-        const <String>{};
+    final result = <GoogleSheetsSheetInfo>[];
+    for (final sheet in spreadsheet.sheets ?? const <Sheet>[]) {
+      final title = sheet.properties?.title;
+      final sheetId = sheet.properties?.sheetId;
+      if (title == null || sheetId == null) {
+        continue;
+      }
+      result.add(
+        GoogleSheetsSheetInfo(
+          title: title,
+          sheetId: sheetId,
+          chartIds: sheet.charts
+                  ?.map((chart) => chart.chartId)
+                  .whereType<int>()
+                  .toList(growable: false) ??
+              const <int>[],
+        ),
+      );
+    }
+    return result;
   }
 
   @override
@@ -132,9 +214,28 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
         requests: <Request>[
           Request(
             addSheet: AddSheetRequest(
-              properties: SheetProperties(title: title),
+              properties: SheetProperties(
+                title: title,
+                gridProperties: GridProperties(
+                  hideGridlines: true,
+                  frozenRowCount: 1,
+                ),
+                tabColor: Color(red: 0.12, green: 0.23, blue: 0.18),
+              ),
             ),
           ),
+        ],
+      ),
+      _spreadsheetId,
+    );
+  }
+
+  @override
+  Future<void> deleteSheet(int sheetId) async {
+    await _api.spreadsheets.batchUpdate(
+      BatchUpdateSpreadsheetRequest(
+        requests: <Request>[
+          Request(deleteSheet: DeleteSheetRequest(sheetId: sheetId)),
         ],
       ),
       _spreadsheetId,
@@ -154,13 +255,256 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
   Future<void> updateValues({
     required String a1Range,
     required List<List<Object?>> rows,
+    String valueInputOption = 'RAW',
   }) async {
     await _api.spreadsheets.values.update(
       ValueRange(values: rows),
       _spreadsheetId,
       a1Range,
-      valueInputOption: 'RAW',
+      valueInputOption: valueInputOption,
     );
+  }
+
+  @override
+  Future<void> applyDashboardLook({
+    required int sheetId,
+    required GoogleSheetsDashboard dashboard,
+  }) async {
+    final requests = <Request>[
+      ..._columnWidthRequests(sheetId, dashboard.columnWidthsPx),
+      ..._styleRequests(sheetId, dashboard.styles),
+      ..._chartRequests(sheetId, dashboard.charts),
+    ];
+    if (requests.isEmpty) {
+      return;
+    }
+    await _api.spreadsheets.batchUpdate(
+      BatchUpdateSpreadsheetRequest(requests: requests),
+      _spreadsheetId,
+    );
+  }
+
+  List<Request> _columnWidthRequests(int sheetId, List<int> widths) {
+    final requests = <Request>[];
+    for (var index = 0; index < widths.length; index++) {
+      requests.add(
+        Request(
+          updateDimensionProperties: UpdateDimensionPropertiesRequest(
+            range: DimensionRange(
+              sheetId: sheetId,
+              dimension: 'COLUMNS',
+              startIndex: index,
+              endIndex: index + 1,
+            ),
+            properties: DimensionProperties(pixelSize: widths[index]),
+            fields: 'pixelSize',
+          ),
+        ),
+      );
+    }
+    return requests;
+  }
+
+  List<Request> _styleRequests(int sheetId, List<GoogleSheetsRangeStyle> styles) {
+    final requests = <Request>[];
+    for (final style in styles) {
+      final range = GridRange(
+        sheetId: sheetId,
+        startRowIndex: style.startRow,
+        endRowIndex: style.endRowExclusive,
+        startColumnIndex: style.startColumn,
+        endColumnIndex: style.endColumnExclusive,
+      );
+      if (style.merge) {
+        requests.add(
+          Request(
+            mergeCells: MergeCellsRequest(range: range, mergeType: 'MERGE_ALL'),
+          ),
+        );
+      }
+      final format = _cellFormat(style);
+      final fields = _formatFields(style);
+      if (format == null || fields == null) {
+        continue;
+      }
+      requests.add(
+        Request(
+          repeatCell: RepeatCellRequest(
+            range: range,
+            cell: CellData(userEnteredFormat: format),
+            fields: 'userEnteredFormat($fields)',
+          ),
+        ),
+      );
+    }
+    return requests;
+  }
+
+  CellFormat? _cellFormat(GoogleSheetsRangeStyle style) {
+    TextFormat? text;
+    if (style.bold || style.fontSize != null || style.foreground != null) {
+      text = TextFormat(
+        bold: style.bold ? true : null,
+        fontSize: style.fontSize,
+        foregroundColor: _color(style.foreground),
+      );
+    }
+    NumberFormat? number;
+    if (style.numberFormatType != null) {
+      number = NumberFormat(
+        type: style.numberFormatType,
+        pattern: style.numberFormatPattern,
+      );
+    }
+    if (text == null &&
+        number == null &&
+        style.background == null &&
+        style.horizontalAlignment == null &&
+        style.verticalAlignment == null &&
+        !style.wrap) {
+      return null;
+    }
+    return CellFormat(
+      backgroundColor: _color(style.background),
+      textFormat: text,
+      horizontalAlignment: style.horizontalAlignment,
+      verticalAlignment: style.verticalAlignment,
+      wrapStrategy: style.wrap ? 'WRAP' : null,
+      numberFormat: number,
+    );
+  }
+
+  String? _formatFields(GoogleSheetsRangeStyle style) {
+    final parts = <String>[];
+    if (style.background != null) {
+      parts.add('backgroundColor');
+    }
+    if (style.bold || style.fontSize != null || style.foreground != null) {
+      parts.add('textFormat');
+    }
+    if (style.horizontalAlignment != null) {
+      parts.add('horizontalAlignment');
+    }
+    if (style.verticalAlignment != null) {
+      parts.add('verticalAlignment');
+    }
+    if (style.wrap) {
+      parts.add('wrapStrategy');
+    }
+    if (style.numberFormatType != null) {
+      parts.add('numberFormat');
+    }
+    if (parts.isEmpty) {
+      return null;
+    }
+    return parts.join(',');
+  }
+
+  List<Request> _chartRequests(int sheetId, List<GoogleSheetsChart> charts) {
+    return [
+      for (final chart in charts)
+        if (chart.hasData)
+          Request(
+            addChart: AddChartRequest(chart: _embeddedChart(sheetId, chart)),
+          ),
+    ];
+  }
+
+  EmbeddedChart _embeddedChart(int sheetId, GoogleSheetsChart chart) {
+    final labels = _chartData(
+      sheetId: sheetId,
+      startRow: chart.headerRow,
+      endRow: chart.endRowExclusive,
+      startColumn: chart.labelColumn,
+      endColumn: chart.labelColumn + 1,
+    );
+    final values = _chartData(
+      sheetId: sheetId,
+      startRow: chart.headerRow,
+      endRow: chart.endRowExclusive,
+      startColumn: chart.valueColumn,
+      endColumn: chart.valueColumn + 1,
+    );
+    final spec = ChartSpec(
+      title: chart.title,
+      titleTextFormat: TextFormat(bold: true, fontSize: 12),
+      backgroundColorStyle: ColorStyle(
+        rgbColor: Color(red: 0.98, green: 0.97, blue: 0.94),
+      ),
+      basicChart: chart.kind == GoogleSheetsChartKind.pie
+          ? null
+          : BasicChartSpec(
+              chartType: chart.kind == GoogleSheetsChartKind.bar ? 'BAR' : 'COLUMN',
+              legendPosition: chart.legendPosition,
+              headerCount: 1,
+              axis: <BasicChartAxis>[
+                BasicChartAxis(position: 'BOTTOM_AXIS'),
+              ],
+              domains: <BasicChartDomain>[
+                BasicChartDomain(domain: labels),
+              ],
+              series: <BasicChartSeries>[
+                BasicChartSeries(
+                  series: values,
+                  targetAxis: 'BOTTOM_AXIS',
+                  colorStyle: ColorStyle(
+                    rgbColor: Color(red: 0.24, green: 0.42, blue: 0.32),
+                  ),
+                ),
+              ],
+            ),
+      pieChart: chart.kind == GoogleSheetsChartKind.pie
+          ? PieChartSpec(
+              legendPosition: chart.legendPosition,
+              pieHole: chart.pieHole,
+              domain: labels,
+              series: values,
+            )
+          : null,
+    );
+    return EmbeddedChart(
+      spec: spec,
+      position: EmbeddedObjectPosition(
+        overlayPosition: OverlayPosition(
+          anchorCell: GridCoordinate(
+            sheetId: sheetId,
+            rowIndex: chart.anchorRow,
+            columnIndex: chart.anchorColumn,
+          ),
+          widthPixels: chart.widthPixels,
+          heightPixels: chart.heightPixels,
+        ),
+      ),
+    );
+  }
+
+  ChartData _chartData({
+    required int sheetId,
+    required int startRow,
+    required int endRow,
+    required int startColumn,
+    required int endColumn,
+  }) {
+    return ChartData(
+      sourceRange: ChartSourceRange(
+        sources: <GridRange>[
+          GridRange(
+            sheetId: sheetId,
+            startRowIndex: startRow,
+            endRowIndex: endRow,
+            startColumnIndex: startColumn,
+            endColumnIndex: endColumn,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color? _color(GoogleSheetsRgb? rgb) {
+    if (rgb == null) {
+      return null;
+    }
+    return Color(red: rgb.red, green: rgb.green, blue: rgb.blue);
   }
 
   @override
