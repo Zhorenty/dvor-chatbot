@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
+import 'package:dvor_chatbot/src/domain/group_membership.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -81,6 +82,10 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
       'ALTER TABLE onboarding_users ADD COLUMN last_nudge_at TEXT;',
       'ALTER TABLE onboarding_users ADD COLUMN snooze_until TEXT;',
       'ALTER TABLE onboarding_users ADD COLUMN entry_type TEXT;',
+      'ALTER TABLE onboarding_users ADD COLUMN group_member_status TEXT;',
+      'ALTER TABLE onboarding_users ADD COLUMN group_member_checked_at TEXT;',
+      'ALTER TABLE onboarding_users ADD COLUMN group_invite_nudge_count INTEGER NOT NULL DEFAULT 0;',
+      'ALTER TABLE onboarding_users ADD COLUMN group_invite_last_nudge_at TEXT;',
     ]) {
       _addColumnIfMissing(db, sql);
     }
@@ -192,15 +197,19 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
         welcome_message_id,
         welcome_sent_at,
         welcome_deleted_at,
-        started_at
-      ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)
+        started_at,
+        group_member_status,
+        group_member_checked_at
+      ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
         last_joined_at = excluded.last_joined_at,
         group_chat_id = excluded.group_chat_id,
         welcome_message_id = excluded.welcome_message_id,
         welcome_sent_at = excluded.welcome_sent_at,
         welcome_deleted_at = NULL,
-        started_at = NULL;
+        started_at = NULL,
+        group_member_status = excluded.group_member_status,
+        group_member_checked_at = excluded.group_member_checked_at;
       ''',
       <Object?>[
         userId,
@@ -208,6 +217,8 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
         joinedAtIso,
         groupChatId,
         welcomeMessageId,
+        joinedAtIso,
+        GroupMembershipStatus.member.storageValue,
         joinedAtIso,
       ],
     );
@@ -784,6 +795,111 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
       'SELECT user_id FROM onboarding_users WHERE started_at IS NOT NULL;',
     );
     return rows.map((row) => row['user_id'] as int).toList();
+  }
+
+  @override
+  Future<void> recordGroupMembership({
+    required int userId,
+    required GroupMembershipStatus status,
+    required DateTime at,
+  }) async {
+    final db = _database;
+    db.execute(
+      '''
+      UPDATE onboarding_users
+      SET group_member_status = ?,
+          group_member_checked_at = ?
+      WHERE user_id = ?;
+      ''',
+      <Object?>[status.storageValue, at.toUtc().toIso8601String(), userId],
+    );
+  }
+
+  @override
+  Future<List<GroupInviteNudgeCandidate>> listGroupInviteNudgeCandidates({
+    required DateTime now,
+    Duration minAgeAfterStart = const Duration(hours: 24),
+    int maxNudges = 3,
+    int limit = 50,
+  }) async {
+    final db = _database;
+    final startedBefore = now.toUtc().subtract(minAgeAfterStart).toIso8601String();
+    final rows = db.select(
+      '''
+      SELECT user_id,
+             started_at,
+             onboarding_phase,
+             onboarding_started_at,
+             snooze_until,
+             last_nudge_at,
+             group_member_status,
+             group_invite_nudge_count,
+             group_invite_last_nudge_at
+      FROM onboarding_users
+      WHERE started_at IS NOT NULL
+        AND started_at <= ?
+        AND (group_member_status IS NULL OR group_member_status = ?)
+        AND COALESCE(group_invite_nudge_count, 0) < ?
+      ORDER BY started_at ASC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        startedBefore,
+        GroupMembershipStatus.notMember.storageValue,
+        maxNudges,
+        limit,
+      ],
+    );
+    return rows.map(_mapGroupInviteCandidate).toList(growable: false);
+  }
+
+  @override
+  Future<void> markGroupInviteNudgeSent({
+    required int userId,
+    required String nudgeKey,
+    required DateTime sentAt,
+  }) async {
+    final db = _database;
+    final sentAtIso = sentAt.toUtc().toIso8601String();
+    db.execute(
+      '''
+      UPDATE onboarding_users
+      SET group_invite_nudge_count = COALESCE(group_invite_nudge_count, 0) + 1,
+          group_invite_last_nudge_at = ?
+      WHERE user_id = ?;
+      ''',
+      <Object?>[sentAtIso, userId],
+    );
+    await recordNudgeSent(
+      userId: userId,
+      nudgeKey: nudgeKey,
+      sentAt: sentAt,
+    );
+  }
+
+  GroupInviteNudgeCandidate _mapGroupInviteCandidate(Row row) {
+    DateTime? parseDate(Object? raw) {
+      if (raw is! String || raw.isEmpty) {
+        return null;
+      }
+      return DateTime.parse(raw).toUtc();
+    }
+
+    final startedAt = parseDate(row['started_at']);
+    if (startedAt == null) {
+      throw StateError('Group invite candidate is missing started_at');
+    }
+    return GroupInviteNudgeCandidate(
+      userId: row['user_id'] as int,
+      startedAt: startedAt,
+      membership: GroupMembershipStatusX.tryParse(row['group_member_status'] as String?),
+      nudgeCount: (row['group_invite_nudge_count'] as int?) ?? 0,
+      lastInviteNudgeAt: parseDate(row['group_invite_last_nudge_at']),
+      lastOnboardingNudgeAt: parseDate(row['last_nudge_at']),
+      phase: OnboardingPhaseX.tryParse(row['onboarding_phase'] as String?),
+      onboardingStartedAt: parseDate(row['onboarding_started_at']),
+      snoozeUntil: parseDate(row['snooze_until']),
+    );
   }
 
   @override

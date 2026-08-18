@@ -168,6 +168,22 @@ void main() {
     });
   });
 
+  group('MessageTemplates group invite nudge', () {
+    const templates = MessageTemplates();
+
+    test('first invite has a single CTA to the DVOR group', () {
+      final text = templates.groupInviteNudge(1);
+      expect(text, contains('группе DVOR'));
+      expect(text, contains('расписание и запись'));
+      expect(text, isNot(contains('не упусти')));
+      final markup = templates.groupInviteUrlKeyboard();
+      final inline = markup['inline_keyboard'] as List<dynamic>;
+      final button = Map<String, Object?>.from((inline.first as List<dynamic>).first as Map);
+      expect(button['text'], 'Открыть группу');
+      expect(button['url'], 'https://t.me/+n4ksCb3kFRQ5MTcy');
+    });
+  });
+
   group('MessageTemplates admin broadcast', () {
     const templates = MessageTemplates();
 

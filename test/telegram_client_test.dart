@@ -97,6 +97,32 @@ void main() {
 
     client.close();
   });
+
+  test('getChatMember returns the ChatMember payload', () async {
+    final client = TelegramClient(
+      token: 'token',
+      httpClient: MockClient((request) async {
+        expect(request.url.pathSegments.last, 'getChatMember');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['chat_id'], -100123);
+        expect(body['user_id'], 42);
+        return http.Response(
+          jsonEncode(<String, Object?>{
+            'ok': true,
+            'result': <String, Object?>{
+              'status': 'member',
+              'user': <String, Object?>{'id': 42, 'is_bot': false},
+            },
+          }),
+          200,
+        );
+      }),
+    );
+
+    final member = await client.getChatMember(chatId: -100123, userId: 42);
+    expect(member['status'], 'member');
+    client.close();
+  });
 }
 
 String _trainingEntry(int index, String marker) {

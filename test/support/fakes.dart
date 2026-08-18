@@ -13,6 +13,7 @@ import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
+import 'package:dvor_chatbot/src/domain/group_membership.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/promo_code.dart';
@@ -1402,6 +1403,7 @@ final class FakeOnboardingRepository implements OnboardingRepository {
         welcomeMessageId: welcomeMessageId,
       ),
       bonusAvailable: false,
+      membership: GroupMembershipStatus.member,
     );
   }
 
@@ -1413,6 +1415,12 @@ final class FakeOnboardingRepository implements OnboardingRepository {
     OnboardingStep? step,
     DateTime? onboardingStartedAt,
     DateTime? activationAt,
+    DateTime? startedAt,
+    GroupMembershipStatus? membership,
+    int groupInviteNudgeCount = 0,
+    DateTime? groupInviteLastNudgeAt,
+    DateTime? lastNudgeAt,
+    DateTime? snoozeUntil,
   }) {
     _stateByUserId[userId] = _FakeOnboardingState(
       pendingWelcome: pendingWelcome,
@@ -1421,7 +1429,12 @@ final class FakeOnboardingRepository implements OnboardingRepository {
       step: step,
       onboardingStartedAt: onboardingStartedAt,
       activationAt: activationAt,
-      startedAt: onboardingStartedAt ?? DateTime.now().toUtc(),
+      startedAt: startedAt ?? onboardingStartedAt ?? DateTime.now().toUtc(),
+      membership: membership,
+      groupInviteNudgeCount: groupInviteNudgeCount,
+      groupInviteLastNudgeAt: groupInviteLastNudgeAt,
+      lastNudgeAt: lastNudgeAt,
+      snoozeUntil: snoozeUntil,
     );
   }
 
@@ -1462,6 +1475,76 @@ final class FakeOnboardingRepository implements OnboardingRepository {
   @override
   Future<List<int>> getAllStartedUserIds() async {
     return _stateByUserId.keys.toList();
+  }
+
+  @override
+  Future<void> recordGroupMembership({
+    required int userId,
+    required GroupMembershipStatus status,
+    required DateTime at,
+  }) async {
+    final state = _stateByUserId[userId];
+    if (state == null) {
+      return;
+    }
+    state.membership = status;
+    state.membershipCheckedAt = at;
+  }
+
+  @override
+  Future<List<GroupInviteNudgeCandidate>> listGroupInviteNudgeCandidates({
+    required DateTime now,
+    Duration minAgeAfterStart = const Duration(hours: 24),
+    int maxNudges = 3,
+    int limit = 50,
+  }) async {
+    final startedBefore = now.toUtc().subtract(minAgeAfterStart);
+    final result = <GroupInviteNudgeCandidate>[];
+    _stateByUserId.forEach((userId, state) {
+      final startedAt = state.startedAt;
+      if (startedAt == null) {
+        return;
+      }
+      if (startedAt.toUtc().isAfter(startedBefore)) {
+        return;
+      }
+      if (state.membership == GroupMembershipStatus.member) {
+        return;
+      }
+      if (state.groupInviteNudgeCount >= maxNudges) {
+        return;
+      }
+      result.add(
+        GroupInviteNudgeCandidate(
+          userId: userId,
+          startedAt: startedAt.toUtc(),
+          membership: state.membership,
+          nudgeCount: state.groupInviteNudgeCount,
+          lastInviteNudgeAt: state.groupInviteLastNudgeAt,
+          lastOnboardingNudgeAt: state.lastNudgeAt,
+          phase: state.phase,
+          onboardingStartedAt: state.onboardingStartedAt,
+          snoozeUntil: state.snoozeUntil,
+        ),
+      );
+    });
+    result.sort((a, b) => a.startedAt.compareTo(b.startedAt));
+    return result.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<void> markGroupInviteNudgeSent({
+    required int userId,
+    required String nudgeKey,
+    required DateTime sentAt,
+  }) async {
+    await recordNudgeSent(userId: userId, nudgeKey: nudgeKey, sentAt: sentAt);
+    final state = _stateByUserId[userId];
+    if (state == null) {
+      return;
+    }
+    state.groupInviteNudgeCount += 1;
+    state.groupInviteLastNudgeAt = sentAt;
   }
 
   @override
@@ -1626,6 +1709,11 @@ final class _FakeOnboardingState {
     this.onboardingStartedAt,
     this.entryType,
     this.startedAt,
+    this.membership,
+    this.groupInviteNudgeCount = 0,
+    this.groupInviteLastNudgeAt,
+    this.lastNudgeAt,
+    this.snoozeUntil,
   });
 
   PendingWelcomeMessage? pendingWelcome;
@@ -1644,6 +1732,10 @@ final class _FakeOnboardingState {
   DateTime? snoozeUntil;
   OnboardingEntryType? entryType;
   DateTime? startedAt;
+  GroupMembershipStatus? membership;
+  DateTime? membershipCheckedAt;
+  int groupInviteNudgeCount;
+  DateTime? groupInviteLastNudgeAt;
 }
 
 final class FakeConversationLogRepository implements ConversationLogRepository {

@@ -12,7 +12,7 @@ final class PrivateNavigationTemplates {
         '3) Следи за статусом в «${MessageCopy.buttonProfile}».\n\n'
         'Ещё здесь: запись друга, тренерский штаб и помощь.\n'
         // TODO(subscription): вернуть упоминание абонемента PRO в welcome.
-        'Группа DVOR: https://t.me/+n4ksCb3kFRQ5MTcy';
+        'Группа DVOR: ${MessageCopy.dvorGroupInviteUrl}';
   }
 
   String onboardingWelcome() {
@@ -69,6 +69,18 @@ final class PrivateNavigationTemplates {
   String onboardingNudgeDay7() {
     return 'Неделя прошла — давай забронируем слот.\n'
         'Если что-то мешает, напиши @dvor_support — поможем.';
+  }
+
+  String groupInviteNudge(int index) {
+    return switch (index) {
+      2 => 'Группа DVOR — это афиши и живой чат. Бот их не дублирует.\n\n'
+          'Если ещё не внутри — вот вход.',
+      3 => 'Бот умеет запись. Группа — новости и общение.\n\n'
+          'Ссылка, если ещё не заходил.',
+      _ => '<b>Новости и общение — в группе DVOR</b>\n\n'
+          'В боте — расписание и запись. Афиши и чат — там.\n\n'
+          'Заходи, когда будет удобно.',
+    };
   }
 
   String onboardingActivationSuccess() {
@@ -151,7 +163,7 @@ final class PrivateNavigationTemplates {
         '• Бесплатные тренировки — можно отменить в любой момент.\n'
         '• Платные тренировки — через поддержку @dvor_support.\n\n'
         'Перенос доступен для тренировок на слот той же стоимости.\n\n'
-        '🔥 Группа DVOR: https://t.me/+n4ksCb3kFRQ5MTcy\n'
+        '🔥 Группа DVOR: ${MessageCopy.dvorGroupInviteUrl}\n'
         'По остальным вопросам: @dvor_support 💬';
   }
 

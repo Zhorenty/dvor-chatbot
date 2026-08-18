@@ -156,4 +156,6 @@ final class MessageCopy {
 
   static const String scheduleDocumentUrl =
       'https://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';
+  static const String dvorGroupInviteUrl = 'https://t.me/+n4ksCb3kFRQ5MTcy';
+  static const String buttonOpenGroup = 'Открыть группу';
 }

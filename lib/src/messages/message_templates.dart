@@ -198,6 +198,8 @@ final class MessageTemplates {
 
   String onboardingNudgeDay7() => _privateNavigationTemplates.onboardingNudgeDay7();
 
+  String groupInviteNudge(int index) => _privateNavigationTemplates.groupInviteNudge(index);
+
   String onboardingActivationSuccess() => _privateNavigationTemplates.onboardingActivationSuccess();
 
   String onboardingSnoozeAck() => _privateNavigationTemplates.onboardingSnoozeAck();

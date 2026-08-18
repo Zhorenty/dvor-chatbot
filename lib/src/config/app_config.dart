@@ -22,6 +22,7 @@ final class AppConfig {
     this.antiSpamEnabled = true,
     this.onboardingDripEnabled = true,
     this.trainingFeedbackEnabled = true,
+    this.groupInviteNudgeEnabled = true,
   });
 
   final String botToken;
@@ -40,6 +41,7 @@ final class AppConfig {
   final bool antiSpamEnabled;
   final bool onboardingDripEnabled;
   final bool trainingFeedbackEnabled;
+  final bool groupInviteNudgeEnabled;
 
   static AppConfig fromArgs(List<String> args) {
     final parser = ArgParser()
@@ -91,6 +93,10 @@ final class AppConfig {
       ..addOption(
         'training-feedback-enabled',
         help: 'Ask anonymous feedback after trainings/hikes (default: true)',
+      )
+      ..addOption(
+        'group-invite-nudge-enabled',
+        help: 'Remind bot users who are not in the DVOR group (default: true)',
       )
       ..addOption('log-level', help: 'Log level: debug/info/warn/error');
 
@@ -159,6 +165,8 @@ final class AppConfig {
     final onboardingDripEnabledRaw = resolve('ONBOARDING_DRIP_ENABLED', 'onboarding-drip-enabled');
     final trainingFeedbackEnabledRaw =
         resolve('TRAINING_FEEDBACK_ENABLED', 'training-feedback-enabled');
+    final groupInviteNudgeEnabledRaw =
+        resolve('GROUP_INVITE_NUDGE_ENABLED', 'group-invite-nudge-enabled');
 
     final scheduleSource = _parseScheduleSource(scheduleSourceRaw);
     if (scheduleSource == ScheduleSource.googleSheets &&
@@ -188,6 +196,7 @@ final class AppConfig {
       antiSpamEnabled: _toBool(antiSpamEnabledRaw, defaultValue: true),
       onboardingDripEnabled: _toBool(onboardingDripEnabledRaw, defaultValue: true),
       trainingFeedbackEnabled: _toBool(trainingFeedbackEnabledRaw, defaultValue: true),
+      groupInviteNudgeEnabled: _toBool(groupInviteNudgeEnabledRaw, defaultValue: true),
     );
   }
 }

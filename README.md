@@ -120,11 +120,13 @@ TIMEZONE_OFFSET_HOURS=3
 ANTISPAM_ENABLED=true
 ONBOARDING_DRIP_ENABLED=true
 TRAINING_FEEDBACK_ENABLED=true
+GROUP_INVITE_NUDGE_ENABLED=true
 LOG_LEVEL=info
 ```
 
 - `ONBOARDING_DRIP_ENABLED` — квиз/nudges только для новичков (строки в БД до первого запуска фичи помечаются как legacy и не затрагиваются).
 - `TRAINING_FEEDBACK_ENABLED` — анонимный отзыв: тренировки через ~2ч после `startsAt`; походы/трейлы на следующий день после даты окончания в `12:00` (таймзона `TIMEZONE_OFFSET_HOURS`).
+- `GROUP_INVITE_NUDGE_ENABLED` — мягкие напоминания в личку тем, кто пользуется ботом, но не состоит в группе DVOR. Нужны `TARGET_CHAT_ID` и бот-админ в группе (`getChatMember` + `chat_member` leave). Максимум 3 сообщения: через сутки после Start, затем через 7 и 14 дней.
 
 Можно задавать и через CLI (имеет более высокий приоритет):
 

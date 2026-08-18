@@ -1406,6 +1406,13 @@ extension MessageTemplatesContent on MessageTemplates {
     return urlCtaInlineKeyboard(label: 'Открыть бота', url: link);
   }
 
+  Map<String, Object?> groupInviteUrlKeyboard() {
+    return urlCtaInlineKeyboard(
+      label: MessageCopy.buttonOpenGroup,
+      url: MessageCopy.dvorGroupInviteUrl,
+    );
+  }
+
   Map<String, Object?>? groupBookUrlKeyboard() {
     final link = _botDeepLink();
     if (link == null) {
@@ -2384,7 +2391,18 @@ extension MessageTemplatesContent on MessageTemplates {
     if (counts.isEmpty) {
       return const <String>['• Пока нет'];
     }
-    const order = <String>['p1_30m', 'p1_2h', 'p1_6h', 'p1_24h', 'p2_d2', 'p2_d5', 'p2_d7'];
+    const order = <String>[
+      'p1_30m',
+      'p1_2h',
+      'p1_6h',
+      'p1_24h',
+      'p2_d2',
+      'p2_d5',
+      'p2_d7',
+      'group_invite_1',
+      'group_invite_2',
+      'group_invite_3',
+    ];
     return _orderedCountLines(
       counts,
       order: order,
@@ -2452,6 +2470,9 @@ extension MessageTemplatesContent on MessageTemplates {
       'p2_d2' => 'день 2: записаться',
       'p2_d5' => 'день 5: попробовать другой формат',
       'p2_d7' => 'день 7: записаться, иначе поддержка',
+      'group_invite_1' => 'приглашение в группу: первое',
+      'group_invite_2' => 'приглашение в группу: второе',
+      'group_invite_3' => 'приглашение в группу: третье',
       _ => raw,
     };
   }

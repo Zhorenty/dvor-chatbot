@@ -397,5 +397,26 @@ void main() {
       expect(text, contains('https://t.me/dvor_chatbot?start=start'));
       expect(text, isNot(contains('start=book')));
     });
+
+    test('group welcome shows profile name with username hidden as link', () {
+      const templates = MessageTemplates();
+      final text = templates.groupWelcome(
+        username: 'Exitoso_1',
+        userId: 42,
+        firstName: 'Георгий',
+      );
+      expect(text, contains('Привет, <a href="https://t.me/Exitoso_1">Георгий</a>!'));
+      expect(text, isNot(contains('@Exitoso_1')));
+    });
+
+    test('group welcome falls back to text mention without username', () {
+      const templates = MessageTemplates();
+      final text = templates.groupWelcome(
+        username: null,
+        userId: 42,
+        firstName: 'Георгий',
+      );
+      expect(text, contains('Привет, <a href="tg://user?id=42">Георгий</a>!'));
+    });
   });
 }

@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/group_membership.dart';
+import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -196,6 +198,68 @@ void main() {
         now: joinedAt.add(const Duration(minutes: 4)),
       );
       expect(ready.map((item) => item.userId), contains(5002));
+
+      await repository.close();
+    });
+
+    test('tracks group membership and invite nudge candidates', () async {
+      final repository = SqliteOnboardingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+      );
+      await repository.init();
+      final now = DateTime.utc(2026, 8, 18, 12);
+
+      await repository.ensureStartedUser(
+        6101,
+        startedAt: now.subtract(const Duration(days: 3)),
+        entryType: OnboardingEntryType.cold,
+      );
+      await repository.ensureStartedUser(
+        6102,
+        startedAt: now.subtract(const Duration(hours: 2)),
+        entryType: OnboardingEntryType.cold,
+      );
+      await repository.registerGroupWelcome(
+        userId: 6103,
+        groupChatId: -1001,
+        welcomeMessageId: 9,
+        joinedAt: now.subtract(const Duration(days: 4)),
+      );
+      await repository.ensureStartedUser(
+        6103,
+        startedAt: now.subtract(const Duration(days: 3)),
+        entryType: OnboardingEntryType.group,
+      );
+
+      var candidates = await repository.listGroupInviteNudgeCandidates(now: now);
+      expect(candidates.map((item) => item.userId), contains(6101));
+      expect(candidates.map((item) => item.userId), isNot(contains(6102)));
+      expect(candidates.map((item) => item.userId), isNot(contains(6103)));
+
+      await repository.recordGroupMembership(
+        userId: 6101,
+        status: GroupMembershipStatus.notMember,
+        at: now,
+      );
+      await repository.markGroupInviteNudgeSent(
+        userId: 6101,
+        nudgeKey: 'group_invite_1',
+        sentAt: now,
+      );
+
+      candidates = await repository.listGroupInviteNudgeCandidates(now: now);
+      final invited = candidates.where((item) => item.userId == 6101).single;
+      expect(invited.nudgeCount, 1);
+      expect(invited.membership, GroupMembershipStatus.notMember);
+      expect(await repository.hasNudgeBeenSent(userId: 6101, nudgeKey: 'group_invite_1'), isTrue);
+
+      await repository.recordGroupMembership(
+        userId: 6101,
+        status: GroupMembershipStatus.member,
+        at: now,
+      );
+      candidates = await repository.listGroupInviteNudgeCandidates(now: now);
+      expect(candidates.map((item) => item.userId), isNot(contains(6101)));
 
       await repository.close();
     });

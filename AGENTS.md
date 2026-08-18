@@ -22,7 +22,7 @@ Project guidance for AI/code agents in this repository.
  - `lib/src/bot/handlers/private/*.part.dart` (booking/payment/admin/onboarding/bonuses/schedule ops)
  - `lib/src/application/admin_analytics_service.dart` (admin analytics aggregates)
  - `lib/src/bot/handlers/group_handlers.dart`
-- Jobs: `lib/src/jobs/` (promo/broadcast jobs use persistent `job_dedupe_log`)
+- Jobs: `lib/src/jobs/` (promo/broadcast jobs use persistent `job_dedupe_log`; group invite nudges use `getChatMember`)
 - Anti-spam:
   - `lib/src/application/group_spam_detector.dart`
 - Trainings domain/data:
@@ -90,6 +90,8 @@ Avoid: «дорогие друзья», «от лица команды», «ад
   - `POLL_TIMEOUT_SECONDS`
   - `ADMIN_USER_IDS` / `ADMIN_CHAT_ID`
   - `ANTISPAM_ENABLED`
+  - `ONBOARDING_DRIP_ENABLED`
+  - `GROUP_INVITE_NUDGE_ENABLED`
   - `LOG_LEVEL`
 
 ## Reliability Baseline

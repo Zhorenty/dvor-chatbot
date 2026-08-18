@@ -107,15 +107,23 @@ final class GroupTemplates {
     required int userId,
     required String? firstName,
   }) {
-    final normalizedUsername = username?.trim();
-    if (normalizedUsername != null && normalizedUsername.isNotEmpty) {
-      return '@$normalizedUsername';
-    }
     final normalizedName = firstName?.trim();
-    if (normalizedName != null && normalizedName.isNotEmpty) {
-      return '<a href="tg://user?id=$userId">${_escapeHtml(normalizedName)}</a>';
+    final hasName = normalizedName != null && normalizedName.isNotEmpty;
+    final displayName = hasName ? _escapeHtml(normalizedName) : 'участник';
+
+    final normalizedUsername = username?.trim();
+    final handle = normalizedUsername == null || normalizedUsername.isEmpty
+        ? null
+        : (normalizedUsername.startsWith('@')
+            ? normalizedUsername.substring(1)
+            : normalizedUsername);
+    if (handle != null && handle.isNotEmpty) {
+      if (hasName) {
+        return '<a href="https://t.me/${_escapeHtml(handle)}">$displayName</a>';
+      }
+      return '@$handle';
     }
-    return '<a href="tg://user?id=$userId">участник</a>';
+    return '<a href="tg://user?id=$userId">$displayName</a>';
   }
 
   String? _botStartDeepLink() {

@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
+import 'package:dvor_chatbot/src/domain/group_membership.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 
@@ -163,6 +164,25 @@ abstract interface class OnboardingRepository {
   /// Returns IDs of all users who have started the bot (sent /start).
   /// Only these users can receive proactive DMs.
   Future<List<int>> getAllStartedUserIds();
+
+  Future<void> recordGroupMembership({
+    required int userId,
+    required GroupMembershipStatus status,
+    required DateTime at,
+  });
+
+  Future<List<GroupInviteNudgeCandidate>> listGroupInviteNudgeCandidates({
+    required DateTime now,
+    Duration minAgeAfterStart = const Duration(hours: 24),
+    int maxNudges = 3,
+    int limit = 50,
+  });
+
+  Future<void> markGroupInviteNudgeSent({
+    required int userId,
+    required String nudgeKey,
+    required DateTime sentAt,
+  });
 
   Future<bool> hasTrainingFeedbackRequest(int bookingId);
 
@@ -354,6 +374,30 @@ final class NoopOnboardingRepository implements OnboardingRepository {
 
   @override
   Future<List<int>> getAllStartedUserIds() async => const <int>[];
+
+  @override
+  Future<void> recordGroupMembership({
+    required int userId,
+    required GroupMembershipStatus status,
+    required DateTime at,
+  }) async {}
+
+  @override
+  Future<List<GroupInviteNudgeCandidate>> listGroupInviteNudgeCandidates({
+    required DateTime now,
+    Duration minAgeAfterStart = const Duration(hours: 24),
+    int maxNudges = 3,
+    int limit = 50,
+  }) async {
+    return const <GroupInviteNudgeCandidate>[];
+  }
+
+  @override
+  Future<void> markGroupInviteNudgeSent({
+    required int userId,
+    required String nudgeKey,
+    required DateTime sentAt,
+  }) async {}
 
   @override
   Future<bool> hasTrainingFeedbackRequest(int bookingId) async => false;

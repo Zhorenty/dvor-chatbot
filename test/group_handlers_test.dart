@@ -2,6 +2,7 @@ import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
+import 'package:dvor_chatbot/src/domain/group_membership.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -25,8 +26,13 @@ void main() {
           'date': DateTime(2026, 6, 1, 19, 0).millisecondsSinceEpoch ~/ 1000,
           'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
           'new_chat_members': <Map<String, Object?>>[
-            <String, Object?>{'id': 1001, 'is_bot': false, 'username': 'new_runner'},
-            <String, Object?>{'id': 1002, 'is_bot': false},
+            <String, Object?>{
+              'id': 1001,
+              'is_bot': false,
+              'username': 'new_runner',
+              'first_name': 'Аня',
+            },
+            <String, Object?>{'id': 1002, 'is_bot': false, 'first_name': 'Иван'},
           ],
         },
       );
@@ -35,7 +41,14 @@ void main() {
       expect(sender.messages, hasLength(2));
       expect(sender.messages[0].chatId, -100123);
       expect(sender.messages[1].chatId, -100123);
-      expect(sender.messages[0].text, contains('Привет, @new_runner!'));
+      expect(
+        sender.messages[0].text,
+        contains('Привет, <a href="https://t.me/new_runner">Аня</a>!'),
+      );
+      expect(
+        sender.messages[1].text,
+        contains('Привет, <a href="tg://user?id=1002">Иван</a>!'),
+      );
       expect(sender.messages[0].text, contains('подарок за старт'));
       expect(onboarding.records, hasLength(2));
       expect(onboarding.records[0].userId, 1001);
@@ -112,7 +125,12 @@ void main() {
             },
             'new_chat_member': <String, dynamic>{
               'status': 'member',
-              'user': <String, Object?>{'id': 777, 'is_bot': false, 'username': 'joined_via_link'},
+              'user': <String, Object?>{
+                'id': 777,
+                'is_bot': false,
+                'username': 'joined_via_link',
+                'first_name': 'Лена',
+              },
             },
           },
         },
@@ -121,12 +139,15 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, -100123);
-      expect(sender.messages.single.text, contains('Привет, @joined_via_link!'));
+      expect(
+        sender.messages.single.text,
+        contains('Привет, <a href="https://t.me/joined_via_link">Лена</a>!'),
+      );
       expect(onboarding.records, hasLength(1));
       expect(onboarding.records.single.userId, 777);
     });
 
-    test('ignores non-join chat_member transitions', () async {
+    test('records leave via chat_member without sending welcome', () async {
       final sender = _FakeSender();
       final onboarding = _FakeOnboardingRepository();
       final handlers = GroupHandlers(
@@ -152,9 +173,44 @@ void main() {
         },
       );
 
+      expect(handled, isTrue);
+      expect(sender.messages, isEmpty);
+      expect(onboarding.records, isEmpty);
+      expect(onboarding.memberships, hasLength(1));
+      expect(onboarding.memberships.single.userId, 778);
+      expect(onboarding.memberships.single.status, GroupMembershipStatus.notMember);
+    });
+
+    test('ignores non-join non-leave chat_member transitions', () async {
+      final sender = _FakeSender();
+      final onboarding = _FakeOnboardingRepository();
+      final handlers = GroupHandlers(
+        sender: sender,
+        onboardingRepository: onboarding,
+        templates: const MessageTemplates(),
+        targetChatId: -100123,
+      );
+
+      final handled = await handlers.handleUpdate(
+        <String, dynamic>{
+          'chat_member': <String, dynamic>{
+            'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
+            'old_chat_member': <String, dynamic>{
+              'status': 'member',
+              'user': <String, Object?>{'id': 778, 'is_bot': false},
+            },
+            'new_chat_member': <String, dynamic>{
+              'status': 'administrator',
+              'user': <String, Object?>{'id': 778, 'is_bot': false},
+            },
+          },
+        },
+      );
+
       expect(handled, isFalse);
       expect(sender.messages, isEmpty);
       expect(onboarding.records, isEmpty);
+      expect(onboarding.memberships, isEmpty);
     });
 
     test('deletes earnings spam and bans sender', () async {
@@ -412,6 +468,7 @@ final class _BannedMember {
 
 final class _FakeOnboardingRepository implements OnboardingRepository {
   final List<_WelcomeRecord> records = <_WelcomeRecord>[];
+  final List<_MembershipRecord> memberships = <_MembershipRecord>[];
 
   @override
   Future<void> close() async {}
@@ -513,6 +570,31 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
 
   @override
   Future<List<int>> getAllStartedUserIds() async => const <int>[];
+
+  @override
+  Future<void> recordGroupMembership({
+    required int userId,
+    required GroupMembershipStatus status,
+    required DateTime at,
+  }) async {
+    memberships.add(_MembershipRecord(userId: userId, status: status));
+  }
+
+  @override
+  Future<List<GroupInviteNudgeCandidate>> listGroupInviteNudgeCandidates({
+    required DateTime now,
+    Duration minAgeAfterStart = const Duration(hours: 24),
+    int maxNudges = 3,
+    int limit = 50,
+  }) async =>
+      const <GroupInviteNudgeCandidate>[];
+
+  @override
+  Future<void> markGroupInviteNudgeSent({
+    required int userId,
+    required String nudgeKey,
+    required DateTime sentAt,
+  }) async {}
 
   @override
   Future<OnboardingUserState> ensureStartedUser(
@@ -653,4 +735,14 @@ final class _WelcomeRecord {
   final int userId;
   final int groupChatId;
   final int welcomeMessageId;
+}
+
+final class _MembershipRecord {
+  const _MembershipRecord({
+    required this.userId,
+    required this.status,
+  });
+
+  final int userId;
+  final GroupMembershipStatus status;
 }

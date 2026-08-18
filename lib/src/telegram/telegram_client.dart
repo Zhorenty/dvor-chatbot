@@ -364,6 +364,25 @@ final class TelegramClient implements MessageSender {
     );
   }
 
+  /// Raw Telegram `getChatMember` result (`ChatMember` object).
+  Future<Map<String, dynamic>> getChatMember({
+    required int chatId,
+    required int userId,
+  }) async {
+    final payload = await _post(
+      'getChatMember',
+      body: <String, Object?>{
+        'chat_id': chatId,
+        'user_id': userId,
+      },
+    );
+    final result = payload['result'];
+    if (result is! Map) {
+      throw const TelegramApiException('Telegram did not return chat member');
+    }
+    return Map<String, dynamic>.from(result);
+  }
+
   void close() {
     _httpClient.close();
   }

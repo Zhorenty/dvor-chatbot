@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/application/group_spam_detector.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/domain/group_membership.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
@@ -269,55 +270,48 @@ final class GroupHandlers {
     final newStatus = newChatMember['status']?.toString();
     final oldIsMember = oldChatMember['is_member'] == true;
     final newIsMember = newChatMember['is_member'] == true;
-    if (!_isJoinTransition(
-      oldStatus: oldStatus,
-      newStatus: newStatus,
-      oldIsMember: oldIsMember,
-      newIsMember: newIsMember,
-    )) {
-      return false;
-    }
+    final wasMember = isEffectiveGroupMember(status: oldStatus, isMemberFlag: oldIsMember);
+    final isMemberNow = isEffectiveGroupMember(status: newStatus, isMemberFlag: newIsMember);
 
     final user = newChatMember['user'];
     if (user is! Map) {
       return false;
     }
-
-    await _welcomeUser(
-      chatId: chatId,
-      user: Map<String, dynamic>.from(user),
-      joinedAt: _extractJoinedAt(chatMember) ?? _nowProvider(),
-    );
-    return true;
-  }
-
-  bool _isJoinTransition({
-    required String? oldStatus,
-    required String? newStatus,
-    required bool oldIsMember,
-    required bool newIsMember,
-  }) {
-    final wasMember = _isEffectiveMember(status: oldStatus, isMemberFlag: oldIsMember);
-    final isMemberNow = _isEffectiveMember(status: newStatus, isMemberFlag: newIsMember);
-    return !wasMember && isMemberNow;
-  }
-
-  bool _isEffectiveMember({
-    required String? status,
-    required bool isMemberFlag,
-  }) {
-    if (status == null) {
+    final userMap = Map<String, dynamic>.from(user);
+    if (userMap['is_bot'] == true) {
       return false;
     }
-    switch (status) {
-      case 'creator':
-      case 'administrator':
-      case 'member':
-        return true;
-      case 'restricted':
-        return isMemberFlag;
-      default:
-        return false;
+
+    if (!wasMember && isMemberNow) {
+      await _welcomeUser(
+        chatId: chatId,
+        user: userMap,
+        joinedAt: _extractJoinedAt(chatMember) ?? _nowProvider(),
+      );
+      return true;
+    }
+
+    if (wasMember && !isMemberNow) {
+      await _recordLeave(userMap);
+      return true;
+    }
+
+    return false;
+  }
+
+  Future<void> _recordLeave(Map<String, dynamic> user) async {
+    final userId = user['id'];
+    if (userId is! int) {
+      return;
+    }
+    try {
+      await _onboardingRepository.recordGroupMembership(
+        userId: userId,
+        status: GroupMembershipStatus.notMember,
+        at: _nowProvider(),
+      );
+    } on Object catch (error) {
+      l.w('Failed to record group leave for user $userId: $error');
     }
   }
 

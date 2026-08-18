@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
+import 'package:dvor_chatbot/src/application/group_membership_lookup.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
@@ -13,6 +14,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
+import 'package:dvor_chatbot/src/jobs/group_invite_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/job_scheduler.dart';
 import 'package:dvor_chatbot/src/jobs/onboarding_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
@@ -111,6 +113,15 @@ final class BotRunner {
           sender: sender,
           templates: templates,
         ),
+        _groupInviteNudgeJob = GroupInviteNudgeJob(
+          onboardingRepository: onboardingRepository,
+          membershipLookup: TelegramGroupMembershipLookup(client),
+          sender: sender,
+          templates: templates,
+          targetChatId: config.targetChatId,
+          enabled: config.groupInviteNudgeEnabled,
+          adminUserIds: config.adminUserIds,
+        ),
         _trainingFeedbackJob = TrainingFeedbackJob(
           bookingRepository: bookingRepository,
           onboardingRepository: onboardingRepository,
@@ -150,6 +161,7 @@ final class BotRunner {
   final ReferralBroadcastJob _referralBroadcastJob;
   final EconomicSummaryJob _economicSummaryJob;
   final OnboardingNudgeJob _onboardingNudgeJob;
+  final GroupInviteNudgeJob _groupInviteNudgeJob;
   final TrainingFeedbackJob _trainingFeedbackJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
@@ -193,6 +205,7 @@ final class BotRunner {
     _schedulePeriodic(const Duration(minutes: 1), 'schedule broadcast', _scheduleBroadcastJob.run);
     _schedulePeriodic(const Duration(minutes: 1), 'referral broadcast', _referralBroadcastJob.run);
     _schedulePeriodic(const Duration(minutes: 10), 'onboarding nudge', _onboardingNudgeJob.run);
+    _schedulePeriodic(const Duration(hours: 1), 'group invite nudge', _groupInviteNudgeJob.run);
     _schedulePeriodic(const Duration(minutes: 10), 'training feedback', _trainingFeedbackJob.run);
     _jobScheduler.launch('economic summary', _economicSummaryJob.run);
     _jobScheduler.launch('subscription renewal', _subscriptionRenewalJob.run);
