@@ -7,10 +7,12 @@ import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
+import 'package:dvor_chatbot/src/data/google_sheets_api_writer.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_schedule_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_trainer_directory_repository.dart';
+import 'package:dvor_chatbot/src/data/google_sheets_writer.dart';
 import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
@@ -65,6 +67,21 @@ void main(List<String> args) {
       await onboardingRepository.init();
       await conversationLogRepository.init();
 
+      GoogleSheetsWriter? googleSheetsWriter;
+      if (config.googleSheetsWriteEnabled) {
+        try {
+          googleSheetsWriter = await GoogleSheetsApiWriter.connectFromConfig(config);
+          l.i(
+            'Google Sheets write enabled. '
+            'spreadsheetId=${config.googleSheetsSpreadsheetId}, '
+            'sheet=${config.googleSheetsWriteSheetTitle}, '
+            'intervalSeconds=${config.googleSheetsWriteIntervalSeconds}',
+          );
+        } on Object catch (error, stackTrace) {
+          l.e('Failed to enable Google Sheets write: $error', stackTrace);
+        }
+      }
+
       final sender = LoggingMessageSender(
         inner: client,
         conversationLog: conversationLogRepository,
@@ -107,6 +124,7 @@ void main(List<String> args) {
           adminChatId: config.adminChatId,
           antiSpamEnabled: config.antiSpamEnabled,
         ),
+        googleSheetsWriter: googleSheetsWriter,
       );
 
       _registerShutdown(runner);

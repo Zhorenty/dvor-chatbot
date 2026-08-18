@@ -8,6 +8,8 @@ environment:
 
 dependencies:
   args: ^2.7.0
+  googleapis: ^16.0.0
+  googleapis_auth: ^2.3.3
   http: ^1.2.2
   intl: ^0.20.2
   l: ^5.0.0

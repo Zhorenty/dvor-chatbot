@@ -5,3 +5,5 @@
 build/
 coverage/
 *.run
+secrets/*.json
+!secrets/*.example

@@ -63,6 +63,7 @@ final class FakeBookingRepository implements BookingRepository {
   List<TrainingBooking> queue = const <TrainingBooking>[];
   List<TrainingBooking> bookingsByTrainingKey = const <TrainingBooking>[];
   List<TrainingBooking> userBookings = const <TrainingBooking>[];
+  List<TrainingBooking> allBookings = const <TrainingBooking>[];
   TrainingBooking? submitResult;
   TrainingInfo? lastCreatedTraining;
   String? lastCreatedUsername;
@@ -203,6 +204,12 @@ final class FakeBookingRepository implements BookingRepository {
         )
         .take(limit)
         .toList(growable: false);
+  }
+
+  @override
+  Future<List<TrainingBooking>> listAllBookings({int limit = 10000}) async {
+    final source = allBookings.isNotEmpty ? allBookings : queue;
+    return source.take(limit).toList(growable: false);
   }
 
   @override

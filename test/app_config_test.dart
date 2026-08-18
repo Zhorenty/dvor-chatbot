@@ -44,6 +44,9 @@ void main() {
       expect(config.pendingPaymentTtlMinutes, 180);
       expect(config.logLevel, 'debug');
       expect(config.antiSpamEnabled, isTrue);
+      expect(config.googleSheetsWriteEnabled, isFalse);
+      expect(config.googleSheetsWriteSheetTitle, 'bot_bookings');
+      expect(config.googleSheetsWriteIntervalSeconds, 300);
     });
 
     test('parses anti-spam disable flag', () {
@@ -102,6 +105,29 @@ void main() {
       ]);
 
       expect(config.targetChatId, -100123456);
+    });
+
+    test('enables Google Sheets write and reads spreadsheet id from CSV URL', () {
+      final config = AppConfig.fromArgs(<String>[
+        '--token',
+        'cli-token',
+        '--google-sheets-write-enabled',
+        'true',
+        '--google-sheets-credentials-path',
+        '/tmp/sheets.json',
+        '--google-sheets-csv-url',
+        'https://docs.google.com/spreadsheets/d/sheetABC123/export?format=csv&gid=0',
+        '--google-sheets-write-sheet-title',
+        'bot_bookings',
+        '--google-sheets-write-interval-seconds',
+        '120',
+      ]);
+
+      expect(config.googleSheetsWriteEnabled, isTrue);
+      expect(config.googleSheetsCredentialsPath, '/tmp/sheets.json');
+      expect(config.googleSheetsSpreadsheetId, 'sheetABC123');
+      expect(config.googleSheetsWriteSheetTitle, 'bot_bookings');
+      expect(config.googleSheetsWriteIntervalSeconds, 120);
     });
   });
 }

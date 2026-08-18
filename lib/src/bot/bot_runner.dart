@@ -9,11 +9,13 @@ import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/google_sheets_writer.dart';
 import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
+import 'package:dvor_chatbot/src/jobs/google_sheets_bookings_export_job.dart';
 import 'package:dvor_chatbot/src/jobs/group_invite_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/job_scheduler.dart';
 import 'package:dvor_chatbot/src/jobs/onboarding_nudge_job.dart';
@@ -46,6 +48,7 @@ final class BotRunner {
     required PrivateHandlers privateHandlers,
     required GroupHandlers groupHandlers,
     JobDedupeRepository? jobDedupeRepository,
+    GoogleSheetsWriter? googleSheetsWriter,
   })  : _config = config,
         _client = client,
         _scheduleRepository = scheduleRepository,
@@ -145,7 +148,15 @@ final class BotRunner {
           },
         ),
         _privateHandlers = privateHandlers,
-        _groupHandlers = groupHandlers;
+        _groupHandlers = groupHandlers,
+        _googleSheetsWriter = googleSheetsWriter,
+        _googleSheetsExportJob = googleSheetsWriter == null
+            ? null
+            : GoogleSheetsBookingsExportJob(
+                bookingRepository: bookingRepository,
+                writer: googleSheetsWriter,
+                sheetTitle: config.googleSheetsWriteSheetTitle,
+              );
 
   final AppConfig _config;
   final TelegramClient _client;
@@ -165,6 +176,8 @@ final class BotRunner {
   final TrainingFeedbackJob _trainingFeedbackJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
+  final GoogleSheetsWriter? _googleSheetsWriter;
+  final GoogleSheetsBookingsExportJob? _googleSheetsExportJob;
 
   static const int _maxConflictRetries = 3;
 
@@ -173,6 +186,7 @@ final class BotRunner {
   int _conflictRetries = 0;
   int _offset = 0;
   bool _clientClosed = false;
+  bool _googleSheetsWriterClosed = false;
   final List<Timer> _timers = <Timer>[];
 
   int get exitCode => _exitCode;
@@ -207,6 +221,15 @@ final class BotRunner {
     _schedulePeriodic(const Duration(minutes: 10), 'onboarding nudge', _onboardingNudgeJob.run);
     _schedulePeriodic(const Duration(hours: 1), 'group invite nudge', _groupInviteNudgeJob.run);
     _schedulePeriodic(const Duration(minutes: 10), 'training feedback', _trainingFeedbackJob.run);
+    final googleSheetsExportJob = _googleSheetsExportJob;
+    if (googleSheetsExportJob != null) {
+      _schedulePeriodic(
+        Duration(seconds: _config.googleSheetsWriteIntervalSeconds),
+        'google sheets bookings export',
+        googleSheetsExportJob.run,
+      );
+      _jobScheduler.launch('google sheets bookings export', googleSheetsExportJob.run);
+    }
     _jobScheduler.launch('economic summary', _economicSummaryJob.run);
     _jobScheduler.launch('subscription renewal', _subscriptionRenewalJob.run);
     _jobScheduler.launch('training day promo', _trainingDayPromoJob.run);
@@ -268,6 +291,7 @@ final class BotRunner {
     }
     await _jobScheduler.waitForIdle();
     _closeClient();
+    await _closeGoogleSheetsWriter();
   }
 
   Future<void> _handleUpdate(Map<String, dynamic> update) async {
@@ -279,16 +303,16 @@ final class BotRunner {
   }
 
   Future<void> stop() async {
-    if (_stopping) {
-      return;
+    if (!_stopping) {
+      _stopping = true;
+      for (final timer in _timers) {
+        timer.cancel();
+      }
+      _timers.clear();
+      _closeClient();
+      await _jobScheduler.waitForIdle();
     }
-    _stopping = true;
-    for (final timer in _timers) {
-      timer.cancel();
-    }
-    _timers.clear();
-    _closeClient();
-    await _jobScheduler.waitForIdle();
+    await _closeGoogleSheetsWriter();
   }
 
   void _schedulePeriodic(
@@ -312,6 +336,14 @@ final class BotRunner {
     } on Object catch (error, stackTrace) {
       l.w('Failed to reset Telegram webhook before polling: $error', stackTrace);
     }
+  }
+
+  Future<void> _closeGoogleSheetsWriter() async {
+    if (_googleSheetsWriterClosed) {
+      return;
+    }
+    _googleSheetsWriterClosed = true;
+    await _googleSheetsWriter?.close();
   }
 
   void _closeClient() {

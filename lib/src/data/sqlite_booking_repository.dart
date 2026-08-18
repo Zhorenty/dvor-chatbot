@@ -593,6 +593,21 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<TrainingBooking>> listAllBookings({int limit = 10000}) async {
+    _expireOverduePendingBookings();
+    final db = _database;
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      ORDER BY starts_at DESC, id DESC
+      LIMIT ?;
+      ''',
+      <Object?>[limit],
+    );
+    return result.map(_rowToBooking).toList(growable: false);
+  }
+
+  @override
   Future<BookingActionResult> cancelBooking({
     required int userId,
     required int bookingId,
