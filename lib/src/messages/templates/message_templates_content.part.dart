@@ -883,7 +883,7 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String chooseAdminToolsAction() {
     return '🧰 <b>Инструменты</b>\n'
-        'Синхронизация, аналитика, абонементы и клиентское меню 👇';
+        'Записи, синхронизация, абонементы и клиентское меню 👇';
   }
 
   String chooseAdminAnalyticsAction() {

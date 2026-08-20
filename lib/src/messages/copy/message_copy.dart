@@ -75,6 +75,7 @@ final class MessageCopy {
   static const String buttonParticipantsList = '👥 Список записавшихся';
   static const String buttonNoblesList = '🏰 Список дворян';
   static const String buttonManageBookings = '🛠 Управление записями';
+  static const String buttonAdminSchedule = '📅 Управление расписанием';
   static const String buttonAdminScheduleAdd = '➕ Добавить';
   static const String buttonAdminScheduleRefresh = '🔄 Обновить';
   static const String buttonAdminScheduleInlineBack = '◀️ Назад';

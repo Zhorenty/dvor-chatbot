@@ -11,7 +11,9 @@ extension PrivateHandlersDispatchAdminSchedule on PrivateHandlers {
       return false;
     }
 
-    if (text == MessageTemplates.buttonTrainings && isAdmin) {
+    if (isAdmin &&
+        (text == MessageTemplates.buttonAdminSchedule ||
+            text == MessageTemplates.buttonTrainings)) {
       return _openAdminScheduleRoot(
         chatId: chatId,
         userId: userId,

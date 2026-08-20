@@ -206,6 +206,7 @@ void main() {
       );
       final toolsButtons = keyboardTexts(harness.messagesTo(42).last.replyMarkup);
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonAdminAnalytics)));
+      expect(toolsButtons, contains(MessageTemplates.buttonManageBookings));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonFunnelAnalytics)));
 
       await harness.handleText(

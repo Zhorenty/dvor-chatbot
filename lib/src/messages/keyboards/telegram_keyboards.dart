@@ -22,15 +22,14 @@ final class TelegramKeyboards {
       return _replyKeyboard(
         <List<Map<String, String>>>[
           <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonPaymentsQueue},
-            <String, String>{'text': MessageCopy.buttonManageBookings},
-          ],
-          <Map<String, String>>[
-            <String, String>{'text': MessageCopy.buttonTrainings},
             <String, String>{'text': MessageCopy.buttonParticipantsList},
+            <String, String>{'text': MessageCopy.buttonPaymentsQueue},
           ],
           <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonAdminSchedule},
             <String, String>{'text': MessageCopy.buttonBroadcast},
+          ],
+          <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonAdminTools},
           ],
         ],
@@ -70,6 +69,9 @@ final class TelegramKeyboards {
   static Map<String, Object?> adminToolsKeyboard() {
     return _replyKeyboard(
       <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonManageBookings},
+        ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonRefreshSchedule},
           <String, String>{'text': MessageCopy.buttonSubscriptionsAdmin},

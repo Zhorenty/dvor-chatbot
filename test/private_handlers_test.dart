@@ -197,7 +197,7 @@ void main() {
       expect(handled, isTrue);
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPaymentsQueue));
-      expect(buttons, contains(MessageTemplates.buttonManageBookings));
+      expect(buttons, isNot(contains(MessageTemplates.buttonManageBookings)));
       expect(buttons, contains(MessageTemplates.buttonParticipantsList));
       expect(buttons, contains(MessageTemplates.buttonBroadcast));
       expect(buttons, contains(MessageTemplates.buttonAdminTools));
@@ -206,11 +206,22 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonSubscriptionsAdmin)));
       expect(buttons, isNot(contains(MessageTemplates.buttonNoblesList)));
       expect(buttons, isNot(contains(MessageTemplates.buttonAdminUserSearch)));
-      expect(buttons, contains(MessageTemplates.buttonTrainings));
+      expect(buttons, contains(MessageTemplates.buttonAdminSchedule));
+      expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
       expect(buttons, isNot(contains(MessageTemplates.buttonCoachingStaff)));
       expect(buttons, isNot(contains(MessageTemplates.buttonProfile)));
       expect(buttons, isNot(contains(MessageTemplates.buttonHelp)));
+      expect(
+        buttons,
+        <String>[
+          MessageTemplates.buttonParticipantsList,
+          MessageTemplates.buttonPaymentsQueue,
+          MessageTemplates.buttonAdminSchedule,
+          MessageTemplates.buttonBroadcast,
+          MessageTemplates.buttonAdminTools,
+        ],
+      );
     });
 
     test('opens admin tools and client menu with return to admin', () async {
@@ -229,6 +240,7 @@ void main() {
         'text': MessageTemplates.buttonAdminTools,
       });
       final toolsButtons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(toolsButtons, contains(MessageTemplates.buttonManageBookings));
       expect(toolsButtons, contains(MessageTemplates.buttonRefreshSchedule));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonAdminAnalytics)));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonEconomicSummary)));
@@ -274,7 +286,9 @@ void main() {
       final adminButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(adminButtons, contains(MessageTemplates.buttonAdminTools));
       expect(adminButtons, contains(MessageTemplates.buttonPaymentsQueue));
-      expect(adminButtons, contains(MessageTemplates.buttonTrainings));
+      expect(adminButtons, contains(MessageTemplates.buttonAdminSchedule));
+      expect(adminButtons, isNot(contains(MessageTemplates.buttonManageBookings)));
+      expect(adminButtons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(adminButtons, isNot(contains(MessageTemplates.buttonBookTraining)));
     });
 

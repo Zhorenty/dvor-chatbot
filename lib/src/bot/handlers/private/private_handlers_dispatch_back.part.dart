@@ -297,6 +297,17 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           await _sendBookingActionsCard(chatId: chatId, booking: selectedBooking);
           return true;
         case _PrivateFlowStep.selectingAdminBookingManagementAction:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminToolsAction,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseAdminToolsAction(),
+            replyMarkup: _templates.adminToolsKeyboard(),
+            parseMode: 'HTML',
+          );
+          return true;
         case _PrivateFlowStep.selectingAdminToolsAction:
         case _PrivateFlowStep.selectingAdminSubscriptionsAction:
         case _PrivateFlowStep.selectingAdminSubscriptionFilter:

@@ -24,13 +24,13 @@ void main() {
       );
       expect(
         _keyboardTexts(harness.sender.messages.single.replyMarkup),
-        contains(MessageTemplates.buttonTrainings),
+        contains(MessageTemplates.buttonAdminSchedule),
       );
 
       await harness.handleText(
         chatId: 9100,
         userId: 9100,
-        text: MessageTemplates.buttonTrainings,
+        text: MessageTemplates.buttonAdminSchedule,
       );
       expect(
         harness.sender.messages.any((item) => item.text.contains('Выбери вкладку')),
@@ -147,7 +147,7 @@ void main() {
       await harness.handleText(
         chatId: 9100,
         userId: 9100,
-        text: MessageTemplates.buttonTrainings,
+        text: MessageTemplates.buttonAdminSchedule,
       );
 
       expect(harness.sender.messages.last.text, contains('Запись в таблицу выключена'));
@@ -161,7 +161,7 @@ void main() {
       await harness.handleText(
         chatId: 9100,
         userId: 9100,
-        text: MessageTemplates.buttonTrainings,
+        text: MessageTemplates.buttonAdminSchedule,
       );
 
       expect(harness.sender.messages.last.text, contains('не Google Sheets'));

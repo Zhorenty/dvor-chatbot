@@ -2,7 +2,7 @@ part of '../message_templates.dart';
 
 extension MessageTemplatesAdminSchedule on MessageTemplates {
   String adminScheduleRoot() {
-    return '📅 <b>Расписание</b>\n'
+    return '📅 <b>Управление расписанием</b>\n'
         'Выбери вкладку.';
   }
 

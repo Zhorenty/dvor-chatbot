@@ -120,6 +120,7 @@ final class MessageTemplates {
   static const String buttonAdminRecentActions = MessageCopy.buttonAdminRecentActions;
   static const String buttonAdminUserDialog = MessageCopy.buttonAdminUserDialog;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;
+  static const String buttonAdminSchedule = MessageCopy.buttonAdminSchedule;
   static const String buttonBookingsList = MessageCopy.buttonBookingsList;
   static const String buttonCreateBooking = MessageCopy.buttonCreateBooking;
   static const String buttonActiveBookings = MessageCopy.buttonActiveBookings;

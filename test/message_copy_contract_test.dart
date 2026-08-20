@@ -66,7 +66,8 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonCancelBooking));
       expect(allTexts, contains(MessageCopy.buttonContinuePayment));
       expect(allTexts, contains(MessageCopy.buttonConfirmCancelBooking));
-      expect(allTexts, contains(MessageCopy.buttonTrainings));
+      expect(allTexts, contains(MessageCopy.buttonAdminSchedule));
+      expect(allTexts, contains(MessageCopy.buttonManageBookings));
       expect(allTexts, contains(MessageCopy.buttonBookTraining));
       expect(allTexts, contains(MessageCopy.buttonBookFriend));
       expect(allTexts, contains(MessageCopy.buttonReferralProgram));
