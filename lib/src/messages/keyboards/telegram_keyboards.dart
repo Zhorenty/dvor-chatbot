@@ -70,9 +70,6 @@ final class TelegramKeyboards {
     return _replyKeyboard(
       <List<Map<String, String>>>[
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonManageBookings},
-        ],
-        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonRefreshSchedule},
           <String, String>{'text': MessageCopy.buttonSubscriptionsAdmin},
         ],
@@ -82,6 +79,7 @@ final class TelegramKeyboards {
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonClientMenu},
+          <String, String>{'text': MessageCopy.buttonManageBookings},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
