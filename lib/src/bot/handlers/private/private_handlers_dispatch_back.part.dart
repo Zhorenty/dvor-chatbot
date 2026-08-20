@@ -484,6 +484,39 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
                 isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
+        case _PrivateFlowStep.selectingAdminScheduleRoot:
+          _flowByUserId.remove(userId);
+          await _sender.sendMessage(
+            chatId,
+            'Вернул в главное меню 👇',
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+          );
+          return true;
+        case _PrivateFlowStep.selectingAdminScheduleList:
+          await _openAdminScheduleRoot(
+            chatId: chatId,
+            userId: userId,
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+          );
+          return true;
+        case _PrivateFlowStep.viewingAdminScheduleEvent:
+        case _PrivateFlowStep.enteringAdminScheduleField:
+        case _PrivateFlowStep.confirmingAdminScheduleCreate:
+        case _PrivateFlowStep.confirmingAdminScheduleDelete:
+          final category = flowState?.adminSchedule.category;
+          if (category == null) {
+            await _openAdminScheduleRoot(
+              chatId: chatId,
+              userId: userId,
+              isAdmin: isAdmin,
+              showReturnToAdminMenu: showReturnToAdminMenu,
+            );
+            return true;
+          }
+          await _openAdminScheduleList(chatId: chatId, userId: userId, category: category);
+          return true;
         case null:
           await _sender.sendMessage(
             chatId,

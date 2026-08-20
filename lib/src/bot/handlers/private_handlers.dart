@@ -9,6 +9,7 @@ import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/application/payment_review_service.dart';
+import 'package:dvor_chatbot/src/application/schedule_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/schedule_query_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/admin_gate.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/admin_handler.dart';
@@ -25,6 +26,7 @@ import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
 import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
+import 'package:dvor_chatbot/src/data/schedule_catalog_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
@@ -34,6 +36,7 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -44,6 +47,7 @@ import 'package:dvor_chatbot/src/messages/html_escaper.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
+import 'package:intl/intl.dart';
 import 'package:l/l.dart';
 
 part 'private/private_handlers_booking.part.dart';
@@ -61,6 +65,8 @@ part 'private/private_handlers_dispatch_admin.part.dart';
 part 'private/private_handlers_dispatch_admin_menu.part.dart';
 part 'private/private_handlers_dispatch_admin_tools.part.dart';
 part 'private/private_handlers_dispatch_admin_bookings.part.dart';
+part 'private/private_handlers_dispatch_admin_schedule.part.dart';
+part 'private/private_handlers_admin_schedule.part.dart';
 part 'private/private_handlers_dispatch_admin_moderation.part.dart';
 part 'private/private_handlers_dispatch_user_profile.part.dart';
 part 'private/private_handlers_dispatch_inline_callbacks.part.dart';
@@ -72,6 +78,7 @@ final class PrivateHandlers {
   static const int _proIncludedTrainingsPerPeriod = 8;
   static const int _adminBookingsPageSize = 8;
   static const int _myBookingsPageSize = 8;
+  static const int _adminSchedulePageSize = 8;
 
   PrivateHandlers({
     required MessageSender sender,
@@ -90,6 +97,8 @@ final class PrivateHandlers {
     GroupAnnouncementService? groupAnnouncements,
     bool onboardingDripEnabled = false,
     DateTime Function()? nowProvider,
+    ScheduleCatalogService? scheduleCatalogService,
+    int timezoneOffsetHours = 3,
   })  : _sender = sender,
         _scheduleRepository = scheduleRepository,
         _bookingRepository = bookingRepository,
@@ -108,7 +117,9 @@ final class PrivateHandlers {
           onboardingRepository: onboardingRepository,
           dripEnabled: onboardingDripEnabled,
         ),
-        _nowProvider = nowProvider ?? DateTime.now;
+        _nowProvider = nowProvider ?? DateTime.now,
+        _scheduleCatalogServiceOverride = scheduleCatalogService,
+        _timezoneOffsetHours = timezoneOffsetHours;
 
   final MessageSender _sender;
   final TrainingScheduleRepository _scheduleRepository;
@@ -126,6 +137,8 @@ final class PrivateHandlers {
   final GroupAnnouncementService _groupAnnouncements;
   final OnboardingService _onboardingService;
   final DateTime Function() _nowProvider;
+  final ScheduleCatalogService? _scheduleCatalogServiceOverride;
+  final int _timezoneOffsetHours;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
   final Set<int> _adminsInClientMode = <int>{};
   final Map<int, Timer> _broadcastMediaFinalizeTimers = <int, Timer>{};
@@ -160,6 +173,13 @@ final class PrivateHandlers {
     onboardingRepository: _onboardingRepository,
     groupChatId: _targetChatId,
   );
+  late final ScheduleCatalogService _scheduleCatalogService = _scheduleCatalogServiceOverride ??
+      ScheduleCatalogService(
+        catalogRepository: const NoopScheduleCatalogRepository(),
+        scheduleRepository: _scheduleRepository,
+        nowProvider: _nowProvider,
+        timezoneOffsetHours: _timezoneOffsetHours,
+      );
   final PrivateUpdateRouter _updateRouter = const PrivateUpdateRouter();
   final ScheduleHandler _scheduleHandler = const ScheduleHandler();
   final BookingHandler _bookingHandler = const BookingHandler();

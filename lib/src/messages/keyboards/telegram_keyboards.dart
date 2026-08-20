@@ -26,10 +26,11 @@ final class TelegramKeyboards {
             <String, String>{'text': MessageCopy.buttonManageBookings},
           ],
           <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonTrainings},
             <String, String>{'text': MessageCopy.buttonParticipantsList},
-            <String, String>{'text': MessageCopy.buttonBroadcast},
           ],
           <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonBroadcast},
             <String, String>{'text': MessageCopy.buttonAdminTools},
           ],
         ],
@@ -1334,5 +1335,292 @@ final class TelegramKeyboards {
     final truncatedParticipant =
         participant.length > 24 ? '${participant.substring(0, 24)}…' : participant;
     return '🧾 #${booking.id} $truncatedParticipant · $title';
+  }
+
+  static Map<String, Object?> adminScheduleNavKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminScheduleRootInlineKeyboard() {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonCategoryTrainings,
+            'callback_data': '${MessageCopy.callbackAdminSchedCatPrefix}t',
+          },
+          <String, String>{
+            'text': MessageCopy.buttonCategoryHikes,
+            'callback_data': '${MessageCopy.callbackAdminSchedCatPrefix}h',
+          },
+        ],
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonCategoryTrails,
+            'callback_data': '${MessageCopy.callbackAdminSchedCatPrefix}r',
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> adminScheduleListInlineKeyboard({
+    required String categoryCode,
+    required List<String> itemLabels,
+    required int page,
+    required int pageSize,
+    required int totalCount,
+  }) {
+    final rows = <List<Map<String, String>>>[];
+    final start = page * pageSize;
+    for (var i = 0; i < itemLabels.length; i++) {
+      final index = start + i;
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': itemLabels[i],
+            'callback_data': '${MessageCopy.callbackAdminSchedOpenPrefix}$categoryCode:$index',
+          },
+        ],
+      );
+    }
+    if (totalCount > pageSize) {
+      final nav = <Map<String, String>>[];
+      if (page > 0) {
+        nav.add(
+          <String, String>{
+            'text': '←',
+            'callback_data': '${MessageCopy.callbackAdminSchedPagePrefix}$categoryCode:${page - 1}',
+          },
+        );
+      }
+      if (start + pageSize < totalCount) {
+        nav.add(
+          <String, String>{
+            'text': '→',
+            'callback_data': '${MessageCopy.callbackAdminSchedPagePrefix}$categoryCode:${page + 1}',
+          },
+        );
+      }
+      if (nav.isNotEmpty) {
+        rows.add(nav);
+      }
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleAdd,
+          'callback_data': '${MessageCopy.callbackAdminSchedAddPrefix}$categoryCode',
+        },
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleRefresh,
+          'callback_data': '${MessageCopy.callbackAdminSchedRefPrefix}$categoryCode',
+        },
+      ],
+    );
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleInlineBack,
+          'callback_data': MessageCopy.callbackAdminSchedRoot,
+        },
+      ],
+    );
+    return <String, Object?>{'inline_keyboard': rows};
+  }
+
+  static Map<String, Object?> adminScheduleEventInlineKeyboard({
+    required String categoryCode,
+    required int index,
+    bool showTrainingToggles = false,
+    bool includeTrainers = false,
+    bool promoRestricted = false,
+    bool confirmingDelete = false,
+  }) {
+    if (confirmingDelete) {
+      return <String, Object?>{
+        'inline_keyboard': <List<Map<String, String>>>[
+          <Map<String, String>>[
+            <String, String>{
+              'text': MessageCopy.buttonAdminScheduleDeleteConfirm,
+              'callback_data': '${MessageCopy.callbackAdminSchedDelOkPrefix}$categoryCode:$index',
+            },
+            <String, String>{
+              'text': MessageCopy.buttonAdminScheduleDeleteAbort,
+              'callback_data': '${MessageCopy.callbackAdminSchedDelNoPrefix}$categoryCode:$index',
+            },
+          ],
+        ],
+      };
+    }
+    final rows = <List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleEdit,
+          'callback_data': '${MessageCopy.callbackAdminSchedEditPrefix}$categoryCode:$index',
+        },
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleDeleteConfirm,
+          'callback_data': '${MessageCopy.callbackAdminSchedDelPrefix}$categoryCode:$index',
+        },
+      ],
+    ];
+    if (showTrainingToggles) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': includeTrainers ? 'Тренеры в лимите: да' : 'Тренеры в лимите: нет',
+            'callback_data': '${MessageCopy.callbackAdminSchedTogPrefix}it:$categoryCode:$index',
+          },
+        ],
+      );
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': promoRestricted ? 'Без промокода: да' : 'Без промокода: нет',
+            'callback_data': '${MessageCopy.callbackAdminSchedTogPrefix}pr:$categoryCode:$index',
+          },
+        ],
+      );
+    }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleBackToList,
+          'callback_data': '${MessageCopy.callbackAdminSchedCatPrefix}$categoryCode',
+        },
+      ],
+    );
+    return <String, Object?>{'inline_keyboard': rows};
+  }
+
+  static Map<String, Object?> adminScheduleFieldsInlineKeyboard(List<(String, String)> fields) {
+    final rows = <List<Map<String, String>>>[
+      for (final field in fields)
+        <Map<String, String>>[
+          <String, String>{
+            'text': field.$2,
+            'callback_data': '${MessageCopy.callbackAdminSchedFieldPrefix}${field.$1}',
+          },
+        ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleBackToCard,
+          'callback_data': MessageCopy.callbackAdminSchedBack,
+        },
+      ],
+    ];
+    return <String, Object?>{'inline_keyboard': rows};
+  }
+
+  static Map<String, Object?> adminScheduleSkipInlineKeyboard({
+    bool showSkip = true,
+    List<String> extraLabels = const <String>[],
+    List<String> extraCallbacks = const <String>[],
+  }) {
+    final rows = <List<Map<String, String>>>[];
+    for (var i = 0; i < extraLabels.length && i < extraCallbacks.length; i++) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': extraLabels[i],
+            'callback_data': extraCallbacks[i],
+          },
+        ],
+      );
+    }
+    if (showSkip) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonOnboardingSkipQuiz,
+            'callback_data': MessageCopy.callbackAdminSchedSkip,
+          },
+        ],
+      );
+    }
+    return <String, Object?>{'inline_keyboard': rows};
+  }
+
+  static Map<String, Object?> adminScheduleBoolInlineKeyboard({required bool optional}) {
+    final rows = <List<Map<String, String>>>[
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleYes,
+          'callback_data': '${MessageCopy.callbackAdminSchedBoolPrefix}1',
+        },
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleNo,
+          'callback_data': '${MessageCopy.callbackAdminSchedBoolPrefix}0',
+        },
+      ],
+    ];
+    if (optional) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonOnboardingSkipQuiz,
+            'callback_data': MessageCopy.callbackAdminSchedSkip,
+          },
+        ],
+      );
+    }
+    return <String, Object?>{'inline_keyboard': rows};
+  }
+
+  static Map<String, Object?> adminScheduleCoachInlineKeyboard(
+    List<String> names, {
+    required bool optional,
+  }) {
+    final rows = <List<Map<String, String>>>[
+      for (var i = 0; i < names.length; i++)
+        <Map<String, String>>[
+          <String, String>{
+            'text': names[i],
+            'callback_data': '${MessageCopy.callbackAdminSchedCoachPrefix}$i',
+          },
+        ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonAdminScheduleCoachOther,
+          'callback_data': '${MessageCopy.callbackAdminSchedCoachPrefix}x',
+        },
+      ],
+    ];
+    if (optional) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonOnboardingSkipQuiz,
+            'callback_data': MessageCopy.callbackAdminSchedSkip,
+          },
+        ],
+      );
+    }
+    return <String, Object?>{'inline_keyboard': rows};
+  }
+
+  static Map<String, Object?> adminSchedulePreviewInlineKeyboard() {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonAdminScheduleSave,
+            'callback_data': MessageCopy.callbackAdminSchedSave,
+          },
+          <String, String>{
+            'text': MessageCopy.buttonAdminScheduleCancelCreate,
+            'callback_data': MessageCopy.callbackAdminSchedCancel,
+          },
+        ],
+      ],
+    };
   }
 }

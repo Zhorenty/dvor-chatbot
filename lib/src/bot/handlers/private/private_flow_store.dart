@@ -3,6 +3,7 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -70,6 +71,12 @@ enum PrivateFlowStep {
   selectingAdminBroadcastTarget,
   enteringAdminUserSearchQuery,
   enteringAdminDialogUsernameQuery,
+  selectingAdminScheduleRoot,
+  selectingAdminScheduleList,
+  viewingAdminScheduleEvent,
+  enteringAdminScheduleField,
+  confirmingAdminScheduleCreate,
+  confirmingAdminScheduleDelete,
 }
 
 enum PaymentChoice {
@@ -94,6 +101,67 @@ enum AdminClientNotificationAction {
   bookingStatusUpdated,
   bookingUsernameUpdated,
   bookingEventUpdated,
+}
+
+enum AdminScheduleWizardKind { create, edit }
+
+final class AdminScheduleFlow {
+  const AdminScheduleFlow({
+    this.category,
+    this.page = 0,
+    this.items = const <ScheduleCatalogItem>[],
+    this.selectedIndex,
+    this.draft,
+    this.field,
+    this.wizard,
+    this.coachNames = const <String>[],
+    this.awaitingCoachText = false,
+  });
+
+  final ActivityCategory? category;
+  final int page;
+  final List<ScheduleCatalogItem> items;
+  final int? selectedIndex;
+  final ScheduleEventDraft? draft;
+  final String? field;
+  final AdminScheduleWizardKind? wizard;
+  final List<String> coachNames;
+  final bool awaitingCoachText;
+
+  ScheduleCatalogItem? get selected {
+    final index = selectedIndex;
+    if (index == null || index < 0 || index >= items.length) {
+      return null;
+    }
+    return items[index];
+  }
+
+  AdminScheduleFlow copyWith({
+    Object? category = _privateFlowUnset,
+    int? page,
+    List<ScheduleCatalogItem>? items,
+    Object? selectedIndex = _privateFlowUnset,
+    Object? draft = _privateFlowUnset,
+    Object? field = _privateFlowUnset,
+    Object? wizard = _privateFlowUnset,
+    List<String>? coachNames,
+    bool? awaitingCoachText,
+  }) {
+    return AdminScheduleFlow(
+      category:
+          identical(category, _privateFlowUnset) ? this.category : category as ActivityCategory?,
+      page: page ?? this.page,
+      items: items ?? this.items,
+      selectedIndex:
+          identical(selectedIndex, _privateFlowUnset) ? this.selectedIndex : selectedIndex as int?,
+      draft: identical(draft, _privateFlowUnset) ? this.draft : draft as ScheduleEventDraft?,
+      field: identical(field, _privateFlowUnset) ? this.field : field as String?,
+      wizard:
+          identical(wizard, _privateFlowUnset) ? this.wizard : wizard as AdminScheduleWizardKind?,
+      coachNames: coachNames ?? this.coachNames,
+      awaitingCoachText: awaitingCoachText ?? this.awaitingCoachText,
+    );
+  }
 }
 
 final class PrivateFlowState {
@@ -134,6 +202,7 @@ final class PrivateFlowState {
     this.feedbackSessionKey,
     this.feedbackTrainingTitle,
     this.feedbackRating,
+    this.adminSchedule = const AdminScheduleFlow(),
   });
 
   final PrivateFlowStep step;
@@ -172,6 +241,7 @@ final class PrivateFlowState {
   final String? feedbackSessionKey;
   final String? feedbackTrainingTitle;
   final TrainingFeedbackRating? feedbackRating;
+  final AdminScheduleFlow adminSchedule;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -210,6 +280,7 @@ final class PrivateFlowState {
     Object? feedbackSessionKey = _privateFlowUnset,
     Object? feedbackTrainingTitle = _privateFlowUnset,
     Object? feedbackRating = _privateFlowUnset,
+    AdminScheduleFlow? adminSchedule,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -299,6 +370,7 @@ final class PrivateFlowState {
       feedbackRating: identical(feedbackRating, _privateFlowUnset)
           ? this.feedbackRating
           : feedbackRating as TrainingFeedbackRating?,
+      adminSchedule: adminSchedule ?? this.adminSchedule,
     );
   }
 }

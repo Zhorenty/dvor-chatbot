@@ -182,7 +182,7 @@ final class PrivateStaticCommands {
       return true;
     }
 
-    if (text.startsWith('/trainings') || text == MessageTemplates.buttonTrainings) {
+    if (text.startsWith('/trainings') || (text == MessageTemplates.buttonTrainings && !isAdmin)) {
       if (userId == null) {
         return false;
       }

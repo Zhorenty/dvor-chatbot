@@ -21,6 +21,8 @@ final class GoogleSheetsApiWriter implements GoogleSheetsWriter {
   final GoogleSheetsSpreadsheetGateway _gateway;
   final Duration _requestTimeout;
 
+  GoogleSheetsSpreadsheetGateway get gateway => _gateway;
+
   static Future<GoogleSheetsApiWriter> connectFromConfig(AppConfig config) {
     final spreadsheetId = config.googleSheetsSpreadsheetId;
     if (spreadsheetId == null || spreadsheetId.isEmpty) {
@@ -263,6 +265,48 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
       _spreadsheetId,
       a1Range,
       valueInputOption: valueInputOption,
+    );
+  }
+
+  @override
+  Future<List<List<Object?>>> getValues(String a1Range) async {
+    final result = await _api.spreadsheets.values.get(
+      _spreadsheetId,
+      a1Range,
+      valueRenderOption: 'FORMATTED_VALUE',
+    );
+    final values = result.values;
+    if (values == null) {
+      return const <List<Object?>>[];
+    }
+    return [
+      for (final row in values) <Object?>[...row],
+    ];
+  }
+
+  @override
+  Future<void> deleteDimension({
+    required int sheetId,
+    required String dimension,
+    required int startIndex,
+    required int endIndex,
+  }) async {
+    await _api.spreadsheets.batchUpdate(
+      BatchUpdateSpreadsheetRequest(
+        requests: <Request>[
+          Request(
+            deleteDimension: DeleteDimensionRequest(
+              range: DimensionRange(
+                sheetId: sheetId,
+                dimension: dimension,
+                startIndex: startIndex,
+                endIndex: endIndex,
+              ),
+            ),
+          ),
+        ],
+      ),
+      _spreadsheetId,
     );
   }
 

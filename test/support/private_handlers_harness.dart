@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/application/schedule_catalog_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
@@ -25,6 +26,7 @@ final class PrivateHandlersHarness {
     FakeOnboardingRepository? onboardingRepository,
     SubscriptionRepository subscriptionRepository = const NoopSubscriptionRepository(),
     bool onboardingDripEnabled = false,
+    ScheduleCatalogService? scheduleCatalogService,
   })  : sender = FakeSender(),
         scheduleRepository = FakeScheduleRepository(
           trainings,
@@ -53,6 +55,7 @@ final class PrivateHandlersHarness {
       targetChatId: _targetChatId,
       onboardingDripEnabled: onboardingDripEnabled,
       nowProvider: _nowProvider,
+      scheduleCatalogService: scheduleCatalogService,
     );
   }
 

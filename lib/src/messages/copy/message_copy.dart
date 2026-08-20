@@ -75,6 +75,19 @@ final class MessageCopy {
   static const String buttonParticipantsList = '👥 Список записавшихся';
   static const String buttonNoblesList = '🏰 Список дворян';
   static const String buttonManageBookings = '🛠 Управление записями';
+  static const String buttonAdminScheduleAdd = '➕ Добавить';
+  static const String buttonAdminScheduleRefresh = '🔄 Обновить';
+  static const String buttonAdminScheduleInlineBack = '◀️ Назад';
+  static const String buttonAdminScheduleEdit = '✏️ Изменить';
+  static const String buttonAdminScheduleBackToList = '◀️ К списку';
+  static const String buttonAdminScheduleBackToCard = '◀️ К карточке';
+  static const String buttonAdminScheduleSave = '✅ Сохранить';
+  static const String buttonAdminScheduleCancelCreate = '❌ Отмена';
+  static const String buttonAdminScheduleDeleteConfirm = '🗑 Удалить';
+  static const String buttonAdminScheduleDeleteAbort = '↩️ Оставить';
+  static const String buttonAdminScheduleCoachOther = 'Другой';
+  static const String buttonAdminScheduleYes = 'Да';
+  static const String buttonAdminScheduleNo = 'Нет';
   static const String buttonBookingsList = '📋 Список записей';
   static const String buttonCreateBooking = '📝 Создать запись';
   static const String buttonActiveBookings = '🟢 Актуальные';
@@ -153,6 +166,24 @@ final class MessageCopy {
   static const String callbackAdminBookingDeleteAbortPrefix = 'admin:booking:del_no:';
   static const String callbackAdminNotifyYes = 'admin:notify:yes';
   static const String callbackAdminNotifyNo = 'admin:notify:no';
+  static const String callbackAdminSchedRoot = 'admin:sched:root';
+  static const String callbackAdminSchedCatPrefix = 'admin:sched:cat:';
+  static const String callbackAdminSchedPagePrefix = 'admin:sched:page:';
+  static const String callbackAdminSchedOpenPrefix = 'admin:sched:open:';
+  static const String callbackAdminSchedAddPrefix = 'admin:sched:add:';
+  static const String callbackAdminSchedRefPrefix = 'admin:sched:ref:';
+  static const String callbackAdminSchedEditPrefix = 'admin:sched:edit:';
+  static const String callbackAdminSchedDelPrefix = 'admin:sched:del:';
+  static const String callbackAdminSchedDelOkPrefix = 'admin:sched:del_ok:';
+  static const String callbackAdminSchedDelNoPrefix = 'admin:sched:del_no:';
+  static const String callbackAdminSchedFieldPrefix = 'admin:sched:field:';
+  static const String callbackAdminSchedSkip = 'admin:sched:skip';
+  static const String callbackAdminSchedSave = 'admin:sched:save';
+  static const String callbackAdminSchedCancel = 'admin:sched:cancel';
+  static const String callbackAdminSchedTogPrefix = 'admin:sched:tog:';
+  static const String callbackAdminSchedCoachPrefix = 'admin:sched:coach:';
+  static const String callbackAdminSchedBoolPrefix = 'admin:sched:bool:';
+  static const String callbackAdminSchedBack = 'admin:sched:back';
 
   static const String scheduleDocumentUrl =
       'https://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';

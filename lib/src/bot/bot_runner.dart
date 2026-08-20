@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/application/group_membership_lookup.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
+import 'package:dvor_chatbot/src/application/schedule_catalog_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
@@ -12,6 +13,7 @@ import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_writer.dart';
 import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
+import 'package:dvor_chatbot/src/data/schedule_catalog_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
@@ -22,6 +24,7 @@ import 'package:dvor_chatbot/src/jobs/onboarding_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/referral_broadcast_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_broadcast_job.dart';
+import 'package:dvor_chatbot/src/jobs/schedule_retention_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
 import 'package:dvor_chatbot/src/jobs/starter_bonus_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/subscription_renewal_job.dart';
@@ -49,11 +52,21 @@ final class BotRunner {
     required GroupHandlers groupHandlers,
     JobDedupeRepository? jobDedupeRepository,
     GoogleSheetsWriter? googleSheetsWriter,
+    ScheduleCatalogService? scheduleCatalogService,
   })  : _config = config,
         _client = client,
         _scheduleRepository = scheduleRepository,
         _jobScheduler = JobScheduler(),
         _scheduleSyncJob = ScheduleSyncJob(scheduleRepository: scheduleRepository),
+        _scheduleRetentionJob = ScheduleRetentionJob(
+          catalogService: scheduleCatalogService ??
+              ScheduleCatalogService(
+                catalogRepository: const NoopScheduleCatalogRepository(),
+                scheduleRepository: scheduleRepository,
+                timezoneOffsetHours: config.timezoneOffsetHours,
+              ),
+          scheduleRepository: scheduleRepository,
+        ),
         _paymentReminderJob = PaymentReminderJob(
           bookingRepository: bookingRepository,
           sender: sender,
@@ -163,6 +176,7 @@ final class BotRunner {
   final TrainingScheduleRepository _scheduleRepository;
   final JobScheduler _jobScheduler;
   final ScheduleSyncJob _scheduleSyncJob;
+  final ScheduleRetentionJob _scheduleRetentionJob;
   final PaymentReminderJob _paymentReminderJob;
   final StarterBonusReminderJob _starterBonusReminderJob;
   final WelcomeCleanupJob _welcomeCleanupJob;
@@ -201,6 +215,11 @@ final class BotRunner {
       Duration(seconds: _config.scheduleSyncIntervalSeconds),
       'schedule sync',
       _scheduleSyncJob.run,
+    );
+    _schedulePeriodic(
+      const Duration(hours: 1),
+      'schedule retention',
+      _scheduleRetentionJob.run,
     );
     _schedulePeriodic(const Duration(minutes: 5), 'payment reminder', _paymentReminderJob.run);
     _schedulePeriodic(

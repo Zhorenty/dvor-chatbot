@@ -37,6 +37,7 @@ MVP-бот для спортивного объединения DVOR на Dart.
     - для записи: редактирование (`оплата`, `username`, `мероприятие`), восстановление и мягкое удаление в архив — действия на карточке **inline**
     - `Создать запись` -> категория -> мероприятие -> username -> статус -> подтверждение
     - после изменения бот спрашивает, нужно ли уведомить клиента (inline да/нет)
+  - `Расписание` — CRUD тренировок / походов / трейлов в Google Sheets (карточки и кнопки под сообщением). После сохранения бот сам обновляет кэш; ручной `Обновить Google Sheets` не обязателен. Прошедшие строки бот удаляет из таблицы через 2 дня после окончания.
   - `Список записавшихся` — выбор категории, затем список участников
   - `Рассылка` — текст (HTML) и/или фото пользователям и/или в группу
   - `Инструменты`:
@@ -95,6 +96,8 @@ MVP-бот для спортивного объединения DVOR на Dart.
 - `lib/src/data/static_schedule_repository.dart` — статичное расписание тренировок
 - `lib/src/data/google_sheets_schedule_repository.dart` — расписание из Google Sheets CSV
 - `lib/src/data/google_sheets_api_writer.dart` — запись дашборда воронки в Google Sheets (лист `FUNNEL`)
+- `lib/src/data/google_sheets_schedule_catalog_repository.dart` — точечный CRUD вкладок `Тренировки` / `Походы` / `Трейлы` (без wipe)
+- `lib/src/jobs/schedule_retention_job.dart` — удаление прошедших событий из таблицы через 2 дня
 - `lib/src/data/sqlite_booking_repository.dart` — SQLite-хранилище записей и оплат
 - `lib/src/data/job_dedupe_repository.dart` — идемпотентность promo/broadcast джобов
 - `lib/src/messages/message_templates.dart` — шаблоны сообщений (+ `templates/*.part.dart`)

@@ -31,6 +31,9 @@ Project guidance for AI/code agents in this repository.
  - `lib/src/data/static_schedule_repository.dart`
  - `lib/src/data/dvor_team_repository.dart` (+ Google Sheets gid `2001400867`)
  - `lib/src/data/google_sheets_api_writer.dart` (funnel dashboard sheet `FUNNEL`)
+ - `lib/src/data/google_sheets_schedule_catalog_repository.dart` (admin CRUD of trainings/hikes/trails)
+ - `lib/src/application/schedule_catalog_service.dart`
+ - `lib/src/jobs/schedule_retention_job.dart` (delete past events from Sheets after 2 days)
  - `lib/src/data/sqlite/sqlite_database_handle.dart`
 - Conversation log: `lib/src/data/sqlite_conversation_log_repository.dart` (+ `LoggingMessageSender`)
 - Message text/templates: `lib/src/messages/message_templates.dart` (+ `templates/*.part.dart`)

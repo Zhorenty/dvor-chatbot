@@ -318,5 +318,72 @@ String? callbackToCommandText(String? callbackData) {
   if (callbackData == MessageCopy.callbackAdminNotifyNo) {
     return MessageCopy.buttonNotifyClientNo;
   }
+  if (callbackData == MessageCopy.callbackAdminSchedRoot) {
+    return '/admin_sched_root';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedCatPrefix)) {
+    final code = callbackData.substring(MessageCopy.callbackAdminSchedCatPrefix.length);
+    return '/admin_sched_cat $code';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedPagePrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackAdminSchedPagePrefix.length);
+    return '/admin_sched_page $rest';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedOpenPrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackAdminSchedOpenPrefix.length);
+    return '/admin_sched_open $rest';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedAddPrefix)) {
+    final code = callbackData.substring(MessageCopy.callbackAdminSchedAddPrefix.length);
+    return '/admin_sched_add $code';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedRefPrefix)) {
+    final code = callbackData.substring(MessageCopy.callbackAdminSchedRefPrefix.length);
+    return '/admin_sched_ref $code';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedEditPrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackAdminSchedEditPrefix.length);
+    return '/admin_sched_edit $rest';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedDelOkPrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackAdminSchedDelOkPrefix.length);
+    return '/admin_sched_del_ok $rest';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedDelNoPrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackAdminSchedDelNoPrefix.length);
+    return '/admin_sched_del_no $rest';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedDelPrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackAdminSchedDelPrefix.length);
+    return '/admin_sched_del $rest';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedFieldPrefix)) {
+    final field = callbackData.substring(MessageCopy.callbackAdminSchedFieldPrefix.length);
+    return '/admin_sched_field $field';
+  }
+  if (callbackData == MessageCopy.callbackAdminSchedSkip) {
+    return '/admin_sched_skip';
+  }
+  if (callbackData == MessageCopy.callbackAdminSchedSave) {
+    return '/admin_sched_save';
+  }
+  if (callbackData == MessageCopy.callbackAdminSchedCancel) {
+    return '/admin_sched_cancel';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedTogPrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackAdminSchedTogPrefix.length);
+    return '/admin_sched_tog $rest';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedCoachPrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackAdminSchedCoachPrefix.length);
+    return '/admin_sched_coach $rest';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAdminSchedBoolPrefix)) {
+    final rest = callbackData.substring(MessageCopy.callbackAdminSchedBoolPrefix.length);
+    return '/admin_sched_bool $rest';
+  }
+  if (callbackData == MessageCopy.callbackAdminSchedBack) {
+    return '/admin_sched_back';
+  }
   return null;
 }

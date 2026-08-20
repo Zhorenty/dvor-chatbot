@@ -206,7 +206,7 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonSubscriptionsAdmin)));
       expect(buttons, isNot(contains(MessageTemplates.buttonNoblesList)));
       expect(buttons, isNot(contains(MessageTemplates.buttonAdminUserSearch)));
-      expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
+      expect(buttons, contains(MessageTemplates.buttonTrainings));
       expect(buttons, isNot(contains(MessageTemplates.buttonBookTraining)));
       expect(buttons, isNot(contains(MessageTemplates.buttonCoachingStaff)));
       expect(buttons, isNot(contains(MessageTemplates.buttonProfile)));
@@ -274,6 +274,7 @@ void main() {
       final adminButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(adminButtons, contains(MessageTemplates.buttonAdminTools));
       expect(adminButtons, contains(MessageTemplates.buttonPaymentsQueue));
+      expect(adminButtons, contains(MessageTemplates.buttonTrainings));
       expect(adminButtons, isNot(contains(MessageTemplates.buttonBookTraining)));
     });
 

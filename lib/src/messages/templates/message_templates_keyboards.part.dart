@@ -374,4 +374,77 @@ extension MessageTemplatesKeyboards on MessageTemplates {
   Map<String, Object?> economicSummaryPeriodKeyboard() {
     return TelegramKeyboards.economicSummaryPeriodKeyboard();
   }
+
+  Map<String, Object?> adminScheduleNavKeyboard() {
+    return TelegramKeyboards.adminScheduleNavKeyboard();
+  }
+
+  Map<String, Object?> adminScheduleRootInlineKeyboard() {
+    return TelegramKeyboards.adminScheduleRootInlineKeyboard();
+  }
+
+  Map<String, Object?> adminScheduleListInlineKeyboard({
+    required String categoryCode,
+    required List<String> itemLabels,
+    required int page,
+    required int pageSize,
+    required int totalCount,
+  }) {
+    return TelegramKeyboards.adminScheduleListInlineKeyboard(
+      categoryCode: categoryCode,
+      itemLabels: itemLabels,
+      page: page,
+      pageSize: pageSize,
+      totalCount: totalCount,
+    );
+  }
+
+  Map<String, Object?> adminScheduleEventInlineKeyboard({
+    required String categoryCode,
+    required int index,
+    bool showTrainingToggles = false,
+    bool includeTrainers = false,
+    bool promoRestricted = false,
+    bool confirmingDelete = false,
+  }) {
+    return TelegramKeyboards.adminScheduleEventInlineKeyboard(
+      categoryCode: categoryCode,
+      index: index,
+      showTrainingToggles: showTrainingToggles,
+      includeTrainers: includeTrainers,
+      promoRestricted: promoRestricted,
+      confirmingDelete: confirmingDelete,
+    );
+  }
+
+  Map<String, Object?> adminScheduleFieldsInlineKeyboard(List<(String, String)> fields) {
+    return TelegramKeyboards.adminScheduleFieldsInlineKeyboard(fields);
+  }
+
+  Map<String, Object?> adminScheduleSkipInlineKeyboard({
+    bool showSkip = true,
+    List<String> extraLabels = const <String>[],
+    List<String> extraCallbacks = const <String>[],
+  }) {
+    return TelegramKeyboards.adminScheduleSkipInlineKeyboard(
+      showSkip: showSkip,
+      extraLabels: extraLabels,
+      extraCallbacks: extraCallbacks,
+    );
+  }
+
+  Map<String, Object?> adminScheduleBoolInlineKeyboard({required bool optional}) {
+    return TelegramKeyboards.adminScheduleBoolInlineKeyboard(optional: optional);
+  }
+
+  Map<String, Object?> adminScheduleCoachInlineKeyboard(
+    List<String> names, {
+    required bool optional,
+  }) {
+    return TelegramKeyboards.adminScheduleCoachInlineKeyboard(names, optional: optional);
+  }
+
+  Map<String, Object?> adminSchedulePreviewInlineKeyboard() {
+    return TelegramKeyboards.adminSchedulePreviewInlineKeyboard();
+  }
 }

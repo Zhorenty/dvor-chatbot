@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
+import 'package:dvor_chatbot/src/application/schedule_catalog_service.dart';
 import 'package:dvor_chatbot/src/bot/bot_runner.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
@@ -10,11 +11,13 @@ import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_api_writer.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_promo_code_repository.dart';
+import 'package:dvor_chatbot/src/data/google_sheets_schedule_catalog_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_schedule_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_writer.dart';
 import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
+import 'package:dvor_chatbot/src/data/schedule_catalog_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_conversation_log_repository.dart';
@@ -25,6 +28,7 @@ import 'package:dvor_chatbot/src/data/static_schedule_repository.dart';
 import 'package:dvor_chatbot/src/data/static_trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/logging_message_sender.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_client.dart';
@@ -82,6 +86,15 @@ void main(List<String> args) {
         }
       }
 
+      final catalogRepository = _createScheduleCatalogRepository(
+        config: config,
+        googleSheetsWriter: googleSheetsWriter,
+      );
+      final scheduleCatalogService = ScheduleCatalogService(
+        catalogRepository: catalogRepository,
+        scheduleRepository: scheduleRepository,
+        timezoneOffsetHours: config.timezoneOffsetHours,
+      );
       final sender = LoggingMessageSender(
         inner: client,
         conversationLog: conversationLogRepository,
@@ -114,6 +127,8 @@ void main(List<String> args) {
           targetChatId: config.targetChatId,
           groupAnnouncements: groupAnnouncements,
           onboardingDripEnabled: config.onboardingDripEnabled,
+          scheduleCatalogService: scheduleCatalogService,
+          timezoneOffsetHours: config.timezoneOffsetHours,
         ),
         groupHandlers: GroupHandlers(
           sender: sender,
@@ -125,6 +140,7 @@ void main(List<String> args) {
           antiSpamEnabled: config.antiSpamEnabled,
         ),
         googleSheetsWriter: googleSheetsWriter,
+        scheduleCatalogService: scheduleCatalogService,
       );
 
       _registerShutdown(runner);
@@ -229,6 +245,21 @@ TrainingScheduleRepository _createScheduleRepository(AppConfig config) {
     case ScheduleSource.staticData:
       return const StaticScheduleRepository();
   }
+}
+
+ScheduleCatalogRepository _createScheduleCatalogRepository({
+  required AppConfig config,
+  required GoogleSheetsWriter? googleSheetsWriter,
+}) {
+  if (config.scheduleSource != ScheduleSource.googleSheets) {
+    return const NoopScheduleCatalogRepository();
+  }
+  if (googleSheetsWriter is GoogleSheetsApiWriter) {
+    return GoogleSheetsScheduleCatalogRepository(gateway: googleSheetsWriter.gateway);
+  }
+  return const NoopScheduleCatalogRepository(
+    availability: ScheduleCatalogAvailability.writeDisabled,
+  );
 }
 
 void _registerShutdown(BotRunner runner) {

@@ -53,3 +53,5 @@ GOOGLE_SHEETS_WRITE_SHEET_TITLE=FUNNEL
 ```
 
 JSON сервис-аккаунта: `/opt/dvor-chatbot-project/secrets/google-sheets.json` (не в git). После смены `.env` — полный деплой или хотя бы `docker compose up -d --force-recreate`.
+
+Тот же service account пишет входные листы `Тренировки` / `Походы` / `Трейлы` из админ-кнопки `📅 Расписание` и раз в час удаляет события старше 2 дней. Лист `FUNNEL` по-прежнему пересоздаётся отдельно; входные вкладки бот не wipe.

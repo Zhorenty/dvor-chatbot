@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dvor_chatbot/src/data/google_sheets_value_parser.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:http/http.dart' as http;
-import 'package:intl/intl.dart';
 import 'package:l/l.dart';
 
 final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository {
@@ -133,13 +133,19 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         rows.first.map((cell) => _normalizeHeader(cell.toString())).toList(growable: false);
     final titleIndex = _firstHeaderIndex(headers, const <String>['title', 'название']);
     final startsAtIndex = headers.indexOf('starts_at');
-    final dateIndex = _firstHeaderIndex(headers, const <String>['date', 'дата']);
-    final timeIndex = _firstHeaderIndex(headers, const <String>['time', 'время']);
-    final locationIndex = _firstHeaderIndex(
+    final dateIndex = GoogleSheetsValueParser.firstHeaderIndex(headers, const <String>[
+      'date',
+      'дата',
+    ]);
+    final timeIndex = GoogleSheetsValueParser.firstHeaderIndex(headers, const <String>[
+      'time',
+      'время',
+    ]);
+    final locationIndex = GoogleSheetsValueParser.firstHeaderIndex(
       headers,
       const <String>['location', 'место', 'where', 'place'],
     );
-    final locationUrlIndex = _firstHeaderIndex(
+    final locationUrlIndex = GoogleSheetsValueParser.firstHeaderIndex(
       headers,
       const <String>[
         'location_url',
@@ -149,8 +155,11 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'карта',
       ],
     );
-    final priceIndex = _firstHeaderIndex(headers, const <String>['price', 'цена']);
-    final participantsLimitIndex = _firstHeaderIndex(
+    final priceIndex = GoogleSheetsValueParser.firstHeaderIndex(headers, const <String>[
+      'price',
+      'цена',
+    ]);
+    final participantsLimitIndex = GoogleSheetsValueParser.firstHeaderIndex(
       headers,
       const <String>[
         'participants_limit',
@@ -160,7 +169,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'лимит',
       ],
     );
-    final includeTrainersInParticipantsIndex = _firstHeaderIndex(
+    final includeTrainersInParticipantsIndex = GoogleSheetsValueParser.firstHeaderIndex(
       headers,
       const <String>[
         'include_trainers_in_participants',
@@ -175,7 +184,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'тренеры_в_лимите',
       ],
     );
-    final coachIndex = _firstHeaderIndex(
+    final coachIndex = GoogleSheetsValueParser.firstHeaderIndex(
       headers,
       const <String>[
         'coach',
@@ -186,11 +195,11 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'тренеры',
       ],
     );
-    final notesIndex = _firstHeaderIndex(
+    final notesIndex = GoogleSheetsValueParser.firstHeaderIndex(
       headers,
       const <String>['notes', 'заметки', 'примечание'],
     );
-    final promoRestrictedIndex = _firstHeaderIndex(
+    final promoRestrictedIndex = GoogleSheetsValueParser.firstHeaderIndex(
       headers,
       const <String>[
         'promo_restricted',
@@ -423,236 +432,41 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     return rows;
   }
 
-  DateTime? _parseDateTime(String raw) {
-    final normalized = raw.trim();
-    if (normalized.isEmpty) {
-      return null;
-    }
-
-    final isoDate = DateTime.tryParse(normalized);
-    if (isoDate != null) {
-      return isoDate.isUtc ? isoDate.toLocal() : isoDate;
-    }
-
-    final localFormats = <DateFormat>[
-      DateFormat('dd.MM.yyyy HH:mm:ss'),
-      DateFormat('dd.MM.yyyy H:mm:ss'),
-      DateFormat('dd.MM.yyyy HH:mm'),
-      DateFormat('dd.MM.yyyy H:mm'),
-      DateFormat('yyyy-MM-dd HH:mm:ss'),
-      DateFormat('yyyy-MM-dd H:mm:ss'),
-      DateFormat('yyyy-MM-dd HH:mm'),
-      DateFormat('yyyy-MM-dd H:mm'),
-    ];
-    for (final format in localFormats) {
-      try {
-        return format.parseStrict(normalized);
-      } on FormatException {
-        // Try next format.
-      }
-    }
-    return null;
-  }
+  DateTime? _parseDateTime(String raw) => GoogleSheetsValueParser.parseDateTime(raw);
 
   DateTime? _parseDateAndTime(String dateRaw, String timeRaw) {
-    final dateNormalized = dateRaw.trim();
-    final timeNormalized = timeRaw.trim();
-    if (dateNormalized.isEmpty || timeNormalized.isEmpty) {
-      return null;
-    }
-
-    final combined = _parseDateTime('$dateNormalized $timeNormalized');
-    if (combined != null) {
-      return combined;
-    }
-
-    final date = _parseDate(dateNormalized);
-    final time = _parseTime(timeNormalized);
-    if (date == null || time == null) {
-      return null;
-    }
-
-    return DateTime(date.year, date.month, date.day, time.hour, time.minute, time.second);
-  }
-
-  DateTime? _parseDate(String raw) {
-    final dateOnlyFormats = <DateFormat>[
-      DateFormat('yyyy-MM-dd'),
-      DateFormat('dd.MM.yyyy'),
-      DateFormat('d.M.yyyy'),
-      DateFormat('MM/dd/yyyy'),
-      DateFormat('M/d/yyyy'),
-      DateFormat('dd/MM/yyyy'),
-      DateFormat('d/M/yyyy'),
-    ];
-
-    for (final format in dateOnlyFormats) {
-      try {
-        return format.parseStrict(raw);
-      } on FormatException {
-        // Try next format.
-      }
-    }
-
-    return null;
+    return GoogleSheetsValueParser.parseDateAndTime(dateRaw, timeRaw);
   }
 
   DateTime? _parseRangeDateTime(String raw, {required bool isEndOfDay}) {
-    final normalized = raw.trim();
-    if (normalized.isEmpty) {
-      return null;
-    }
-
-    final parsedDateTime = _parseDateTime(normalized);
-    if (parsedDateTime != null) {
-      final likelyDateOnly = !RegExp(r'[:T]').hasMatch(normalized);
-      if (!likelyDateOnly) {
-        return parsedDateTime;
-      }
-      return isEndOfDay
-          ? DateTime(
-              parsedDateTime.year,
-              parsedDateTime.month,
-              parsedDateTime.day,
-              23,
-              59,
-              59,
-            )
-          : DateTime(parsedDateTime.year, parsedDateTime.month, parsedDateTime.day);
-    }
-
-    final dateOnly = _parseDate(normalized);
-    if (dateOnly == null) {
-      return null;
-    }
-
-    return isEndOfDay
-        ? DateTime(dateOnly.year, dateOnly.month, dateOnly.day, 23, 59, 59)
-        : DateTime(dateOnly.year, dateOnly.month, dateOnly.day);
-  }
-
-  DateTime? _parseTime(String raw) {
-    final timeFormats = <DateFormat>[
-      DateFormat('HH:mm:ss'),
-      DateFormat('H:mm:ss'),
-      DateFormat('HH:mm'),
-      DateFormat('H:mm'),
-      DateFormat('hh:mm a'),
-      DateFormat('h:mm a'),
-    ];
-
-    for (final format in timeFormats) {
-      try {
-        return format.parseStrict(raw);
-      } on FormatException {
-        // Try next format.
-      }
-    }
-
-    return null;
+    return GoogleSheetsValueParser.parseRangeDateTime(raw, isEndOfDay: isEndOfDay);
   }
 
   String _cell(List<dynamic> row, int index) {
-    if (index < 0 || index >= row.length) {
-      return '';
-    }
-    return row[index].toString().trim();
+    return GoogleSheetsValueParser.cell(List<Object?>.from(row), index);
   }
 
   String? _optionalCell(List<dynamic> row, int index) {
-    final value = _cell(row, index);
-    return value.isEmpty ? null : value;
+    return GoogleSheetsValueParser.optionalCell(List<Object?>.from(row), index);
   }
 
-  int? _parsePrice(String? raw) {
-    if (raw == null) {
-      return null;
-    }
-    final normalized = raw.trim();
-    if (normalized.isEmpty) {
-      return null;
-    }
-    final digitsOnly = normalized.replaceAll(RegExp(r'[^\d]'), '');
-    if (digitsOnly.isEmpty) {
-      return null;
-    }
-    return int.tryParse(digitsOnly);
-  }
+  int? _parsePrice(String? raw) => GoogleSheetsValueParser.parsePrice(raw);
 
   int? _parseParticipantsLimit(String? raw) {
-    final parsed = _parsePrice(raw);
-    if (parsed == null || parsed <= 0) {
-      return null;
-    }
-    return parsed;
+    return GoogleSheetsValueParser.parseParticipantsLimit(raw);
   }
 
-  int _parsePrepayPercent(String? raw) {
-    const defaultPercent = 50;
-    if (raw == null) {
-      return defaultPercent;
-    }
-    final normalized = raw.trim();
-    if (normalized.isEmpty) {
-      return defaultPercent;
-    }
-    final digitsOnly = normalized.replaceAll(RegExp(r'[^\d]'), '');
-    if (digitsOnly.isEmpty) {
-      return defaultPercent;
-    }
-    final parsed = int.tryParse(digitsOnly);
-    if (parsed == null || parsed < 1 || parsed > 100) {
-      return defaultPercent;
-    }
-    return parsed;
-  }
+  int _parsePrepayPercent(String? raw) => GoogleSheetsValueParser.parsePrepayPercent(raw);
 
   bool _parseBoolFlag(String? raw, {bool defaultValue = false}) {
-    if (raw == null) {
-      return defaultValue;
-    }
-    final normalized = raw.trim().toLowerCase();
-    if (normalized.isEmpty) {
-      return defaultValue;
-    }
-    if (const <String>{
-      '1',
-      'true',
-      'yes',
-      'y',
-      'on',
-      'да',
-      'д',
-    }.contains(normalized)) {
-      return true;
-    }
-    if (const <String>{
-      '0',
-      'false',
-      'no',
-      'n',
-      'off',
-      'нет',
-      'н',
-    }.contains(normalized)) {
-      return false;
-    }
-    return defaultValue;
+    return GoogleSheetsValueParser.parseBoolFlag(raw, defaultValue: defaultValue);
   }
 
   int _firstHeaderIndex(List<String> headers, List<String> aliases) {
-    for (final alias in aliases) {
-      final index = headers.indexOf(alias);
-      if (index >= 0) {
-        return index;
-      }
-    }
-    return -1;
+    return GoogleSheetsValueParser.firstHeaderIndex(headers, aliases);
   }
 
-  String _normalizeHeader(String value) {
-    return value.trim().toLowerCase().replaceAll(' ', '_').replaceAll('ё', 'е');
-  }
+  String _normalizeHeader(String value) => GoogleSheetsValueParser.normalizeHeader(value);
 
   static Uri _replaceGid(Uri source, int gid) {
     final params = <String, String>{...source.queryParameters};

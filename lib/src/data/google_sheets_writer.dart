@@ -30,6 +30,15 @@ abstract interface class GoogleSheetsSpreadsheetGateway {
     String valueInputOption = 'RAW',
   });
 
+  Future<List<List<Object?>>> getValues(String a1Range);
+
+  Future<void> deleteDimension({
+    required int sheetId,
+    required String dimension,
+    required int startIndex,
+    required int endIndex,
+  });
+
   Future<void> applyDashboardLook({
     required int sheetId,
     required GoogleSheetsDashboard dashboard,

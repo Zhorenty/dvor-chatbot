@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -20,6 +21,7 @@ import 'package:dvor_chatbot/src/messages/templates/schedule_templates.dart';
 import 'package:intl/intl.dart';
 
 part 'templates/message_templates_content.part.dart';
+part 'templates/message_templates_admin_schedule.part.dart';
 part 'templates/message_templates_keyboards.part.dart';
 part 'templates/message_templates_helpers.part.dart';
 

@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
 import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
+import 'package:dvor_chatbot/src/data/schedule_catalog_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
@@ -17,6 +18,7 @@ import 'package:dvor_chatbot/src/domain/group_membership.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/promo_code.dart';
+import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -47,6 +49,136 @@ final class FakeScheduleRepository implements TrainingScheduleRepository {
   Future<bool> refresh({bool force = false}) async {
     refreshCalls += 1;
     return refreshResult;
+  }
+}
+
+final class FakeScheduleCatalogRepository implements ScheduleCatalogRepository {
+  FakeScheduleCatalogRepository({
+    this.availability = ScheduleCatalogAvailability.ready,
+    List<ScheduleCatalogItem>? items,
+  }) : items = items ?? <ScheduleCatalogItem>[];
+
+  @override
+  ScheduleCatalogAvailability availability;
+  final List<ScheduleCatalogItem> items;
+  final List<ScheduleEventDraft> createdDrafts = <ScheduleEventDraft>[];
+  final List<ScheduleEventDraft> updatedPatches = <ScheduleEventDraft>[];
+  int deleteCalls = 0;
+  DateTime? lastRetentionNow;
+  int lastRetentionTimezoneOffsetHours = 0;
+  ScheduleRetentionResult retentionResult = const ScheduleRetentionResult();
+
+  @override
+  Future<List<ScheduleCatalogItem>> listEvents(
+    ActivityCategory category, {
+    DateTime? now,
+    int timezoneOffsetHours = 3,
+    bool includePast = false,
+  }) async {
+    if (availability != ScheduleCatalogAvailability.ready) {
+      throw ScheduleCatalogFailure(
+        availability == ScheduleCatalogAvailability.staticSource
+            ? ScheduleCatalogErrorCode.staticSource
+            : ScheduleCatalogErrorCode.writeDisabled,
+      );
+    }
+    return items.where((item) => item.category == category).toList(growable: false);
+  }
+
+  @override
+  Future<ScheduleCatalogItem> create(ScheduleEventDraft draft) async {
+    if (availability != ScheduleCatalogAvailability.ready) {
+      throw ScheduleCatalogFailure(
+        availability == ScheduleCatalogAvailability.writeDisabled
+            ? ScheduleCatalogErrorCode.writeDisabled
+            : ScheduleCatalogErrorCode.staticSource,
+      );
+    }
+    createdDrafts.add(draft);
+    final item = ScheduleCatalogItem(
+      sheetRow: items.length + 2,
+      category: draft.category,
+      training: draft.category == ActivityCategory.trainings
+          ? TrainingInfo(
+              title: draft.title ?? 'Untitled',
+              startsAt: DateTime(2030, 8, 19, 19, 30),
+              location: draft.location ?? 'Stadium',
+              locationUrl: draft.locationUrl,
+              price: draft.price,
+              participantsLimit: draft.participantsLimit,
+              includeTrainersInParticipants: draft.includeTrainersInParticipants ?? false,
+              coach: draft.coach,
+              notes: draft.notes,
+              promoRestricted: draft.promoRestricted ?? false,
+            )
+          : null,
+      outdoor: draft.category == ActivityCategory.trainings
+          ? null
+          : OutdoorActivityInfo(
+              type: draft.category == ActivityCategory.hikes
+                  ? OutdoorActivityType.hike
+                  : OutdoorActivityType.trail,
+              title: draft.title ?? 'Untitled',
+              dateFrom: DateTime(2030, 8, 19),
+              dateTo: DateTime(2030, 8, 19, 23, 59, 59),
+              description: draft.description ?? 'desc',
+              location: draft.location,
+              price: draft.price,
+              participantsLimit: draft.participantsLimit,
+            ),
+    );
+    items.add(item);
+    return item;
+  }
+
+  @override
+  Future<ScheduleCatalogItem> update({
+    required ScheduleCatalogItem identity,
+    required ScheduleEventDraft patch,
+  }) async {
+    updatedPatches.add(patch);
+    final index = items.indexWhere((item) => item.matchesIdentity(identity));
+    if (index < 0) {
+      throw const ScheduleCatalogFailure(ScheduleCatalogErrorCode.notFound);
+    }
+    final current = items[index];
+    final training = current.training;
+    if (training != null) {
+      items[index] = ScheduleCatalogItem(
+        sheetRow: current.sheetRow,
+        category: current.category,
+        training: TrainingInfo(
+          title: patch.title ?? training.title,
+          startsAt: training.startsAt,
+          location: patch.location ?? training.location,
+          locationUrl: patch.locationUrl ?? training.locationUrl,
+          price: patch.price ?? training.price,
+          participantsLimit: patch.participantsLimit ?? training.participantsLimit,
+          includeTrainersInParticipants:
+              patch.includeTrainersInParticipants ?? training.includeTrainersInParticipants,
+          coach: patch.coach ?? training.coach,
+          notes: patch.notes ?? training.notes,
+          promoRestricted: patch.promoRestricted ?? training.promoRestricted,
+        ),
+      );
+    }
+    return items[index];
+  }
+
+  @override
+  Future<void> delete(ScheduleCatalogItem identity) async {
+    deleteCalls += 1;
+    items.removeWhere((item) => item.matchesIdentity(identity));
+  }
+
+  @override
+  Future<ScheduleRetentionResult> deleteExpired({
+    required DateTime now,
+    required int timezoneOffsetHours,
+  }) async {
+    lastRetentionNow = now;
+    lastRetentionTimezoneOffsetHours = timezoneOffsetHours;
+    return retentionResult;
   }
 }
 
