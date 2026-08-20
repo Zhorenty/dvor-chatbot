@@ -236,11 +236,23 @@ final class ScheduleTemplates {
 
   String unknownTrainerSelection() => 'Не смог распознать тренера. Выбери кнопку из списка 👇';
 
-  String scheduleRefreshDone() =>
-      'Готово! Google Sheets обновлён ✅\nОбновил расписание и список тренеров.';
+  String scheduleRefreshDone({bool exportQueued = false}) {
+    if (exportQueued) {
+      return 'Входящие листы обновлены.\n'
+          'Срезы FUNNEL, АНАЛИТИКА, ДВОРЯНЕ и ДЕЙСТВИЯ поставлены в очередь.\n'
+          'Открой таблицу через минуту.';
+    }
+    return 'Готово! Google Sheets обновлён ✅\nОбновил расписание и список тренеров.';
+  }
 
-  String scheduleRefreshFailed() =>
-      'Не получилось обновить Google Sheets 😔 Использую последние сохраненные данные.';
+  String scheduleRefreshFailed({bool exportQueued = false}) {
+    if (exportQueued) {
+      return 'Входящие листы не обновились — оставил последние данные.\n'
+          'Срезы в таблице всё равно поставлены в очередь.\n'
+          'Проверь таблицу через минуту.';
+    }
+    return 'Не получилось обновить Google Sheets 😔 Использую последние сохраненные данные.';
+  }
 
   String scheduleDocumentLink() =>
       'Актуальный Google Sheets:\nhttps://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';

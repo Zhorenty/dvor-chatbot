@@ -99,6 +99,7 @@ final class PrivateHandlers {
     DateTime Function()? nowProvider,
     ScheduleCatalogService? scheduleCatalogService,
     int timezoneOffsetHours = 3,
+    void Function()? onGoogleSheetsExportRequested,
   })  : _sender = sender,
         _scheduleRepository = scheduleRepository,
         _bookingRepository = bookingRepository,
@@ -119,7 +120,8 @@ final class PrivateHandlers {
         ),
         _nowProvider = nowProvider ?? DateTime.now,
         _scheduleCatalogServiceOverride = scheduleCatalogService,
-        _timezoneOffsetHours = timezoneOffsetHours;
+        _timezoneOffsetHours = timezoneOffsetHours,
+        _onGoogleSheetsExportRequested = onGoogleSheetsExportRequested;
 
   final MessageSender _sender;
   final TrainingScheduleRepository _scheduleRepository;
@@ -139,6 +141,7 @@ final class PrivateHandlers {
   final DateTime Function() _nowProvider;
   final ScheduleCatalogService? _scheduleCatalogServiceOverride;
   final int _timezoneOffsetHours;
+  void Function()? _onGoogleSheetsExportRequested;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
   final Set<int> _adminsInClientMode = <int>{};
   final Map<int, Timer> _broadcastMediaFinalizeTimers = <int, Timer>{};
@@ -200,6 +203,10 @@ final class PrivateHandlers {
       feedbackSessionKey: sessionKey,
       feedbackTrainingTitle: trainingTitle,
     );
+  }
+
+  void bindGoogleSheetsExport(void Function()? launcher) {
+    _onGoogleSheetsExportRequested = launcher;
   }
 }
 

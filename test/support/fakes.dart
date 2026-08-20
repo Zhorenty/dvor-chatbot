@@ -1917,11 +1917,16 @@ final class FakeConversationLogRepository implements ConversationLogRepository {
     );
   }
 
+  int? lastRecentActionsLimit;
+  Set<int>? lastExcludedPeerIds;
+
   @override
   Future<List<ConversationLogEntry>> recentActions({
     int limit = 40,
     Set<int> excludePeerIds = const <int>{},
   }) async {
+    lastRecentActionsLimit = limit;
+    lastExcludedPeerIds = excludePeerIds;
     final filtered = entries.where((entry) => !excludePeerIds.contains(entry.peerUserId)).toList()
       ..sort((a, b) => b.occurredAt.compareTo(a.occurredAt));
     return filtered.take(limit).toList(growable: false);

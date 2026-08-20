@@ -41,7 +41,7 @@ bash scripts/full_deploy.sh
 
 Первый запуск нового скрипта: сначала push, на сервере один раз `git pull`, дальше можно вызывать с Mac.
 
-## Google Sheets (FUNNEL)
+## Google Sheets (срезы)
 
 На сервере в `.env`:
 
@@ -50,8 +50,9 @@ GOOGLE_SHEETS_WRITE_ENABLED=true
 GOOGLE_SHEETS_CREDENTIALS_PATH=/app/secrets/google-sheets.json
 GOOGLE_SHEETS_SPREADSHEET_ID=<id из URL таблицы>
 GOOGLE_SHEETS_WRITE_SHEET_TITLE=FUNNEL
+GOOGLE_SHEETS_RECENT_ACTIONS_LIMIT=200
 ```
 
 JSON сервис-аккаунта: `/opt/dvor-chatbot-project/secrets/google-sheets.json` (не в git). После смены `.env` — полный деплой или хотя бы `docker compose up -d --force-recreate`.
 
-Тот же service account пишет входные листы `Тренировки` / `Походы` / `Трейлы` из админ-кнопки `📅 Расписание` и раз в час удаляет события старше 2 дней. Лист `FUNNEL` по-прежнему пересоздаётся отдельно; входные вкладки бот не wipe.
+Тот же service account пишет входные листы `Тренировки` / `Походы` / `Трейлы` из админ-кнопки `📅 Расписание` и раз в час удаляет события старше 2 дней. Bot-owned вкладки `FUNNEL` / `АНАЛИТИКА` / `ДВОРЯНЕ` / `ДЕЙСТВИЯ` пересоздаются отдельно по TTL и по кнопке `🔄 Обновить Google Sheets`; входные вкладки бот не wipe.

@@ -162,7 +162,7 @@ final class SqliteConversationLogRepository implements ConversationLogRepository
     int limit = 40,
     Set<int> excludePeerIds = const <int>{},
   }) async {
-    final safeLimit = limit < 1 ? 1 : (limit > 200 ? 200 : limit);
+    final safeLimit = limit < 1 ? 1 : (limit > 1000 ? 1000 : limit);
     final excluded = excludePeerIds.where((id) => id > 0).toList(growable: false);
     ResultSet rows;
     if (excluded.isEmpty) {

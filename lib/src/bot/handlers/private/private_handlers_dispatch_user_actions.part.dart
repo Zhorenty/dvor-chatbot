@@ -284,9 +284,16 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       }
       final refreshOk =
           scheduleRefreshOk && trainersRefreshOk && dvorTeamRefreshOk && promoCodesRefreshOk;
+      final exportLauncher = _onGoogleSheetsExportRequested;
+      final exportQueued = exportLauncher != null;
+      if (exportQueued) {
+        exportLauncher();
+      }
       await _sendAdminMessage(
         chatId,
-        refreshOk ? _templates.scheduleRefreshDone() : _templates.scheduleRefreshFailed(),
+        refreshOk
+            ? _templates.scheduleRefreshDone(exportQueued: exportQueued)
+            : _templates.scheduleRefreshFailed(exportQueued: exportQueued),
         replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
       );

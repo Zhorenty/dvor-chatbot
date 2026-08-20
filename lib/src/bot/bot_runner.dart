@@ -1,15 +1,18 @@
 import 'dart:async';
 
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
+import 'package:dvor_chatbot/src/application/admin_analytics_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/application/group_membership_lookup.dart';
+import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/application/schedule_catalog_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/app_config.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_writer.dart';
 import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
@@ -53,6 +56,7 @@ final class BotRunner {
     JobDedupeRepository? jobDedupeRepository,
     GoogleSheetsWriter? googleSheetsWriter,
     ScheduleCatalogService? scheduleCatalogService,
+    ConversationLogRepository conversationLogRepository = const NoopConversationLogRepository(),
   })  : _config = config,
         _client = client,
         _scheduleRepository = scheduleRepository,
@@ -169,7 +173,30 @@ final class BotRunner {
                 onboardingRepository: onboardingRepository,
                 writer: googleSheetsWriter,
                 sheetTitle: config.googleSheetsWriteSheetTitle,
-              );
+                adminAnalyticsService: AdminAnalyticsService(
+                  bookingRepository: bookingRepository,
+                  onboardingRepository: onboardingRepository,
+                  subscriptionRepository: subscriptionRepository,
+                ),
+                economicSummaryService: EconomicSummaryService(
+                  bookingRepository: bookingRepository,
+                  catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
+                ),
+                noblesListService: NoblesListService(
+                  bookingRepository: bookingRepository,
+                  catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
+                ),
+                conversationLogRepository: conversationLogRepository,
+                adminUserIds: config.adminUserIds,
+                recentActionsLimit: config.googleSheetsRecentActionsLimit,
+              ) {
+    final exportJob = _googleSheetsExportJob;
+    if (exportJob != null) {
+      _privateHandlers.bindGoogleSheetsExport(
+        () => _jobScheduler.launch('google sheets funnel export', exportJob.run),
+      );
+    }
+  }
 
   final AppConfig _config;
   final TelegramClient _client;

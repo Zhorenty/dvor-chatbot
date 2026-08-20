@@ -19,6 +19,7 @@ final class GoogleSheetsChart {
     required this.valueColumn,
     required this.anchorRow,
     required this.anchorColumn,
+    this.additionalValueColumns = const <int>[],
     this.widthPixels = 480,
     this.heightPixels = 260,
     this.pieHole,
@@ -33,6 +34,9 @@ final class GoogleSheetsChart {
   final int endRowExclusive;
   final int labelColumn;
   final int valueColumn;
+
+  /// Extra numeric columns for multi-series column/bar charts.
+  final List<int> additionalValueColumns;
   final int anchorRow;
   final int anchorColumn;
   final int widthPixels;
@@ -104,6 +108,7 @@ final class GoogleSheetsDashboard {
     this.bandedTables = const <GoogleSheetsBandedTable>[],
     this.columnWidthsPx = const <int>[],
     this.obsoleteSheetTitles = const <String>['bot_bookings'],
+    this.frozenRowCount = 1,
   });
 
   final String sheetTitle;
@@ -113,6 +118,7 @@ final class GoogleSheetsDashboard {
   final List<GoogleSheetsBandedTable> bandedTables;
   final List<int> columnWidthsPx;
   final List<String> obsoleteSheetTitles;
+  final int frozenRowCount;
 }
 
 final class GoogleSheetsSheetInfo {

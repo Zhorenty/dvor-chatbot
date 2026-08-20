@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 /// Dashboard layout for the `FUNNEL` sheet: KPI cards, tables, and chart specs.
 abstract final class GoogleSheetsFunnelDashboard {
   static const String defaultSheetTitle = 'FUNNEL';
+  static const String analyticsSheetTitle = 'АНАЛИТИКА';
+  static const String noblesSheetTitle = 'ДВОРЯНЕ';
+  static const String recentActionsSheetTitle = 'ДЕЙСТВИЯ';
   static const int columnCount = 12;
 
   static const GoogleSheetsRgb ink = GoogleSheetsRgb(0.12, 0.16, 0.14);

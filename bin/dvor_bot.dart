@@ -141,6 +141,7 @@ void main(List<String> args) {
         ),
         googleSheetsWriter: googleSheetsWriter,
         scheduleCatalogService: scheduleCatalogService,
+        conversationLogRepository: conversationLogRepository,
       );
 
       _registerShutdown(runner);

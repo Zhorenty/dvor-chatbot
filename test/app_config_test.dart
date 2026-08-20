@@ -47,6 +47,7 @@ void main() {
       expect(config.googleSheetsWriteEnabled, isFalse);
       expect(config.googleSheetsWriteSheetTitle, 'FUNNEL');
       expect(config.googleSheetsWriteIntervalSeconds, 300);
+      expect(config.googleSheetsRecentActionsLimit, 200);
     });
 
     test('parses anti-spam disable flag', () {
@@ -128,6 +129,31 @@ void main() {
       expect(config.googleSheetsSpreadsheetId, 'sheetABC123');
       expect(config.googleSheetsWriteSheetTitle, 'FUNNEL');
       expect(config.googleSheetsWriteIntervalSeconds, 120);
+    });
+
+    test('clamps Google Sheets recent actions limit', () {
+      final low = AppConfig.fromArgs(<String>[
+        '--token',
+        'cli-token',
+        '--google-sheets-recent-actions-limit',
+        '5',
+      ]);
+      final high = AppConfig.fromArgs(<String>[
+        '--token',
+        'cli-token',
+        '--google-sheets-recent-actions-limit',
+        '99999',
+      ]);
+      final ok = AppConfig.fromArgs(<String>[
+        '--token',
+        'cli-token',
+        '--google-sheets-recent-actions-limit',
+        '80',
+      ]);
+
+      expect(low.googleSheetsRecentActionsLimit, 20);
+      expect(high.googleSheetsRecentActionsLimit, 1000);
+      expect(ok.googleSheetsRecentActionsLimit, 80);
     });
 
     test('maps legacy bot_bookings sheet title to FUNNEL', () {

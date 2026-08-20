@@ -316,6 +316,7 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     required GoogleSheetsDashboard dashboard,
   }) async {
     final formatRequests = <Request>[
+      ..._frozenRowRequests(sheetId, dashboard.frozenRowCount),
       ..._columnWidthRequests(sheetId, dashboard.columnWidthsPx),
       ..._styleRequests(sheetId, dashboard.styles),
       ..._bandingRequests(sheetId, dashboard.bandedTables),
@@ -338,6 +339,23 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
     } on Object catch (error, stackTrace) {
       l.w('Google Sheets funnel charts failed: $error', stackTrace);
     }
+  }
+
+  List<Request> _frozenRowRequests(int sheetId, int frozenRowCount) {
+    if (frozenRowCount < 1) {
+      return const <Request>[];
+    }
+    return <Request>[
+      Request(
+        updateSheetProperties: UpdateSheetPropertiesRequest(
+          properties: SheetProperties(
+            sheetId: sheetId,
+            gridProperties: GridProperties(frozenRowCount: frozenRowCount),
+          ),
+          fields: 'gridProperties.frozenRowCount',
+        ),
+      ),
+    ];
   }
 
   List<Request> _columnWidthRequests(int sheetId, List<int> widths) {
@@ -527,7 +545,22 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
       startColumn: chart.labelColumn,
       endColumn: chart.labelColumn + 1,
     );
-    final values = _chartData(
+    final valueColumns = <int>[chart.valueColumn, ...chart.additionalValueColumns];
+    final series = <BasicChartSeries>[
+      for (var index = 0; index < valueColumns.length; index++)
+        BasicChartSeries(
+          series: _chartData(
+            sheetId: sheetId,
+            startRow: dataStartRow,
+            endRow: chart.endRowExclusive,
+            startColumn: valueColumns[index],
+            endColumn: valueColumns[index] + 1,
+          ),
+          targetAxis: 'BOTTOM_AXIS',
+          colorStyle: ColorStyle(rgbColor: _seriesColor(index)),
+        ),
+    ];
+    final pieValues = _chartData(
       sheetId: sheetId,
       startRow: dataStartRow,
       endRow: chart.endRowExclusive,
@@ -552,22 +585,14 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
               domains: <BasicChartDomain>[
                 BasicChartDomain(domain: labels),
               ],
-              series: <BasicChartSeries>[
-                BasicChartSeries(
-                  series: values,
-                  targetAxis: 'BOTTOM_AXIS',
-                  colorStyle: ColorStyle(
-                    rgbColor: Color(red: 0.24, green: 0.42, blue: 0.32),
-                  ),
-                ),
-              ],
+              series: series,
             ),
       pieChart: chart.kind == GoogleSheetsChartKind.pie
           ? PieChartSpec(
               legendPosition: chart.legendPosition,
               pieHole: chart.pieHole,
               domain: labels,
-              series: values,
+              series: pieValues,
             )
           : null,
     );
@@ -607,6 +632,15 @@ final class GoogleApisSheetsGateway implements GoogleSheetsSpreadsheetGateway {
         ],
       ),
     );
+  }
+
+  Color _seriesColor(int index) {
+    final colors = <Color>[
+      Color(red: 0.24, green: 0.42, blue: 0.32),
+      Color(red: 0.42, green: 0.55, blue: 0.62),
+      Color(red: 0.62, green: 0.52, blue: 0.32),
+    ];
+    return colors[index % colors.length];
   }
 
   Color? _color(GoogleSheetsRgb? rgb) {

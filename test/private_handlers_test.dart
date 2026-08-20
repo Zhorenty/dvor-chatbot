@@ -1140,12 +1140,14 @@ void main() {
         const <TrainingInfo>[],
         refreshResult: true,
       );
+      var exportCalls = 0;
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: repository,
         bookingRepository: _FakeBookingRepository(),
         templates: const MessageTemplates(),
         adminUserIds: const <int>{1303},
+        onGoogleSheetsExportRequested: () => exportCalls += 1,
       );
 
       final handled = await handlers.handle(<String, dynamic>{
@@ -1156,9 +1158,37 @@ void main() {
 
       expect(handled, isTrue);
       expect(repository.refreshCalls, 1);
+      expect(exportCalls, 1);
       expect(sender.messages, hasLength(2));
-      expect(sender.messages.first.text, contains('Google Sheets обновлён'));
+      expect(sender.messages.first.text, contains('поставлены в очередь'));
       expect(sender.lastContentMessage.text, contains(MessageTemplates.scheduleDocumentUrl));
+    });
+
+    test('refresh button does not launch export when write is disabled', () async {
+      final sender = _FakeSender();
+      final repository = _FakeScheduleRepository(
+        const <TrainingInfo>[],
+        refreshResult: true,
+      );
+      var exportCalls = 0;
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: repository,
+        bookingRepository: _FakeBookingRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{1304},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 16, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1304},
+        'text': MessageTemplates.buttonRefreshSchedule,
+      });
+
+      expect(handled, isTrue);
+      expect(repository.refreshCalls, 1);
+      expect(exportCalls, 0);
+      expect(sender.messages.first.text, contains('Google Sheets обновлён'));
     });
 
     test('ignores non-private chat messages', () async {

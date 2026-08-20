@@ -402,12 +402,12 @@ extension MessageTemplatesContent on MessageTemplates {
     return _groupTemplates.groupReferralBroadcast();
   }
 
-  String scheduleRefreshDone() {
-    return _scheduleTemplates.scheduleRefreshDone();
+  String scheduleRefreshDone({bool exportQueued = false}) {
+    return _scheduleTemplates.scheduleRefreshDone(exportQueued: exportQueued);
   }
 
-  String scheduleRefreshFailed() {
-    return _scheduleTemplates.scheduleRefreshFailed();
+  String scheduleRefreshFailed({bool exportQueued = false}) {
+    return _scheduleTemplates.scheduleRefreshFailed(exportQueued: exportQueued);
   }
 
   String scheduleRefreshForbidden() {
