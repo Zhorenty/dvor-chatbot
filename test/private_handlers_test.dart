@@ -230,13 +230,13 @@ void main() {
       });
       final toolsButtons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(toolsButtons, contains(MessageTemplates.buttonRefreshSchedule));
-      expect(toolsButtons, contains(MessageTemplates.buttonAdminAnalytics));
+      expect(toolsButtons, isNot(contains(MessageTemplates.buttonAdminAnalytics)));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonEconomicSummary)));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonFunnelAnalytics)));
       expect(toolsButtons, contains(MessageTemplates.buttonSubscriptionsAdmin));
-      expect(toolsButtons, contains(MessageTemplates.buttonNoblesList));
+      expect(toolsButtons, isNot(contains(MessageTemplates.buttonNoblesList)));
       expect(toolsButtons, contains(MessageTemplates.buttonAdminUserSearch));
-      expect(toolsButtons, contains(MessageTemplates.buttonAdminRecentActions));
+      expect(toolsButtons, isNot(contains(MessageTemplates.buttonAdminRecentActions)));
       expect(toolsButtons, contains(MessageTemplates.buttonAdminUserDialog));
       expect(toolsButtons, contains(MessageTemplates.buttonClientMenu));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonParticipantsList)));

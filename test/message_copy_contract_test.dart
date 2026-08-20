@@ -48,7 +48,9 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonBack));
       expect(allTexts, contains(MessageCopy.buttonMainMenu));
       expect(allTexts, contains(MessageCopy.buttonAdminTools));
-      expect(allTexts, contains(MessageCopy.buttonAdminAnalytics));
+      expect(allTexts, isNot(contains(MessageCopy.buttonAdminAnalytics)));
+      expect(allTexts, isNot(contains(MessageCopy.buttonNoblesList)));
+      expect(allTexts, isNot(contains(MessageCopy.buttonAdminRecentActions)));
       expect(allTexts, contains(MessageCopy.buttonFunnelAnalytics));
       expect(allTexts, contains(MessageCopy.buttonFeedbackAnalytics));
       expect(allTexts, contains(MessageCopy.buttonBookingAnalytics));

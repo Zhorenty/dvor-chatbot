@@ -72,19 +72,14 @@ final class TelegramKeyboards {
       <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonRefreshSchedule},
-          <String, String>{'text': MessageCopy.buttonAdminAnalytics},
-        ],
-        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonSubscriptionsAdmin},
-          <String, String>{'text': MessageCopy.buttonNoblesList},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonAdminUserSearch},
-          <String, String>{'text': MessageCopy.buttonClientMenu},
+          <String, String>{'text': MessageCopy.buttonAdminUserDialog},
         ],
         <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonAdminRecentActions},
-          <String, String>{'text': MessageCopy.buttonAdminUserDialog},
+          <String, String>{'text': MessageCopy.buttonClientMenu},
         ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
