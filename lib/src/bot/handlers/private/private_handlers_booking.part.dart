@@ -716,6 +716,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       title: booking.trainingTitle,
       startsAt: booking.startsAt,
       location: booking.location,
+      locationUrl: booking.locationUrl,
       category: _catalogService.categoryForBooking(booking),
     );
   }

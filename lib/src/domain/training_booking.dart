@@ -10,6 +10,7 @@ final class TrainingBooking {
     required this.trainingTitle,
     required this.startsAt,
     required this.location,
+    this.locationUrl,
     required this.status,
     required this.trainingPrice,
     required this.createdAt,
@@ -39,6 +40,9 @@ final class TrainingBooking {
   final String trainingTitle;
   final DateTime startsAt;
   final String location;
+
+  /// Snapshot of the training map link from Google Sheets (`карта`).
+  final String? locationUrl;
   final BookingStatus status;
   final int? trainingPrice;
 

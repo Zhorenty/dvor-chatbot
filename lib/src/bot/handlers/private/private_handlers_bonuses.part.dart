@@ -148,6 +148,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       trainingTitle: fallback.trainingTitle,
       startsAt: fallback.startsAt,
       location: fallback.location,
+      locationUrl: fallback.locationUrl,
       status: status,
       trainingPrice: fallback.trainingPrice,
       paymentNote: fallback.paymentNote,

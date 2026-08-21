@@ -184,7 +184,7 @@ dart run tool/format_input_sheets.dart --credentials=secrets/google-sheets.json
 
 Опциональные колонки:
 
-- `карта` (алиасы `location_url`, `maps_url`)
+- `карта` (алиасы `location_url`, `maps_url`) — ссылка на Яндекс Карты; если пусто, бот ищет место в Яндекс Картах по колонке `место`
 - `лимит` (алиасы `limit`, `participants_limit`)
 - `тренер` (алиас `coach`)
 - `заметки` (алиас `notes`)

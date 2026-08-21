@@ -57,6 +57,30 @@ void main() {
       await repository.close();
     });
 
+    test('snapshots training map url onto created booking', () async {
+      final repository = SqliteBookingRepository(
+        dbPath: '${tmpDir.path}/bookings.sqlite',
+        nowProvider: () => DateTime(2030, 7, 1, 12),
+      );
+      await repository.init();
+
+      final created = await repository.createPendingBooking(
+        userId: 1002,
+        training: TrainingInfo(
+          title: 'Morning run',
+          startsAt: DateTime(2030, 8, 22, 8, 30),
+          location: 'Surf Coffee x Riverside',
+          locationUrl: 'https://yandex.ru/maps/org/surf_coffee/123',
+        ),
+      );
+
+      expect(created.created, isTrue);
+      expect(created.booking.location, 'Surf Coffee x Riverside');
+      expect(created.booking.locationUrl, 'https://yandex.ru/maps/org/surf_coffee/123');
+
+      await repository.close();
+    });
+
     test('refreshes username on repeated booking for same user and training', () async {
       final repository = SqliteBookingRepository(
         dbPath: '${tmpDir.path}/bookings.sqlite',

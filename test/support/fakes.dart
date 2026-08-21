@@ -257,6 +257,7 @@ final class FakeBookingRepository implements BookingRepository {
         title: training.title,
         startsAt: training.startsAt,
         location: training.location,
+        locationUrl: training.locationUrl,
         trainingPrice: training.price,
         trainingPrepayPercent: training.prepayPercent,
       ),
@@ -288,6 +289,7 @@ final class FakeBookingRepository implements BookingRepository {
           title: training.title,
           startsAt: training.startsAt,
           location: training.location,
+          locationUrl: training.locationUrl,
           trainingPrice: training.price,
           trainingPrepayPercent: training.prepayPercent,
           paymentGroupId: groupId,
@@ -431,6 +433,7 @@ final class FakeBookingRepository implements BookingRepository {
       title: training?.title ?? 'Training',
       startsAt: training?.startsAt,
       location: training?.location ?? 'Hall',
+      locationUrl: training?.locationUrl,
       trainingPrice: training?.price,
       trainingPrepayPercent: training?.prepayPercent,
     );
@@ -455,6 +458,7 @@ final class FakeBookingRepository implements BookingRepository {
       title: training?.title ?? 'Training',
       startsAt: training?.startsAt,
       location: training?.location ?? 'Hall',
+      locationUrl: training?.locationUrl,
       trainingPrice: discountedPrice,
       trainingPrepayPercent: training?.prepayPercent,
       promoCode: code,
@@ -603,6 +607,7 @@ final class FakeBookingRepository implements BookingRepository {
       title: training.title,
       startsAt: training.startsAt,
       location: training.location,
+      locationUrl: training.locationUrl,
       status: status,
     );
     adminBookings = <TrainingBooking>[...adminBookings, created];
@@ -632,6 +637,7 @@ final class FakeBookingRepository implements BookingRepository {
       title: training?.title ?? current.trainingTitle,
       startsAt: training?.startsAt ?? current.startsAt,
       location: training?.location ?? current.location,
+      locationUrl: training?.locationUrl ?? current.locationUrl,
       status: status ?? current.status,
       paymentNote: current.paymentNote,
     );
@@ -971,6 +977,7 @@ TrainingBooking fakeBooking({
   String title = 'Training',
   DateTime? startsAt,
   String location = 'Hall',
+  String? locationUrl,
   BookingStatus status = BookingStatus.pendingPayment,
   int? trainingPrice,
   int? trainingPrepayPercent,
@@ -998,6 +1005,7 @@ TrainingBooking fakeBooking({
     trainingTitle: title,
     startsAt: startsAt ?? DateTime(2026, 8, 1, 18),
     location: location,
+    locationUrl: locationUrl,
     status: status,
     trainingPrice: trainingPrice,
     trainingPrepayPercent: trainingPrepayPercent,

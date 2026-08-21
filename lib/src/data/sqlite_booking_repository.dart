@@ -73,6 +73,7 @@ final class SqliteBookingRepository implements BookingRepository {
         training_title TEXT NOT NULL,
         starts_at TEXT NOT NULL,
         location TEXT NOT NULL,
+        location_url TEXT,
         training_price INTEGER,
         training_prepay_percent INTEGER,
         status TEXT NOT NULL,
@@ -97,6 +98,7 @@ final class SqliteBookingRepository implements BookingRepository {
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN promo_code TEXT;');
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN promo_discount_percent INTEGER;');
     _migrateBookingsParticipantModel(db);
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN location_url TEXT;');
     db.execute('''
       CREATE TABLE IF NOT EXISTS economic_report_dispatches (
         report_type TEXT NOT NULL,
@@ -248,6 +250,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training_title,
           starts_at,
           location,
+          location_url,
           training_price,
           training_prepay_percent,
           status,
@@ -260,7 +263,7 @@ final class SqliteBookingRepository implements BookingRepository {
           payment_group_id,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           userId,
@@ -269,6 +272,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training.title,
           training.startsAt.toUtc().toIso8601String(),
           training.location,
+          _optionalTrimmed(training.locationUrl),
           training.price,
           training.prepayPercent,
           BookingStatus.pendingPayment.dbValue,
@@ -437,6 +441,7 @@ final class SqliteBookingRepository implements BookingRepository {
                 training_title = ?,
                 starts_at = ?,
                 location = ?,
+                location_url = ?,
                 training_price = ?,
                 training_prepay_percent = ?,
                 updated_at = ?
@@ -452,6 +457,7 @@ final class SqliteBookingRepository implements BookingRepository {
               training.title,
               training.startsAt.toUtc().toIso8601String(),
               training.location,
+              _optionalTrimmed(training.locationUrl),
               training.price,
               training.prepayPercent,
               nowIso,
@@ -474,6 +480,7 @@ final class SqliteBookingRepository implements BookingRepository {
             training_title,
             starts_at,
             location,
+            location_url,
             training_price,
             training_prepay_percent,
             status,
@@ -486,7 +493,7 @@ final class SqliteBookingRepository implements BookingRepository {
             payment_group_id,
             created_at,
             updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
           ''',
           <Object?>[
             managerUserId,
@@ -495,6 +502,7 @@ final class SqliteBookingRepository implements BookingRepository {
             training.title,
             training.startsAt.toUtc().toIso8601String(),
             training.location,
+            _optionalTrimmed(training.locationUrl),
             training.price,
             training.prepayPercent,
             BookingStatus.pendingPayment.dbValue,
@@ -668,6 +676,7 @@ final class SqliteBookingRepository implements BookingRepository {
             training_title = ?,
             starts_at = ?,
             location = ?,
+            location_url = ?,
             training_price = ?,
             training_prepay_percent = ?,
             updated_at = ?
@@ -678,6 +687,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training.title,
           training.startsAt.toUtc().toIso8601String(),
           training.location,
+          _optionalTrimmed(training.locationUrl),
           training.price,
           training.prepayPercent,
           nowIso,
@@ -1581,6 +1591,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training_title,
           starts_at,
           location,
+          location_url,
           training_price,
           training_prepay_percent,
           status,
@@ -1593,7 +1604,7 @@ final class SqliteBookingRepository implements BookingRepository {
           payment_group_id,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           effectiveUserId,
@@ -1602,6 +1613,7 @@ final class SqliteBookingRepository implements BookingRepository {
           training.title,
           training.startsAt.toUtc().toIso8601String(),
           training.location,
+          _optionalTrimmed(training.locationUrl),
           training.price,
           training.prepayPercent,
           status.dbValue,
@@ -1722,6 +1734,8 @@ final class SqliteBookingRepository implements BookingRepository {
       args.add(training.startsAt.toUtc().toIso8601String());
       columns.add('location = ?');
       args.add(training.location);
+      columns.add('location_url = ?');
+      args.add(_optionalTrimmed(training.locationUrl));
       columns.add('training_price = ?');
       args.add(training.price);
       columns.add('training_prepay_percent = ?');
@@ -2197,6 +2211,7 @@ final class SqliteBookingRepository implements BookingRepository {
       trainingTitle: row['training_title'] as String,
       startsAt: DateTime.parse(row['starts_at'] as String).toLocal(),
       location: row['location'] as String,
+      locationUrl: _optionalTrimmed(_optionalStringColumn(row, 'location_url')),
       status: BookingStatus.fromDbValue(row['status'] as String),
       trainingPrice: row['training_price'] as int?,
       trainingPrepayPercent: _optionalIntColumn(row, 'training_prepay_percent'),
@@ -2230,6 +2245,14 @@ final class SqliteBookingRepository implements BookingRepository {
     } on ArgumentError {
       return null;
     }
+  }
+
+  String? _optionalTrimmed(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed;
   }
 
   void _addColumnIfMissing(Database db, String sql) {

@@ -2015,7 +2015,8 @@ void main() {
             TrainingInfo(
               title: 'Paid session',
               startsAt: DateTime(2026, 7, 12, 20, 0),
-              location: 'Main hall',
+              location: 'Surf Coffee x Riverside',
+              locationUrl: 'https://yandex.ru/maps/org/surf_coffee/123',
               price: 1200,
             ),
           ],
@@ -2062,6 +2063,13 @@ void main() {
       );
       expect(dvorTeamRepository.refreshCalls, greaterThanOrEqualTo(1));
       expect(sender.lastContentMessage.text, contains('Ты в команде DVOR'));
+      expect(
+        sender.lastContentMessage.text,
+        contains(
+          '<a href="https://yandex.ru/maps/org/surf_coffee/123">Surf Coffee x Riverside</a>',
+        ),
+      );
+      expect(sender.lastContentMessage.text, isNot(contains('google.com/maps/search')));
       expect(sender.lastContentMessage.text, isNot(contains('Реквизиты для оплаты')));
       final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonBookTraining));

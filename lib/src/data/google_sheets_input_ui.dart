@@ -71,7 +71,7 @@ abstract final class GoogleSheetsInputUi {
         aliases: <String>['location_url', 'location_link', 'maps_url', 'map_url'],
         widthPx: 220,
         kind: GoogleSheetsInputColumnKind.url,
-        note: 'Ссылка на карту. Необязательно.',
+        note: 'Ссылка на Яндекс Карты. Если пусто — бот ищет по месту.',
       ),
       GoogleSheetsInputColumn(
         header: 'тренер',

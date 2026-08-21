@@ -88,11 +88,10 @@ extension MessageTemplatesHelpers on MessageTemplates {
     if (_isOutdoorCategory(training.category)) {
       return _escapeHtml(location);
     }
-    final locationUrl = training.locationUrl?.trim();
-    if (locationUrl != null && locationUrl.isNotEmpty) {
-      return _locationAnchor(label: location, url: locationUrl);
-    }
-    return _locationAnchor(label: location, url: _mapsSearchUrl(location));
+    return _locationAnchor(
+      label: location,
+      url: _resolvedMapsUrl(location: location, locationUrl: training.locationUrl),
+    );
   }
 
   String _bookingLocationLabel(TrainingBooking booking) {
@@ -100,7 +99,10 @@ extension MessageTemplatesHelpers on MessageTemplates {
     if (MessageFormatters.isOutdoorBooking(booking)) {
       return _escapeHtml(location);
     }
-    return _locationAnchor(label: location, url: _mapsSearchUrl(location));
+    return _locationAnchor(
+      label: location,
+      url: _resolvedMapsUrl(location: location, locationUrl: booking.locationUrl),
+    );
   }
 
   String _bookingTitleLine(TrainingBooking booking) {
@@ -137,9 +139,20 @@ extension MessageTemplatesHelpers on MessageTemplates {
     return '<a href="$escapedUrl">$escapedLabel</a>';
   }
 
+  String _resolvedMapsUrl({
+    required String location,
+    String? locationUrl,
+  }) {
+    final explicit = locationUrl?.trim();
+    if (explicit != null && explicit.isNotEmpty) {
+      return explicit;
+    }
+    return _mapsSearchUrl(location);
+  }
+
   String _mapsSearchUrl(String location) {
     final query = Uri.encodeComponent(location);
-    return 'https://www.google.com/maps/search/?api=1&query=$query';
+    return 'https://yandex.ru/maps/?text=$query';
   }
 
   String _labelWithCount(String label, int count) {

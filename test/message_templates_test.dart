@@ -72,6 +72,7 @@ void main() {
       expect(text, contains('📍 Где: Вершина хребта Магито в Карачаево-Черкесии'));
       expect(text, isNot(contains('<a href=')));
       expect(text, isNot(contains('google.com/maps/search')));
+      expect(text, isNot(contains('yandex.ru/maps')));
     });
   });
 
@@ -215,9 +216,29 @@ void main() {
       expect(text, contains('📍 Где: Вершина хребта Магито в Карачаево-Черкесии'));
       expect(text, isNot(contains('Тренировка:')));
       expect(text, isNot(contains('google.com/maps/search')));
+      expect(text, isNot(contains('yandex.ru/maps')));
     });
 
-    test('keeps indoor booking location as maps link', () {
+    test('uses sheet map url on indoor booking confirmation', () {
+      final text = templates.bookingCreated(
+        _booking(
+          trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
+          trainingTitle: '🏋️ Кроссфит',
+          location: 'Surf Coffee x Riverside',
+          locationUrl: 'https://yandex.ru/maps/org/surf_coffee/123',
+        ),
+      );
+
+      expect(
+        text,
+        contains(
+          '<a href="https://yandex.ru/maps/org/surf_coffee/123">Surf Coffee x Riverside</a>',
+        ),
+      );
+      expect(text, isNot(contains('google.com/maps/search')));
+    });
+
+    test('falls back to yandex maps search when indoor booking has no map url', () {
       final text = templates.bookingCreated(
         _booking(
           trainingKey: 'trainings|2026-06-14T19:00:00.000Z|🏋️ Кроссфит|Зал',
@@ -226,8 +247,12 @@ void main() {
         ),
       );
 
-      expect(text, contains('<a href="https://www.google.com/maps/search/?api=1'));
+      expect(
+        text,
+        contains('<a href="https://yandex.ru/maps/?text=%D0%97%D0%B0%D0%BB%20DVOR">'),
+      );
       expect(text, contains('📍 Где: <a href='));
+      expect(text, isNot(contains('google.com/maps/search')));
     });
   });
 
@@ -542,6 +567,7 @@ TrainingBooking _booking({
   required String trainingKey,
   required String trainingTitle,
   required String location,
+  String? locationUrl,
   int? trainingPrice,
   int? trainingPrepayPercent,
   String? promoCode,
@@ -557,6 +583,7 @@ TrainingBooking _booking({
     trainingTitle: trainingTitle,
     startsAt: DateTime(2026, 6, 14, 10, 0),
     location: location,
+    locationUrl: locationUrl,
     status: status,
     trainingPrice: trainingPrice ?? 1500,
     trainingPrepayPercent: trainingPrepayPercent,
