@@ -44,6 +44,48 @@ Map<String, dynamic> privatePhotoMessageUpdate({
   };
 }
 
+Map<String, dynamic> privateVideoNoteMessageUpdate({
+  required int chatId,
+  required int userId,
+  required int messageId,
+  String fileId = 'video_note_file',
+  String? username,
+}) {
+  return <String, dynamic>{
+    'update_id': DateTime.now().microsecondsSinceEpoch,
+    'message': <String, dynamic>{
+      'message_id': messageId,
+      'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+      'from': <String, dynamic>{
+        'id': userId,
+        if (username != null) 'username': username,
+      },
+      'video_note': <String, Object?>{'file_id': fileId},
+    },
+  };
+}
+
+Map<String, dynamic> privateVideoMessageUpdate({
+  required int chatId,
+  required int userId,
+  required int messageId,
+  String fileId = 'video_file',
+  String? username,
+}) {
+  return <String, dynamic>{
+    'update_id': DateTime.now().microsecondsSinceEpoch,
+    'message': <String, dynamic>{
+      'message_id': messageId,
+      'chat': <String, dynamic>{'id': chatId, 'type': 'private'},
+      'from': <String, dynamic>{
+        'id': userId,
+        if (username != null) 'username': username,
+      },
+      'video': <String, Object?>{'file_id': fileId},
+    },
+  };
+}
+
 Map<String, dynamic> privateCallbackUpdate({
   required String callbackId,
   required int chatId,

@@ -107,6 +107,10 @@ final class PrivateHandlersHarness {
     );
   }
 
+  Future<bool> handleUpdate(Map<String, dynamic> update) {
+    return handlers.handle(update);
+  }
+
   List<SentMessage> messagesTo(int chatId) =>
       sender.messages.where((item) => item.chatId == chatId).toList(growable: false);
 }

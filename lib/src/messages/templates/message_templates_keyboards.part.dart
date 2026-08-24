@@ -53,6 +53,14 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     return TelegramKeyboards.adminToolsKeyboard();
   }
 
+  Map<String, Object?> adminOnboardingMediaHubKeyboard() {
+    return TelegramKeyboards.adminOnboardingMediaHubKeyboard();
+  }
+
+  Map<String, Object?> adminOnboardingMediaSlotKeyboard({required bool hasMedia}) {
+    return TelegramKeyboards.adminOnboardingMediaSlotKeyboard(hasMedia: hasMedia);
+  }
+
   Map<String, Object?> adminAnalyticsKeyboard() {
     return TelegramKeyboards.adminAnalyticsKeyboard();
   }

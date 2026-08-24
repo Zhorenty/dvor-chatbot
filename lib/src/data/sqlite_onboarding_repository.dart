@@ -134,6 +134,15 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
       );
     ''');
     db.execute('''
+      CREATE TABLE IF NOT EXISTS onboarding_media (
+        slot_key TEXT PRIMARY KEY,
+        file_id TEXT NOT NULL,
+        kind TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        updated_by_user_id INTEGER
+      );
+    ''');
+    db.execute('''
       CREATE TABLE IF NOT EXISTS schema_meta (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
@@ -1362,6 +1371,92 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
     return StarterBonusAnalytics(
       availableCount: availableCount,
       consumedCount: consumedCount,
+    );
+  }
+
+  @override
+  Future<OnboardingMediaAsset?> getOnboardingMedia(OnboardingMediaSlot slot) async {
+    final db = _database;
+    final rows = db.select(
+      '''
+      SELECT slot_key, file_id, kind, updated_at, updated_by_user_id
+      FROM onboarding_media
+      WHERE slot_key = ?
+      LIMIT 1;
+      ''',
+      <Object?>[slot.storageValue],
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return _mapMedia(rows.first);
+  }
+
+  @override
+  Future<List<OnboardingMediaAsset>> listOnboardingMedia() async {
+    final db = _database;
+    final rows = db.select(
+      '''
+      SELECT slot_key, file_id, kind, updated_at, updated_by_user_id
+      FROM onboarding_media;
+      ''',
+    );
+    return rows.map(_mapMedia).whereType<OnboardingMediaAsset>().toList(growable: false);
+  }
+
+  @override
+  Future<void> upsertOnboardingMedia({
+    required OnboardingMediaSlot slot,
+    required String fileId,
+    required OnboardingMediaKind kind,
+    required DateTime updatedAt,
+    int? updatedByUserId,
+  }) async {
+    final db = _database;
+    db.execute(
+      '''
+      INSERT INTO onboarding_media (
+        slot_key, file_id, kind, updated_at, updated_by_user_id
+      ) VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(slot_key) DO UPDATE SET
+        file_id = excluded.file_id,
+        kind = excluded.kind,
+        updated_at = excluded.updated_at,
+        updated_by_user_id = excluded.updated_by_user_id;
+      ''',
+      <Object?>[
+        slot.storageValue,
+        fileId,
+        kind.storageValue,
+        updatedAt.toUtc().toIso8601String(),
+        updatedByUserId,
+      ],
+    );
+  }
+
+  @override
+  Future<void> clearOnboardingMedia(OnboardingMediaSlot slot) async {
+    final db = _database;
+    db.execute(
+      'DELETE FROM onboarding_media WHERE slot_key = ?;',
+      <Object?>[slot.storageValue],
+    );
+  }
+
+  OnboardingMediaAsset? _mapMedia(Row row) {
+    final slot = OnboardingMediaSlotX.tryParse(row['slot_key'] as String?);
+    final kind = OnboardingMediaKindX.tryParse(row['kind'] as String?);
+    final fileId = row['file_id'] as String?;
+    final updatedAtRaw = row['updated_at'] as String?;
+    if (slot == null || kind == null || fileId == null || fileId.isEmpty || updatedAtRaw == null) {
+      return null;
+    }
+    return OnboardingMediaAsset(
+      slot: slot,
+      fileId: fileId,
+      kind: kind,
+      updatedAt: DateTime.parse(updatedAtRaw).toUtc(),
+      updatedByUserId: row['updated_by_user_id'] as int?,
     );
   }
 

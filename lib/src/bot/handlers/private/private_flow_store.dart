@@ -2,6 +2,7 @@ import 'package:dvor_chatbot/src/application/broadcast_service.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
@@ -46,6 +47,8 @@ enum PrivateFlowStep {
   selectingRescheduleTraining,
   selectingAdminBookingManagementAction,
   selectingAdminToolsAction,
+  selectingOnboardingMediaSlot,
+  awaitingOnboardingMediaFile,
   selectingAdminAnalyticsAction,
   selectingAdminSubscriptionsAction,
   selectingAdminSubscriptionFilter,
@@ -203,6 +206,7 @@ final class PrivateFlowState {
     this.feedbackTrainingTitle,
     this.feedbackRating,
     this.adminSchedule = const AdminScheduleFlow(),
+    this.onboardingMediaSlot,
   });
 
   final PrivateFlowStep step;
@@ -242,6 +246,7 @@ final class PrivateFlowState {
   final String? feedbackTrainingTitle;
   final TrainingFeedbackRating? feedbackRating;
   final AdminScheduleFlow adminSchedule;
+  final OnboardingMediaSlot? onboardingMediaSlot;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -281,6 +286,7 @@ final class PrivateFlowState {
     Object? feedbackTrainingTitle = _privateFlowUnset,
     Object? feedbackRating = _privateFlowUnset,
     AdminScheduleFlow? adminSchedule,
+    Object? onboardingMediaSlot = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -371,6 +377,9 @@ final class PrivateFlowState {
           ? this.feedbackRating
           : feedbackRating as TrainingFeedbackRating?,
       adminSchedule: adminSchedule ?? this.adminSchedule,
+      onboardingMediaSlot: identical(onboardingMediaSlot, _privateFlowUnset)
+          ? this.onboardingMediaSlot
+          : onboardingMediaSlot as OnboardingMediaSlot?,
     );
   }
 }

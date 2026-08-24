@@ -167,6 +167,46 @@ final class ActivityCatalogService {
     );
   }
 
+  List<TrainingInfo> cityFormatHighlights({int upcomingLimit = 24}) {
+    TrainingInfo? strength;
+    TrainingInfo? boxing;
+    TrainingInfo? run;
+    for (final item in _scheduleRepository.upcoming(limit: upcomingLimit)) {
+      switch (cityFormatKind(item)) {
+        case CityFormatKind.strength when strength == null:
+          strength = item;
+        case CityFormatKind.boxing when boxing == null:
+          boxing = item;
+        case CityFormatKind.run when run == null:
+          run = item;
+        case CityFormatKind.strength:
+        case CityFormatKind.boxing:
+        case CityFormatKind.run:
+        case null:
+          break;
+      }
+    }
+    return <TrainingInfo>[
+      if (strength != null) strength,
+      if (boxing != null) boxing,
+      if (run != null) run,
+    ];
+  }
+
+  CityFormatKind? cityFormatKind(TrainingInfo item) {
+    final title = item.title.toLowerCase();
+    if (title.contains('бокс')) {
+      return CityFormatKind.boxing;
+    }
+    if (title.contains('сил')) {
+      return CityFormatKind.strength;
+    }
+    if (title.contains('забег') || title.contains('бег')) {
+      return CityFormatKind.run;
+    }
+    return null;
+  }
+
   String dateRangeLabel(OutdoorActivityInfo item) {
     final from = item.dateFrom;
     final to = item.dateTo;
@@ -191,6 +231,12 @@ final class ActivityCatalogService {
     normalized = normalized.replaceAll(RegExp(r'\s+'), ' ');
     return normalized;
   }
+}
+
+enum CityFormatKind {
+  strength,
+  boxing,
+  run,
 }
 
 extension on List<String> {

@@ -8,6 +8,20 @@ abstract interface class MessageSender {
     String? parseMode,
   });
 
+  Future<int> sendVideo(
+    int chatId, {
+    required String video,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  });
+
+  Future<int> sendVideoNote(
+    int chatId, {
+    required String videoNote,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  });
+
   Future<int> copyMessage(
     int chatId, {
     required int fromChatId,

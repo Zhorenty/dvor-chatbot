@@ -41,6 +41,50 @@ final class LoggingMessageSender implements MessageSender {
   }
 
   @override
+  Future<int> sendVideo(
+    int chatId, {
+    required String video,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final messageId = await _inner.sendVideo(
+      chatId,
+      video: video,
+      disableNotification: disableNotification,
+      replyMarkup: replyMarkup,
+    );
+    await _safeAppend(
+      chatId: chatId,
+      telegramMessageId: messageId,
+      contentType: ConversationContentType.video,
+      textPreview: 'video $video',
+    );
+    return messageId;
+  }
+
+  @override
+  Future<int> sendVideoNote(
+    int chatId, {
+    required String videoNote,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final messageId = await _inner.sendVideoNote(
+      chatId,
+      videoNote: videoNote,
+      disableNotification: disableNotification,
+      replyMarkup: replyMarkup,
+    );
+    await _safeAppend(
+      chatId: chatId,
+      telegramMessageId: messageId,
+      contentType: ConversationContentType.video,
+      textPreview: 'video_note $videoNote',
+    );
+    return messageId;
+  }
+
+  @override
   Future<int> copyMessage(
     int chatId, {
     required int fromChatId,

@@ -224,6 +224,20 @@ abstract interface class OnboardingRepository {
   });
 
   Future<StarterBonusAnalytics> getStarterBonusAnalytics();
+
+  Future<OnboardingMediaAsset?> getOnboardingMedia(OnboardingMediaSlot slot);
+
+  Future<List<OnboardingMediaAsset>> listOnboardingMedia();
+
+  Future<void> upsertOnboardingMedia({
+    required OnboardingMediaSlot slot,
+    required String fileId,
+    required OnboardingMediaKind kind,
+    required DateTime updatedAt,
+    int? updatedByUserId,
+  });
+
+  Future<void> clearOnboardingMedia(OnboardingMediaSlot slot);
 }
 
 final class NoopOnboardingRepository implements OnboardingRepository {
@@ -479,4 +493,22 @@ final class NoopOnboardingRepository implements OnboardingRepository {
   Future<StarterBonusAnalytics> getStarterBonusAnalytics() async {
     return const StarterBonusAnalytics(availableCount: 0, consumedCount: 0);
   }
+
+  @override
+  Future<OnboardingMediaAsset?> getOnboardingMedia(OnboardingMediaSlot slot) async => null;
+
+  @override
+  Future<List<OnboardingMediaAsset>> listOnboardingMedia() async => const <OnboardingMediaAsset>[];
+
+  @override
+  Future<void> upsertOnboardingMedia({
+    required OnboardingMediaSlot slot,
+    required String fileId,
+    required OnboardingMediaKind kind,
+    required DateTime updatedAt,
+    int? updatedByUserId,
+  }) async {}
+
+  @override
+  Future<void> clearOnboardingMedia(OnboardingMediaSlot slot) async {}
 }

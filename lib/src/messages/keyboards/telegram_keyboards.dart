@@ -82,6 +82,39 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonManageBookings},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingMedia},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminOnboardingMediaHubKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingMediaVenue},
+          <String, String>{'text': MessageCopy.buttonOnboardingMediaCameAlone},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> adminOnboardingMediaSlotKeyboard({required bool hasMedia}) {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        if (hasMedia)
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonOnboardingMediaClear},
+          ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],

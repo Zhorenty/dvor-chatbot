@@ -1030,6 +1030,7 @@ final class FakeSender implements MessageSender {
 
   final Duration? sendDelay;
   final List<SentMessage> messages = <SentMessage>[];
+  final List<SentMedia> media = <SentMedia>[];
   final List<CopiedMessage> copiedMessages = <CopiedMessage>[];
   final List<DeletedMessage> deletedMessages = <DeletedMessage>[];
   final List<BannedMember> bannedMembers = <BannedMember>[];
@@ -1079,6 +1080,44 @@ final class FakeSender implements MessageSender {
       ),
     );
     return messages.length;
+  }
+
+  @override
+  Future<int> sendVideo(
+    int chatId, {
+    required String video,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    media.add(
+      SentMedia(
+        chatId: chatId,
+        fileId: video,
+        kind: SentMediaKind.video,
+        disableNotification: disableNotification,
+        replyMarkup: replyMarkup,
+      ),
+    );
+    return media.length;
+  }
+
+  @override
+  Future<int> sendVideoNote(
+    int chatId, {
+    required String videoNote,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    media.add(
+      SentMedia(
+        chatId: chatId,
+        fileId: videoNote,
+        kind: SentMediaKind.videoNote,
+        disableNotification: disableNotification,
+        replyMarkup: replyMarkup,
+      ),
+    );
+    return media.length;
   }
 
   @override
@@ -1191,6 +1230,24 @@ final class SentMessage {
   final String? parseMode;
 }
 
+enum SentMediaKind { video, videoNote }
+
+final class SentMedia {
+  const SentMedia({
+    required this.chatId,
+    required this.fileId,
+    required this.kind,
+    required this.disableNotification,
+    this.replyMarkup,
+  });
+
+  final int chatId;
+  final String fileId;
+  final SentMediaKind kind;
+  final bool disableNotification;
+  final Map<String, Object?>? replyMarkup;
+}
+
 final class CopiedMessage {
   const CopiedMessage({
     required this.toChatId,
@@ -1265,6 +1322,8 @@ final class EditedReplyMarkup {
 
 final class FakeOnboardingRepository implements OnboardingRepository {
   final Map<int, _FakeOnboardingState> _stateByUserId = <int, _FakeOnboardingState>{};
+  final Map<OnboardingMediaSlot, OnboardingMediaAsset> _mediaBySlot =
+      <OnboardingMediaSlot, OnboardingMediaAsset>{};
   final List<PendingWelcomeMessage> readyForDelete = <PendingWelcomeMessage>[];
   final Map<int, int> referralInviterByInvitee = <int, int>{};
   final Set<String> sentNudgeKeys = <String>{};
@@ -1833,6 +1892,38 @@ final class FakeOnboardingRepository implements OnboardingRepository {
   @override
   Future<StarterBonusAnalytics> getStarterBonusAnalytics() async {
     return const StarterBonusAnalytics(availableCount: 0, consumedCount: 0);
+  }
+
+  @override
+  Future<OnboardingMediaAsset?> getOnboardingMedia(OnboardingMediaSlot slot) async {
+    return _mediaBySlot[slot];
+  }
+
+  @override
+  Future<List<OnboardingMediaAsset>> listOnboardingMedia() async {
+    return _mediaBySlot.values.toList(growable: false);
+  }
+
+  @override
+  Future<void> upsertOnboardingMedia({
+    required OnboardingMediaSlot slot,
+    required String fileId,
+    required OnboardingMediaKind kind,
+    required DateTime updatedAt,
+    int? updatedByUserId,
+  }) async {
+    _mediaBySlot[slot] = OnboardingMediaAsset(
+      slot: slot,
+      fileId: fileId,
+      kind: kind,
+      updatedAt: updatedAt.toUtc(),
+      updatedByUserId: updatedByUserId,
+    );
+  }
+
+  @override
+  Future<void> clearOnboardingMedia(OnboardingMediaSlot slot) async {
+    _mediaBySlot.remove(slot);
   }
 
   OnboardingUserState _toState(int userId, _FakeOnboardingState state) {

@@ -44,6 +44,32 @@ enum OnboardingTrack {
   // pro,
 }
 
+enum OnboardingMediaSlot {
+  venue,
+  cameAlone,
+}
+
+enum OnboardingMediaKind {
+  video,
+  videoNote,
+}
+
+final class OnboardingMediaAsset {
+  const OnboardingMediaAsset({
+    required this.slot,
+    required this.fileId,
+    required this.kind,
+    required this.updatedAt,
+    this.updatedByUserId,
+  });
+
+  final OnboardingMediaSlot slot;
+  final String fileId;
+  final OnboardingMediaKind kind;
+  final DateTime updatedAt;
+  final int? updatedByUserId;
+}
+
 enum OnboardingEntryType {
   group,
   cold,
@@ -178,6 +204,44 @@ extension OnboardingEntryTypeX on OnboardingEntryType {
       return null;
     }
     for (final value in OnboardingEntryType.values) {
+      if (value.storageValue == raw) {
+        return value;
+      }
+    }
+    return null;
+  }
+}
+
+extension OnboardingMediaSlotX on OnboardingMediaSlot {
+  String get storageValue => switch (this) {
+        OnboardingMediaSlot.venue => 'venue',
+        OnboardingMediaSlot.cameAlone => 'came_alone',
+      };
+
+  static OnboardingMediaSlot? tryParse(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    for (final value in OnboardingMediaSlot.values) {
+      if (value.storageValue == raw) {
+        return value;
+      }
+    }
+    return null;
+  }
+}
+
+extension OnboardingMediaKindX on OnboardingMediaKind {
+  String get storageValue => switch (this) {
+        OnboardingMediaKind.video => 'video',
+        OnboardingMediaKind.videoNote => 'video_note',
+      };
+
+  static OnboardingMediaKind? tryParse(String? raw) {
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    for (final value in OnboardingMediaKind.values) {
       if (value.storageValue == raw) {
         return value;
       }

@@ -885,7 +885,66 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String chooseAdminToolsAction() {
     return '🧰 <b>Инструменты</b>\n'
-        'Записи, синхронизация, абонементы и клиентское меню 👇';
+        'Записи, синхронизация, абонементы, онбординг-видео и клиентское меню 👇';
+  }
+
+  String adminOnboardingMediaHub({
+    required bool venueSet,
+    required bool cameAloneSet,
+  }) {
+    return '🎥 <b>Онбординг-видео</b>\n\n'
+        'Площадка: ${_mediaStatus(venueSet)} — после первой записи.\n'
+        'Пришёл один: ${_mediaStatus(cameAloneSet)} — на карте клуба после квиза.\n\n'
+        'Пустой слот человек не видит.\n'
+        'Выбери слот и пришли видео или кружок.';
+  }
+
+  String adminOnboardingMediaSlotPrompt({
+    required OnboardingMediaSlot slot,
+    required OnboardingMediaAsset? current,
+  }) {
+    final currentLabel = current == null
+        ? 'пусто'
+        : current.kind == OnboardingMediaKind.videoNote
+            ? 'кружок'
+            : 'видео';
+    return 'Слот: <b>${_onboardingMediaSlotLabel(slot)}</b>\n'
+        'Сейчас: <b>$currentLabel</b>\n\n'
+        'Пришли видео или кружок следующим сообщением — заменит текущий.\n'
+        '${_onboardingMediaSlotPlacement(slot)}';
+  }
+
+  String adminOnboardingMediaSaved({
+    required OnboardingMediaSlot slot,
+    required OnboardingMediaKind kind,
+  }) {
+    final kindLabel = kind == OnboardingMediaKind.videoNote ? 'кружок' : 'видео';
+    return 'Сохранил. ${_onboardingMediaSlotLabel(slot)}: $kindLabel.\n'
+        '${_onboardingMediaSlotPlacement(slot)}';
+  }
+
+  String adminOnboardingMediaCleared(OnboardingMediaSlot slot) {
+    return 'Слот «${_onboardingMediaSlotLabel(slot)}» пустой.';
+  }
+
+  String adminOnboardingMediaNeedFile() {
+    return 'Нужно видео или кружок. Фото и файлы сюда не подходят.';
+  }
+
+  String _mediaStatus(bool set) => set ? 'есть' : 'пусто';
+
+  String _onboardingMediaSlotLabel(OnboardingMediaSlot slot) {
+    return switch (slot) {
+      OnboardingMediaSlot.venue => 'Площадка',
+      OnboardingMediaSlot.cameAlone => 'Пришёл один',
+    };
+  }
+
+  String _onboardingMediaSlotPlacement(OnboardingMediaSlot slot) {
+    return switch (slot) {
+      OnboardingMediaSlot.venue => 'Новичок увидит после первой записи.',
+      OnboardingMediaSlot.cameAlone => 'Новичок увидит на карте клуба после квиза.',
+    };
   }
 
   String chooseAdminAnalyticsAction() {
@@ -1675,6 +1734,7 @@ extension MessageTemplatesContent on MessageTemplates {
       ConversationContentType.text => '[текст]',
       ConversationContentType.photo => '[фото]',
       ConversationContentType.document => '[документ]',
+      ConversationContentType.video => '[видео]',
       ConversationContentType.copy => '[копия сообщения]',
       ConversationContentType.other => '[сообщение]',
     };

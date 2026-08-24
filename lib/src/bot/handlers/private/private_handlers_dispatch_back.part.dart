@@ -296,6 +296,21 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
               flowState!.copyWith(step: _PrivateFlowStep.selectingBookingAction);
           await _sendBookingActionsCard(chatId: chatId, booking: selectedBooking);
           return true;
+        case _PrivateFlowStep.selectingOnboardingMediaSlot:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminToolsAction,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sender.sendMessage(
+            chatId,
+            _templates.chooseAdminToolsAction(),
+            replyMarkup: _templates.adminToolsKeyboard(),
+            parseMode: 'HTML',
+          );
+          return true;
+        case _PrivateFlowStep.awaitingOnboardingMediaFile:
+          await _openOnboardingMediaHub(chatId: chatId, userId: userId);
+          return true;
         case _PrivateFlowStep.selectingAdminBookingManagementAction:
           _flowByUserId[userId] = const _PrivateFlowState(
             step: _PrivateFlowStep.selectingAdminToolsAction,

@@ -36,15 +36,54 @@ final class PrivateNavigationTemplates {
     return 'С чего начнём?';
   }
 
-  String onboardingClubMap({required bool starterBonusAvailable}) {
+  String onboardingClubMap({
+    required bool starterBonusAvailable,
+    List<TrainingInfo> citySlots = const <TrainingInfo>[],
+  }) {
     final bonusLine =
         starterBonusAvailable ? '\n\nУ тебя есть бесплатная тренировка за старт.' : '';
+    final slotsBlock = _citySlotsBlock(citySlots);
     return 'Следующий шаг — выбрать слот и записаться.\n\n'
         'В боте — расписание и запись.\n'
-        'Не с кем идти — приходи один. На площадке уже будут свои.\n\n'
-        'В группе — афиши: ${MessageCopy.dvorGroupInviteUrl}\n'
+        'Не с кем идти — приходи один. На площадке уже будут свои.\n'
+        '$slotsBlock'
+        '\nВ группе — афиши: ${MessageCopy.dvorGroupInviteUrl}\n'
         'Можно зайти и ничего не писать.'
         '$bonusLine';
+  }
+
+  String _citySlotsBlock(List<TrainingInfo> citySlots) {
+    if (citySlots.isEmpty) {
+      return '';
+    }
+    final lines = <String>['', 'Ближайшие слоты в городе:', ''];
+    for (final slot in citySlots) {
+      final kind = switch (_citySlotKind(slot.title)) {
+        'boxing' => 'Бокс',
+        'strength' => 'Силовая',
+        'run' => 'Забег',
+        _ => slot.title,
+      };
+      lines
+        ..add('$kind: ${slot.title}')
+        ..add('${_slotWhen(slot)} · ${slot.location}')
+        ..add('');
+    }
+    return lines.join('\n');
+  }
+
+  String _citySlotKind(String title) {
+    final lower = title.toLowerCase();
+    if (lower.contains('бокс')) {
+      return 'boxing';
+    }
+    if (lower.contains('сил')) {
+      return 'strength';
+    }
+    if (lower.contains('забег') || lower.contains('бег')) {
+      return 'run';
+    }
+    return '';
   }
 
   String onboardingNeedHelp() {

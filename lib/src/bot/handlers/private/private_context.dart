@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 
 final class PrivateMessageContext {
@@ -154,6 +155,29 @@ int? _asTelegramInt(Object? value) {
     messageId: messageId,
     mediaGroupId: mediaGroupId == null || mediaGroupId.isEmpty ? null : mediaGroupId,
   );
+}
+
+({String fileId, OnboardingMediaKind kind})? extractOnboardingMedia(
+  Map<String, dynamic>? message,
+) {
+  if (message == null) {
+    return null;
+  }
+  final note = message['video_note'];
+  if (note is Map) {
+    final fileId = note['file_id']?.toString().trim();
+    if (fileId != null && fileId.isNotEmpty) {
+      return (fileId: fileId, kind: OnboardingMediaKind.videoNote);
+    }
+  }
+  final video = message['video'];
+  if (video is Map) {
+    final fileId = video['file_id']?.toString().trim();
+    if (fileId != null && fileId.isNotEmpty) {
+      return (fileId: fileId, kind: OnboardingMediaKind.video);
+    }
+  }
+  return null;
 }
 
 String? callbackToCommandText(String? callbackData) {

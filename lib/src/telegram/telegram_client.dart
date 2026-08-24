@@ -246,6 +246,64 @@ final class TelegramClient implements MessageSender {
   int _textLength(String text) => text.runes.length;
 
   @override
+  Future<int> sendVideo(
+    int chatId, {
+    required String video,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) {
+    return _sendFileMessage(
+      method: 'sendVideo',
+      chatId: chatId,
+      fileField: 'video',
+      fileId: video,
+      disableNotification: disableNotification,
+      replyMarkup: replyMarkup,
+    );
+  }
+
+  @override
+  Future<int> sendVideoNote(
+    int chatId, {
+    required String videoNote,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) {
+    return _sendFileMessage(
+      method: 'sendVideoNote',
+      chatId: chatId,
+      fileField: 'video_note',
+      fileId: videoNote,
+      disableNotification: disableNotification,
+      replyMarkup: replyMarkup,
+    );
+  }
+
+  Future<int> _sendFileMessage({
+    required String method,
+    required int chatId,
+    required String fileField,
+    required String fileId,
+    required bool disableNotification,
+    required Map<String, Object?>? replyMarkup,
+  }) async {
+    final body = <String, Object?>{
+      'chat_id': chatId,
+      fileField: fileId,
+      'disable_notification': disableNotification,
+    };
+    if (replyMarkup != null) {
+      body['reply_markup'] = replyMarkup;
+    }
+    final payload = await _post(method, body: body);
+    final result = payload['result'];
+    if (result is! Map || result['message_id'] is! int) {
+      throw const TelegramApiException('Telegram did not return message_id');
+    }
+    return result['message_id'] as int;
+  }
+
+  @override
   Future<int> copyMessage(
     int chatId, {
     required int fromChatId,

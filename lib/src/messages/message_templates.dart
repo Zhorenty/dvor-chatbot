@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
+import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
@@ -114,6 +115,10 @@ final class MessageTemplates {
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
   static const String buttonBroadcast = MessageCopy.buttonBroadcast;
   static const String buttonAdminTools = MessageCopy.buttonAdminTools;
+  static const String buttonOnboardingMedia = MessageCopy.buttonOnboardingMedia;
+  static const String buttonOnboardingMediaVenue = MessageCopy.buttonOnboardingMediaVenue;
+  static const String buttonOnboardingMediaCameAlone = MessageCopy.buttonOnboardingMediaCameAlone;
+  static const String buttonOnboardingMediaClear = MessageCopy.buttonOnboardingMediaClear;
   static const String buttonClientMenu = MessageCopy.buttonClientMenu;
   static const String buttonAdminMenu = MessageCopy.buttonAdminMenu;
   static const String buttonAdminUserSearch = MessageCopy.buttonAdminUserSearch;
@@ -185,9 +190,13 @@ final class MessageTemplates {
 
   String onboardingTrackChoice() => _privateNavigationTemplates.onboardingTrackChoice();
 
-  String onboardingClubMap({required bool starterBonusAvailable}) {
+  String onboardingClubMap({
+    required bool starterBonusAvailable,
+    List<TrainingInfo> citySlots = const <TrainingInfo>[],
+  }) {
     return _privateNavigationTemplates.onboardingClubMap(
       starterBonusAvailable: starterBonusAvailable,
+      citySlots: citySlots,
     );
   }
 

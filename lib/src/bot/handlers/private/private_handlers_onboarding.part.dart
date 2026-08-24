@@ -10,6 +10,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
       return;
     }
     try {
+      await _sendOnboardingMediaIfAny(chatId: userId, slot: OnboardingMediaSlot.venue);
       await _sender.sendMessage(
         userId,
         _templates.onboardingActivationSuccess(),
@@ -218,16 +219,41 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
     final state = await _onboardingRepository.getOnboardingState(userId);
     final outdoor = state?.selectedTrack == OnboardingTrack.outdoor;
+    final citySlots = outdoor ? const <TrainingInfo>[] : _catalogService.cityFormatHighlights();
     _flowByUserId[userId] = const PrivateFlowState(
       step: PrivateFlowStep.onboardingMap,
       availableTrainings: <TrainingInfo>[],
     );
     await _onboardingService.markMapShown(userId);
+    await _sendOnboardingMediaIfAny(chatId: chatId, slot: OnboardingMediaSlot.cameAlone);
     await _sender.sendMessage(
       chatId,
-      _templates.onboardingClubMap(starterBonusAvailable: starterBonusAvailable),
+      _templates.onboardingClubMap(
+        starterBonusAvailable: starterBonusAvailable,
+        citySlots: citySlots,
+      ),
       replyMarkup: _templates.onboardingMapCtaKeyboard(outdoorTrack: outdoor),
     );
+  }
+
+  Future<void> _sendOnboardingMediaIfAny({
+    required int chatId,
+    required OnboardingMediaSlot slot,
+  }) async {
+    final asset = await _onboardingRepository.getOnboardingMedia(slot);
+    if (asset == null) {
+      return;
+    }
+    try {
+      switch (asset.kind) {
+        case OnboardingMediaKind.videoNote:
+          await _sender.sendVideoNote(chatId, videoNote: asset.fileId);
+        case OnboardingMediaKind.video:
+          await _sender.sendVideo(chatId, video: asset.fileId);
+      }
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to send onboarding media ${slot.storageValue} to $chatId: $error', stackTrace);
+    }
   }
 
   Future<bool> _handleTrainingFeedbackFlow({
@@ -497,6 +523,9 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     }
     if (message['document'] is Map) {
       return ConversationContentType.document;
+    }
+    if (message['video'] is Map || message['video_note'] is Map) {
+      return ConversationContentType.video;
     }
     return ConversationContentType.other;
   }

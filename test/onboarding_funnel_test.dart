@@ -16,6 +16,7 @@ import 'package:test/test.dart';
 
 import 'support/fakes.dart';
 import 'support/private_handlers_harness.dart';
+import 'support/telegram_fixtures.dart';
 
 void main() {
   group('Onboarding funnel', () {
@@ -534,6 +535,165 @@ void main() {
         firstName: 'Георгий',
       );
       expect(text, contains('Привет, <a href="tg://user?id=42">Георгий</a>!'));
+    });
+
+    test('city map names nearest sheet slots, not weekday coaches', () async {
+      final harness = PrivateHandlersHarness(
+        onboardingDripEnabled: true,
+        trainings: <TrainingInfo>[
+          TrainingInfo(
+            title: 'Утренняя силовая',
+            startsAt: DateTime(2026, 8, 26, 19),
+            location: 'Зал',
+          ),
+          TrainingInfo(
+            title: 'Бокс',
+            startsAt: DateTime(2026, 8, 27, 19),
+            location: 'Ринг',
+          ),
+          TrainingInfo(
+            title: 'Общий забег',
+            startsAt: DateTime(2026, 8, 29, 9),
+            location: 'Парк',
+          ),
+        ],
+      );
+
+      await harness.handleText(chatId: 303, userId: 303, text: '/start');
+      await harness.handleText(
+        chatId: 303,
+        userId: 303,
+        text: MessageTemplates.buttonQuizGoalForm,
+      );
+      await harness.handleText(
+        chatId: 303,
+        userId: 303,
+        text: MessageTemplates.buttonQuizExpBeginner,
+      );
+      await harness.handleText(
+        chatId: 303,
+        userId: 303,
+        text: MessageTemplates.buttonTrackOneOff,
+      );
+
+      final text = harness.messagesTo(303).last.text;
+      expect(text, contains('Ближайшие слоты в городе'));
+      expect(text, contains('Силовая: Утренняя силовая'));
+      expect(text, contains('Бокс: Бокс'));
+      expect(text, contains('Забег: Общий забег'));
+      expect(text, isNot(contains('Даша')));
+      expect(text, isNot(contains('в среду')));
+    });
+
+    test('came-alone circle is sent on club map when uploaded', () async {
+      final onboarding = FakeOnboardingRepository();
+      await onboarding.upsertOnboardingMedia(
+        slot: OnboardingMediaSlot.cameAlone,
+        fileId: 'came_alone_note',
+        kind: OnboardingMediaKind.videoNote,
+        updatedAt: DateTime.utc(2026, 8, 24),
+      );
+      final harness = PrivateHandlersHarness(
+        onboardingRepository: onboarding,
+        onboardingDripEnabled: true,
+      );
+
+      await harness.handleText(chatId: 404, userId: 404, text: '/start');
+      await harness.handleText(
+        chatId: 404,
+        userId: 404,
+        text: MessageTemplates.buttonQuizGoalForm,
+      );
+      await harness.handleText(
+        chatId: 404,
+        userId: 404,
+        text: MessageTemplates.buttonQuizExpBeginner,
+      );
+      await harness.handleText(
+        chatId: 404,
+        userId: 404,
+        text: MessageTemplates.buttonTrackOneOff,
+      );
+
+      expect(harness.sender.media, hasLength(1));
+      expect(harness.sender.media.single.fileId, 'came_alone_note');
+      expect(harness.sender.media.single.kind, SentMediaKind.videoNote);
+    });
+
+    test('venue circle is sent after first booking when uploaded', () async {
+      final onboarding = FakeOnboardingRepository()
+        ..seedUser(userId: 505, phase: OnboardingPhase.phase2Activation);
+      await onboarding.upsertOnboardingMedia(
+        slot: OnboardingMediaSlot.venue,
+        fileId: 'venue_note',
+        kind: OnboardingMediaKind.videoNote,
+        updatedAt: DateTime.utc(2026, 8, 24),
+      );
+      final harness = PrivateHandlersHarness(
+        onboardingRepository: onboarding,
+        onboardingDripEnabled: true,
+        trainings: <TrainingInfo>[
+          TrainingInfo(
+            title: 'Силовая',
+            startsAt: DateTime(2026, 8, 26, 19),
+            location: 'Зал',
+            price: 0,
+          ),
+        ],
+      );
+
+      await harness.handleText(chatId: 505, userId: 505, text: '/book');
+      await harness.handleText(
+        chatId: 505,
+        userId: 505,
+        text: MessageTemplates.buttonCategoryTrainings,
+      );
+      await harness.handleText(chatId: 505, userId: 505, text: '🎯 1. Силовая');
+
+      expect(
+        harness.sender.media.where((item) => item.fileId == 'venue_note'),
+        isNotEmpty,
+      );
+      expect(
+        harness.messagesTo(505).map((item) => item.text).join('\n'),
+        contains('Первая тренировка в DVOR'),
+      );
+    });
+
+    test('admin can replace onboarding circle through tools', () async {
+      final harness = PrivateHandlersHarness(adminUserIds: const <int>{1});
+
+      await harness.handleText(
+        chatId: 1,
+        userId: 1,
+        text: MessageTemplates.buttonAdminTools,
+      );
+      await harness.handleText(
+        chatId: 1,
+        userId: 1,
+        text: MessageTemplates.buttonOnboardingMedia,
+      );
+      await harness.handleText(
+        chatId: 1,
+        userId: 1,
+        text: MessageTemplates.buttonOnboardingMediaVenue,
+      );
+      await harness.handleUpdate(
+        privateVideoNoteMessageUpdate(
+          chatId: 1,
+          userId: 1,
+          messageId: 9,
+          fileId: 'admin_venue_note',
+        ),
+      );
+
+      final stored = await harness.onboarding.getOnboardingMedia(OnboardingMediaSlot.venue);
+      expect(stored?.fileId, 'admin_venue_note');
+      expect(stored?.kind, OnboardingMediaKind.videoNote);
+      expect(
+        harness.messagesTo(1).last.text,
+        contains('Сохранил'),
+      );
     });
   });
 }

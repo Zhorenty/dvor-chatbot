@@ -7,6 +7,7 @@ enum ConversationContentType {
   text,
   photo,
   document,
+  video,
   other,
   copy,
 }

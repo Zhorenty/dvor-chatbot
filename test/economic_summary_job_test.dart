@@ -96,6 +96,26 @@ final class _FlakySender implements MessageSender {
   }) async {}
 
   @override
+  Future<int> sendVideo(
+    int chatId, {
+    required String video,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    return 0;
+  }
+
+  @override
+  Future<int> sendVideoNote(
+    int chatId, {
+    required String videoNote,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    return 0;
+  }
+
+  @override
   Future<int> copyMessage(
     int chatId, {
     required int fromChatId,

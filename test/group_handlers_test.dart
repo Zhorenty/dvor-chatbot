@@ -376,6 +376,26 @@ final class _FakeSender implements MessageSender {
   }
 
   @override
+  Future<int> sendVideo(
+    int chatId, {
+    required String video,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    throw UnimplementedError('sendVideo is not used in group handlers tests');
+  }
+
+  @override
+  Future<int> sendVideoNote(
+    int chatId, {
+    required String videoNote,
+    bool disableNotification = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    throw UnimplementedError('sendVideoNote is not used in group handlers tests');
+  }
+
+  @override
   Future<int> copyMessage(
     int chatId, {
     required int fromChatId,
@@ -729,6 +749,24 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
   Future<StarterBonusAnalytics> getStarterBonusAnalytics() async {
     return const StarterBonusAnalytics(availableCount: 0, consumedCount: 0);
   }
+
+  @override
+  Future<OnboardingMediaAsset?> getOnboardingMedia(OnboardingMediaSlot slot) async => null;
+
+  @override
+  Future<List<OnboardingMediaAsset>> listOnboardingMedia() async => const <OnboardingMediaAsset>[];
+
+  @override
+  Future<void> upsertOnboardingMedia({
+    required OnboardingMediaSlot slot,
+    required String fileId,
+    required OnboardingMediaKind kind,
+    required DateTime updatedAt,
+    int? updatedByUserId,
+  }) async {}
+
+  @override
+  Future<void> clearOnboardingMedia(OnboardingMediaSlot slot) async {}
 }
 
 final class _WelcomeRecord {

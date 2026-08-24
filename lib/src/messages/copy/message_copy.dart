@@ -124,6 +124,10 @@ final class MessageCopy {
 
   static const String buttonBroadcast = '📢 Рассылка';
   static const String buttonAdminTools = '🧰 Инструменты';
+  static const String buttonOnboardingMedia = '🎥 Онбординг-видео';
+  static const String buttonOnboardingMediaVenue = 'Площадка';
+  static const String buttonOnboardingMediaCameAlone = 'Пришёл один';
+  static const String buttonOnboardingMediaClear = '🗑 Удалить ролик';
   static const String buttonClientMenu = '👤 Клиентское меню';
   static const String buttonAdminMenu = '🛡 Админ-меню';
   static const String buttonAdminUserSearch = '🔍 Поиск по пользователю';

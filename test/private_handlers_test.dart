@@ -241,6 +241,7 @@ void main() {
       });
       final toolsButtons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(toolsButtons, contains(MessageTemplates.buttonManageBookings));
+      expect(toolsButtons, contains(MessageTemplates.buttonOnboardingMedia));
       expect(toolsButtons, contains(MessageTemplates.buttonRefreshSchedule));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonAdminAnalytics)));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonEconomicSummary)));

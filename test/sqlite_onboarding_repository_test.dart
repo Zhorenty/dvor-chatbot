@@ -289,5 +289,37 @@ void main() {
         unorderedEquals(<int>[2, 3]),
       );
     });
+
+    test('stores and replaces onboarding media by slot', () async {
+      final repository = SqliteOnboardingRepository(
+        dbPath: '${tmpDir.path}/onboarding-media.sqlite',
+      );
+      await repository.init();
+      addTearDown(repository.close);
+
+      expect(await repository.getOnboardingMedia(OnboardingMediaSlot.venue), isNull);
+
+      await repository.upsertOnboardingMedia(
+        slot: OnboardingMediaSlot.venue,
+        fileId: 'first',
+        kind: OnboardingMediaKind.videoNote,
+        updatedAt: DateTime.utc(2026, 8, 24, 10),
+        updatedByUserId: 1,
+      );
+      await repository.upsertOnboardingMedia(
+        slot: OnboardingMediaSlot.venue,
+        fileId: 'second',
+        kind: OnboardingMediaKind.video,
+        updatedAt: DateTime.utc(2026, 8, 24, 11),
+        updatedByUserId: 1,
+      );
+
+      final stored = await repository.getOnboardingMedia(OnboardingMediaSlot.venue);
+      expect(stored?.fileId, 'second');
+      expect(stored?.kind, OnboardingMediaKind.video);
+
+      await repository.clearOnboardingMedia(OnboardingMediaSlot.venue);
+      expect(await repository.getOnboardingMedia(OnboardingMediaSlot.venue), isNull);
+    });
   });
 }

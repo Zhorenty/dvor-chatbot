@@ -62,6 +62,7 @@ abstract final class GoogleSheetsRecentActionsDashboard {
         ConversationContentType.text => 'текст',
         ConversationContentType.photo => 'фото',
         ConversationContentType.document => 'документ',
+        ConversationContentType.video => 'видео',
         ConversationContentType.copy => 'копия',
         ConversationContentType.other => 'сообщение',
       };

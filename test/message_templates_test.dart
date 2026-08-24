@@ -284,6 +284,21 @@ void main() {
       expect(text, contains('Запишись, если подходит'));
     });
 
+    test('onboarding map can list city slots from the sheet', () {
+      final text = templates.onboardingClubMap(
+        starterBonusAvailable: false,
+        citySlots: <TrainingInfo>[
+          TrainingInfo(
+            title: 'Утренняя силовая',
+            startsAt: DateTime(2026, 8, 26, 19),
+            location: 'Зал',
+          ),
+        ],
+      );
+      expect(text, contains('Силовая: Утренняя силовая'));
+      expect(text, isNot(contains('Даша')));
+    });
+
     test('booking slot notes are a fact, not a brand lecture', () {
       final text = templates.bookingSlotPrepNotes(
         trainingTitle: 'Силовая',
