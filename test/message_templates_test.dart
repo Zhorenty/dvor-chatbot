@@ -159,6 +159,49 @@ void main() {
       expect(text, contains('https://t.me/dvor_chatbot?start=book'));
     });
 
+    test('schedule broadcast headlines stay factual without FOMO', () {
+      final sample = <TrainingInfo>[
+        TrainingInfo(
+          title: 'Силовая + растяжка',
+          startsAt: DateTime(2026, 7, 21, 19, 30),
+          location: 'Стадион Кубань',
+          category: ActivityCategory.trainings,
+        ),
+      ];
+      const forbidden = <String>[
+        'Не упусти',
+        'успей',
+        'кайф',
+        'комьюнити',
+        'досуг',
+        'зарядиться',
+      ];
+
+      for (final weekday in <int>[
+        DateTime.sunday,
+        DateTime.tuesday,
+        DateTime.thursday,
+        DateTime.monday,
+      ]) {
+        final text = templates.groupScheduleBroadcast(
+          trainings: sample,
+          weekday: weekday,
+        );
+        for (final word in forbidden) {
+          expect(text.toLowerCase(), isNot(contains(word.toLowerCase())));
+        }
+      }
+
+      expect(
+        templates.groupScheduleBroadcast(trainings: sample, weekday: DateTime.thursday),
+        contains('Слоты до выходных уже в расписании'),
+      );
+      expect(
+        templates.groupScheduleBroadcast(trainings: sample, weekday: DateTime.sunday),
+        isNot(contains('Бег, сила, бокс')),
+      );
+    });
+
     test('builds referral broadcast with program steps', () {
       final text = templates.groupReferralBroadcast();
 
@@ -166,6 +209,8 @@ void main() {
       expect(text, contains('Реферальная программа'));
       expect(text, contains('первую платную тренировку'));
       expect(text, contains('https://t.me/dvor_chatbot?start=book'));
+      expect(text, isNot(contains('кайф')));
+      expect(text, isNot(contains('Собирай свою команду')));
     });
   });
 
@@ -184,9 +229,47 @@ void main() {
       final text = templates.onboardingClubMap(starterBonusAvailable: true);
       expect(text, contains('выбрать слот и записаться'));
       expect(text, contains('Можно зайти и ничего не писать'));
+      expect(text, contains('приходи один'));
       expect(text, contains('бесплатная тренировка за старт'));
       expect(text, isNot(contains('успей')));
       expect(text, isNot(contains('движ')));
+      expect(text, isNot(contains('знаком')));
+    });
+  });
+
+  group('MessageTemplates brand voice copy', () {
+    const templates = MessageTemplates();
+
+    test('private welcome is a slot door, not a cashier-only dump', () {
+      final text = templates.privateWelcome();
+      expect(text, contains('слоты DVOR'));
+      expect(text, contains('Быстрый старт'));
+      expect(text, isNot(contains('комьюнити')));
+      expect(text, isNot(contains('знаком')));
+    });
+
+    test('group welcome has no trophy closer', () {
+      final text = templates.groupWelcome(
+        username: 'neo',
+        userId: 1,
+        firstName: 'Neo',
+      );
+      expect(text, contains('Добро пожаловать в DVOR'));
+      expect(text, isNot(contains('Вперёд')));
+      expect(text, isNot(contains('🏆')));
+    });
+
+    test('onboarding nudge to book stays factual', () {
+      final text = templates.onboardingNudgePrimaryCta();
+      expect(text, contains('Ближайшие слоты уже в расписании'));
+      expect(text, isNot(contains('идеального момента')));
+      expect(text, isNot(contains('успей')));
+    });
+
+    test('help opens as slot status, not a gym kiosk slogan', () {
+      final text = templates.privateHelp();
+      expect(text, contains('слоты, запись и статус'));
+      expect(text, isNot(contains('комьюнити')));
     });
   });
 

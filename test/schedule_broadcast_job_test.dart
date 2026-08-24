@@ -89,7 +89,7 @@ void main() {
     await job.run();
 
     expect(sender.messages, hasLength(1));
-    expect(sender.messages.single.text, contains('Не упусти тренировки до выходных'));
+    expect(sender.messages.single.text, contains('Слоты до выходных уже в расписании'));
   });
 
   test('does not send outside configured schedule slots', () async {

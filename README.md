@@ -1,6 +1,6 @@
 # DVOR Telegram Bot
 
-MVP-бот для спортивного объединения DVOR на Dart.
+MVP-бот DVOR на Dart.
 
 ## Бизнес-документация
 

@@ -6,6 +6,7 @@ final class PrivateNavigationTemplates {
 
   String privateWelcome() {
     return 'Добро пожаловать в DVOR 🤝\n\n'
+        'В боте — слоты DVOR. Дальше: выбрать, оплатить, прийти.\n\n'
         'Быстрый старт:\n'
         '1) Нажми «${MessageCopy.buttonBookTraining}» и выбери мероприятие.\n'
         '2) Оплати и отправь чек в этот чат.\n'
@@ -38,6 +39,7 @@ final class PrivateNavigationTemplates {
         starterBonusAvailable ? '\n\nУ тебя есть бесплатная тренировка за старт.' : '';
     return 'Следующий шаг — выбрать слот и записаться.\n\n'
         'В боте — расписание и запись.\n'
+        'Не с кем идти — приходи один. На площадке уже будут свои.\n\n'
         'В группе — афиши: ${MessageCopy.dvorGroupInviteUrl}\n'
         'Можно зайти и ничего не писать.'
         '$bonusLine';
@@ -56,7 +58,7 @@ final class PrivateNavigationTemplates {
 
   String onboardingNudgePrimaryCta() {
     return 'Ближайшие слоты уже в расписании.\n'
-        'Забронируй один — так проще втянуться, чем ждать идеального момента.';
+        'Выбери один и запишись.';
   }
 
   String onboardingNudgeDay5Alt() {
@@ -149,7 +151,7 @@ final class PrivateNavigationTemplates {
   }
 
   String privateHelp() {
-    return 'Вот чем я могу помочь 👇\n'
+    return 'В боте — слоты, запись и статус. Вот чем могу помочь 👇\n'
         '• Показываю ближайшие тренировки, походы и трейлы 📅\n'
         // TODO(subscription): вернуть строки про PRO-абонемент в помощи.
         '• Показываю список тренеров и контакты штаба 🧑‍🏫\n'

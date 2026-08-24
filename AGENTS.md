@@ -55,16 +55,16 @@ Project guidance for AI/code agents in this repository.
 
 When asked to write or edit user-facing text (group posts, broadcasts, congratulations, onboarding, templates), follow `docs/VOICE.md`. Do not invent a new tone. Do not rewrite existing `message_templates` copy to match the milestone example unless the task is explicitly about copy.
 
-- DVOR is a sports club people train *with*, not a gym brand or a sales funnel. Brand spelling: `DVOR`.
+- DVOR is an environment people train *with*, not a gym brand or a sales funnel. Brand spelling: `DVOR`. Short sign: activity and «своё окружение», not «спортклуб» or «комьюнити».
 - Address one person (DM, named welcome) as «ты»; the group as a whole as «вы». Do not mix in one text.
 - Meaning before hype. Concrete life of the club over abstract «сообщество». Name only the activities the text is about.
 - Short sentences, 1–3 line paragraphs, air between blocks. One emoji as a headline anchor, not a shower of emoji.
 - Pick a genre first (milestone, welcome, schedule/promo, referral/payment, bot UX, onboarding, admin). The milestone skeleton is for community posts only.
 - Community posts have no hard sell and close physically (`До встречи на площадке. DVOR 🤝`). CTA only when the message is about an action; then one CTA, factual scarcity OK, FOMO is not.
-- Bot UX: fact → status → one next step. No club signature. Onboarding: one question or one step, not the whole club.
+- Bot UX: fact → status → one next step. No club signature. Onboarding: one question or one step, not the whole club. Acquaintances are optional, not the first-screen offer.
 - Do not invent dates, coaches, prices, address, or headcount. Escape user-provided strings. HTML, `<b>` on headline/key words only.
 
-Avoid: «дорогие друзья», «от лица команды», «администрация», «не упусти шанс», «эксклюзив», walls of text, `!!!`, mixing English slang except product terms already in use (`Start`, `PRO`).
+Avoid: «дорогие друзья», «от лица команды», «администрация», «не упусти шанс», «эксклюзив», «досуг», «комьюнити», «не просто X, а Y», walls of text, `!!!`, mixing English slang except product terms already in use (`Start`, `PRO`).
 
 ## Telegram Behavior Contract
 
