@@ -35,7 +35,7 @@ void main() {
 
       final texts = harness.messagesTo(101).map((m) => m.text).join('\n');
       expect(texts, contains('Быстрый старт'));
-      expect(texts, isNot(contains('Сейчас не нужно разбираться во всём')));
+      expect(texts, isNot(contains('Первый шаг — записаться на тренировку')));
     });
 
     test('newcomer /start runs quiz and completes track to map CTA', () async {
@@ -44,14 +44,10 @@ void main() {
       await harness.handleText(chatId: 202, userId: 202, text: '/start');
       expect(
         harness.messagesTo(202).last.text,
-        contains('Сейчас не нужно разбираться во всём'),
+        contains('Первый шаг — записаться на тренировку'),
       );
+      expect(harness.messagesTo(202).last.text, contains('Что сейчас важнее'));
 
-      await harness.handleText(
-        chatId: 202,
-        userId: 202,
-        text: MessageTemplates.buttonOnboardingContinue,
-      );
       await harness.handleText(
         chatId: 202,
         userId: 202,
@@ -74,9 +70,62 @@ void main() {
       expect(state?.phase, OnboardingPhase.phase2Activation);
       expect(
         harness.messagesTo(202).last.text,
-        contains('как устроен DVOR'),
+        contains('выбрать слот и записаться'),
       );
+      expect(harness.messagesTo(202).last.text, contains('Можно зайти и ничего не писать'));
+      expect(harness.messagesTo(202).last.text, isNot(contains('успей')));
       expect(state?.preferredBookingCategory.name, 'trainings');
+    });
+
+    test('skip from first question still shows booking CTA', () async {
+      final harness = PrivateHandlersHarness(onboardingDripEnabled: true);
+
+      await harness.handleText(chatId: 232, userId: 232, text: '/start');
+      await harness.handleText(
+        chatId: 232,
+        userId: 232,
+        text: MessageTemplates.buttonOnboardingSkipQuiz,
+      );
+
+      expect(
+        harness.messagesTo(232).last.text,
+        contains('выбрать слот и записаться'),
+      );
+      final state = await harness.onboarding.getOnboardingState(232);
+      expect(state?.phase, OnboardingPhase.phase2Activation);
+      expect(state?.selectedTrack, OnboardingTrack.oneOff);
+    });
+
+    test('start=book skips quiz and opens booking categories', () async {
+      final harness = PrivateHandlersHarness(onboardingDripEnabled: true);
+
+      await harness.handleText(chatId: 212, userId: 212, text: '/start book');
+
+      final texts = harness.messagesTo(212).map((m) => m.text).join('\n');
+      expect(texts, contains('Выбери категорию для записи'));
+      expect(texts, isNot(contains('Что сейчас важнее')));
+      final state = await harness.onboarding.getOnboardingState(212);
+      expect(state?.phase, OnboardingPhase.phase2Activation);
+      expect(state?.selectedTrack, OnboardingTrack.oneOff);
+    });
+
+    test('booking during quiz leaves the quiz and opens categories', () async {
+      final harness = PrivateHandlersHarness(onboardingDripEnabled: true);
+
+      await harness.handleText(chatId: 222, userId: 222, text: '/start');
+      await harness.handleText(
+        chatId: 222,
+        userId: 222,
+        text: MessageTemplates.buttonBookTraining,
+      );
+
+      expect(
+        harness.messagesTo(222).last.text,
+        contains('Выбери категорию для записи'),
+      );
+      final state = await harness.onboarding.getOnboardingState(222);
+      expect(state?.phase, OnboardingPhase.phase2Activation);
+      expect(state?.selectedTrack, OnboardingTrack.oneOff);
     });
 
     test('cold start has no starter bonus', () async {

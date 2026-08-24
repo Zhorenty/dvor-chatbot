@@ -42,6 +42,9 @@ final class OnboardingNudgeJob {
           if (decision.kind == OnboardingNudgeKind.day1Schedule) {
             await _onboardingService.applyDefaultTrackIfNeeded(candidate.userId);
           }
+          final quizIncomplete = decision.kind == OnboardingNudgeKind.quizReminder30m ||
+              decision.kind == OnboardingNudgeKind.quizReminder2h ||
+              decision.kind == OnboardingNudgeKind.quizHelp6h;
           final text = switch (decision.kind) {
             OnboardingNudgeKind.quizReminder30m ||
             OnboardingNudgeKind.quizReminder2h =>
@@ -56,7 +59,7 @@ final class OnboardingNudgeJob {
           await _sender.sendMessage(
             candidate.userId,
             text,
-            replyMarkup: _templates.onboardingNudgeKeyboard(),
+            replyMarkup: _templates.onboardingNudgeKeyboard(quizIncomplete: quizIncomplete),
           );
           await _onboardingRepository.recordNudgeSent(
             userId: candidate.userId,

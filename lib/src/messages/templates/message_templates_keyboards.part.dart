@@ -33,8 +33,8 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     return TelegramKeyboards.onboardingMapCtaKeyboard(outdoorTrack: outdoorTrack);
   }
 
-  Map<String, Object?> onboardingNudgeKeyboard() {
-    return TelegramKeyboards.onboardingNudgeKeyboard();
+  Map<String, Object?> onboardingNudgeKeyboard({bool quizIncomplete = false}) {
+    return TelegramKeyboards.onboardingNudgeKeyboard(quizIncomplete: quizIncomplete);
   }
 
   Map<String, Object?> onboardingActivationKeyboard() {

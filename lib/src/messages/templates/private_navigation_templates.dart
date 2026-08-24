@@ -17,9 +17,8 @@ final class PrivateNavigationTemplates {
 
   String onboardingWelcome() {
     return 'Добро пожаловать в DVOR.\n\n'
-        'Здесь тренировки, походы и трейлы — в одном ритме с командой.\n'
-        'Сейчас не нужно разбираться во всём. Достаточно одного шага: '
-        'понять, с чего тебе удобнее начать.';
+        'Первый шаг — записаться на тренировку.\n'
+        'Что сейчас важнее?';
   }
 
   String onboardingQuizGoal() {
@@ -35,14 +34,12 @@ final class PrivateNavigationTemplates {
   }
 
   String onboardingClubMap({required bool starterBonusAvailable}) {
-    final bonusLine = starterBonusAvailable
-        ? '\n\nУ тебя есть бесплатная тренировка за старт — успей использовать.'
-        : '';
-    return 'Коротко, как устроен DVOR:\n'
-        '• группа — афиши и движ;\n'
-        '• бот — расписание, запись, оплата, бонусы;\n'
-        '• поддержка — @dvor_support.\n\n'
-        'Следующий шаг: выбери тренировку и запишись.'
+    final bonusLine =
+        starterBonusAvailable ? '\n\nУ тебя есть бесплатная тренировка за старт.' : '';
+    return 'Следующий шаг — выбрать слот и записаться.\n\n'
+        'В боте — расписание и запись.\n'
+        'В группе — афиши: ${MessageCopy.dvorGroupInviteUrl}\n'
+        'Можно зайти и ничего не писать.'
         '$bonusLine';
   }
 
@@ -53,7 +50,8 @@ final class PrivateNavigationTemplates {
 
   String onboardingNudgeQuizReminder() {
     return 'Остался один короткий шаг — ответь на пару вопросов, '
-        'и покажу, с чего начать.';
+        'и покажу слоты.\n'
+        'Или сразу открой запись.';
   }
 
   String onboardingNudgePrimaryCta() {
@@ -74,11 +72,13 @@ final class PrivateNavigationTemplates {
   String groupInviteNudge(int index) {
     return switch (index) {
       2 => 'Группа DVOR — это афиши и живой чат. Бот их не дублирует.\n\n'
-          'Если ещё не внутри — вот вход.',
+          'Представляться не обязательно. Если ещё не внутри — вот вход.',
       3 => 'Бот умеет запись. Группа — новости и общение.\n\n'
-          'Ссылка, если ещё не заходил.',
+          'Ссылка, если ещё не заходил. Можно просто читать.',
       _ => '<b>Новости и общение — в группе DVOR</b>\n\n'
           'В боте — расписание и запись. Афиши и чат — там.\n\n'
+          'Если зайдёшь — можно ничего не писать. '
+          'Кто хочет, коротко: имя и чем занимаешься.\n\n'
           'Заходи, когда будет удобно.',
     };
   }
@@ -87,11 +87,11 @@ final class PrivateNavigationTemplates {
     return 'Первая тренировка в DVOR — есть.\n'
         'Дальше проще: вторая закрепляет ритм.\n'
         // TODO(subscription): вернуть soft-pitch PRO в activation success.
-        'Если кайф в компании — зови друга по рефералке в профиле.';
+        'Друга можно записать по рефералке в профиле.';
   }
 
   String onboardingSnoozeAck() {
-    return 'Ок, без давления. Когда будешь готов — «${MessageCopy.buttonBookTraining}» '
+    return 'Ок, без давления. Когда будет удобно — «${MessageCopy.buttonBookTraining}» '
         'или «${MessageCopy.buttonTrainings}». Я рядом.';
   }
 

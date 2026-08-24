@@ -111,6 +111,11 @@ final class OnboardingService {
     );
   }
 
+  Future<void> skipQuizToBooking(int userId) async {
+    await applyDefaultTrackIfNeeded(userId);
+    await markMapShown(userId);
+  }
+
   Future<void> applyDefaultTrackIfNeeded(int userId) async {
     final state = await _onboardingRepository.getOnboardingState(userId);
     if (state == null || state.selectedTrack != null) {

@@ -169,6 +169,27 @@ void main() {
     });
   });
 
+  group('MessageTemplates onboarding funnel copy', () {
+    const templates = MessageTemplates();
+
+    test('welcome leads with booking, not a club lecture', () {
+      final text = templates.onboardingWelcome();
+      expect(text, contains('Первый шаг — записаться на тренировку'));
+      expect(text, contains('Что сейчас важнее'));
+      expect(text, isNot(contains('комьюнити')));
+      expect(text, isNot(contains('семья')));
+    });
+
+    test('club map is a booking CTA and optional group door', () {
+      final text = templates.onboardingClubMap(starterBonusAvailable: true);
+      expect(text, contains('выбрать слот и записаться'));
+      expect(text, contains('Можно зайти и ничего не писать'));
+      expect(text, contains('бесплатная тренировка за старт'));
+      expect(text, isNot(contains('успей')));
+      expect(text, isNot(contains('движ')));
+    });
+  });
+
   group('MessageTemplates group invite nudge', () {
     const templates = MessageTemplates();
 
@@ -176,7 +197,10 @@ void main() {
       final text = templates.groupInviteNudge(1);
       expect(text, contains('группе DVOR'));
       expect(text, contains('расписание и запись'));
+      expect(text, contains('можно ничего не писать'));
       expect(text, isNot(contains('не упусти')));
+      expect(text, isNot(contains('комьюнити')));
+      expect(text, isNot(contains('семьи')));
       final markup = templates.groupInviteUrlKeyboard();
       final inline = markup['inline_keyboard'] as List<dynamic>;
       final button = Map<String, Object?>.from((inline.first as List<dynamic>).first as Map);

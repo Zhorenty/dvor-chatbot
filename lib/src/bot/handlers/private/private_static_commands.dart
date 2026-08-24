@@ -80,6 +80,25 @@ final class PrivateStaticCommands {
       }
 
       if (userId != null && runFunnel) {
+        if (startPayload == 'book') {
+          await onboardingService.skipQuizToBooking(userId);
+          await onOpenBookingCategories(
+            chatId: chatId,
+            userId: userId,
+            isAdmin: isAdmin,
+            canViewParticipantsList: canViewParticipantsList,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+          );
+          if (starterBonusAvailable) {
+            await sender.sendMessage(
+              chatId,
+              templates.starterBonusOnboardingOffer(),
+              replyMarkup: templates.categorySelectionKeyboard(),
+            );
+          }
+          return true;
+        }
+
         final phase = onboardingState?.phase;
         final resumeAtMap = phase == OnboardingPhase.phase1Map ||
             phase == OnboardingPhase.phase2Activation ||
@@ -122,27 +141,18 @@ final class PrivateStaticCommands {
           );
         } else {
           flowByUserId[userId] = const PrivateFlowState(
-            step: PrivateFlowStep.onboardingWelcome,
+            step: PrivateFlowStep.onboardingQuizGoal,
             availableTrainings: <TrainingInfo>[],
           );
           await onboardingRepository.updateOnboardingProgress(
             userId: userId,
             phase: OnboardingPhase.phase1Quiz,
-            step: OnboardingStep.welcome,
+            step: OnboardingStep.quizGoal,
           );
           await sender.sendMessage(
             chatId,
             templates.onboardingWelcome(),
-            replyMarkup: templates.onboardingContinueKeyboard(),
-          );
-        }
-
-        if (startPayload == 'book') {
-          await sender.sendMessage(
-            chatId,
-            'Сначала короткий старт — пара вопросов, затем запись.\n'
-            'Или нажми «${MessageTemplates.buttonOnboardingSkipQuiz}».',
-            replyMarkup: templates.onboardingContinueKeyboard(),
+            replyMarkup: templates.onboardingQuizGoalKeyboard(),
           );
         }
         return true;
@@ -185,6 +195,9 @@ final class PrivateStaticCommands {
     if (text.startsWith('/trainings') || (text == MessageTemplates.buttonTrainings && !isAdmin)) {
       if (userId == null) {
         return false;
+      }
+      if (await onboardingService.isInActiveQuiz(userId)) {
+        await onboardingService.skipQuizToBooking(userId);
       }
       flowByUserId[userId] = const PrivateFlowState(
         step: PrivateFlowStep.selectingScheduleCategory,

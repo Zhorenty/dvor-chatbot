@@ -59,6 +59,24 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     }
 
     final step = _flowByUserId[userId]?.step;
+    final inQuizStep = step == PrivateFlowStep.onboardingWelcome ||
+        step == PrivateFlowStep.onboardingQuizGoal ||
+        step == PrivateFlowStep.onboardingQuizExperience ||
+        step == PrivateFlowStep.onboardingTrack;
+    if ((inQuizStep || step == null) &&
+        (text == MessageTemplates.buttonBookTraining || text == '/book')) {
+      if (inQuizStep || await _onboardingService.isInActiveQuiz(userId)) {
+        await _onboardingService.skipQuizToBooking(userId);
+        return false;
+      }
+    }
+    if (text == MessageTemplates.buttonOnboardingSkipQuiz &&
+        (inQuizStep || (step == null && await _onboardingService.isInActiveQuiz(userId)))) {
+      await _onboardingService.applyDefaultTrackIfNeeded(userId);
+      await _sendOnboardingMap(chatId: chatId, userId: userId);
+      return true;
+    }
+
     if (step == PrivateFlowStep.onboardingWelcome ||
         (step == null && text == MessageTemplates.buttonOnboardingContinue)) {
       if (text != MessageTemplates.buttonOnboardingContinue &&
@@ -66,14 +84,6 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         if (step != PrivateFlowStep.onboardingWelcome) {
           return false;
         }
-      }
-      if (text == MessageTemplates.buttonOnboardingSkipQuiz) {
-        await _onboardingService.applyDefaultTrackIfNeeded(userId);
-        await _sendOnboardingMap(
-          chatId: chatId,
-          userId: userId,
-        );
-        return true;
       }
       if (text == MessageTemplates.buttonOnboardingContinue ||
           step == PrivateFlowStep.onboardingWelcome) {
@@ -92,7 +102,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         );
         await _sender.sendMessage(
           chatId,
-          _templates.onboardingQuizGoal(),
+          _templates.onboardingWelcome(),
           replyMarkup: _templates.onboardingQuizGoalKeyboard(),
         );
         return true;
@@ -100,9 +110,12 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     }
 
     if (step == PrivateFlowStep.onboardingQuizGoal) {
-      if (text == MessageTemplates.buttonOnboardingSkipQuiz) {
-        await _onboardingService.applyDefaultTrackIfNeeded(userId);
-        await _sendOnboardingMap(chatId: chatId, userId: userId);
+      if (text == MessageTemplates.buttonOnboardingContinue) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.onboardingWelcome(),
+          replyMarkup: _templates.onboardingQuizGoalKeyboard(),
+        );
         return true;
       }
       final goal = switch (text) {

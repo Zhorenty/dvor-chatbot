@@ -1215,7 +1215,10 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonQuizExpRegular},
         ],
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingSkipQuiz},
           <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
+        ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],
       ],
@@ -1233,7 +1236,10 @@ final class TelegramKeyboards {
         ],
         // TODO(subscription): вернуть кнопку трека PRO.
         <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonOnboardingSkipQuiz},
           <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
+        ],
+        <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonMainMenu},
         ],
       ],
@@ -1259,13 +1265,19 @@ final class TelegramKeyboards {
     );
   }
 
-  static Map<String, Object?> onboardingNudgeKeyboard() {
+  static Map<String, Object?> onboardingNudgeKeyboard({bool quizIncomplete = false}) {
     return _replyKeyboard(
       <List<Map<String, String>>>[
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonBookTraining},
-          <String, String>{'text': MessageCopy.buttonTrainings},
-        ],
+        if (quizIncomplete)
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonOnboardingContinue},
+            <String, String>{'text': MessageCopy.buttonBookTraining},
+          ]
+        else
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonBookTraining},
+            <String, String>{'text': MessageCopy.buttonTrainings},
+          ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonOnboardingNeedMoreTime},
           <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
