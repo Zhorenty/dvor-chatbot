@@ -67,7 +67,7 @@ final class PrivateNavigationTemplates {
   }
 
   String onboardingNudgeDay7() {
-    return 'Неделя прошла — давай забронируем слот.\n'
+    return 'Неделя прошла. Ближайшие слоты — в расписании.\n'
         'Если что-то мешает, напиши @dvor_support — поможем.';
   }
 
@@ -145,7 +145,7 @@ final class PrivateNavigationTemplates {
   }
 
   String starterBonusOnboardingOffer() {
-    return '🎁 Тебе доступна бесплатная тренировка за старт!\n\n'
+    return 'Тебе доступна бесплатная тренировка за старт.\n\n'
         'Нажми «${MessageCopy.buttonBookTraining}», выбери тренировку '
         'и в подтверждении записи нажми «${MessageCopy.buttonUseStarterBonus}».';
   }

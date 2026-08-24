@@ -169,9 +169,9 @@ extension MessageTemplatesHelpers on MessageTemplates {
 
   String _groupLowSpotsTitle(ActivityCategory category) {
     return switch (category) {
-      ActivityCategory.trainings => 'На тренировке почти не осталось мест!',
-      ActivityCategory.hikes => 'В походе почти не осталось мест!',
-      ActivityCategory.trails => 'На трейле почти не осталось мест!',
+      ActivityCategory.trainings => 'На тренировке почти не осталось мест',
+      ActivityCategory.hikes => 'В походе почти не осталось мест',
+      ActivityCategory.trails => 'На трейле почти не осталось мест',
     };
   }
 

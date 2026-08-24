@@ -213,27 +213,27 @@ extension MessageTemplatesContent on MessageTemplates {
   String adminBookingDeletedForUser(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Твою запись #${booking.id} отменил администратор ❌\n'
+    return 'Запись #${booking.id} отменили.\n'
         '${booking.trainingTitle}\n'
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
-        'Если есть вопросы, напиши в поддержку: @dvor_support';
+        'Если есть вопросы — @dvor_support.';
   }
 
   String adminBookingRestoredForUser(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Администратор восстановил твою запись #${booking.id} ✅\n'
+    return 'Запись #${booking.id} восстановили.\n'
         '${booking.trainingTitle}\n'
         '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}';
   }
 
   String adminBookingPaymentStatusUpdatedForUser(TrainingBooking booking) {
-    return 'Администратор обновил статус твоей записи #${booking.id}.\n'
+    return 'Статус записи #${booking.id} обновили.\n'
         'Новый статус: ${_statusLabel(booking.status, booking: booking)}';
   }
 
   String adminBookingUsernameUpdatedForUser(TrainingBooking booking) {
-    return 'Администратор обновил данные пользователя в записи #${booking.id}.\n'
+    return 'Данные пользователя в записи #${booking.id} обновили.\n'
         'Теперь запись привязана к: ${_userTag(booking)} (${booking.userId}).';
   }
 
@@ -374,17 +374,14 @@ extension MessageTemplatesContent on MessageTemplates {
   }) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    final title = isToday ? 'Тренировка уже сегодня!' : 'Тренировка уже завтра!';
-    final cta = isToday
-        ? 'Хочешь попасть на занятие сегодня? Записывайся 👇'
-        : 'Планируй заранее: записывайся на тренировку 👇';
+    final when = isToday ? 'Сегодня' : 'Завтра';
     final notes = training.notes?.trim();
-    return '📣 <b>$title</b>\n'
-        '<b>${_escapeHtml(training.title)}</b>\n'
+    return '🔥 <b>$when: ${_escapeHtml(training.title)}</b>\n'
         '🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
-        '📍 Где: ${_trainingLocationLabel(training)}\n'
-        '${notes == null || notes.isEmpty ? '' : '📝 ${_escapeHtml(notes)}\n'}\n'
-        '$cta\n'
+        '📍 ${_trainingLocationLabel(training)}\n'
+        '${notes == null || notes.isEmpty ? '' : '📝 ${_escapeHtml(notes)}\n'}'
+        '\n'
+        'Запись в боте, в пару тапов 👇\n'
         '${_groupBookingCta()}';
   }
 
@@ -425,7 +422,7 @@ extension MessageTemplatesContent on MessageTemplates {
   String bookingCreated(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Отлично, записал тебя! ✅\n'
+    return 'Отлично, записал тебя.\n'
         'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
         'Номер записи: ${booking.id}\n'
         '${_escapeHtml(_bookingTitleLine(booking))}\n'
@@ -437,7 +434,7 @@ extension MessageTemplatesContent on MessageTemplates {
   String bookingCreatedWithoutPayment(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    return 'Отлично, записал тебя! ✅\n'
+    return 'Отлично, записал тебя.\n'
         'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}\n'
         'Номер записи: ${booking.id}\n'
         'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
@@ -512,15 +509,15 @@ extension MessageTemplatesContent on MessageTemplates {
         '🕒 Когда: ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}\n'
         '📍 Где: ${_trainingLocationLabel(training)}\n'
         '👥 Участников: $participantsLimit/$participantsLimit\n\n'
-        'Следи за расписанием - новые слоты и тренировки появляются регулярно.\n'
+        'Другие слоты — в боте.\n'
         '${_groupBookingCta()}';
   }
 
   String paymentSubmitted(TrainingBooking booking) {
-    return 'Супер, файл с подтверждением оплаты отправил администратору ✅\n'
+    return 'Чек отправил на проверку.\n'
         'Номер записи: ${booking.id}\n'
         'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
-        'Следующий шаг: дождись результата модерации, бот сообщит автоматически.';
+        'Дальше: дождись ответа — бот напишет сам.';
   }
 
   String chooseOutdoorPaymentType({int? prepayPercent}) {
@@ -641,9 +638,9 @@ extension MessageTemplatesContent on MessageTemplates {
     required int completedTrainingsCount,
     required int availableRewardsCount,
   }) {
-    return '🎁 Отличная работа! Ты завершил(а) $completedTrainingsCount оплаченных тренировок.\n'
-        'Новая бесплатная тренировка по правилу «каждая 5-я» уже доступна.\n'
-        'Сейчас доступно бесплатных: $availableRewardsCount.';
+    return 'Каждая 5-я: бесплатная тренировка уже доступна.\n'
+        'Оплаченных тренировок: $completedTrainingsCount.\n'
+        'Бесплатных сейчас: $availableRewardsCount.';
   }
 
   String everyFifthBonusUnlockedAdmin({
@@ -678,8 +675,9 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String starterBonusExpiryReminder({required DateTime expiresAt}) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return '⏳ Напоминание: бесплатная стартовая тренировка сгорит через 1 день.\n'
-        'Используй ее до ${formatter.format(expiresAt)}.';
+    return 'Бесплатная тренировка за старт действует до ${formatter.format(expiresAt)}.\n'
+        'Чтобы использовать — «${MessageCopy.buttonBookTraining}», '
+        'затем «${MessageCopy.buttonUseStarterBonus}».';
   }
 
   String starterBonusAdminNotification(TrainingBooking booking) {
@@ -859,7 +857,7 @@ extension MessageTemplatesContent on MessageTemplates {
     return 'Чтобы отправить заявку на абонемент:\n'
         '1) Нажми «${MessageCopy.buttonSubscribeApply}».\n'
         '2) Пришли файл с подтверждением оплаты (документ/фото).\n'
-        '3) Дождись проверки администратором.';
+        '3) Дождись проверки.';
   }
 
   String subscriptionPaymentSubmitted() {
@@ -869,7 +867,7 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String subscriptionAlreadyPending() {
     return 'ℹ️ Заявка на абонемент уже на проверке.\n'
-        'Ожидай подтверждения от администратора.';
+        'Ожидай подтверждения.';
   }
 
   String subscriptionAlreadyActive({DateTime? activeUntil}) {
@@ -1025,10 +1023,8 @@ extension MessageTemplatesContent on MessageTemplates {
   }
 
   String subscriptionApprovedForUser({required DateTime activeUntil}) {
-    return '✅ Оплата подтверждена, PRO активирован до '
-        '<b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.\n'
-        'Тренируйся в PRO и продли через «${MessageCopy.buttonSubscription}» → '
-        '«${MessageCopy.buttonSubscribeApply}».';
+    return 'Оплату подтвердили. PRO активен до '
+        '<b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.';
   }
 
   String subscriptionRejectedForUser({String? reason, String? comment}) {
@@ -1046,7 +1042,7 @@ extension MessageTemplatesContent on MessageTemplates {
       if ((reason ?? '').trim().isNotEmpty) 'Причина: ${_escapeHtml(reason!.trim())}',
       if ((comment ?? '').trim().isNotEmpty) 'Комментарий: ${_escapeHtml(comment!.trim())}',
     ];
-    return '⛔️ Текущий PRO-абонемент был отменен администратором.\n'
+    return 'Текущий PRO-абонемент отменили.\n'
         '${details.isEmpty ? '' : '${details.join('\n')}\n'}'
         'Чтобы вернуть PRO, нажми «${MessageCopy.buttonSubscription}» → '
         '«${MessageCopy.buttonSubscribeApply}».';
@@ -1059,9 +1055,9 @@ extension MessageTemplatesContent on MessageTemplates {
   }
 
   String subscriptionExpiryPromo() {
-    return '🔥 Твой PRO закончился, но форму терять не нужно.\n'
-        'Вернись в PRO сегодня и получи бонус от DVOR.\n'
-        'Нажми «${MessageCopy.buttonSubscription}», затем «${MessageCopy.buttonSubscribeApply}».';
+    return 'PRO закончился.\n'
+        'Продлить: «${MessageCopy.buttonSubscription}» → '
+        '«${MessageCopy.buttonSubscribeApply}».';
   }
 
   String chooseMyBookingsSegment() {
@@ -1830,18 +1826,14 @@ extension MessageTemplatesContent on MessageTemplates {
           'Остаток вносится офлайн $outdoorFinalPaymentAfter.';
     }
     if (!MessageFormatters.isOutdoorBooking(booking)) {
-      return 'Оплату по записи #${booking.id} подтвердили ✅\n'
+      return 'Оплату по записи #${booking.id} подтвердили.\n'
           'Статус: ${_statusLabel(booking.status, booking: booking)}.\n'
-          'Спасибо!';
+          'Место за тобой.';
     }
 
     return '✅ Полная оплата подтверждена.\n'
-        'Ты в команде outdvor🚸\n\n'
-        'Место за тобой, оплата зафиксирована. С этого момента — ты часть команды.\n\n'
-        'Мы сделаем все, чтобы это приключение осталось с тобой надолго. '
-        'Горы, эмоции, новые люди и чувство "я справился" — это не забывается.\n'
-        'Скоро добавим тебя в общий чат поездки 🟡\n\n'
-        'Готовься. Скоро стартуем 💚';
+        'Место за тобой.\n'
+        'Дальше: чат поездки — напишем отдельно.';
   }
 
   String paymentRejectedForUser(TrainingBooking booking) {
@@ -2038,9 +2030,9 @@ extension MessageTemplatesContent on MessageTemplates {
   }
 
   String paymentProofRequired() {
-    return 'Чтобы отправить заявку администратору:\n'
+    return 'Чтобы отправить заявку на проверку:\n'
         '1) Пришли файл с подтверждением оплаты (документ или фото чека).\n'
-        '2) Дождись ответа о модерации.';
+        '2) Дождись ответа — бот напишет сам.';
   }
 
   String paymentProofUnavailableHint(TrainingBooking booking) {

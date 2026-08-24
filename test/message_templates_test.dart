@@ -23,6 +23,8 @@ void main() {
       );
 
       expect(text, contains('В походе не осталось мест'));
+      expect(text, contains('Другие слоты — в боте'));
+      expect(text, isNot(contains('появляются регулярно')));
     });
 
     test('uses trail wording when no spots are left', () {
@@ -102,9 +104,11 @@ void main() {
         ),
       );
 
-      expect(text, contains('Тренировка уже сегодня'));
-      expect(text, contains('Записывайся'));
+      expect(text, contains('Сегодня: Функциональная тренировка'));
+      expect(text, contains('Запись в боте, в пару тапов'));
       expect(text, contains('https://t.me/dvor_chatbot?start=book'));
+      expect(text, isNot(contains('Хочешь попасть')));
+      expect(text, isNot(contains('Записывайся')));
     });
 
     test('builds day-before promo with tomorrow wording', () {
@@ -118,8 +122,9 @@ void main() {
         isToday: false,
       );
 
-      expect(text, contains('Тренировка уже завтра'));
-      expect(text, contains('Планируй заранее'));
+      expect(text, contains('Завтра: Утренняя тренировка'));
+      expect(text, contains('Запись в боте, в пару тапов'));
+      expect(text, isNot(contains('Планируй заранее')));
     });
 
     test('includes notes in group promo when provided', () {
@@ -270,6 +275,58 @@ void main() {
       final text = templates.privateHelp();
       expect(text, contains('слоты, запись и статус'));
       expect(text, isNot(contains('комьюнити')));
+    });
+
+    test('outdoor payment confirmation is status, not a manifesto', () {
+      final text = templates.paymentApprovedForUser(
+        TrainingBooking(
+          id: 77,
+          userId: 1,
+          userUsername: 'neo',
+          trainingKey: 'hikes|1',
+          trainingTitle: '🥾 Поход: Архыз',
+          startsAt: DateTime(2026, 10, 15),
+          location: 'Архыз',
+          status: BookingStatus.paid,
+          trainingPrice: 5000,
+          createdAt: DateTime(2026, 1, 1),
+          updatedAt: DateTime(2026, 1, 1),
+        ),
+      );
+      expect(text, contains('Полная оплата подтверждена'));
+      expect(text, contains('Место за тобой'));
+      expect(text, isNot(contains('новые люди')));
+      expect(text, isNot(contains('Готовься')));
+      expect(text, isNot(contains('часть команды')));
+    });
+
+    test('loyalty unlock is gender-neutral', () {
+      final text = templates.everyFifthBonusUnlockedUser(
+        completedTrainingsCount: 5,
+        availableRewardsCount: 1,
+      );
+      expect(text, contains('Каждая 5-я'));
+      expect(text, isNot(contains('завершил')));
+    });
+
+    test('payment submitted goes to review without administration wording', () {
+      final text = templates.paymentSubmitted(
+        TrainingBooking(
+          id: 99,
+          userId: 1,
+          userUsername: 'neo',
+          trainingKey: 'trainings|1',
+          trainingTitle: 'Силовая',
+          startsAt: DateTime(2026, 7, 1, 19),
+          location: 'площадка',
+          status: BookingStatus.paymentSubmitted,
+          trainingPrice: 500,
+          createdAt: DateTime(2026, 1, 1),
+          updatedAt: DateTime(2026, 1, 1),
+        ),
+      );
+      expect(text, contains('на проверку'));
+      expect(text, isNot(contains('администратор')));
     });
   });
 

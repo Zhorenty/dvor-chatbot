@@ -18,7 +18,7 @@ final class ScheduleTemplates {
       icon: '🏋️',
       items: items,
       trainers: trainers,
-      emptyText: 'Пока тренировок в расписании нет 😌 Скоро добавим новые даты!',
+      emptyText: 'Пока тренировок в расписании нет.',
       includeWeekdayShortInDate: true,
     );
   }

@@ -33,7 +33,7 @@ void main() {
     expect(sender.messages, hasLength(1));
     expect(sender.messages.single.chatId, -1001234567890);
     expect(sender.messages.single.parseMode, 'HTML');
-    expect(sender.messages.single.text, contains('Тренировка уже сегодня'));
+    expect(sender.messages.single.text, contains('Сегодня: Функциональная тренировка'));
   });
 
   test('sends 20:00 day-before promo for trainings before 16:00', () async {
@@ -59,7 +59,7 @@ void main() {
     await job.run();
 
     expect(sender.messages, hasLength(1));
-    expect(sender.messages.single.text, contains('Тренировка уже завтра'));
+    expect(sender.messages.single.text, contains('Завтра: Утренняя тренировка'));
   });
 
   test('does not send outside configured promo time', () async {

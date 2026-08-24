@@ -2440,7 +2440,7 @@ void main() {
       expect(handled, isTrue);
       final userNotify = sender.messages.firstWhere((message) => message.chatId == 167).text;
       final adminNotify = sender.messages.firstWhere((message) => message.chatId == -100999).text;
-      expect(userNotify, contains('Новая бесплатная тренировка'));
+      expect(userNotify, contains('бесплатная тренировка уже доступна'));
       expect(adminNotify, contains('@unlock_user'));
     });
 
@@ -2856,8 +2856,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(bookingRepository.lastSubmittedBookingId, 99);
-      expect(sender.lastContentMessage.text,
-          contains('файл с подтверждением оплаты отправил администратору'));
+      expect(sender.lastContentMessage.text, contains('Чек отправил на проверку'));
     });
 
     test('sends admin chat notification only after proof file is sent', () async {
@@ -2930,8 +2929,7 @@ void main() {
       expect(openQueueButton['callback_data'], MessageTemplates.callbackOpenPaymentsQueue);
       final userConfirmation = sender.messages.last;
       expect(userConfirmation.chatId, 1701);
-      expect(
-          userConfirmation.text, contains('файл с подтверждением оплаты отправил администратору'));
+      expect(userConfirmation.text, contains('Чек отправил на проверку'));
     });
 
     test('shows payments queue for selected admin category', () async {
@@ -4824,7 +4822,7 @@ void main() {
       expect(bookingRepository.adminArchiveCalls, 1);
       expect(bookingRepository.lastAdminArchivedBookingId, 501);
       final userNotification = sender.messages.firstWhere((message) => message.chatId == 9001).text;
-      expect(userNotification, contains('запись #501 отменил администратор'));
+      expect(userNotification, contains('Запись #501 отменили'));
       expect(userNotification, contains('@dvor_support'));
       expect(sender.lastContentMessage.text, contains('переведена в архив'));
     });
@@ -5334,7 +5332,7 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(bookingRepository.lastSubmittedBookingId, 880);
-      expect(sender.lastContentMessage.text, contains('отправил администратору'));
+      expect(sender.lastContentMessage.text, contains('отправил на проверку'));
     });
 
     test('submits outdoor payment proof even when leftover outdoor detail flow is active',
@@ -5425,7 +5423,7 @@ void main() {
       expect(submitHandled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(bookingRepository.lastSubmittedBookingId, 8810);
-      expect(sender.lastContentMessage.text, contains('отправил администратору'));
+      expect(sender.lastContentMessage.text, contains('отправил на проверку'));
     });
 
     test('keeps all managed party participants visible in outdoor participants list', () async {
@@ -5598,7 +5596,7 @@ void main() {
       expect(submitHandled, isTrue);
       expect(bookingRepository.submitCalls, 1);
       expect(bookingRepository.lastSubmittedBookingId, 881);
-      expect(sender.lastContentMessage.text, contains('отправил администратору'));
+      expect(sender.lastContentMessage.text, contains('отправил на проверку'));
     });
 
     test('handles partial payment moderation callback buttons for admin', () async {
