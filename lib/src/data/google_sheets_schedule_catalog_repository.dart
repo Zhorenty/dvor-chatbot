@@ -430,12 +430,14 @@ final class _HeaderMap {
     required this.specByLiveIndex,
     required this.liveIndexBySpecHeader,
     required this.statusIndexes,
+    required this.checkboxIndexes,
   });
 
   final List<String> liveHeaders;
   final List<GoogleSheetsInputColumn?> specByLiveIndex;
   final Map<String, int> liveIndexBySpecHeader;
   final Set<int> statusIndexes;
+  final Set<int> checkboxIndexes;
 
   factory _HeaderMap.from(_SheetSnapshot snapshot) {
     final raw = snapshot.rows.isEmpty ? const <Object?>[] : snapshot.rows.first;
@@ -445,6 +447,7 @@ final class _HeaderMap {
     final specByLiveIndex = <GoogleSheetsInputColumn?>[];
     final liveIndexBySpecHeader = <String, int>{};
     final statusIndexes = <int>{};
+    final checkboxIndexes = <int>{};
     for (var i = 0; i < liveHeaders.length; i++) {
       final column = snapshot.spec.matchingColumn(liveHeaders[i]);
       specByLiveIndex.add(column);
@@ -455,12 +458,16 @@ final class _HeaderMap {
       if (column.isStatus) {
         statusIndexes.add(i);
       }
+      if (column.isCheckbox) {
+        checkboxIndexes.add(i);
+      }
     }
     return _HeaderMap(
       liveHeaders: liveHeaders,
       specByLiveIndex: specByLiveIndex,
       liveIndexBySpecHeader: liveIndexBySpecHeader,
       statusIndexes: statusIndexes,
+      checkboxIndexes: checkboxIndexes,
     );
   }
 
@@ -484,13 +491,37 @@ final class _HeaderMap {
   bool isEmptyDataRow(List<Object?> row) {
     final width = liveHeaders.length;
     for (var i = 0; i < width; i++) {
-      if (statusIndexes.contains(i)) {
-        continue;
-      }
-      if (GoogleSheetsValueParser.cell(row, i).isNotEmpty) {
+      if (_cellOccupiesRow(row, i)) {
         return false;
       }
     }
     return true;
+  }
+
+  /// Status formulas and default unchecked checkboxes (`FALSE`) fill the
+  /// formatted extra rows. They must not block create — same rule as the
+  /// sheet's own `статус` formula (`dataColumns` skips checkboxes).
+  bool _cellOccupiesRow(List<Object?> row, int index) {
+    if (statusIndexes.contains(index) || checkboxIndexes.contains(index)) {
+      return false;
+    }
+    final raw = index < row.length ? row[index] : null;
+    if (raw is bool) {
+      return false;
+    }
+    final text = GoogleSheetsValueParser.cellString(raw);
+    if (text.isEmpty) {
+      return false;
+    }
+    final spec = index < specByLiveIndex.length ? specByLiveIndex[index] : null;
+    if (spec == null && _isCheckboxLiteral(text)) {
+      return false;
+    }
+    return true;
+  }
+
+  static bool _isCheckboxLiteral(String text) {
+    final normalized = text.trim().toLowerCase();
+    return const <String>{'true', 'false'}.contains(normalized);
   }
 }

@@ -111,6 +111,86 @@ void main() {
       expect(created.sheetRow, 3);
     });
 
+    test('create reuses formatted rows that only have unchecked checkboxes', () async {
+      final gateway = _CatalogGateway()..seedTrainings();
+      for (var i = 0; i < GoogleSheetsInputUi.extraRows; i++) {
+        gateway.grids['Тренировки']!.add(<Object?>[
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          '',
+          false,
+          'FALSE',
+          'не готово',
+        ]);
+      }
+      final repository = GoogleSheetsScheduleCatalogRepository(gateway: gateway);
+
+      final created = await repository.create(
+        const ScheduleEventDraft(
+          category: ActivityCategory.trainings,
+          title: 'BOXING DVOR',
+          date: '19.08.2026',
+          time: '19:30',
+          location: 'Стадион Кубань',
+        ),
+      );
+
+      expect(created.sheetRow, 2);
+      expect(created.title, 'BOXING DVOR');
+    });
+
+    test('create does not overwrite a row that already has a title', () async {
+      final gateway = _CatalogGateway()..seedTrainings();
+      gateway.grids['Тренировки']!.add(<Object?>[
+        'Черновик',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        false,
+        'FALSE',
+        '',
+      ]);
+      gateway.grids['Тренировки']!.add(<Object?>[
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        '',
+        false,
+        'FALSE',
+        '',
+      ]);
+      final repository = GoogleSheetsScheduleCatalogRepository(gateway: gateway);
+
+      final created = await repository.create(
+        const ScheduleEventDraft(
+          category: ActivityCategory.trainings,
+          title: 'RUN',
+          date: '20.08.2026',
+          time: '8:30',
+          location: 'Набережная',
+        ),
+      );
+
+      expect(created.sheetRow, 3);
+      expect(gateway.grids['Тренировки']![1][0], 'Черновик');
+    });
+
     test('retention keeps yesterday and deletes after two days; outdoor uses dateTo', () async {
       final gateway = _CatalogGateway()
         ..seedTrainings()
