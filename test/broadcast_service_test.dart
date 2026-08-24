@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/application/broadcast_service.dart';
+import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:test/test.dart';
 
@@ -57,6 +58,27 @@ void main() {
         sender.copiedMessages.where((item) => item.toChatId == -1001).map((item) => item.messageId),
         <int>[1, 2],
       );
+    });
+
+    test('sends outdoor+ segment only to users who chose outdoor', () async {
+      final sender = FakeSender();
+      final onboarding = FakeOnboardingRepository()
+        ..seedUser(userId: 11)
+        ..seedUser(userId: 22, selectedTrack: OnboardingTrack.outdoor)
+        ..seedUser(userId: 33, quizGoal: OnboardingQuizGoal.outdoorHikes);
+      final service = BroadcastService(
+        sender: sender,
+        onboardingRepository: onboarding,
+      );
+
+      final result = await service.broadcastToUsers(
+        const BroadcastContent.text('поход'),
+        audience: BroadcastAudience.outdoorPlus,
+      );
+
+      expect(result.sent, 2);
+      expect(result.total, 2);
+      expect(sender.messages.map((item) => item.chatId), unorderedEquals(<int>[22, 33]));
     });
 
     test('counts failed deliveries without stopping the broadcast', () async {

@@ -89,6 +89,42 @@ void main() {
       expect(usage.freeByStarterCount, 1);
     });
 
+    test('loyalty analytics counts starter-bonus cancellations in window', () async {
+      final now = DateTime.utc(2026, 7, 28, 12);
+      final training = TrainingInfo(
+        title: 'Силовая',
+        startsAt: now.add(const Duration(days: 2)),
+        location: 'Зал',
+        category: ActivityCategory.trainings,
+        price: 0,
+      );
+      final kept = await bookings.createPendingBooking(
+        userId: 31,
+        training: training,
+      );
+      await bookings.updateStatus(
+        kept.booking.id,
+        BookingStatus.freeTraining,
+        paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+      );
+      final cancelled = await bookings.createPendingBooking(
+        userId: 32,
+        training: training,
+      );
+      await bookings.updateStatus(
+        cancelled.booking.id,
+        BookingStatus.freeTraining,
+        paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
+      );
+      await bookings.updateStatus(cancelled.booking.id, BookingStatus.cancelled);
+
+      final usage = await bookings.getLoyaltyBonusUsageAnalytics(now: now);
+      expect(usage.starterBonusBookedLast30Days, 2);
+      expect(usage.starterBonusCancelledLast30Days, 1);
+      expect(usage.starterBonusCancelRate30Days, 0.5);
+      expect(usage.starterBonusCancelledByCategoryLast30Days['trainings'], 1);
+    });
+
     test('subscription analytics counts active and pending', () async {
       final now = DateTime.utc(2026, 7, 28, 12);
       await subscriptions.submitPaymentRequest(

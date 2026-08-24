@@ -287,6 +287,33 @@ abstract final class GoogleSheetsAnalyticsDashboard {
       );
     }
     sheet.blank();
+    sheet.add(const <Object?>['Стартовый бонус: отмены', 'Записали', 'Отменили', 'Доля']);
+    final cancelHeader = sheet.nextRow - 1;
+    sheet.add(<Object?>[
+      '30 дней',
+      loyalty.starterBonusBookedLast30Days,
+      loyalty.starterBonusCancelledLast30Days,
+      sheet.ratioOrDash(loyalty.starterBonusCancelRate30Days),
+    ]);
+    sheet.add(<Object?>[
+      '90 дней',
+      loyalty.starterBonusBookedLast90Days,
+      loyalty.starterBonusCancelledLast90Days,
+      sheet.ratioOrDash(loyalty.starterBonusCancelRate90Days),
+    ]);
+    sheet.table(cancelHeader, sheet.nextRow, 0, 4);
+    final categoryCancels = loyalty.starterBonusCancelledByCategoryLast30Days.entries
+        .where((entry) => entry.value > 0)
+        .toList(growable: false);
+    if (categoryCancels.isNotEmpty) {
+      sheet.add(const <Object?>['Категория 30д', 'Отмен стартового']);
+      final catHeader = sheet.nextRow - 1;
+      for (final entry in categoryCancels) {
+        sheet.add(<Object?>[entry.key, entry.value]);
+      }
+      sheet.table(catHeader, sheet.nextRow, 0, 2);
+    }
+    sheet.blank();
     sheet.blank();
     sheet.blank();
     sheet.blank();

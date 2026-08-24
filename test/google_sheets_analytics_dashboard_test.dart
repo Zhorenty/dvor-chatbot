@@ -31,6 +31,10 @@ void main() {
         dashboard.rows.any((row) => row.contains('Бонусы и рефералы')),
         isTrue,
       );
+      expect(
+        dashboard.rows.any((row) => row.contains('Стартовый бонус: отмены')),
+        isTrue,
+      );
       expect(dashboard.rows.any((row) => row.contains('Абонементы')), isTrue);
       expect(dashboard.rows.any((row) => row.contains('Экономика')), isTrue);
       expect(

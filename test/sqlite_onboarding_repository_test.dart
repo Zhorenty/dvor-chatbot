@@ -263,5 +263,31 @@ void main() {
 
       await repository.close();
     });
+
+    test('lists outdoor+ started users by track or quiz goal', () async {
+      final repository = SqliteOnboardingRepository(
+        dbPath: '${tmpDir.path}/outdoor-plus.sqlite',
+      );
+      await repository.init();
+      addTearDown(repository.close);
+
+      await repository.ensureStartedUser(1, startedAt: DateTime.utc(2026, 8, 1));
+      await repository.ensureStartedUser(2, startedAt: DateTime.utc(2026, 8, 1));
+      await repository.ensureStartedUser(3, startedAt: DateTime.utc(2026, 8, 1));
+      await repository.updateOnboardingProgress(
+        userId: 2,
+        selectedTrack: OnboardingTrack.outdoor,
+      );
+      await repository.updateOnboardingProgress(
+        userId: 3,
+        quizGoal: OnboardingQuizGoal.outdoorHikes,
+      );
+
+      expect(await repository.getAllStartedUserIds(), unorderedEquals(<int>[1, 2, 3]));
+      expect(
+        await repository.getAllStartedUserIds(outdoorPlusOnly: true),
+        unorderedEquals(<int>[2, 3]),
+      );
+    });
   });
 }

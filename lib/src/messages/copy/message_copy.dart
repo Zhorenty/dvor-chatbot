@@ -130,6 +130,7 @@ final class MessageCopy {
   static const String buttonAdminRecentActions = '📜 Последние действия';
   static const String buttonAdminUserDialog = '💬 Диалог по @username';
   static const String buttonBroadcastToUsers = '👥 Только пользователям';
+  static const String buttonBroadcastToOutdoorPlus = '🥾 Outdoor+';
   static const String buttonBroadcastToGroup = '💬 Только в группу';
   static const String buttonBroadcastToUsersAndGroup = '📢 Пользователям и в группу';
   static const String buttonBroadcastCancel = '✖️ Отменить';
@@ -148,6 +149,7 @@ final class MessageCopy {
   static const String callbackRejectSubscriptionPrefix = 'subscription:reject:';
   static const String callbackCancelSubscriptionPrefix = 'subscription:cancel:';
   static const String callbackBroadcastToUsers = 'broadcast:users';
+  static const String callbackBroadcastToOutdoorPlus = 'broadcast:outdoor_plus';
   static const String callbackBroadcastToGroup = 'broadcast:group';
   static const String callbackBroadcastToUsersAndGroup = 'broadcast:users_and_group';
   static const String callbackBroadcastCancel = 'broadcast:cancel';

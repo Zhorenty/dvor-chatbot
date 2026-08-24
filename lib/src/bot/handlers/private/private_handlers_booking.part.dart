@@ -192,6 +192,9 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       );
       return;
     }
+    if (result.created) {
+      await _sendTrainingPrepNotes(chatId: chatId, training: selectedTraining);
+    }
     if (_isFreeActivity(selectedTraining)) {
       final paidBooking =
           await _bookingRepository.updateStatus(result.booking.id, BookingStatus.paid);
@@ -322,6 +325,24 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
           ? _templates.bookingCreated(result.booking)
           : _templates.bookingAlreadyExists(result.booking),
       showStarterBonus: starterBonusOffered,
+      parseMode: 'HTML',
+    );
+  }
+
+  Future<void> _sendTrainingPrepNotes({
+    required int chatId,
+    required TrainingInfo training,
+  }) async {
+    if (training.category != _ActivityCategory.trainings) {
+      return;
+    }
+    final notes = training.notes?.trim();
+    if (notes == null || notes.isEmpty) {
+      return;
+    }
+    await _sender.sendMessage(
+      chatId,
+      _templates.bookingSlotPrepNotes(trainingTitle: training.title, notes: notes),
       parseMode: 'HTML',
     );
   }

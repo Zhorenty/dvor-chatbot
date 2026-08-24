@@ -234,6 +234,74 @@ void main() {
       expect(await onboarding.hasNudgeBeenSent(userId: 606, nudgeKey: 'p1_30m'), isTrue);
     });
 
+    test('day-1 nudge names the nearest slot from the schedule', () async {
+      final now = DateTime.utc(2026, 7, 25, 12);
+      final onboarding = FakeOnboardingRepository()
+        ..seedUser(
+          userId: 616,
+          phase: OnboardingPhase.phase1Quiz,
+          step: OnboardingStep.quizGoal,
+          onboardingStartedAt: now.subtract(const Duration(hours: 25)),
+        )
+        ..sentNudgeKeys.addAll(<String>['616::p1_30m', '616::p1_2h', '616::p1_6h']);
+      final sender = FakeSender();
+      final service = OnboardingService(
+        onboardingRepository: onboarding,
+        dripEnabled: true,
+      );
+      final job = OnboardingNudgeJob(
+        onboardingRepository: onboarding,
+        onboardingService: service,
+        sender: sender,
+        templates: const MessageTemplates(),
+        catalogService: ActivityCatalogService(
+          scheduleRepository: FakeScheduleRepository(
+            <TrainingInfo>[
+              TrainingInfo(
+                title: 'Утренняя силовая',
+                startsAt: DateTime(2026, 7, 26, 8, 0),
+                location: 'Стадион',
+              ),
+            ],
+          ),
+        ),
+        nowProvider: () => now,
+      );
+
+      await job.run();
+
+      expect(sender.messages, isNotEmpty);
+      expect(sender.messages.first.text, contains('Утренняя силовая'));
+      expect(sender.messages.first.text, contains('Стадион'));
+      expect(sender.messages.first.text, isNot(contains('кто мы')));
+    });
+
+    test('booking a training sends sheet notes as what to bring', () async {
+      final harness = PrivateHandlersHarness(
+        trainings: <TrainingInfo>[
+          TrainingInfo(
+            title: 'Силовая',
+            startsAt: DateTime(2026, 8, 26, 19, 0),
+            location: 'Зал',
+            price: 0,
+            notes: 'Вода и полотенце',
+          ),
+        ],
+      );
+
+      await harness.handleText(chatId: 717, userId: 717, text: '/book');
+      await harness.handleText(
+        chatId: 717,
+        userId: 717,
+        text: MessageTemplates.buttonCategoryTrainings,
+      );
+      await harness.handleText(chatId: 717, userId: 717, text: '🎯 1. Силовая');
+
+      final texts = harness.messagesTo(717).map((m) => m.text).join('\n');
+      expect(texts, contains('Что взять на «Силовая»'));
+      expect(texts, contains('Вода и полотенце'));
+    });
+
     test('training feedback request and submit persist', () async {
       final dir = Directory.systemTemp.createTempSync('feedback_');
       addTearDown(() {

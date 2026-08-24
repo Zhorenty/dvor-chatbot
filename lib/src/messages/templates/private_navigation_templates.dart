@@ -1,5 +1,7 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
+import 'package:intl/intl.dart';
 
 final class PrivateNavigationTemplates {
   const PrivateNavigationTemplates();
@@ -56,9 +58,32 @@ final class PrivateNavigationTemplates {
         'Или сразу открой запись.';
   }
 
-  String onboardingNudgePrimaryCta() {
-    return 'Ближайшие слоты уже в расписании.\n'
-        'Выбери один и запишись.';
+  String onboardingNudgePrimaryCta({TrainingInfo? nearest}) {
+    if (nearest == null) {
+      return 'Ближайшие слоты уже в расписании.\n'
+          'Выбери один и запишись.';
+    }
+    final when = _slotWhen(nearest);
+    return 'Ближайший слот уже в расписании.\n\n'
+        '${nearest.title}\n'
+        '$when · ${nearest.location}\n\n'
+        'Запишись, если подходит.';
+  }
+
+  String _slotWhen(TrainingInfo nearest) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    final weekday = switch (nearest.startsAt.weekday) {
+      DateTime.monday => 'пн',
+      DateTime.tuesday => 'вт',
+      DateTime.wednesday => 'ср',
+      DateTime.thursday => 'чт',
+      DateTime.friday => 'пт',
+      DateTime.saturday => 'сб',
+      DateTime.sunday => 'вс',
+      _ => '',
+    };
+    final formatted = formatter.format(nearest.startsAt);
+    return weekday.isEmpty ? formatted : '$weekday, $formatted';
   }
 
   String onboardingNudgeDay5Alt() {

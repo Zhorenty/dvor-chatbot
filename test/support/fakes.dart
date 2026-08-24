@@ -1561,12 +1561,16 @@ final class FakeOnboardingRepository implements OnboardingRepository {
     DateTime? groupInviteLastNudgeAt,
     DateTime? lastNudgeAt,
     DateTime? snoozeUntil,
+    OnboardingQuizGoal? quizGoal,
+    OnboardingTrack? selectedTrack,
   }) {
     _stateByUserId[userId] = _FakeOnboardingState(
       pendingWelcome: pendingWelcome,
       bonusAvailable: bonusAvailable,
       phase: phase,
       step: step,
+      quizGoal: quizGoal,
+      selectedTrack: selectedTrack,
       onboardingStartedAt: onboardingStartedAt,
       activationAt: activationAt,
       startedAt: startedAt ?? onboardingStartedAt ?? DateTime.now().toUtc(),
@@ -1613,8 +1617,18 @@ final class FakeOnboardingRepository implements OnboardingRepository {
   }
 
   @override
-  Future<List<int>> getAllStartedUserIds() async {
-    return _stateByUserId.keys.toList();
+  Future<List<int>> getAllStartedUserIds({bool outdoorPlusOnly = false}) async {
+    if (!outdoorPlusOnly) {
+      return _stateByUserId.keys.toList();
+    }
+    return _stateByUserId.entries
+        .where((entry) {
+          final state = entry.value;
+          return state.selectedTrack == OnboardingTrack.outdoor ||
+              state.quizGoal == OnboardingQuizGoal.outdoorHikes;
+        })
+        .map((entry) => entry.key)
+        .toList();
   }
 
   @override
@@ -1845,6 +1859,8 @@ final class _FakeOnboardingState {
     required this.bonusAvailable,
     this.phase,
     this.step,
+    this.quizGoal,
+    this.selectedTrack,
     this.activationAt,
     this.onboardingStartedAt,
     this.entryType,

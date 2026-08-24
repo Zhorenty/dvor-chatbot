@@ -38,6 +38,11 @@ final class BroadcastContent {
   bool get hasMedia => sourceMessages.isNotEmpty;
 }
 
+enum BroadcastAudience {
+  allStarted,
+  outdoorPlus,
+}
+
 final class BroadcastService {
   BroadcastService({
     required MessageSender sender,
@@ -51,9 +56,14 @@ final class BroadcastService {
   final OnboardingRepository _onboardingRepository;
   final int? _groupChatId;
 
-  /// Sends [content] to all users who have started the bot.
-  Future<BroadcastResult> broadcastToUsers(BroadcastContent content) async {
-    final userIds = await _onboardingRepository.getAllStartedUserIds();
+  /// Sends [content] to started users.
+  Future<BroadcastResult> broadcastToUsers(
+    BroadcastContent content, {
+    BroadcastAudience audience = BroadcastAudience.allStarted,
+  }) async {
+    final userIds = await _onboardingRepository.getAllStartedUserIds(
+      outdoorPlusOnly: audience == BroadcastAudience.outdoorPlus,
+    );
     var sent = 0;
     var failed = 0;
     for (final userId in userIds) {

@@ -132,6 +132,7 @@ final class BotRunner {
           ),
           sender: sender,
           templates: templates,
+          catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
         ),
         _groupInviteNudgeJob = GroupInviteNudgeJob(
           onboardingRepository: onboardingRepository,

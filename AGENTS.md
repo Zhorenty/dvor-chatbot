@@ -36,6 +36,7 @@ Project guidance for AI/code agents in this repository.
  - `lib/src/jobs/schedule_retention_job.dart` (delete past events from Sheets after 2 days)
  - `lib/src/data/sqlite/sqlite_database_handle.dart`
 - Conversation log: `lib/src/data/sqlite_conversation_log_repository.dart` (+ `LoggingMessageSender`)
+- Onboarding funnel backlog: `docs/ONBOARDING_BACKLOG.md`
 - Message text/templates: `lib/src/messages/message_templates.dart` (+ `templates/*.part.dart`)
 - HTML escaping: `lib/src/messages/html_escaper.dart`
 - Club voice / copy: `docs/VOICE.md` (read before generating or editing user-facing text)

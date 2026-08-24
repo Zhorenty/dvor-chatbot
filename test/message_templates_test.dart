@@ -271,6 +271,28 @@ void main() {
       expect(text, isNot(contains('успей')));
     });
 
+    test('onboarding nudge can name a concrete slot', () {
+      final text = templates.onboardingNudgePrimaryCta(
+        nearest: TrainingInfo(
+          title: 'Утренняя силовая',
+          startsAt: DateTime(2026, 7, 26, 8, 0),
+          location: 'Стадион',
+        ),
+      );
+      expect(text, contains('Утренняя силовая'));
+      expect(text, contains('Стадион'));
+      expect(text, contains('Запишись, если подходит'));
+    });
+
+    test('booking slot notes are a fact, not a brand lecture', () {
+      final text = templates.bookingSlotPrepNotes(
+        trainingTitle: 'Силовая',
+        notes: 'Вода и полотенце',
+      );
+      expect(text, contains('Что взять на «Силовая»'));
+      expect(text, contains('Вода и полотенце'));
+    });
+
     test('help opens as slot status, not a gym kiosk slogan', () {
       final text = templates.privateHelp();
       expect(text, contains('слоты, запись и статус'));

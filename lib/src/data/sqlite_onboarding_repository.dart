@@ -789,10 +789,28 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
   }
 
   @override
-  Future<List<int>> getAllStartedUserIds() async {
+  Future<List<int>> getAllStartedUserIds({bool outdoorPlusOnly = false}) async {
     final db = _database;
+    final outdoorFilter = outdoorPlusOnly
+        ? '''
+        AND (
+          selected_track = ?
+          OR quiz_goal = ?
+        )'''
+        : '';
+    final args = outdoorPlusOnly
+        ? <Object?>[
+            OnboardingTrack.outdoor.storageValue,
+            OnboardingQuizGoal.outdoorHikes.storageValue,
+          ]
+        : const <Object?>[];
     final rows = db.select(
-      'SELECT user_id FROM onboarding_users WHERE started_at IS NOT NULL;',
+      '''
+      SELECT user_id FROM onboarding_users
+      WHERE started_at IS NOT NULL
+      $outdoorFilter;
+      ''',
+      args,
     );
     return rows.map((row) => row['user_id'] as int).toList();
   }

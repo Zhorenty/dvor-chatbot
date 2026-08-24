@@ -431,6 +431,10 @@ extension MessageTemplatesContent on MessageTemplates {
         '${paymentDetailsSent(booking)}';
   }
 
+  String bookingSlotPrepNotes({required String trainingTitle, required String notes}) {
+    return 'Что взять на «${_escapeHtml(trainingTitle)}»:\n${_escapeHtml(notes)}';
+  }
+
   String bookingCreatedWithoutPayment(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
@@ -2300,7 +2304,21 @@ extension MessageTemplatesContent on MessageTemplates {
       '• Стартовый бонус: <b>${analytics.freeByStarterCount}</b>',
       '• Реферальный бонус: <b>${analytics.freeByReferralCount}</b>',
       '• Каждая 5-я: <b>${analytics.freeByEveryFifthCount}</b>',
+      '',
+      '<b>Отмены стартового бонуса:</b>',
+      '• 30д: записали <b>${analytics.starterBonusBookedLast30Days}</b>, '
+          'отменили <b>${analytics.starterBonusCancelledLast30Days}</b>'
+          '${_ratioOrEmpty(analytics.starterBonusCancelRate30Days)}',
+      '• 90д: записали <b>${analytics.starterBonusBookedLast90Days}</b>, '
+          'отменили <b>${analytics.starterBonusCancelledLast90Days}</b>'
+          '${_ratioOrEmpty(analytics.starterBonusCancelRate90Days)}',
     ];
+    for (final entry in analytics.starterBonusCancelledByCategoryLast30Days.entries) {
+      if (entry.value <= 0) {
+        continue;
+      }
+      lines.add('• 30д ${entry.key}: отмен <b>${entry.value}</b>');
+    }
     return lines.join('\n');
   }
 
@@ -2414,6 +2432,13 @@ extension MessageTemplatesContent on MessageTemplates {
       return '—';
     }
     return '${(value * 100).toStringAsFixed(1)}%';
+  }
+
+  String _ratioOrEmpty(double? value) {
+    if (value == null) {
+      return '';
+    }
+    return ' (${(value * 100).toStringAsFixed(0)}%)';
   }
 
   String _daysOrDash(double? value) {
@@ -2567,8 +2592,12 @@ extension MessageTemplatesContent on MessageTemplates {
     required int failed,
     required int total,
     required bool groupSent,
+    bool outdoorPlus = false,
   }) {
     final buffer = StringBuffer('✅ <b>Рассылка завершена</b>\n\n');
+    if (outdoorPlus) {
+      buffer.writeln('Сегмент: направление outdoor.');
+    }
     buffer.write('👥 Пользователям: <b>$sent</b> из <b>$total</b> доставлено');
     if (failed > 0) {
       buffer.write(', не доставлено: <b>$failed</b>');

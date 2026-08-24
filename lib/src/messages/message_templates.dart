@@ -195,7 +195,9 @@ final class MessageTemplates {
 
   String onboardingNudgeQuizReminder() => _privateNavigationTemplates.onboardingNudgeQuizReminder();
 
-  String onboardingNudgePrimaryCta() => _privateNavigationTemplates.onboardingNudgePrimaryCta();
+  String onboardingNudgePrimaryCta({TrainingInfo? nearest}) {
+    return _privateNavigationTemplates.onboardingNudgePrimaryCta(nearest: nearest);
+  }
 
   String onboardingNudgeDay5Alt() => _privateNavigationTemplates.onboardingNudgeDay5Alt();
 

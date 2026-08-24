@@ -575,7 +575,7 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
   }
 
   @override
-  Future<List<int>> getAllStartedUserIds() async => const <int>[];
+  Future<List<int>> getAllStartedUserIds({bool outdoorPlusOnly = false}) async => const <int>[];
 
   @override
   Future<void> recordGroupMembership({

@@ -32,6 +32,11 @@ final class AdminAnalyticsService {
       freeByStarterCount: usage.freeByStarterCount,
       freeByReferralCount: usage.freeByReferralCount,
       freeByEveryFifthCount: usage.freeByEveryFifthCount,
+      starterBonusBookedLast30Days: usage.starterBonusBookedLast30Days,
+      starterBonusCancelledLast30Days: usage.starterBonusCancelledLast30Days,
+      starterBonusBookedLast90Days: usage.starterBonusBookedLast90Days,
+      starterBonusCancelledLast90Days: usage.starterBonusCancelledLast90Days,
+      starterBonusCancelledByCategoryLast30Days: usage.starterBonusCancelledByCategoryLast30Days,
     );
   }
 

@@ -56,6 +56,11 @@ final class LoyaltyBonusUsageAnalytics {
     required this.freeByEveryFifthCount,
     required this.referralAttributionsTotal,
     required this.referralAttributionsLast30Days,
+    this.starterBonusBookedLast30Days = 0,
+    this.starterBonusCancelledLast30Days = 0,
+    this.starterBonusBookedLast90Days = 0,
+    this.starterBonusCancelledLast90Days = 0,
+    this.starterBonusCancelledByCategoryLast30Days = const <String, int>{},
   });
 
   final int freeByStarterCount;
@@ -63,6 +68,25 @@ final class LoyaltyBonusUsageAnalytics {
   final int freeByEveryFifthCount;
   final int referralAttributionsTotal;
   final int referralAttributionsLast30Days;
+  final int starterBonusBookedLast30Days;
+  final int starterBonusCancelledLast30Days;
+  final int starterBonusBookedLast90Days;
+  final int starterBonusCancelledLast90Days;
+  final Map<String, int> starterBonusCancelledByCategoryLast30Days;
+
+  double? get starterBonusCancelRate30Days {
+    if (starterBonusBookedLast30Days <= 0) {
+      return null;
+    }
+    return starterBonusCancelledLast30Days / starterBonusBookedLast30Days;
+  }
+
+  double? get starterBonusCancelRate90Days {
+    if (starterBonusBookedLast90Days <= 0) {
+      return null;
+    }
+    return starterBonusCancelledLast90Days / starterBonusBookedLast90Days;
+  }
 }
 
 final class StarterBonusAnalytics {
@@ -85,6 +109,11 @@ final class LoyaltyAnalytics {
     required this.freeByStarterCount,
     required this.freeByReferralCount,
     required this.freeByEveryFifthCount,
+    this.starterBonusBookedLast30Days = 0,
+    this.starterBonusCancelledLast30Days = 0,
+    this.starterBonusBookedLast90Days = 0,
+    this.starterBonusCancelledLast90Days = 0,
+    this.starterBonusCancelledByCategoryLast30Days = const <String, int>{},
   });
 
   final DateTime generatedAt;
@@ -95,8 +124,27 @@ final class LoyaltyAnalytics {
   final int freeByStarterCount;
   final int freeByReferralCount;
   final int freeByEveryFifthCount;
+  final int starterBonusBookedLast30Days;
+  final int starterBonusCancelledLast30Days;
+  final int starterBonusBookedLast90Days;
+  final int starterBonusCancelledLast90Days;
+  final Map<String, int> starterBonusCancelledByCategoryLast30Days;
 
   int get freeTrainingsTotal => freeByStarterCount + freeByReferralCount + freeByEveryFifthCount;
+
+  double? get starterBonusCancelRate30Days {
+    if (starterBonusBookedLast30Days <= 0) {
+      return null;
+    }
+    return starterBonusCancelledLast30Days / starterBonusBookedLast30Days;
+  }
+
+  double? get starterBonusCancelRate90Days {
+    if (starterBonusBookedLast90Days <= 0) {
+      return null;
+    }
+    return starterBonusCancelledLast90Days / starterBonusBookedLast90Days;
+  }
 }
 
 final class SubscriptionAnalytics {

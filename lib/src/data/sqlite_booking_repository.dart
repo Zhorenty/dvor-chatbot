@@ -1512,6 +1512,48 @@ final class SqliteBookingRepository implements BookingRepository {
       'SELECT COUNT(*) AS c FROM referral_attributions WHERE attributed_at >= ?;',
       <Object?>[d30Iso],
     );
+    final d90Iso = now.toUtc().subtract(const Duration(days: 90)).toIso8601String();
+
+    int starterBookedSince(String sinceIso) {
+      return count(
+        '''
+        SELECT COUNT(*) AS c FROM bookings
+        WHERE payment_note = ? AND created_at >= ?;
+        ''',
+        <Object?>[_starterBonusPaymentNoteMarker, sinceIso],
+      );
+    }
+
+    int starterCancelledSince(String sinceIso) {
+      return count(
+        '''
+        SELECT COUNT(*) AS c FROM bookings
+        WHERE payment_note = ? AND created_at >= ? AND status = ?;
+        ''',
+        <Object?>[
+          _starterBonusPaymentNoteMarker,
+          sinceIso,
+          BookingStatus.cancelled.dbValue,
+        ],
+      );
+    }
+
+    int starterCancelledInCategory(ActivityCategory category) {
+      return count(
+        '''
+        SELECT COUNT(*) AS c FROM bookings
+        WHERE payment_note = ?
+          AND created_at >= ?
+          AND status = ?
+          AND ${_categoryConditionSql(category)};
+        ''',
+        <Object?>[
+          _starterBonusPaymentNoteMarker,
+          d30Iso,
+          BookingStatus.cancelled.dbValue,
+        ],
+      );
+    }
 
     return LoyaltyBonusUsageAnalytics(
       freeByStarterCount: freeByStarterCount,
@@ -1519,6 +1561,15 @@ final class SqliteBookingRepository implements BookingRepository {
       freeByEveryFifthCount: freeByEveryFifthCount,
       referralAttributionsTotal: referralAttributionsTotal,
       referralAttributionsLast30Days: referralAttributionsLast30Days,
+      starterBonusBookedLast30Days: starterBookedSince(d30Iso),
+      starterBonusCancelledLast30Days: starterCancelledSince(d30Iso),
+      starterBonusBookedLast90Days: starterBookedSince(d90Iso),
+      starterBonusCancelledLast90Days: starterCancelledSince(d90Iso),
+      starterBonusCancelledByCategoryLast30Days: <String, int>{
+        'trainings': starterCancelledInCategory(ActivityCategory.trainings),
+        'hikes': starterCancelledInCategory(ActivityCategory.hikes),
+        'trails': starterCancelledInCategory(ActivityCategory.trails),
+      },
     );
   }
 

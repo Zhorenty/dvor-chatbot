@@ -1133,6 +1133,12 @@ final class TelegramKeyboards {
           'callback_data': MessageCopy.callbackBroadcastToUsers,
         },
       ],
+      <Map<String, String>>[
+        <String, String>{
+          'text': MessageCopy.buttonBroadcastToOutdoorPlus,
+          'callback_data': MessageCopy.callbackBroadcastToOutdoorPlus,
+        },
+      ],
     ];
     if (hasGroup) {
       rows

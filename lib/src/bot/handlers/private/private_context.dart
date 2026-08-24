@@ -226,6 +226,9 @@ String? callbackToCommandText(String? callbackData) {
   if (callbackData == MessageCopy.callbackBroadcastToUsers) {
     return '/broadcast_users';
   }
+  if (callbackData == MessageCopy.callbackBroadcastToOutdoorPlus) {
+    return '/broadcast_outdoor';
+  }
   if (callbackData == MessageCopy.callbackBroadcastToGroup) {
     return '/broadcast_group';
   }

@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/group_membership.dart';
@@ -48,6 +49,13 @@ final class OnboardingNudgeCandidate {
   final DateTime? activationAt;
   final DateTime? lastNudgeAt;
   final DateTime? snoozeUntil;
+
+  ActivityCategory get preferredBookingCategory {
+    if (selectedTrack == OnboardingTrack.outdoor || quizGoal == OnboardingQuizGoal.outdoorHikes) {
+      return ActivityCategory.hikes;
+    }
+    return ActivityCategory.trainings;
+  }
 }
 
 abstract interface class OnboardingRepository {
@@ -163,7 +171,10 @@ abstract interface class OnboardingRepository {
 
   /// Returns IDs of all users who have started the bot (sent /start).
   /// Only these users can receive proactive DMs.
-  Future<List<int>> getAllStartedUserIds();
+  ///
+  /// When [outdoorPlusOnly] is true, keeps people who chose the outdoor track
+  /// or outdoor quiz goal — the warm segment for hike/trail broadcasts.
+  Future<List<int>> getAllStartedUserIds({bool outdoorPlusOnly = false});
 
   Future<void> recordGroupMembership({
     required int userId,
@@ -373,7 +384,7 @@ final class NoopOnboardingRepository implements OnboardingRepository {
   }) async {}
 
   @override
-  Future<List<int>> getAllStartedUserIds() async => const <int>[];
+  Future<List<int>> getAllStartedUserIds({bool outdoorPlusOnly = false}) async => const <int>[];
 
   @override
   Future<void> recordGroupMembership({

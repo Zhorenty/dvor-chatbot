@@ -200,6 +200,7 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
     if (userId != null &&
         text != null &&
         (text == '/broadcast_users' ||
+            text == '/broadcast_outdoor' ||
             text == '/broadcast_group' ||
             text == '/broadcast_users_and_group' ||
             text == '/broadcast_cancel')) {
@@ -234,8 +235,14 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
         return true;
       }
 
-      if (text == '/broadcast_users') {
-        final result = await _broadcastService.broadcastToUsers(broadcastContent);
+      if (text == '/broadcast_users' || text == '/broadcast_outdoor') {
+        final audience = text == '/broadcast_outdoor'
+            ? BroadcastAudience.outdoorPlus
+            : BroadcastAudience.allStarted;
+        final result = await _broadcastService.broadcastToUsers(
+          broadcastContent,
+          audience: audience,
+        );
         await _sendAdminMessage(
           chatId,
           _templates.adminBroadcastSent(
@@ -243,6 +250,7 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
             failed: result.failed,
             total: result.total,
             groupSent: false,
+            outdoorPlus: audience == BroadcastAudience.outdoorPlus,
           ),
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),

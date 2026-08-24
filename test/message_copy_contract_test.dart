@@ -100,6 +100,7 @@ void main() {
           TelegramKeyboards.adminBookingActionsInlineKeyboard(90, canRestore: true);
       final adminDelete = TelegramKeyboards.adminBookingDeleteConfirmInlineKeyboard(91);
       final adminNotify = TelegramKeyboards.adminClientNotificationPreferenceInlineKeyboard();
+      final broadcast = TelegramKeyboards.broadcastTargetKeyboard(hasGroup: true);
       final callbacks = <String>{
         ..._inlineCallbacks(decision),
         ..._inlineCallbacks(openQueue),
@@ -112,6 +113,7 @@ void main() {
         ..._inlineCallbacks(adminActions),
         ..._inlineCallbacks(adminDelete),
         ..._inlineCallbacks(adminNotify),
+        ..._inlineCallbacks(broadcast),
       };
 
       expect(
@@ -145,6 +147,9 @@ void main() {
       expect(callbacks, contains('${MessageCopy.callbackAdminBookingDeleteAbortPrefix}91'));
       expect(callbacks, contains(MessageCopy.callbackAdminNotifyYes));
       expect(callbacks, contains(MessageCopy.callbackAdminNotifyNo));
+      expect(callbacks, contains(MessageCopy.callbackBroadcastToUsers));
+      expect(callbacks, contains(MessageCopy.callbackBroadcastToOutdoorPlus));
+      expect(callbacks, contains(MessageCopy.callbackBroadcastToGroup));
     });
   });
 }
