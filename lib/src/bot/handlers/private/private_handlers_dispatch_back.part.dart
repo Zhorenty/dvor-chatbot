@@ -223,10 +223,12 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             userId,
             now: now,
           );
-          final remainingProTrainings = await _proIncludedTrainingRemainingCount(
+          final remainingGroup = await _boxingCardRemainingGroupCount(
             userId: userId,
             membership: membership,
           );
+          final individualUsed = await _isBoxingCardIndividualUsed(membership);
+          final snapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
           _flowByUserId[userId] = const _PrivateFlowState(
             step: _PrivateFlowStep.viewingSubscriptionOverview,
             availableTrainings: <TrainingInfo>[],
@@ -235,15 +237,24 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             chatId,
             _templates.subscriptionOverview(
               membershipLevel: membership.level,
+              plan: membership.plan,
               activeUntil: membership.activeUntil,
-              remainingProTrainings: remainingProTrainings,
+              remainingGroupTrainings: remainingGroup,
+              individualUsed: individualUsed,
             ),
             replyMarkup: _templates.subscriptionOverviewKeyboard(
-              canApply: true,
-              isRenewal: membership.level == MembershipLevel.pro,
+              canApply: snapshot.latestPending == null,
+              isRenewal: BoxingCardLedger.isActiveBoxingCard(membership, now: now),
+              showIndividual: await _isBoxingCardIndividualAvailable(membership: membership),
             ),
             parseMode: 'HTML',
           );
+          return true;
+        case _PrivateFlowStep.selectingBoxingCardPlan:
+          await _openBoxingCardOverview(chatId: chatId, userId: userId);
+          return true;
+        case _PrivateFlowStep.enteringIndividualSessionTimes:
+          await _openBoxingCardOverview(chatId: chatId, userId: userId);
           return true;
         case _PrivateFlowStep.selectingBookingAction:
           _flowByUserId[userId] = flowState!.copyWith(

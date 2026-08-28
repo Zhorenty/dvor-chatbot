@@ -97,7 +97,7 @@ final class EconomicSummaryService {
         everyFifthFreeBookingsCount++;
         continue;
       }
-      if (paymentNote == MessageFormatters.proIncludedTrainingPaymentNoteMarker) {
+      if (MessageFormatters.isBoxingCardPaymentNote(paymentNote)) {
         freeBookingsCount++;
         regularFreeBookingsCount++;
         continue;

@@ -178,6 +178,17 @@ abstract interface class BookingRepository {
     int limit = 5000,
   });
 
+  /// Bookings of [userId] whose start is in `[startsFromInclusive, startsToExclusive)`
+  /// and whose [TrainingBooking.paymentNote] is one of [paymentNotes].
+  /// Includes cancelled rows so late boxing-card burns stay in the ledger.
+  Future<List<TrainingBooking>> listUserBookingsByPaymentNotes({
+    required int userId,
+    required Set<String> paymentNotes,
+    required DateTime startsFromInclusive,
+    required DateTime startsToExclusive,
+    int limit = 500,
+  });
+
   /// Self bookings in paid-like statuses whose start is within
   /// `[startsFromInclusive, startsToInclusive]` (UTC-aware ISO compare).
   Future<List<TrainingBooking>> listSelfPaidBookingsStartedBetween({

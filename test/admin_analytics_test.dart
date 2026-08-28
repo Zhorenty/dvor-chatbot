@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_subscription_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:test/test.dart';
@@ -130,6 +131,7 @@ void main() {
       await subscriptions.submitPaymentRequest(
         userId: 21,
         userUsername: 'pending_user',
+        plan: BoxingCardPlan.baza,
         paymentProofChatId: 1,
         paymentProofMessageId: 2,
         requestedAt: now,

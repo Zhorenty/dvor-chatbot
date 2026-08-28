@@ -33,10 +33,11 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
       final subscriptionSnapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
       final membership = subscriptionSnapshot.membership;
-      final remainingProTrainings = await _proIncludedTrainingRemainingCount(
+      final remainingGroupTrainings = await _boxingCardRemainingGroupCount(
         userId: userId,
         membership: membership,
       );
+      final individualUsed = await _isBoxingCardIndividualUsed(membership);
       final activeBookings = bookings
           .where(
             (booking) =>
@@ -64,8 +65,10 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           availableReferralRewards: referralProgress.availableRewardsCount,
           starterBonusAvailable: starterBonusAvailable,
           membershipLevel: membership.level,
+          subscriptionPlan: membership.plan,
           subscriptionActiveUntil: membership.activeUntil,
-          subscriptionRemainingProTrainings: remainingProTrainings,
+          subscriptionRemainingGroupTrainings: remainingGroupTrainings,
+          subscriptionIndividualUsed: individualUsed,
           subscriptionRequestStatusLine:
               _templates.subscriptionStatusLineFromSnapshot(subscriptionSnapshot),
           subscriptionTotalApprovedCount: subscriptionSnapshot.totalApprovedCount,
@@ -240,8 +243,19 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         );
         return true;
       }
-      final trainings =
-          _bookableItemsByCategory(_catalogService.categoryForBooking(selectedBooking));
+      if (MessageFormatters.isBoxingCardPaymentNote(selectedBooking.paymentNote) &&
+          !BoxingCardLedger.canReschedule(selectedBooking, now: _nowProvider())) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.boxingCardRescheduleTooLate(),
+          replyMarkup: _bookingActionsInlineKeyboard(selectedBooking),
+        );
+        return true;
+      }
+      var trainings = _bookableItemsByCategory(_catalogService.categoryForBooking(selectedBooking));
+      if (MessageFormatters.isBoxingCardPaymentNote(selectedBooking.paymentNote)) {
+        trainings = trainings.where(BoxingCardLedger.isAllowedRescheduleTarget).toList();
+      }
       if (trainings.isEmpty) {
         await _sender.sendMessage(
           chatId,
@@ -351,12 +365,13 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       );
       _flowByUserId.remove(userId);
       if (cancelResult.outcome == BookingActionOutcome.success && cancelResult.booking != null) {
+        final cancelled = await _finalizeBoxingCardCancel(selectedBooking);
         if (_shouldNotifyAdminAboutBookingCancellation(selectedBooking)) {
           await _notifyAdminAboutBookingCancelled(selectedBooking);
         }
         await _sender.sendMessage(
           chatId,
-          _templates.bookingCancelled(cancelResult.booking!),
+          _templates.bookingCancelled(cancelled ?? cancelResult.booking!),
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
@@ -556,6 +571,24 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         );
         return true;
       }
+      if (MessageFormatters.isBoxingCardPaymentNote(selectedBooking.paymentNote)) {
+        if (!BoxingCardLedger.canReschedule(selectedBooking, now: _nowProvider())) {
+          await _sender.sendMessage(
+            chatId,
+            _templates.boxingCardRescheduleTooLate(),
+            replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
+          );
+          return true;
+        }
+        if (!BoxingCardLedger.isAllowedRescheduleTarget(targetTraining)) {
+          await _sender.sendMessage(
+            chatId,
+            _templates.boxingCardRescheduleTargetNotBoxing(),
+            replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
+          );
+          return true;
+        }
+      }
       try {
         _bookingPolicyService.ensureReschedulePaymentTypeAllowed(
           booking: selectedBooking,
@@ -745,25 +778,158 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         return false;
       }
       _flowByUserId[userId] = const _PrivateFlowState(
-        step: _PrivateFlowStep.confirmingSubscriptionPayment,
+        step: _PrivateFlowStep.selectingBoxingCardPlan,
         availableTrainings: <TrainingInfo>[],
       );
       await _sender.sendMessage(
         chatId,
-        _templates.subscriptionPaymentInstructions(),
-        replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: true),
+        _templates.boxingCardPlanChoice(),
+        replyMarkup: _templates.boxingCardPlanKeyboard(),
         parseMode: 'HTML',
       );
       return true;
     }
 
     if (userId != null &&
+        flowState?.step == _PrivateFlowStep.selectingBoxingCardPlan &&
+        text != null &&
+        (text == MessageTemplates.buttonPlanBaza || text == MessageTemplates.buttonPlanUdar)) {
+      final plan =
+          text == MessageTemplates.buttonPlanBaza ? BoxingCardPlan.baza : BoxingCardPlan.udar;
+      _flowByUserId[userId] = _PrivateFlowState(
+        step: _PrivateFlowStep.confirmingSubscriptionPayment,
+        availableTrainings: const <TrainingInfo>[],
+        selectedBoxingCardPlan: plan,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.subscriptionPaymentInstructions(plan: plan),
+        replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: false),
+        parseMode: 'HTML',
+      );
+      return true;
+    }
+
+    if (text == MessageTemplates.buttonIndividualSession) {
+      if (userId == null) {
+        return false;
+      }
+      final membership = await _subscriptionRepository.getMembership(userId, now: _nowProvider());
+      if (!await _isBoxingCardIndividualAvailable(membership: membership) &&
+          membership.requestId != null &&
+          await _subscriptionRepository.hasPendingIndividualInPeriod(
+            subscriptionRequestId: membership.requestId!,
+          )) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.boxingCardIndividualAlreadyPending(),
+          replyMarkup: _templates.subscriptionOverviewKeyboard(
+            canApply: true,
+            isRenewal: true,
+          ),
+        );
+        return true;
+      }
+      if (!await _isBoxingCardIndividualAvailable(membership: membership)) {
+        await _sender.sendMessage(
+          chatId,
+          BoxingCardLedger.isActiveBoxingCard(membership, now: _nowProvider())
+              ? _templates.boxingCardIndividualQuotaUsed()
+              : _templates.boxingCardIndividualNeedActiveCard(),
+          replyMarkup: _templates.subscriptionOverviewKeyboard(
+            canApply: true,
+            isRenewal: BoxingCardLedger.isActiveBoxingCard(membership, now: _nowProvider()),
+          ),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.enteringIndividualSessionTimes,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.boxingCardIndividualPrompt(),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringIndividualSessionTimes &&
+        text != null &&
+        !text.startsWith('/') &&
+        text != MessageTemplates.buttonBack &&
+        text != MessageTemplates.buttonMainMenu) {
+      final submit = await _subscriptionRepository.submitIndividualSessionRequest(
+        userId: userId,
+        userUsername: username,
+        preferredTimes: text,
+        requestedAt: _nowProvider(),
+      );
+      _flowByUserId.remove(userId);
+      switch (submit.outcome) {
+        case SubmitIndividualSessionOutcome.created:
+          final request = submit.request;
+          if (request != null) {
+            await _notifyAdminAboutIndividualSessionSubmitted(request);
+          }
+          await _sender.sendMessage(
+            chatId,
+            _templates.boxingCardIndividualSubmitted(),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+          );
+          return true;
+        case SubmitIndividualSessionOutcome.alreadyPending:
+          await _sender.sendMessage(
+            chatId,
+            _templates.boxingCardIndividualAlreadyPending(),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+          );
+          return true;
+        case SubmitIndividualSessionOutcome.quotaUsed:
+          await _sender.sendMessage(
+            chatId,
+            _templates.boxingCardIndividualQuotaUsed(),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+          );
+          return true;
+        case SubmitIndividualSessionOutcome.noActiveCard:
+          await _sender.sendMessage(
+            chatId,
+            _templates.boxingCardIndividualNeedActiveCard(),
+            replyMarkup: _templates.privateMenuKeyboard(
+                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+          );
+          return true;
+      }
+    }
+
+    if (userId != null &&
         flowState?.step == _PrivateFlowStep.confirmingSubscriptionPayment &&
         paymentProof != null) {
+      final plan = flowState?.selectedBoxingCardPlan;
+      if (plan == null) {
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingBoxingCardPlan,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await _sender.sendMessage(
+          chatId,
+          _templates.boxingCardPlanChoice(),
+          replyMarkup: _templates.boxingCardPlanKeyboard(),
+          parseMode: 'HTML',
+        );
+        return true;
+      }
       final submitResult = await _subscriptionRepository.submitPaymentRequest(
         userId: userId,
         userUsername: username,
         note: paymentProof.caption,
+        plan: plan,
         paymentProofChatId: paymentProof.fromChatId,
         paymentProofMessageId: paymentProof.messageId,
         requestedAt: _nowProvider(),

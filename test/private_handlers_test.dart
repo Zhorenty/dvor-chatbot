@@ -435,88 +435,93 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonManageBookings)));
     });
 
-    // TODO(subscription): вернуть тест после включения кнопки абонемента в профиле.
-    // test('opens subscription overview and allows applying for normal user', () async {
-    //   final sender = _FakeSender();
-    //   final subscriptionRepository = _FakeSubscriptionRepository()
-    //     ..membershipLevel = MembershipLevel.normal;
-    //   final handlers = PrivateHandlers(
-    //     sender: sender,
-    //     scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
-    //     bookingRepository: _FakeBookingRepository(),
-    //     subscriptionRepository: subscriptionRepository,
-    //     templates: const MessageTemplates(),
-    //     adminUserIds: const <int>{},
-    //   );
-    //
-    //   final handled = await handlers.handle(<String, dynamic>{
-    //     'chat': <String, dynamic>{'id': 9102, 'type': 'private'},
-    //     'from': <String, dynamic>{'id': 9102},
-    //     'text': MessageTemplates.buttonSubscription,
-    //   });
-    //
-    //   expect(handled, isTrue);
-    //   expect(sender.messages.single.text, contains('Абонемент DVOR'));
-    //   expect(sender.messages.single.text, contains('Оформить'));
-    //   expect(_keyboardTexts(sender.messages.single.replyMarkup),
-    //       contains(MessageTemplates.buttonSubscribeApply));
-    // });
+    test('opens boxing card overview and allows applying', () async {
+      final sender = _FakeSender();
+      final subscriptionRepository = _FakeSubscriptionRepository()
+        ..membershipLevel = MembershipLevel.normal;
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: subscriptionRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
 
-    // TODO(subscription): вернуть тест после включения кнопки абонемента в профиле.
-    // test('shows renewal call-to-action for active PRO subscription', () async {
-    //   final sender = _FakeSender();
-    //   final bookingRepository = _FakeBookingRepository()
-    //     ..queue = <TrainingBooking>[
-    //       _booking(
-    //         id: 8101,
-    //         userId: 9103,
-    //         status: BookingStatus.paid,
-    //         paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
-    //         updatedAt: DateTime(2026, 7, 10, 10),
-    //       ),
-    //       _booking(
-    //         id: 8102,
-    //         userId: 9103,
-    //         status: BookingStatus.paid,
-    //         paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
-    //         updatedAt: DateTime(2026, 7, 11, 10),
-    //       ),
-    //     ];
-    //   final subscriptionRepository = _FakeSubscriptionRepository()
-    //     ..membershipLevel = MembershipLevel.pro
-    //     ..membershipActiveUntil = DateTime(2026, 8, 1, 12);
-    //   final handlers = PrivateHandlers(
-    //     sender: sender,
-    //     scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
-    //     bookingRepository: bookingRepository,
-    //     subscriptionRepository: subscriptionRepository,
-    //     templates: const MessageTemplates(),
-    //     adminUserIds: const <int>{},
-    //   );
-    //
-    //   final handled = await handlers.handle(<String, dynamic>{
-    //     'chat': <String, dynamic>{'id': 9103, 'type': 'private'},
-    //     'from': <String, dynamic>{'id': 9103},
-    //     'text': MessageTemplates.buttonSubscription,
-    //   });
-    //
-    //   expect(handled, isTrue);
-    //   expect(sender.messages.single.text,
-    //       contains('Осталось тренировок в текущем PRO:</b> <b>6/8</b>'));
-    //   expect(sender.messages.single.text, contains('Продление доступно уже сейчас'));
-    //   expect(
-    //     _keyboardTexts(sender.messages.single.replyMarkup),
-    //     contains(MessageTemplates.buttonRenewSubscription),
-    //   );
-    // });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9102, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9102},
+        'text': MessageTemplates.buttonSubscription,
+      });
 
-    test('submits subscription payment request after proof file', () async {
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('DVOR BOXING CARD'));
+      expect(sender.messages.single.text, contains('БАЗА'));
+      expect(sender.messages.single.text, contains('УДАР'));
+      expect(_keyboardTexts(sender.messages.single.replyMarkup),
+          contains(MessageTemplates.buttonSubscribeApply));
+    });
+
+    test('shows remaining slots and renew for active boxing card', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          _booking(
+            id: 8101,
+            userId: 9103,
+            title: 'BOXING DVOR',
+            status: BookingStatus.paid,
+            paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+            startsAt: DateTime(2026, 7, 10, 19),
+          ),
+          _booking(
+            id: 8102,
+            userId: 9103,
+            title: 'Бокс',
+            status: BookingStatus.paid,
+            paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+            startsAt: DateTime(2026, 7, 11, 19),
+          ),
+        ];
+      final subscriptionRepository = _FakeSubscriptionRepository()
+        ..membershipLevel = MembershipLevel.boxingCard
+        ..membershipPlan = BoxingCardPlan.udar
+        ..membershipActiveFrom = DateTime(2026, 7, 2, 12)
+        ..membershipActiveUntil = DateTime(2026, 8, 1, 12)
+        ..membershipRequestId = 44;
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        subscriptionRepository: subscriptionRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 20, 10),
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9103, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9103},
+        'text': MessageTemplates.buttonSubscription,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('Групповые: <b>6/8</b>'));
+      expect(sender.messages.single.text, contains('Индивидуальная: <b>0/1</b>'));
+      expect(
+        _keyboardTexts(sender.messages.single.replyMarkup),
+        contains(MessageTemplates.buttonRenewSubscription),
+      );
+    });
+
+    test('submits boxing card payment request after plan and proof', () async {
       final sender = _FakeSender();
       final request = SubscriptionRequest(
         id: 9001,
         userId: 9201,
         userUsername: 'sub_user',
         status: SubscriptionRequestStatus.paymentSubmitted,
+        plan: BoxingCardPlan.baza,
         createdAt: DateTime(2026, 7, 1, 12),
         updatedAt: DateTime(2026, 7, 1, 12),
         paymentProofChatId: 9201,
@@ -543,6 +548,12 @@ void main() {
         'from': <String, dynamic>{'id': 9201, 'username': 'sub_user'},
         'text': MessageTemplates.buttonSubscribeApply,
       });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9201, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9201, 'username': 'sub_user'},
+        'text': MessageTemplates.buttonPlanBaza,
+      });
+      expect(sender.lastContentMessage.text, contains('3 500'));
       final handled = await handlers.handle(<String, dynamic>{
         'message': <String, dynamic>{
           'message_id': 44,
@@ -556,15 +567,44 @@ void main() {
 
       expect(handled, isTrue);
       expect(subscriptionRepository.submitCalls, 1);
-      expect(sender.lastContentMessage.text, contains('Заявка на абонемент отправлена'));
+      expect(subscriptionRepository.lastSubmittedPlan, BoxingCardPlan.baza);
+      expect(sender.lastContentMessage.text, contains('Заявка на бокс-карту на проверке'));
       expect(sender.messages.any((item) => item.chatId == -100500), isTrue);
     });
 
-    test('back from subscription payment keeps current PRO status', () async {
+    test('udar plan shows 4 700 in payment instructions', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: _FakeSubscriptionRepository(),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9202, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9202},
+        'text': MessageTemplates.buttonSubscribeApply,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9202, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9202},
+        'text': MessageTemplates.buttonPlanUdar,
+      });
+
+      expect(sender.lastContentMessage.text, contains('4 700'));
+      expect(sender.lastContentMessage.text, contains('УДАР'));
+    });
+
+    test('back from subscription payment keeps current boxing card status', () async {
       final sender = _FakeSender();
       final subscriptionRepository = _FakeSubscriptionRepository()
-        ..membershipLevel = MembershipLevel.pro
-        ..membershipActiveUntil = DateTime(2026, 8, 1, 12);
+        ..membershipLevel = MembershipLevel.boxingCard
+        ..membershipPlan = BoxingCardPlan.baza
+        ..membershipActiveUntil = DateTime(2026, 8, 1, 12)
+        ..membershipRequestId = 9;
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
@@ -586,7 +626,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.lastContentMessage.text, contains('Твой статус: <b>PRO</b>'));
+      expect(sender.lastContentMessage.text, contains('Тариф: <b>БАЗА</b>'));
     });
 
     test('admin can cancel active subscription by command', () async {
@@ -681,8 +721,7 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonProfileBookings));
       expect(buttons, contains(MessageTemplates.buttonReferralProgram));
-      // TODO(subscription): вернуть кнопку абонемента в профиле.
-      expect(buttons, isNot(contains(MessageTemplates.buttonSubscription)));
+      expect(buttons, contains(MessageTemplates.buttonSubscription));
     });
 
     test('opens referral program section from profile', () async {
@@ -713,42 +752,47 @@ void main() {
       expect(sender.messages.single.parseMode, 'HTML');
     });
 
-    // TODO(subscription): вернуть тест после включения статуса абонемента в профиле.
-    // test('shows remaining PRO trainings in profile for active subscription', () async {
-    //   final sender = _FakeSender();
-    //   final bookingRepository = _FakeBookingRepository()
-    //     ..queue = <TrainingBooking>[
-    //       for (var i = 0; i < 3; i++)
-    //         _booking(
-    //           id: 9100 + i,
-    //           userId: 9502,
-    //           status: BookingStatus.paid,
-    //           paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
-    //           updatedAt: DateTime(2026, 7, 12 + i, 10),
-    //         ),
-    //     ];
-    //   final subscriptionRepository = _FakeSubscriptionRepository()
-    //     ..membershipLevel = MembershipLevel.pro
-    //     ..membershipActiveUntil = DateTime(2026, 8, 1, 12);
-    //   final handlers = PrivateHandlers(
-    //     sender: sender,
-    //     scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
-    //     bookingRepository: bookingRepository,
-    //     subscriptionRepository: subscriptionRepository,
-    //     onboardingRepository: _FakeOnboardingRepository()..seedUser(userId: 9502),
-    //     templates: const MessageTemplates(),
-    //     adminUserIds: const <int>{},
-    //   );
-    //
-    //   final handled = await handlers.handle(<String, dynamic>{
-    //     'chat': <String, dynamic>{'id': 9502, 'type': 'private'},
-    //     'from': <String, dynamic>{'id': 9502},
-    //     'text': MessageTemplates.buttonProfile,
-    //   });
-    //
-    //   expect(handled, isTrue);
-    //   expect(sender.messages.single.text, contains('осталось тренировок: <b>5/8</b>'));
-    // });
+    test('shows remaining boxing card slots in profile', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          for (var i = 0; i < 3; i++)
+            _booking(
+              id: 9100 + i,
+              userId: 9502,
+              title: 'BOXING DVOR',
+              status: BookingStatus.paid,
+              paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+              startsAt: DateTime(2026, 7, 12 + i, 19),
+            ),
+        ];
+      final subscriptionRepository = _FakeSubscriptionRepository()
+        ..membershipLevel = MembershipLevel.boxingCard
+        ..membershipPlan = BoxingCardPlan.udar
+        ..membershipActiveFrom = DateTime(2026, 7, 2, 12)
+        ..membershipActiveUntil = DateTime(2026, 8, 1, 12)
+        ..membershipRequestId = 5;
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        subscriptionRepository: subscriptionRepository,
+        onboardingRepository: _FakeOnboardingRepository()..seedUser(userId: 9502),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 20, 10),
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 9502, 'type': 'private'},
+        'from': <String, dynamic>{'id': 9502},
+        'text': MessageTemplates.buttonProfile,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.single.text, contains('групповые: <b>5/8</b>'));
+      expect(sender.messages.single.text, contains('Бокс-карта'));
+    });
 
     test('handles coaching staff flow with compact list and trainer card', () async {
       final sender = _FakeSender();
@@ -2137,28 +2181,32 @@ void main() {
       expect(adminMessage, contains('тренер записался'));
     });
 
-    test('auto-applies included PRO training when subscription is active', () async {
+    test('auto-applies boxing card slot when card is active', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..queue = <TrainingBooking>[
-          for (var i = 1; i <= 7; i++)
+          for (var i = 1; i <= 3; i++)
             _booking(
               id: 200 + i,
               userId: 1603,
+              title: 'BOXING DVOR',
               status: BookingStatus.paid,
-              paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+              paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
               startsAt: DateTime(2026, 7, 10 + i, 19, 0),
             ),
         ];
       final subscriptionRepository = _FakeSubscriptionRepository()
-        ..membershipLevel = MembershipLevel.pro
-        ..membershipActiveUntil = DateTime(2026, 7, 31, 12, 0);
+        ..membershipLevel = MembershipLevel.boxingCard
+        ..membershipPlan = BoxingCardPlan.baza
+        ..membershipActiveFrom = DateTime(2026, 7, 1, 12)
+        ..membershipActiveUntil = DateTime(2026, 7, 31, 12)
+        ..membershipRequestId = 3;
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(
           <TrainingInfo>[
             TrainingInfo(
-              title: 'PRO included session',
+              title: 'BOXING DVOR',
               startsAt: DateTime(2026, 7, 25, 19, 0),
               location: 'Main hall',
               price: 1300,
@@ -2186,7 +2234,7 @@ void main() {
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1603, 'type': 'private'},
         'from': <String, dynamic>{'id': 1603, 'username': 'pro_user'},
-        'text': '🎯 1. PRO included session',
+        'text': '🎯 1. BOXING DVOR',
       });
 
       expect(handled, isTrue);
@@ -2194,12 +2242,486 @@ void main() {
       expect(bookingRepository.lastUpdatedStatus, BookingStatus.paid);
       expect(
         bookingRepository.lastUpdatedPaymentNote,
-        MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+        MessageFormatters.boxingCardIncludedPaymentNoteMarker,
       );
-      expect(sender.lastContentMessage.text, contains('Включено в PRO'));
+      expect(sender.lastContentMessage.text, contains('Занятие списано с карты'));
+      expect(sender.lastContentMessage.text, contains('0/4'));
       expect(sender.lastContentMessage.text, isNot(contains('Реквизиты для оплаты')));
       final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
+    });
+
+    test('fifth baza boxing slot requires payment', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          for (var i = 1; i <= 4; i++)
+            _booking(
+              id: 300 + i,
+              userId: 1701,
+              title: 'Бокс',
+              status: BookingStatus.paid,
+              paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+              startsAt: DateTime(2026, 7, 8 + i, 19),
+            ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'BOXING DVOR',
+              startsAt: DateTime(2026, 7, 26, 19),
+              location: 'Hall',
+              price: 1300,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        subscriptionRepository: _FakeSubscriptionRepository()
+          ..membershipLevel = MembershipLevel.boxingCard
+          ..membershipPlan = BoxingCardPlan.baza
+          ..membershipActiveFrom = DateTime(2026, 7, 1, 12)
+          ..membershipActiveUntil = DateTime(2026, 7, 31, 12)
+          ..membershipRequestId = 8,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 20, 10),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1701, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1701},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1701, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1701},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1701, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1701},
+        'text': '🎯 1. BOXING DVOR',
+      });
+
+      expect(bookingRepository.lastUpdatedPaymentNote, isNull);
+      expect(sender.lastContentMessage.text, contains('Реквизиты'));
+    });
+
+    test('does not apply boxing card to strength training', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Силовая',
+              startsAt: DateTime(2026, 7, 26, 19),
+              location: 'Hall',
+              price: 1300,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        subscriptionRepository: _FakeSubscriptionRepository()
+          ..membershipLevel = MembershipLevel.boxingCard
+          ..membershipPlan = BoxingCardPlan.udar
+          ..membershipActiveFrom = DateTime(2026, 7, 1, 12)
+          ..membershipActiveUntil = DateTime(2026, 7, 31, 12)
+          ..membershipRequestId = 8,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 20, 10),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1702, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1702},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1702, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1702},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1702, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1702},
+        'text': '🎯 1. Силовая',
+      });
+
+      expect(bookingRepository.lastUpdatedPaymentNote, isNull);
+      expect(sender.lastContentMessage.text, contains('Реквизиты'));
+    });
+
+    test('blocks boxing card reschedule under 24 hours', () async {
+      final now = DateTime(2026, 7, 20, 18);
+      final selected = _booking(
+        id: 44,
+        userId: 1703,
+        title: 'BOXING DVOR',
+        status: BookingStatus.paid,
+        paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+        startsAt: now.add(const Duration(hours: 10)),
+      );
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[selected];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Бокс вечер',
+              startsAt: now.add(const Duration(days: 2)),
+              location: 'Hall',
+              price: 1300,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1703, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1703},
+        'text': '/reschedule_booking 44',
+      });
+
+      expect(sender.lastContentMessage.text, contains('меньше 24 часов'));
+      expect(bookingRepository.rescheduleCalls, 0);
+    });
+
+    test('reschedules boxing card slot to another boxing slot when 24h remain', () async {
+      final now = DateTime(2026, 7, 20, 10);
+      final selected = _booking(
+        id: 45,
+        userId: 1704,
+        title: 'BOXING DVOR',
+        status: BookingStatus.paid,
+        paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+        startsAt: now.add(const Duration(hours: 30)),
+      );
+      final target = TrainingInfo(
+        title: 'Бокс',
+        startsAt: now.add(const Duration(days: 3)),
+        location: 'Hall',
+      );
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[selected]
+        ..rescheduleResult = BookingRescheduleResult(
+          outcome: BookingRescheduleOutcome.success,
+          booking: _booking(
+            id: 45,
+            userId: 1704,
+            title: target.title,
+            status: BookingStatus.paid,
+            paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+            startsAt: target.startsAt,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[target]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1704, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1704},
+        'text': '/reschedule_booking 45',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1704, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1704},
+        'text': '🎯 1. Бокс',
+      });
+
+      expect(bookingRepository.rescheduleCalls, 1);
+      expect(bookingRepository.lastRescheduleTraining?.title, 'Бокс');
+    });
+
+    test('late cancel of boxing card slot burns the quota', () async {
+      final now = DateTime(2026, 7, 20, 18);
+      final selected = _booking(
+        id: 46,
+        userId: 1705,
+        title: 'BOXING DVOR',
+        status: BookingStatus.paid,
+        paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+        startsAt: now.add(const Duration(hours: 5)),
+      );
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[selected]
+        ..cancelResult = BookingActionResult(
+          outcome: BookingActionOutcome.success,
+          booking: _booking(
+            id: 46,
+            userId: 1705,
+            title: 'BOXING DVOR',
+            status: BookingStatus.cancelled,
+            paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+            startsAt: selected.startsAt,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1705, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1705},
+        'text': '/cancel_booking 46',
+      });
+      expect(sender.lastContentMessage.text, contains('слот сгорит'));
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1705, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1705},
+        'text': '/cancel_booking_confirm 46',
+      });
+
+      expect(bookingRepository.cancelCalls, 1);
+      expect(
+        bookingRepository.lastUpdatedPaymentNote,
+        MessageFormatters.boxingCardLateCancelPaymentNoteMarker,
+      );
+    });
+
+    test('early cancel of boxing card slot returns the quota', () async {
+      final now = DateTime(2026, 7, 20, 10);
+      final selected = _booking(
+        id: 47,
+        userId: 1706,
+        title: 'BOXING DVOR',
+        status: BookingStatus.paid,
+        paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+        startsAt: now.add(const Duration(hours: 30)),
+      );
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[selected]
+        ..cancelResult = BookingActionResult(
+          outcome: BookingActionOutcome.success,
+          booking: _booking(
+            id: 47,
+            userId: 1706,
+            title: 'BOXING DVOR',
+            status: BookingStatus.cancelled,
+            paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+            startsAt: selected.startsAt,
+          ),
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1706, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1706},
+        'text': '/cancel_booking 47',
+      });
+      expect(sender.lastContentMessage.text, contains('вернёт слот'));
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1706, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1706},
+        'text': '/cancel_booking_confirm 47',
+      });
+
+      expect(bookingRepository.cancelCalls, 1);
+      expect(bookingRepository.lastUpdatedPaymentNote, isNull);
+    });
+
+    test('individual session request goes to admin', () async {
+      final sender = _FakeSender();
+      final individual = IndividualSessionRequest(
+        id: 3,
+        userId: 1707,
+        userUsername: 'boxer',
+        subscriptionRequestId: 9,
+        preferredTimes: 'вт/чт после 19',
+        status: IndividualSessionRequestStatus.pending,
+        createdAt: DateTime(2026, 7, 20),
+        updatedAt: DateTime(2026, 7, 20),
+      );
+      final subscriptions = _FakeSubscriptionRepository()
+        ..membershipLevel = MembershipLevel.boxingCard
+        ..membershipPlan = BoxingCardPlan.baza
+        ..membershipActiveUntil = DateTime(2026, 8, 1, 12)
+        ..membershipRequestId = 9
+        ..individualSubmitResult = SubmitIndividualSessionResult(
+          outcome: SubmitIndividualSessionOutcome.created,
+          request: individual,
+        );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: subscriptions,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100700,
+        nowProvider: () => DateTime(2026, 7, 20, 10),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1707, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1707, 'username': 'boxer'},
+        'text': MessageTemplates.buttonIndividualSession,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1707, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1707, 'username': 'boxer'},
+        'text': 'вт/чт после 19',
+      });
+
+      expect(subscriptions.individualSubmitCalls, 1);
+      expect(sender.lastContentMessage.text, contains('Заявка у тренера'));
+      expect(sender.messages.any((item) => item.chatId == -100700), isTrue);
+    });
+
+    test('ninth udar boxing slot requires payment', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..queue = <TrainingBooking>[
+          for (var i = 1; i <= 8; i++)
+            _booking(
+              id: 400 + i,
+              userId: 1708,
+              title: 'Бокс',
+              status: BookingStatus.paid,
+              paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+              startsAt: DateTime(2026, 7, 2 + i, 19),
+            ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'BOXING DVOR',
+              startsAt: DateTime(2026, 7, 26, 19),
+              location: 'Hall',
+              price: 1300,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        subscriptionRepository: _FakeSubscriptionRepository()
+          ..membershipLevel = MembershipLevel.boxingCard
+          ..membershipPlan = BoxingCardPlan.udar
+          ..membershipActiveFrom = DateTime(2026, 7, 1, 12)
+          ..membershipActiveUntil = DateTime(2026, 7, 31, 12)
+          ..membershipRequestId = 11,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 20, 10),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1708, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1708},
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1708, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1708},
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1708, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1708},
+        'text': '🎯 1. BOXING DVOR',
+      });
+
+      expect(bookingRepository.lastUpdatedPaymentNote, isNull);
+      expect(sender.lastContentMessage.text, contains('Реквизиты'));
+    });
+
+    test('blocks boxing card reschedule onto a non-boxing slot', () async {
+      final now = DateTime(2026, 7, 20, 10);
+      final selected = _booking(
+        id: 48,
+        userId: 1709,
+        title: 'BOXING DVOR',
+        status: BookingStatus.paid,
+        paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+        startsAt: now.add(const Duration(hours: 30)),
+      );
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[selected];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Силовая',
+              startsAt: now.add(const Duration(days: 3)),
+              location: 'Hall',
+              price: 1300,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1709, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1709},
+        'text': '/reschedule_booking 48',
+      });
+
+      expect(sender.lastContentMessage.text, contains('нет ближайших мероприятий для переноса'));
+      expect(bookingRepository.rescheduleCalls, 0);
+    });
+
+    test('blocks a second individual session in the same period', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: _FakeSubscriptionRepository()
+          ..membershipLevel = MembershipLevel.boxingCard
+          ..membershipPlan = BoxingCardPlan.baza
+          ..membershipActiveUntil = DateTime(2026, 8, 1, 12)
+          ..membershipRequestId = 12
+          ..approvedIndividualInPeriod = true,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 7, 20, 10),
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1710, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1710},
+        'text': MessageTemplates.buttonIndividualSession,
+      });
+
+      expect(sender.lastContentMessage.text, contains('уже закрыта'));
     });
 
     test('shows starter bonus button and applies free training once', () async {

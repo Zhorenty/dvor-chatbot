@@ -65,7 +65,7 @@ When asked to write or edit user-facing text (group posts, broadcasts, congratul
 - Bot UX: fact → status → one next step. No club signature. Onboarding: one question or one step, not the whole club. Acquaintances are optional, not the first-screen offer.
 - Do not invent dates, coaches, prices, address, or headcount. Escape user-provided strings. HTML, `<b>` on headline/key words only.
 
-Avoid: «дорогие друзья», «от лица команды», «администрация», «не упусти шанс», «эксклюзив», «досуг», «комьюнити», «не просто X, а Y», walls of text, `!!!`, mixing English slang except product terms already in use (`Start`, `PRO`).
+Avoid: «дорогие друзья», «от лица команды», «администрация», «не упусти шанс», «эксклюзив», «досуг», «комьюнити», «не просто X, а Y», walls of text, `!!!`, mixing English slang except product terms already in use (`Start`, `BOXING CARD`).
 
 ## Telegram Behavior Contract
 

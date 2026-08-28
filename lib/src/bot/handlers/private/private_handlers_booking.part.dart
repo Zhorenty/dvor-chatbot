@@ -271,16 +271,21 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       );
       return;
     }
-    final proIncludedAvailable = await _hasProIncludedTrainingAvailable(
+    final boxingCardIncludedAvailable = await _hasBoxingCardIncludedTrainingAvailable(
       userId: userId,
       training: selectedTraining,
       booking: result.booking,
     );
-    if (proIncludedAvailable) {
+    if (boxingCardIncludedAvailable) {
+      final membership = await _subscriptionRepository.getMembership(userId, now: _nowProvider());
+      final remainingBefore = await _boxingCardRemainingGroupCount(
+        userId: userId,
+        membership: membership,
+      );
       final paidBooking = await _bookingRepository.updateStatus(
         result.booking.id,
         BookingStatus.paid,
-        paymentNote: MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+        paymentNote: MessageFormatters.boxingCardIncludedPaymentNoteMarker,
       );
       final bookingForResponse =
           _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
@@ -292,10 +297,16 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         );
         await _sendOutdoorPrepDetails(chatId, bookingForResponse);
       }
+      final quota = membership.plan?.groupQuota ?? 0;
+      final remainingAfter = ((remainingBefore ?? 1) - 1).clamp(0, quota);
       await _sender.sendMessage(
         chatId,
         result.created
-            ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
+            ? _templates.boxingCardBookingCreated(
+                booking: bookingForResponse,
+                remaining: remainingAfter,
+                quota: quota,
+              )
             : _templates.bookingAlreadyExists(bookingForResponse),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
         parseMode: 'HTML',
@@ -587,9 +598,15 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required int chatId,
     required TrainingBooking booking,
   }) async {
+    final confirmText = MessageFormatters.isBoxingCardPaymentNote(booking.paymentNote)
+        ? _templates.boxingCardCancelConfirm(
+            booking,
+            burnsSlot: BoxingCardLedger.burnsSlotOnCancel(booking, now: _nowProvider()),
+          )
+        : _templates.bookingCancelConfirm(booking);
     await _sender.sendMessage(
       chatId,
-      _templates.bookingCancelConfirm(booking),
+      confirmText,
       replyMarkup: _templates.bookingCancelConfirmInlineKeyboard(booking.id),
       parseMode: 'HTML',
     );
@@ -744,6 +761,20 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
 
   bool _canCancelBookingByPolicy(TrainingBooking booking) {
     return _bookingPolicyService.canCancel(booking, now: _nowProvider());
+  }
+
+  Future<TrainingBooking?> _finalizeBoxingCardCancel(TrainingBooking booking) async {
+    if (!MessageFormatters.isBoxingCardIncludedPaymentNote(booking.paymentNote)) {
+      return null;
+    }
+    if (!BoxingCardLedger.burnsSlotOnCancel(booking, now: _nowProvider())) {
+      return null;
+    }
+    return _bookingRepository.updateStatus(
+      booking.id,
+      BookingStatus.cancelled,
+      paymentNote: MessageFormatters.boxingCardLateCancelPaymentNoteMarker,
+    );
   }
 
   String _cancellationTooLateText(

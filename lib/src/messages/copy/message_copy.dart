@@ -6,7 +6,7 @@ final class MessageCopy {
   static const String buttonCoachDetails = '📖 Подробнее о тренере';
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonBookFriend = '👥 Записать друга';
-  static const String buttonSubscription = '💎 Абонемент';
+  static const String buttonSubscription = '🥊 Бокс-карта';
   static const String buttonProfile = '👤 Профиль';
   static const String buttonProfileBookings = '🗂 Мои записи';
   static const String buttonReferralProgram = '👥 Реферальная программа';
@@ -38,8 +38,6 @@ final class MessageCopy {
   static const String buttonQuizExpRegular = 'Регулярно тренируюсь';
   static const String buttonTrackOneOff = 'Разовая тренировка';
   static const String buttonTrackOutdoor = 'Направление outdoor';
-  // TODO(subscription): вернуть кнопку трека PRO-абонемент.
-  // static const String buttonTrackPro = 'PRO-абонемент';
   static const String buttonFeedbackGreat = 'Отлично';
   static const String buttonFeedbackOk = 'Нормально';
   static const String buttonFeedbackWeak = 'Слабо';
@@ -62,7 +60,10 @@ final class MessageCopy {
   static const String buttonSubscriptionsList = '📋 Список абонементов';
   static const String buttonSubscribersManagement = '🛠 Управление абонентами';
   static const String buttonSubscribeApply = '✅ Оформить';
-  static const String buttonRenewSubscription = '🔄 Продлить PRO';
+  static const String buttonRenewSubscription = '🔄 Продлить';
+  static const String buttonPlanBaza = 'БАЗА — 3 500 ₽';
+  static const String buttonPlanUdar = 'УДАР — 4 700 ₽';
+  static const String buttonIndividualSession = '🥊 Индивидуальная';
   static const String buttonSubscriptionsFilterActive = '🟢 Активные';
   static const String buttonSubscriptionsFilterExpiring = '⏳ Скоро истекают';
   static const String buttonSubscriptionsFilterPending = 'На проверке 🧾';
@@ -152,6 +153,8 @@ final class MessageCopy {
   static const String callbackApproveSubscriptionPrefix = 'subscription:approve:';
   static const String callbackRejectSubscriptionPrefix = 'subscription:reject:';
   static const String callbackCancelSubscriptionPrefix = 'subscription:cancel:';
+  static const String callbackApproveIndividualPrefix = 'individual:approve:';
+  static const String callbackRejectIndividualPrefix = 'individual:reject:';
   static const String callbackBroadcastToUsers = 'broadcast:users';
   static const String callbackBroadcastToOutdoorPlus = 'broadcast:outdoor_plus';
   static const String callbackBroadcastToGroup = 'broadcast:group';

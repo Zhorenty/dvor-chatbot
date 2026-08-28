@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/boxing_title.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:intl/intl.dart';
@@ -14,7 +15,6 @@ final class PrivateNavigationTemplates {
         '2) Оплати и отправь чек в этот чат.\n'
         '3) Следи за статусом в «${MessageCopy.buttonProfile}».\n\n'
         'Ещё здесь: запись друга, тренерский штаб и помощь.\n'
-        // TODO(subscription): вернуть упоминание абонемента PRO в welcome.
         'Группа DVOR: ${MessageCopy.dvorGroupInviteUrl}';
   }
 
@@ -74,7 +74,7 @@ final class PrivateNavigationTemplates {
 
   String _citySlotKind(String title) {
     final lower = title.toLowerCase();
-    if (lower.contains('бокс')) {
+    if (isBoxingTrainingTitle(title)) {
       return 'boxing';
     }
     if (lower.contains('сил')) {
@@ -152,7 +152,6 @@ final class PrivateNavigationTemplates {
   String onboardingActivationSuccess() {
     return 'Первая тренировка в DVOR — есть.\n'
         'Дальше проще: вторая закрепляет ритм.\n'
-        // TODO(subscription): вернуть soft-pitch PRO в activation success.
         'Друга можно записать по рефералке в профиле.';
   }
 
@@ -217,7 +216,7 @@ final class PrivateNavigationTemplates {
   String privateHelp() {
     return 'В боте — слоты, запись и статус. Вот чем могу помочь 👇\n'
         '• Показываю ближайшие тренировки, походы и трейлы 📅\n'
-        // TODO(subscription): вернуть строки про PRO-абонемент в помощи.
+        '• Бокс-карта — в профиле: групповые слоты бокса и одна индивидуальная 🥊\n'
         '• Показываю список тренеров и контакты штаба 🧑‍🏫\n'
         '• Помогаю записаться на выбранное мероприятие ✍️\n'
         '• Напоминаю про систему лояльности: каждая 5-я тренировка бесплатная 🎁\n'
@@ -227,6 +226,7 @@ final class PrivateNavigationTemplates {
         'Правила отмены:\n'
         '• Походы и трейлы — не позже чем за 7 дней до старта.\n'
         '• Бесплатные тренировки — можно отменить в любой момент.\n'
+        '• Бокс-карта: перенос и возврат слота — если предупредил за 24 часа, только на бокс.\n'
         '• Платные тренировки — через поддержку @dvor_support.\n\n'
         'Перенос доступен для тренировок на слот той же стоимости.\n\n'
         '🔥 Группа DVOR: ${MessageCopy.dvorGroupInviteUrl}\n'

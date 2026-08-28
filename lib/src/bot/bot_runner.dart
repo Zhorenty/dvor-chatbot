@@ -90,6 +90,8 @@ final class BotRunner {
           subscriptionRepository: subscriptionRepository,
           sender: sender,
           templates: templates,
+          bookingRepository: bookingRepository,
+          jobDedupeRepository: jobDedupeRepository,
         ),
         _trainingDayPromoJob = TrainingDayPromoJob(
           scheduleRepository: scheduleRepository,

@@ -528,6 +528,26 @@ final class FakeBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<TrainingBooking>> listUserBookingsByPaymentNotes({
+    required int userId,
+    required Set<String> paymentNotes,
+    required DateTime startsFromInclusive,
+    required DateTime startsToExclusive,
+    int limit = 500,
+  }) async {
+    return queue
+        .where(
+          (booking) =>
+              booking.userId == userId &&
+              paymentNotes.contains(booking.paymentNote) &&
+              !booking.startsAt.isBefore(startsFromInclusive) &&
+              booking.startsAt.isBefore(startsToExclusive),
+        )
+        .take(limit)
+        .toList(growable: false);
+  }
+
+  @override
   Future<List<TrainingBooking>> listSelfPaidBookingsStartedBetween({
     required DateTime startsFromInclusive,
     required DateTime startsToInclusive,
@@ -718,7 +738,10 @@ final class FakeBookingRepository implements BookingRepository {
 
 final class FakeSubscriptionRepository implements SubscriptionRepository {
   MembershipLevel membershipLevel = MembershipLevel.normal;
+  BoxingCardPlan? membershipPlan;
+  DateTime? membershipActiveFrom;
   DateTime? membershipActiveUntil;
+  int? membershipRequestId;
   List<SubscriptionRequest> pendingRequests = const <SubscriptionRequest>[];
   List<SubscriptionRequest> activeSubscriptions = const <SubscriptionRequest>[];
   SubmitSubscriptionRequestResult submitResult = const SubmitSubscriptionRequestResult(
@@ -727,9 +750,24 @@ final class FakeSubscriptionRepository implements SubscriptionRepository {
   ReviewSubscriptionRequestResult reviewResult = const ReviewSubscriptionRequestResult(
     outcome: ReviewSubscriptionRequestOutcome.notFound,
   );
+  SubmitIndividualSessionResult individualSubmitResult = const SubmitIndividualSessionResult(
+    outcome: SubmitIndividualSessionOutcome.created,
+  );
+  ReviewIndividualSessionResult individualReviewResult = const ReviewIndividualSessionResult(
+    outcome: ReviewIndividualSessionOutcome.notFound,
+  );
+  List<IndividualSessionRequest> pendingIndividualRequests = const <IndividualSessionRequest>[];
+  bool approvedIndividualInPeriod = false;
+  bool pendingIndividualInPeriod = false;
+  List<RenewalReminderTarget> renewalReminderTargets = const <RenewalReminderTarget>[];
+  List<SubscriptionRequest> expiredWithoutPromo = const <SubscriptionRequest>[];
+  List<SubscriptionRequest> individualReminderTargets = const <SubscriptionRequest>[];
   int submitCalls = 0;
   int reviewCalls = 0;
   int cancelCalls = 0;
+  int individualSubmitCalls = 0;
+  int individualReviewCalls = 0;
+  BoxingCardPlan? lastSubmittedPlan;
   CancelSubscriptionResult cancelResult = const CancelSubscriptionResult(
     outcome: CancelSubscriptionOutcome.notFound,
   );
@@ -755,7 +793,10 @@ final class FakeSubscriptionRepository implements SubscriptionRepository {
   }) async {
     return SubscriptionMembership(
       level: membershipLevel,
+      plan: membershipPlan,
+      activeFrom: membershipActiveFrom,
       activeUntil: membershipActiveUntil,
+      requestId: membershipRequestId,
     );
   }
 
@@ -770,7 +811,10 @@ final class FakeSubscriptionRepository implements SubscriptionRepository {
     return SubscriptionUserSnapshot(
       membership: SubscriptionMembership(
         level: membershipLevel,
+        plan: membershipPlan,
+        activeFrom: membershipActiveFrom,
         activeUntil: membershipActiveUntil,
+        requestId: membershipRequestId,
       ),
       totalApprovedCount: activeSubscriptions.length,
       latestPending: pendingRequests.isEmpty ? null : pendingRequests.first,
@@ -840,20 +884,87 @@ final class FakeSubscriptionRepository implements SubscriptionRepository {
     required int userId,
     String? userUsername,
     String? note,
+    required BoxingCardPlan plan,
     required int paymentProofChatId,
     required int paymentProofMessageId,
     required DateTime requestedAt,
   }) async {
     submitCalls += 1;
+    lastSubmittedPlan = plan;
     return submitResult;
   }
+
+  @override
+  Future<SubmitIndividualSessionResult> submitIndividualSessionRequest({
+    required int userId,
+    String? userUsername,
+    required String preferredTimes,
+    required DateTime requestedAt,
+  }) async {
+    individualSubmitCalls += 1;
+    return individualSubmitResult;
+  }
+
+  @override
+  Future<List<IndividualSessionRequest>> listPendingIndividualRequests({int limit = 50}) async {
+    return pendingIndividualRequests.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<IndividualSessionRequest?> getIndividualSessionRequest(int requestId) async {
+    for (final item in pendingIndividualRequests) {
+      if (item.id == requestId) {
+        return item;
+      }
+    }
+    return individualSubmitResult.request;
+  }
+
+  @override
+  Future<ReviewIndividualSessionResult> reviewIndividualSessionRequest({
+    required int requestId,
+    required bool approve,
+    required DateTime reviewedAt,
+    String? comment,
+  }) async {
+    individualReviewCalls += 1;
+    return individualReviewResult;
+  }
+
+  @override
+  Future<bool> hasApprovedIndividualInPeriod({
+    required int subscriptionRequestId,
+  }) async {
+    return approvedIndividualInPeriod;
+  }
+
+  @override
+  Future<bool> hasPendingIndividualInPeriod({
+    required int subscriptionRequestId,
+  }) async {
+    return pendingIndividualInPeriod;
+  }
+
+  @override
+  Future<List<SubscriptionRequest>> listIndividualReminderTargets({
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    return individualReminderTargets.take(limit).toList(growable: false);
+  }
+
+  @override
+  Future<void> markIndividualReminderSent({
+    required int requestId,
+    required DateTime sentAt,
+  }) async {}
 
   @override
   Future<List<RenewalReminderTarget>> listRenewalReminderTargets({
     required DateTime now,
     int limit = 100,
   }) async {
-    return const <RenewalReminderTarget>[];
+    return renewalReminderTargets.take(limit).toList(growable: false);
   }
 
   @override
@@ -868,7 +979,7 @@ final class FakeSubscriptionRepository implements SubscriptionRepository {
     required DateTime now,
     int limit = 100,
   }) async {
-    return const <SubscriptionRequest>[];
+    return expiredWithoutPromo.take(limit).toList(growable: false);
   }
 
   @override

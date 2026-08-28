@@ -46,7 +46,11 @@ final class BookingPolicyService {
     if (supportsCancellation(category)) {
       return true;
     }
-    return category == ActivityCategory.trainings && _isCancellableFreeTraining(booking);
+    if (category != ActivityCategory.trainings) {
+      return false;
+    }
+    return _isCancellableFreeTraining(booking) ||
+        MessageFormatters.isBoxingCardPaymentNote(booking.paymentNote);
   }
 
   bool canReschedule(TrainingBooking booking) {
@@ -87,6 +91,10 @@ final class BookingPolicyService {
     // Free trainings (incl. bonus/promo) can be cancelled at any time.
     if (category == ActivityCategory.trainings && _isCancellableFreeTraining(booking)) {
       return true;
+    }
+    if (category == ActivityCategory.trainings &&
+        MessageFormatters.isBoxingCardPaymentNote(booking.paymentNote)) {
+      return !booking.startsAt.isBefore(now);
     }
     if (isOutdoorCategory(category)) {
       return booking.startsAt.difference(now) >= const Duration(days: 7);

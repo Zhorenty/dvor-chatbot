@@ -413,8 +413,7 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonProfileBookings},
         ],
         <Map<String, String>>[
-          // TODO(subscription): вернуть кнопку абонемента в профиле.
-          // <String, String>{'text': MessageCopy.buttonSubscription},
+          <String, String>{'text': MessageCopy.buttonSubscription},
           <String, String>{'text': MessageCopy.buttonReferralProgram},
         ],
         <Map<String, String>>[
@@ -428,6 +427,7 @@ final class TelegramKeyboards {
   static Map<String, Object?> subscriptionOverviewKeyboard({
     required bool canApply,
     bool isRenewal = false,
+    bool showIndividual = false,
   }) {
     return _replyKeyboard(
       <List<Map<String, String>>>[
@@ -439,6 +439,27 @@ final class TelegramKeyboards {
                   : MessageCopy.buttonSubscribeApply,
             },
           ],
+        if (showIndividual)
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonIndividualSession},
+          ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> boxingCardPlanKeyboard() {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonPlanBaza},
+        ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonPlanUdar},
+        ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
           <String, String>{'text': MessageCopy.buttonMainMenu},
@@ -862,6 +883,25 @@ final class TelegramKeyboards {
     };
   }
 
+  static Map<String, Object?> individualSessionDecisionInlineKeyboard(int requestId) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, String>>>[
+        <Map<String, String>>[
+          <String, String>{
+            'text': '✅ Подтвердить индивидуальную',
+            'callback_data': '${MessageCopy.callbackApproveIndividualPrefix}$requestId',
+          },
+        ],
+        <Map<String, String>>[
+          <String, String>{
+            'text': '❌ Отклонить',
+            'callback_data': '${MessageCopy.callbackRejectIndividualPrefix}$requestId',
+          },
+        ],
+      ],
+    };
+  }
+
   static Map<String, Object?> subscriptionCancelInlineKeyboard(int requestId) {
     return <String, Object?>{
       'inline_keyboard': <List<Map<String, String>>>[
@@ -1273,7 +1313,6 @@ final class TelegramKeyboards {
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonTrackOutdoor},
         ],
-        // TODO(subscription): вернуть кнопку трека PRO.
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonOnboardingSkipQuiz},
           <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
@@ -1335,7 +1374,6 @@ final class TelegramKeyboards {
           <String, String>{'text': MessageCopy.buttonBookTraining},
           <String, String>{'text': MessageCopy.buttonProfile},
         ],
-        // TODO(subscription): вернуть кнопку абонемента в activation CTA.
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonOnboardingNeedHelp},
           <String, String>{'text': MessageCopy.buttonMainMenu},

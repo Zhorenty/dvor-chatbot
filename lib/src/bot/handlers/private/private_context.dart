@@ -247,6 +247,16 @@ String? callbackToCommandText(String? callbackData) {
     final requestId = int.tryParse(rawId);
     return requestId == null ? null : '/cancel_subscription $requestId';
   }
+  if (callbackData.startsWith(MessageCopy.callbackApproveIndividualPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackApproveIndividualPrefix.length);
+    final requestId = int.tryParse(rawId);
+    return requestId == null ? null : '/approve_individual $requestId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackRejectIndividualPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackRejectIndividualPrefix.length);
+    final requestId = int.tryParse(rawId);
+    return requestId == null ? null : '/reject_individual $requestId';
+  }
   if (callbackData == MessageCopy.callbackBroadcastToUsers) {
     return '/broadcast_users';
   }

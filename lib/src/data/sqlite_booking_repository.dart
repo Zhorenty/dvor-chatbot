@@ -18,6 +18,8 @@ final class SqliteBookingRepository implements BookingRepository {
   static const String _everyFifthBonusPaymentNoteMarker = '__every_fifth_bonus__';
   static const String _referralBonusPaymentNoteMarker = '__referral_bonus__';
   static const String _proIncludedTrainingPaymentNoteMarker = '__pro_included_training__';
+  static const String _boxingCardIncludedPaymentNoteMarker = '__boxing_card_included__';
+  static const String _boxingCardLateCancelPaymentNoteMarker = '__boxing_card_late_cancel__';
   static const String _dvorTeamFreePaymentNoteMarker = '__dvor_team_free__';
 
   SqliteBookingRepository({
@@ -1183,6 +1185,41 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<List<TrainingBooking>> listUserBookingsByPaymentNotes({
+    required int userId,
+    required Set<String> paymentNotes,
+    required DateTime startsFromInclusive,
+    required DateTime startsToExclusive,
+    int limit = 500,
+  }) async {
+    if (paymentNotes.isEmpty) {
+      return const <TrainingBooking>[];
+    }
+    _expireOverduePendingBookings();
+    final db = _database;
+    final placeholders = List<String>.filled(paymentNotes.length, '?').join(', ');
+    final result = db.select(
+      '''
+      SELECT * FROM bookings
+      WHERE user_id = ?
+        AND payment_note IN ($placeholders)
+        AND starts_at >= ?
+        AND starts_at < ?
+      ORDER BY starts_at ASC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        userId,
+        ...paymentNotes,
+        startsFromInclusive.toUtc().toIso8601String(),
+        startsToExclusive.toUtc().toIso8601String(),
+        limit,
+      ],
+    );
+    return result.map(_rowToBooking).toList(growable: false);
+  }
+
+  @override
   Future<List<TrainingBooking>> listSelfPaidBookingsStartedBetween({
     required DateTime startsFromInclusive,
     required DateTime startsToInclusive,
@@ -1851,7 +1888,7 @@ final class SqliteBookingRepository implements BookingRepository {
         AND starts_at < ?
         AND ($trainingsCondition)
         AND (training_price IS NULL OR training_price > 0)
-        AND (payment_note IS NULL OR payment_note NOT IN (?, ?, ?, ?, ?));
+        AND (payment_note IS NULL OR payment_note NOT IN (?, ?, ?, ?, ?, ?, ?));
       ''',
       <Object?>[
         userId,
@@ -1862,6 +1899,8 @@ final class SqliteBookingRepository implements BookingRepository {
         _everyFifthBonusPaymentNoteMarker,
         _referralBonusPaymentNoteMarker,
         _proIncludedTrainingPaymentNoteMarker,
+        _boxingCardIncludedPaymentNoteMarker,
+        _boxingCardLateCancelPaymentNoteMarker,
         _dvorTeamFreePaymentNoteMarker,
       ],
     );
@@ -1914,7 +1953,7 @@ final class SqliteBookingRepository implements BookingRepository {
             AND b.starts_at < ?
             AND b.training_price > 0
             AND ($trainingsCondition)
-            AND (b.payment_note IS NULL OR b.payment_note NOT IN (?, ?, ?, ?, ?))
+            AND (b.payment_note IS NULL OR b.payment_note NOT IN (?, ?, ?, ?, ?, ?, ?))
         );
       ''',
       <Object?>[
@@ -1925,6 +1964,8 @@ final class SqliteBookingRepository implements BookingRepository {
         _everyFifthBonusPaymentNoteMarker,
         _referralBonusPaymentNoteMarker,
         _proIncludedTrainingPaymentNoteMarker,
+        _boxingCardIncludedPaymentNoteMarker,
+        _boxingCardLateCancelPaymentNoteMarker,
         _dvorTeamFreePaymentNoteMarker,
       ],
     );

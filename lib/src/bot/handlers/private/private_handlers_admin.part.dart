@@ -687,6 +687,24 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     }
   }
 
+  Future<void> _notifyAdminAboutIndividualSessionSubmitted(
+    IndividualSessionRequest request,
+  ) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.boxingCardIndividualAdminNotification(request),
+        replyMarkup: _templates.individualSessionDecisionInlineKeyboard(request.id),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about individual session request: $error', stackTrace);
+    }
+  }
+
   Future<void> _notifyAdminAboutSubscriptionSubmitted(SubscriptionRequest request) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
@@ -816,6 +834,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
           request.userId,
           _templates.subscriptionApprovedForUser(
             activeUntil: request.activeUntil ?? _nowProvider(),
+            plan: request.plan,
           ),
           parseMode: 'HTML',
         );

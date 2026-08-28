@@ -99,6 +99,9 @@ final class MessageTemplates {
   static const String buttonSubscribersManagement = MessageCopy.buttonSubscribersManagement;
   static const String buttonSubscribeApply = MessageCopy.buttonSubscribeApply;
   static const String buttonRenewSubscription = MessageCopy.buttonRenewSubscription;
+  static const String buttonPlanBaza = MessageCopy.buttonPlanBaza;
+  static const String buttonPlanUdar = MessageCopy.buttonPlanUdar;
+  static const String buttonIndividualSession = MessageCopy.buttonIndividualSession;
   static const String buttonSubscriptionsFilterActive = MessageCopy.buttonSubscriptionsFilterActive;
   static const String buttonSubscriptionsFilterExpiring =
       MessageCopy.buttonSubscriptionsFilterExpiring;

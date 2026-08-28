@@ -203,6 +203,66 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
       return true;
     }
 
+    if (text != null &&
+        (text.startsWith('/approve_individual') || text.startsWith('/reject_individual'))) {
+      if (userId == null) {
+        return false;
+      }
+      if (!isAdmin) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      final requestId = _updateRouter.parseCommandId(text);
+      if (requestId == null) {
+        await _sendAdminMessage(
+          chatId,
+          'Используй команды:\n'
+          '<code>/approve_individual &lt;id&gt;</code>\n'
+          '<code>/reject_individual &lt;id&gt;</code>',
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      final review = await _subscriptionRepository.reviewIndividualSessionRequest(
+        requestId: requestId,
+        approve: text.startsWith('/approve_individual'),
+        reviewedAt: _nowProvider(),
+      );
+      await _sendAdminMessage(
+        chatId,
+        switch (review.outcome) {
+          ReviewIndividualSessionOutcome.success =>
+            'Заявка на индивидуальную #$requestId обработана.',
+          ReviewIndividualSessionOutcome.notFound => 'Заявка #$requestId не найдена.',
+          ReviewIndividualSessionOutcome.invalidStatus => 'Заявка #$requestId уже обработана.',
+        },
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
+      );
+      final request = review.request;
+      if (review.outcome == ReviewIndividualSessionOutcome.success && request != null) {
+        try {
+          await _sender.sendMessage(
+            request.userId,
+            request.status == IndividualSessionRequestStatus.approved
+                ? _templates.boxingCardIndividualApprovedForUser()
+                : _templates.boxingCardIndividualRejectedForUser(
+                    comment: request.moderationComment,
+                  ),
+            parseMode: 'HTML',
+          );
+        } on Object catch (error, stackTrace) {
+          l.w('Failed to notify user about individual session review: $error', stackTrace);
+        }
+      }
+      return true;
+    }
+
     return false;
   }
 }

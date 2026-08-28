@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/boxing_title.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -195,7 +196,7 @@ final class ActivityCatalogService {
 
   CityFormatKind? cityFormatKind(TrainingInfo item) {
     final title = item.title.toLowerCase();
-    if (title.contains('бокс')) {
+    if (isBoxingTrainingTitle(item.title)) {
       return CityFormatKind.boxing;
     }
     if (title.contains('сил')) {

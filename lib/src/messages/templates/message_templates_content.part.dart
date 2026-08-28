@@ -739,8 +739,10 @@ extension MessageTemplatesContent on MessageTemplates {
     required int availableReferralRewards,
     required bool starterBonusAvailable,
     required MembershipLevel membershipLevel,
+    BoxingCardPlan? subscriptionPlan,
     DateTime? subscriptionActiveUntil,
-    int? subscriptionRemainingProTrainings,
+    int? subscriptionRemainingGroupTrainings,
+    bool subscriptionIndividualUsed = false,
     String? subscriptionRequestStatusLine,
     required int subscriptionTotalApprovedCount,
     DateTime? subscriptionCurrentPeriodStart,
@@ -755,20 +757,26 @@ extension MessageTemplatesContent on MessageTemplates {
     final referralHint = availableReferralRewards > 0
         ? 'реферальных бесплатных: <b>$availableReferralRewards</b>'
         : 'успешных рефералов: <b>$successfulReferralsCount</b>';
-    // TODO(subscription): вернуть статус абонемента в профиле.
-    // final subscriptionHint = membershipLevel == MembershipLevel.pro
-    //     ? 'PRO${subscriptionActiveUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil)}'}'
-    //     : 'Normal';
-    // final remainingProTrainingsText =
-    //     membershipLevel == MembershipLevel.pro && subscriptionRemainingProTrainings != null
-    //         ? ' • осталось тренировок: <b>${subscriptionRemainingProTrainings.clamp(0, 8)}/8</b>'
-    //         : '';
-    // final requestStatusText =
-    //     subscriptionRequestStatusLine == null ? '' : '\n• Заявка: $subscriptionRequestStatusLine';
+    final untilLabel = subscriptionActiveUntil == null
+        ? null
+        : DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil.toLocal());
+    final plan = subscriptionPlan;
+    final subscriptionHint = membershipLevel == MembershipLevel.boxingCard && plan != null
+        ? '${plan.displayName}${untilLabel == null ? '' : ' до $untilLabel'}'
+        : 'нет';
+    final remainingGroupText = membershipLevel == MembershipLevel.boxingCard &&
+            subscriptionRemainingGroupTrainings != null &&
+            plan != null
+        ? ' • групповые: <b>${subscriptionRemainingGroupTrainings.clamp(0, plan.groupQuota)}/${plan.groupQuota}</b>'
+        : '';
+    final individualText = membershipLevel == MembershipLevel.boxingCard
+        ? ' • индивидуалка: <b>${subscriptionIndividualUsed ? '1/1' : '0/1'}</b>'
+        : '';
+    final requestStatusText =
+        subscriptionRequestStatusLine == null ? '' : '\n• Заявка: $subscriptionRequestStatusLine';
     return '👤 <b>Профиль DVOR</b>\n\n'
-        // TODO(subscription): вернуть строку «💎 Абонемент: …» в профиле.
-        // '💎 Абонемент: <b>$subscriptionHint</b>$remainingProTrainingsText'
-        // '$requestStatusText\n\n'
+        '🥊 Бокс-карта: <b>$subscriptionHint</b>$remainingGroupText$individualText'
+        '$requestStatusText\n\n'
         '📊 Записи: всего <b>$totalBookings</b> • '
         'актуальные <b>$activeBookings</b> • '
         'посещенные <b>$visitedBookings</b> • '
@@ -776,11 +784,8 @@ extension MessageTemplatesContent on MessageTemplates {
         '🏋️ Лояльность: $rewardsHint\n'
         '• Стартовая бесплатная: $starterHint\n'
         '• Рефералка: $referralHint\n\n'
-        // TODO(subscription): вернуть «💎 Абонемент» в подсказку «Дальше».
-        // 'Дальше: «${MessageCopy.buttonProfileBookings}», '
-        // '«${MessageCopy.buttonSubscription}» или «${MessageCopy.buttonReferralProgram}».'
-        'Дальше: «${MessageCopy.buttonProfileBookings}» '
-        'или «${MessageCopy.buttonReferralProgram}».';
+        'Дальше: «${MessageCopy.buttonProfileBookings}», '
+        '«${MessageCopy.buttonSubscription}» или «${MessageCopy.buttonReferralProgram}».';
   }
 
   String referralProgramOverview({
@@ -808,75 +813,82 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String subscriptionOverview({
     required MembershipLevel membershipLevel,
+    BoxingCardPlan? plan,
     DateTime? activeUntil,
-    int? remainingProTrainings,
+    int? remainingGroupTrainings,
+    bool individualUsed = false,
   }) {
-    final untilLabel =
-        activeUntil == null ? null : DateFormat('dd.MM.yyyy').format(activeUntil.toLocal());
-    final statusLabel = membershipLevel == MembershipLevel.pro
-        ? '<b>PRO</b>${untilLabel == null ? '' : ' до <b>$untilLabel</b>'}'
-        : '<b>Normal</b>';
-    final lines = <String>[
-      '💎 <b>Абонемент DVOR PRO</b>',
-      '🚀 Твой статус: $statusLabel',
-      '💸 Стоимость: <b>3990 ₽ / месяц</b>',
-      '',
-      '🔥 <b>Что ты получаешь в PRO на 1 месяц:</b>',
-      '1) 🏋️ 8 бесплатных тренировок',
-      '2) 🤝 Доступ в закрытую DVOR PRO-группу',
-      '3) 🧪 Разбор медицинских анализов с рекомендациями',
-      '4) 🎟 Скидка 10-25% на мероприятия DVOR',
-      '5) 🎯 Одна индивидуальная тренировка с тренером',
-      '6) 📈 Личный кабинет в TrainingPeaks',
-    ];
-    if (membershipLevel == MembershipLevel.pro) {
-      lines.addAll(<String>[
-        '',
-        if (remainingProTrainings != null)
-          '🏋️ <b>Осталось тренировок в текущем PRO:</b> <b>${remainingProTrainings.clamp(0, 8)}/8</b>',
-        '🔄 <b>Продление доступно уже сейчас:</b> нажми «${MessageCopy.buttonRenewSubscription}» и отправь чек.',
-        'После подтверждения продлим абонемент еще на 1 месяц ✅',
-      ]);
-    } else {
-      lines.addAll(<String>[
-        '',
-        'Нажми «${MessageCopy.buttonSubscribeApply}», чтобы оформить абонемент.',
-      ]);
+    if (membershipLevel == MembershipLevel.boxingCard && plan != null) {
+      final untilLabel =
+          activeUntil == null ? '—' : DateFormat('dd.MM.yyyy').format(activeUntil.toLocal());
+      final groupLimit = plan.groupQuota;
+      final remaining = (remainingGroupTrainings ?? 0).clamp(0, groupLimit);
+      return '🥊 <b>DVOR BOXING CARD</b>\n'
+          'Тариф: <b>${plan.displayName}</b>\n'
+          'Сгорает: <b>$untilLabel</b>\n'
+          'Групповые: <b>$remaining/$groupLimit</b>\n'
+          'Индивидуальная: <b>${individualUsed ? '1/1' : '0/1'}</b>\n\n'
+          'Запись: «${MessageCopy.buttonBookTraining}» → слот с BOX или БОКС в названии.\n\n'
+          'Продлить или взять индивидуальную — кнопки ниже.';
     }
-    return lines.join('\n');
+    return '🥊 <b>DVOR BOXING CARD</b>\n'
+        'Абонемент на бокс. 30 дней с активации.\n\n'
+        '<b>БАЗА</b> — 3 500 ₽\n'
+        '4 групповые + 1 индивидуальная с тренером.\n\n'
+        '<b>УДАР</b> — 4 700 ₽\n'
+        '8 групповых + 1 индивидуальная с тренером.\n\n'
+        'Пропуск не переносится. Перенос — если предупредил за сутки и есть другой слот бокса.\n\n'
+        'Нажми «${MessageCopy.buttonSubscribeApply}», затем выбери тариф.';
   }
 
-  String subscriptionPaymentInstructions() {
-    return '💳 <b>Оформление абонемента PRO</b>\n'
-        'Стоимость: <b>3990 ₽</b>\n'
-        'Срок: 1 месяц.\n\n'
+  String boxingCardPlanChoice() {
+    return 'Выбери тариф.\n\n'
+        '<b>БАЗА</b> — 3 500 ₽, 4 групповые + 1 индивидуальная.\n'
+        '<b>УДАР</b> — 4 700 ₽, 8 групповых + 1 индивидуальная.\n\n'
+        '30 дней с активации.';
+  }
+
+  String subscriptionPaymentInstructions({required BoxingCardPlan plan}) {
+    final amount = _formatRub(plan.priceRub);
+    return '💳 <b>Оформление BOXING CARD</b>\n'
+        'Тариф: <b>${plan.displayName}</b>\n'
+        'Сумма: <b>$amount</b>\n'
+        'Срок: 30 дней с активации.\n\n'
         'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
         '• Банк: 🟦 OZON БАНК 🟦\n'
-        '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи <b>3990 ₽</b>.\n\n'
+        '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи <b>$amount</b>.\n\n'
         'После оплаты отправь в этот чат файл с подтверждением (документ/фото чека).';
   }
 
+  String _formatRub(int amount) {
+    final formatted = amount.toString().replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (match) => '${match[1]} ',
+        );
+    return '$formatted ₽';
+  }
+
   String subscriptionPaymentProofRequired() {
-    return 'Чтобы отправить заявку на абонемент:\n'
-        '1) Нажми «${MessageCopy.buttonSubscribeApply}».\n'
+    return 'Чтобы отправить заявку на бокс-карту:\n'
+        '1) Выбери тариф.\n'
         '2) Пришли файл с подтверждением оплаты (документ/фото).\n'
         '3) Дождись проверки.';
   }
 
   String subscriptionPaymentSubmitted() {
-    return '✅ Заявка на абонемент отправлена на проверку.\n'
-        'Как только админ подтвердит оплату, статус в профиле обновится на PRO.';
+    return 'Заявка на бокс-карту на проверке.\n'
+        'Как подтвердят оплату — карта станет активной на 30 дней.';
   }
 
   String subscriptionAlreadyPending() {
-    return 'ℹ️ Заявка на абонемент уже на проверке.\n'
+    return 'Заявка на бокс-карту уже на проверке.\n'
         'Ожидай подтверждения.';
   }
 
   String subscriptionAlreadyActive({DateTime? activeUntil}) {
     final until = activeUntil == null ? '' : ' до ${DateFormat('dd.MM.yyyy').format(activeUntil)}';
-    return '✅ У тебя уже активен абонемент PRO$until.';
+    return 'У тебя уже активна бокс-карта$until.';
   }
 
   String chooseAdminSubscriptionsAction() {
@@ -974,7 +986,8 @@ extension MessageTemplatesContent on MessageTemplates {
       final until = item.activeUntil;
       final untilLabel = until == null ? '—' : formatter.format(until);
       final statusLabel = switch (item.status) {
-        SubscriptionRequestStatus.active => 'PRO активен',
+        SubscriptionRequestStatus.active =>
+          item.plan == null ? 'карта активна' : '${item.plan!.displayName} активен',
         SubscriptionRequestStatus.paymentSubmitted => 'На проверке',
         SubscriptionRequestStatus.cancelled => 'Отменён',
         SubscriptionRequestStatus.rejected => 'Отклонён',
@@ -991,12 +1004,13 @@ extension MessageTemplatesContent on MessageTemplates {
     final until = request.activeUntil == null
         ? 'не задано'
         : DateFormat('dd.MM.yyyy').format(request.activeUntil!);
-    return '💎 <b>Абонемент #${request.id}</b>\n'
+    final planLabel = request.plan?.displayName ?? 'без тарифа';
+    return '🥊 <b>Бокс-карта #${request.id}</b>\n'
         'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
         '(${request.userId})\n'
-        'Статус: <b>PRO</b>\n'
-        'Активен до: <b>$until</b>\n\n'
-        'Можно отменить абонемент кнопкой ниже.';
+        'Тариф: <b>$planLabel</b>\n'
+        'Активна до: <b>$until</b>\n\n'
+        'Можно отменить карту кнопкой ниже.';
   }
 
   String subscriptionPendingQueueIntro(int total) {
@@ -1013,9 +1027,12 @@ extension MessageTemplatesContent on MessageTemplates {
   String subscriptionPendingQueueItem(SubscriptionRequest request) {
     final created = DateFormat('dd.MM.yyyy HH:mm').format(request.createdAt);
     final note = request.paymentNote?.trim();
+    final plan = request.plan;
+    final planLine =
+        plan == null ? '' : '\nТариф: <b>${plan.displayName}</b> · ${_formatRub(plan.priceRub)}';
     return '🧾 <b>Заявка #${request.id}</b>\n'
         'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
-        '(${request.userId})\n'
+        '(${request.userId})$planLine\n'
         'Отправлена: $created'
         '${note == null || note.isEmpty ? '' : '\nКомментарий: ${_escapeHtml(note)}'}\n\n'
         'Подтверди или отклони заявку кнопками ниже.';
@@ -1025,8 +1042,9 @@ extension MessageTemplatesContent on MessageTemplates {
     required SubscriptionRequest request,
     required int remaining,
   }) {
-    final status =
-        request.status == SubscriptionRequestStatus.active ? 'PRO активирован' : 'Отклонено';
+    final status = request.status == SubscriptionRequestStatus.active
+        ? 'Бокс-карта активирована'
+        : 'Отклонено';
     final nextStep = remaining > 0
         ? 'Осталось заявок: $remaining. Открой «${MessageCopy.buttonSubscriptionsAdmin}» → «${MessageCopy.buttonSubscriptionsFilterPending}», чтобы проверить следующую.'
         : 'Очередь пустая.';
@@ -1046,7 +1064,7 @@ extension MessageTemplatesContent on MessageTemplates {
       return 'На проверке';
     }
     final activeUntil = snapshot.membership.activeUntil;
-    if (snapshot.membership.level == MembershipLevel.pro && activeUntil != null) {
+    if (snapshot.membership.level == MembershipLevel.boxingCard && activeUntil != null) {
       return 'Активен до ${DateFormat('dd.MM.yyyy').format(activeUntil)}';
     }
     final rejected = snapshot.latestRejectedOrCancelled;
@@ -1085,9 +1103,14 @@ extension MessageTemplatesContent on MessageTemplates {
     return 'Добавь комментарий для клиента или нажми «${MessageCopy.buttonSkipComment}».';
   }
 
-  String subscriptionApprovedForUser({required DateTime activeUntil}) {
-    return 'Оплату подтвердили. PRO активен до '
-        '<b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.';
+  String subscriptionApprovedForUser({
+    required DateTime activeUntil,
+    BoxingCardPlan? plan,
+  }) {
+    final planLine = plan == null ? '' : 'Тариф <b>${plan.displayName}</b>.\n';
+    return 'Оплату подтвердили. $planLine'
+        'Карта до <b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.\n\n'
+        'Запись: «${MessageCopy.buttonBookTraining}» → слот с BOX или БОКС в названии.';
   }
 
   String subscriptionRejectedForUser({String? reason, String? comment}) {
@@ -1095,9 +1118,10 @@ extension MessageTemplatesContent on MessageTemplates {
       if ((reason ?? '').trim().isNotEmpty) 'Причина: ${_escapeHtml(reason!.trim())}',
       if ((comment ?? '').trim().isNotEmpty) 'Комментарий: ${_escapeHtml(comment!.trim())}',
     ];
-    return '❌ Заявка на абонемент отклонена.\n'
+    return 'Заявка на бокс-карту отклонена.\n'
         '${details.isEmpty ? '' : '${details.join('\n')}\n'}'
-        'Проверь оплату/чек и отправь новую заявку кнопкой «${MessageCopy.buttonSubscribeApply}».';
+        'Проверь оплату/чек и отправь новую заявку: «${MessageCopy.buttonSubscription}» → '
+        '«${MessageCopy.buttonSubscribeApply}».';
   }
 
   String subscriptionCancelledForUser({String? reason, String? comment}) {
@@ -1105,22 +1129,124 @@ extension MessageTemplatesContent on MessageTemplates {
       if ((reason ?? '').trim().isNotEmpty) 'Причина: ${_escapeHtml(reason!.trim())}',
       if ((comment ?? '').trim().isNotEmpty) 'Комментарий: ${_escapeHtml(comment!.trim())}',
     ];
-    return 'Текущий PRO-абонемент отменили.\n'
+    return 'Текущую бокс-карту отменили.\n'
         '${details.isEmpty ? '' : '${details.join('\n')}\n'}'
-        'Чтобы вернуть PRO, нажми «${MessageCopy.buttonSubscription}» → '
+        'Оформить снова: «${MessageCopy.buttonSubscription}» → '
         '«${MessageCopy.buttonSubscribeApply}».';
   }
 
-  String subscriptionRenewalReminder({required DateTime activeUntil, required int daysBefore}) {
-    return '⏳ До окончания PRO осталось <b>$daysBefore дн.</b>\n'
-        'Абонемент активен до <b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.\n'
-        'Продли заранее: «${MessageCopy.buttonSubscription}» → «${MessageCopy.buttonSubscribeApply}».';
+  String subscriptionRenewalReminder({
+    required DateTime activeUntil,
+    required int daysBefore,
+    int? remainingGroup,
+    int groupQuota = 0,
+    bool individualUsed = false,
+  }) {
+    final until = DateFormat('dd.MM.yyyy').format(activeUntil);
+    final groupLine = remainingGroup == null || groupQuota <= 0
+        ? ''
+        : 'Осталось групповых <b>$remainingGroup/$groupQuota</b>, '
+            'индивидуалка <b>${individualUsed ? '1/1' : '0/1'}</b>.\n';
+    return 'Карта до <b>$until</b>.\n'
+        '$groupLine'
+        'Продлить? «${MessageCopy.buttonSubscription}» → «${MessageCopy.buttonRenewSubscription}».';
   }
 
   String subscriptionExpiryPromo() {
-    return 'PRO закончился.\n'
-        'Продлить: «${MessageCopy.buttonSubscription}» → '
+    return '30 дней прошли, остаток сгорел.\n'
+        'Оформить снова: «${MessageCopy.buttonSubscription}» → '
         '«${MessageCopy.buttonSubscribeApply}».';
+  }
+
+  String boxingCardVisitDebited({
+    required int remaining,
+    required int quota,
+  }) {
+    return 'Занятие засчитано.\n'
+        'Осталось групповых: <b>$remaining/$quota</b>.';
+  }
+
+  String boxingCardIndividualReminder({required DateTime activeUntil}) {
+    return 'Индивидуальная ещё не закрыта.\n'
+        'Карта до <b>${DateFormat('dd.MM.yyyy').format(activeUntil)}</b>.\n\n'
+        'Напиши удобные дни и время в «${MessageCopy.buttonSubscription}» → '
+        '«${MessageCopy.buttonIndividualSession}».';
+  }
+
+  String boxingCardBookingCreated({
+    required TrainingBooking booking,
+    required int remaining,
+    required int quota,
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return 'Отлично, записал тебя.\n'
+        'Занятие списано с карты. Осталось групповых: <b>$remaining/$quota</b>.\n'
+        'Номер записи: ${booking.id}\n'
+        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
+        '🕒 Когда: ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n'
+        '📍 Где: ${_bookingLocationLabel(booking)}';
+  }
+
+  String boxingCardCancelConfirm(TrainingBooking booking, {required bool burnsSlot}) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final consequence = burnsSlot
+        ? 'До старта меньше 24 часов. Если отменишь, слот сгорит и не вернётся в остаток.'
+        : 'Отмена вернёт слот в остаток карты.';
+    return 'Отменить запись #${booking.id}?\n'
+        '${_escapeHtml(booking.trainingTitle)}\n'
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}\n\n'
+        '$consequence';
+  }
+
+  String boxingCardRescheduleTooLate() {
+    return 'Перенос недоступен: до старта меньше 24 часов.\n'
+        'Отмена сейчас сожжёт слот.';
+  }
+
+  String boxingCardRescheduleTargetNotBoxing() {
+    return 'С карты можно перенести только на другой слот бокса.';
+  }
+
+  String boxingCardIndividualPrompt() {
+    return 'Напиши удобные дни и время одним сообщением.\n'
+        'Заявку отправлю тренеру.';
+  }
+
+  String boxingCardIndividualSubmitted() {
+    return 'Заявка у тренера, напишем в личку.';
+  }
+
+  String boxingCardIndividualAlreadyPending() {
+    return 'Заявка на индивидуальную уже у тренера.\n'
+        'Напишем в личку, когда подтвердят.';
+  }
+
+  String boxingCardIndividualQuotaUsed() {
+    return 'Индивидуальная в этом периоде уже закрыта.';
+  }
+
+  String boxingCardIndividualNeedActiveCard() {
+    return 'Индивидуальная доступна при активной бокс-карте.';
+  }
+
+  String boxingCardIndividualAdminNotification(IndividualSessionRequest request) {
+    return '🥊 <b>Заявка на индивидуальную #${request.id}</b>\n'
+        'Пользователь: ${_escapeHtml(_userTagById(request.userId, username: request.userUsername))} '
+        '(${request.userId})\n'
+        'Карта: #${request.subscriptionRequestId}\n\n'
+        'Удобное время:\n${_escapeHtml(request.preferredTimes)}';
+  }
+
+  String boxingCardIndividualApprovedForUser() {
+    return 'Индивидуальную подтвердили. Квота 1/1 закрыта.\n'
+        'Детали времени — в личке от тренера, если ещё не написали.';
+  }
+
+  String boxingCardIndividualRejectedForUser({String? comment}) {
+    final extra = (comment ?? '').trim().isEmpty ? '' : '\n${_escapeHtml(comment!.trim())}';
+    return 'Заявку на индивидуальную отклонили.$extra';
   }
 
   String chooseMyBookingsSegment() {
@@ -1818,6 +1944,10 @@ extension MessageTemplatesContent on MessageTemplates {
     return TelegramKeyboards.subscriptionDecisionInlineKeyboard(requestId);
   }
 
+  Map<String, Object?> individualSessionDecisionInlineKeyboard(int requestId) {
+    return TelegramKeyboards.individualSessionDecisionInlineKeyboard(requestId);
+  }
+
   Map<String, Object?> subscriptionCancelInlineKeyboard(int requestId) {
     return TelegramKeyboards.subscriptionCancelInlineKeyboard(requestId);
   }
@@ -2389,6 +2519,7 @@ extension MessageTemplatesContent on MessageTemplates {
       'Срез: <b>$generated</b>',
       '',
       '• Активные сейчас: <b>${analytics.activeCount}</b>',
+      '• БАЗА: <b>${analytics.activeBazaCount}</b> • УДАР: <b>${analytics.activeUdarCount}</b>',
       '• Скоро истекают (≤7д): <b>${analytics.expiringSoonCount}</b>',
       '• На проверке: <b>${analytics.pendingCount}</b>',
       '• Отменённые / отклонённые: <b>${analytics.cancelledOrRejectedCount}</b>',
@@ -2577,7 +2708,6 @@ extension MessageTemplatesContent on MessageTemplates {
     return switch (raw) {
       'one_off' => 'разовая тренировка',
       'outdoor' => 'outdoor / походы',
-      // TODO(subscription): label для трека pro.
       _ => raw,
     };
   }

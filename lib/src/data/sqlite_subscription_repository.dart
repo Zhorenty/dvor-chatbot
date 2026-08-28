@@ -50,6 +50,7 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
         user_id INTEGER NOT NULL,
         user_username TEXT,
         status TEXT NOT NULL,
+        plan TEXT,
         active_from TEXT,
         active_until TEXT,
         payment_note TEXT,
@@ -61,6 +62,7 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
         renewal_reminder_3_sent_at TEXT,
         renewal_reminder_1_sent_at TEXT,
         expiry_promo_sent_at TEXT,
+        individual_reminder_sent_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       );
@@ -89,6 +91,41 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       db,
       'ALTER TABLE subscription_requests ADD COLUMN expiry_promo_sent_at TEXT;',
     );
+    _addColumnIfMissing(
+      db,
+      'ALTER TABLE subscription_requests ADD COLUMN plan TEXT;',
+    );
+    _addColumnIfMissing(
+      db,
+      'ALTER TABLE subscription_requests ADD COLUMN individual_reminder_sent_at TEXT;',
+    );
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS subscription_individual_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        user_username TEXT,
+        subscription_request_id INTEGER NOT NULL,
+        preferred_times TEXT NOT NULL,
+        status TEXT NOT NULL,
+        moderation_comment TEXT,
+        reviewed_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+    db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_subscription_individual_user
+      ON subscription_individual_requests(user_id);
+    ''');
+    db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_subscription_individual_status
+      ON subscription_individual_requests(status);
+    ''');
+    db.execute('''
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_subscription_individual_pending_unique
+      ON subscription_individual_requests(subscription_request_id)
+      WHERE status = 'pending';
+    ''');
     db.execute('''
       CREATE INDEX IF NOT EXISTS idx_subscription_requests_user
       ON subscription_requests(user_id);
@@ -143,9 +180,17 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
     if (row == null) {
       return const SubscriptionMembership(level: MembershipLevel.normal);
     }
+    final request = _rowToRequest(row);
+    final plan = request.plan;
+    if (plan == null) {
+      return const SubscriptionMembership(level: MembershipLevel.normal);
+    }
     return SubscriptionMembership(
-      level: MembershipLevel.pro,
-      activeUntil: DateTime.parse(row['active_until'] as String).toLocal(),
+      level: MembershipLevel.boxingCard,
+      plan: plan,
+      activeFrom: request.activeFrom,
+      activeUntil: request.activeUntil,
+      requestId: request.id,
     );
   }
 
@@ -197,6 +242,7 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
     required int userId,
     String? userUsername,
     String? note,
+    required BoxingCardPlan plan,
     required int paymentProofChatId,
     required int paymentProofMessageId,
     required DateTime requestedAt,
@@ -214,17 +260,19 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
           user_id,
           user_username,
           status,
+          plan,
           payment_note,
           payment_proof_chat_id,
           payment_proof_message_id,
           created_at,
           updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
         ''',
         <Object?>[
           userId,
           normalizedUsername,
           SubscriptionRequestStatus.paymentSubmitted.dbValue,
+          plan.dbValue,
           note?.trim().isEmpty == true ? null : note?.trim(),
           paymentProofChatId,
           paymentProofMessageId,
@@ -373,7 +421,7 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
               ''',
               <Object?>[
                 SubscriptionRequestStatus.active.dbValue,
-                now.toIso8601String(),
+                baseUtc.toIso8601String(),
                 activeUntil.toIso8601String(),
                 reason?.trim().isEmpty == true ? null : reason?.trim(),
                 comment?.trim().isEmpty == true ? null : comment?.trim(),
@@ -735,12 +783,14 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
         AND status = ?
         AND active_until IS NOT NULL
         AND active_until > ?
+        AND (active_from IS NULL OR active_from <= ?)
       ORDER BY active_until DESC, id DESC
       LIMIT 1;
       ''',
       <Object?>[
         userId,
         SubscriptionRequestStatus.active.dbValue,
+        now.toUtc().toIso8601String(),
         now.toUtc().toIso8601String(),
       ],
     );
@@ -756,6 +806,7 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       userId: row['user_id'] as int,
       userUsername: row['user_username'] as String?,
       status: SubscriptionRequestStatus.fromDbValue(row['status'] as String),
+      plan: BoxingCardPlan.tryFromDbValue(row['plan'] as String?),
       createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
       updatedAt: DateTime.parse(row['updated_at'] as String).toLocal(),
       activeFrom: row['active_from'] == null
@@ -773,6 +824,7 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       renewalReminder3SentAt: _nullableDateTime(row['renewal_reminder_3_sent_at']),
       renewalReminder1SentAt: _nullableDateTime(row['renewal_reminder_1_sent_at']),
       expiryPromoSentAt: _nullableDateTime(row['expiry_promo_sent_at']),
+      individualReminderSentAt: _nullableDateTime(row['individual_reminder_sent_at']),
     );
   }
 
@@ -802,6 +854,316 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       return null;
     }
     return _rowToRequest(rows.first);
+  }
+
+  @override
+  Future<SubmitIndividualSessionResult> submitIndividualSessionRequest({
+    required int userId,
+    String? userUsername,
+    required String preferredTimes,
+    required DateTime requestedAt,
+  }) async {
+    final membership = await getMembership(userId, now: requestedAt);
+    final requestId = membership.requestId;
+    if (membership.level != MembershipLevel.boxingCard || requestId == null) {
+      return const SubmitIndividualSessionResult(
+        outcome: SubmitIndividualSessionOutcome.noActiveCard,
+      );
+    }
+    if (await hasApprovedIndividualInPeriod(subscriptionRequestId: requestId)) {
+      return const SubmitIndividualSessionResult(
+        outcome: SubmitIndividualSessionOutcome.quotaUsed,
+      );
+    }
+    final db = _database;
+    final now = requestedAt.toUtc();
+    db.execute('BEGIN IMMEDIATE TRANSACTION;');
+    var shouldCommit = false;
+    SubmitIndividualSessionResult? result;
+    try {
+      db.execute(
+        '''
+        INSERT INTO subscription_individual_requests (
+          user_id,
+          user_username,
+          subscription_request_id,
+          preferred_times,
+          status,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+        ''',
+        <Object?>[
+          userId,
+          _normalizeUsername(userUsername),
+          requestId,
+          preferredTimes.trim(),
+          IndividualSessionRequestStatus.pending.dbValue,
+          now.toIso8601String(),
+          now.toIso8601String(),
+        ],
+      );
+      final inserted = db.select(
+        '''
+        SELECT * FROM subscription_individual_requests
+        WHERE id = ?
+        LIMIT 1;
+        ''',
+        <Object?>[db.lastInsertRowId],
+      );
+      result = SubmitIndividualSessionResult(
+        outcome: SubmitIndividualSessionOutcome.created,
+        request: inserted.isEmpty ? null : _rowToIndividual(inserted.first),
+      );
+      shouldCommit = true;
+    } on SqliteException catch (error) {
+      if (!_isUniqueConstraintError(error)) {
+        rethrow;
+      }
+      final pending = db.select(
+        '''
+        SELECT * FROM subscription_individual_requests
+        WHERE subscription_request_id = ?
+          AND status = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1;
+        ''',
+        <Object?>[
+          requestId,
+          IndividualSessionRequestStatus.pending.dbValue,
+        ],
+      );
+      result = SubmitIndividualSessionResult(
+        outcome: SubmitIndividualSessionOutcome.alreadyPending,
+        request: pending.isEmpty ? null : _rowToIndividual(pending.first),
+      );
+      shouldCommit = true;
+    } finally {
+      db.execute(shouldCommit ? 'COMMIT;' : 'ROLLBACK;');
+    }
+    return result;
+  }
+
+  @override
+  Future<List<IndividualSessionRequest>> listPendingIndividualRequests({int limit = 50}) async {
+    final rows = _database.select(
+      '''
+      SELECT * FROM subscription_individual_requests
+      WHERE status = ?
+      ORDER BY created_at ASC, id ASC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        IndividualSessionRequestStatus.pending.dbValue,
+        limit,
+      ],
+    );
+    return rows.map(_rowToIndividual).toList(growable: false);
+  }
+
+  @override
+  Future<IndividualSessionRequest?> getIndividualSessionRequest(int requestId) async {
+    final rows = _database.select(
+      '''
+      SELECT * FROM subscription_individual_requests
+      WHERE id = ?
+      LIMIT 1;
+      ''',
+      <Object?>[requestId],
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return _rowToIndividual(rows.first);
+  }
+
+  @override
+  Future<ReviewIndividualSessionResult> reviewIndividualSessionRequest({
+    required int requestId,
+    required bool approve,
+    required DateTime reviewedAt,
+    String? comment,
+  }) async {
+    final db = _database;
+    db.execute('BEGIN IMMEDIATE TRANSACTION;');
+    var shouldCommit = false;
+    ReviewIndividualSessionResult? result;
+    try {
+      final rows = db.select(
+        '''
+        SELECT * FROM subscription_individual_requests
+        WHERE id = ?
+        LIMIT 1;
+        ''',
+        <Object?>[requestId],
+      );
+      if (rows.isEmpty) {
+        result = const ReviewIndividualSessionResult(
+          outcome: ReviewIndividualSessionOutcome.notFound,
+        );
+        shouldCommit = true;
+      } else {
+        final current = _rowToIndividual(rows.first);
+        if (current.status != IndividualSessionRequestStatus.pending) {
+          result = const ReviewIndividualSessionResult(
+            outcome: ReviewIndividualSessionOutcome.invalidStatus,
+          );
+          shouldCommit = true;
+        } else {
+          final now = reviewedAt.toUtc();
+          db.execute(
+            '''
+            UPDATE subscription_individual_requests
+            SET status = ?,
+                moderation_comment = ?,
+                reviewed_at = ?,
+                updated_at = ?
+            WHERE id = ?
+              AND status = ?;
+            ''',
+            <Object?>[
+              (approve
+                      ? IndividualSessionRequestStatus.approved
+                      : IndividualSessionRequestStatus.rejected)
+                  .dbValue,
+              comment?.trim().isEmpty == true ? null : comment?.trim(),
+              now.toIso8601String(),
+              now.toIso8601String(),
+              requestId,
+              IndividualSessionRequestStatus.pending.dbValue,
+            ],
+          );
+          if (db.updatedRows == 0) {
+            result = const ReviewIndividualSessionResult(
+              outcome: ReviewIndividualSessionOutcome.invalidStatus,
+            );
+          } else {
+            final updated = db.select(
+              '''
+              SELECT * FROM subscription_individual_requests
+              WHERE id = ?
+              LIMIT 1;
+              ''',
+              <Object?>[requestId],
+            );
+            result = ReviewIndividualSessionResult(
+              outcome: ReviewIndividualSessionOutcome.success,
+              request: updated.isEmpty ? null : _rowToIndividual(updated.first),
+            );
+          }
+          shouldCommit = true;
+        }
+      }
+    } finally {
+      db.execute(shouldCommit ? 'COMMIT;' : 'ROLLBACK;');
+    }
+    return result;
+  }
+
+  @override
+  Future<bool> hasApprovedIndividualInPeriod({
+    required int subscriptionRequestId,
+  }) async {
+    final rows = _database.select(
+      '''
+      SELECT 1 FROM subscription_individual_requests
+      WHERE subscription_request_id = ?
+        AND status = ?
+      LIMIT 1;
+      ''',
+      <Object?>[
+        subscriptionRequestId,
+        IndividualSessionRequestStatus.approved.dbValue,
+      ],
+    );
+    return rows.isNotEmpty;
+  }
+
+  @override
+  Future<bool> hasPendingIndividualInPeriod({
+    required int subscriptionRequestId,
+  }) async {
+    final rows = _database.select(
+      '''
+      SELECT 1 FROM subscription_individual_requests
+      WHERE subscription_request_id = ?
+        AND status = ?
+      LIMIT 1;
+      ''',
+      <Object?>[
+        subscriptionRequestId,
+        IndividualSessionRequestStatus.pending.dbValue,
+      ],
+    );
+    return rows.isNotEmpty;
+  }
+
+  @override
+  Future<List<SubscriptionRequest>> listIndividualReminderTargets({
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    final nowIso = now.toUtc().toIso8601String();
+    final untilIso = now.toUtc().add(const Duration(days: 7)).toIso8601String();
+    final rows = _database.select(
+      '''
+      SELECT * FROM subscription_requests
+      WHERE status = ?
+        AND plan IS NOT NULL
+        AND active_until IS NOT NULL
+        AND active_until > ?
+        AND active_until <= ?
+        AND individual_reminder_sent_at IS NULL
+        AND id NOT IN (
+          SELECT subscription_request_id
+          FROM subscription_individual_requests
+          WHERE status IN (?, ?)
+        )
+      ORDER BY active_until ASC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        SubscriptionRequestStatus.active.dbValue,
+        nowIso,
+        untilIso,
+        IndividualSessionRequestStatus.approved.dbValue,
+        IndividualSessionRequestStatus.pending.dbValue,
+        limit,
+      ],
+    );
+    return rows.map(_rowToRequest).toList(growable: false);
+  }
+
+  @override
+  Future<void> markIndividualReminderSent({
+    required int requestId,
+    required DateTime sentAt,
+  }) async {
+    final nowIso = sentAt.toUtc().toIso8601String();
+    _database.execute(
+      '''
+      UPDATE subscription_requests
+      SET individual_reminder_sent_at = ?,
+          updated_at = ?
+      WHERE id = ?;
+      ''',
+      <Object?>[nowIso, nowIso, requestId],
+    );
+  }
+
+  IndividualSessionRequest _rowToIndividual(Row row) {
+    return IndividualSessionRequest(
+      id: row['id'] as int,
+      userId: row['user_id'] as int,
+      userUsername: row['user_username'] as String?,
+      subscriptionRequestId: row['subscription_request_id'] as int,
+      preferredTimes: row['preferred_times'] as String,
+      status: IndividualSessionRequestStatus.fromDbValue(row['status'] as String),
+      createdAt: DateTime.parse(row['created_at'] as String).toLocal(),
+      updatedAt: DateTime.parse(row['updated_at'] as String).toLocal(),
+      moderationComment: row['moderation_comment'] as String?,
+      reviewedAt: _nullableDateTime(row['reviewed_at']),
+    );
   }
 
   @override
@@ -860,6 +1222,34 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       ''',
       <Object?>[SubscriptionRequestStatus.active.dbValue],
     );
+    final activeBazaCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM subscription_requests
+      WHERE status = ?
+        AND plan = ?
+        AND active_until IS NOT NULL
+        AND active_until > ?;
+      ''',
+      <Object?>[
+        SubscriptionRequestStatus.active.dbValue,
+        BoxingCardPlan.baza.dbValue,
+        nowIso,
+      ],
+    );
+    final activeUdarCount = count(
+      '''
+      SELECT COUNT(*) AS c FROM subscription_requests
+      WHERE status = ?
+        AND plan = ?
+        AND active_until IS NOT NULL
+        AND active_until > ?;
+      ''',
+      <Object?>[
+        SubscriptionRequestStatus.active.dbValue,
+        BoxingCardPlan.udar.dbValue,
+        nowIso,
+      ],
+    );
 
     return SubscriptionAnalytics(
       generatedAt: nowUtc,
@@ -868,6 +1258,8 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       pendingCount: pendingCount,
       cancelledOrRejectedCount: cancelledOrRejectedCount,
       approvedTotal: approvedTotal,
+      activeBazaCount: activeBazaCount,
+      activeUdarCount: activeUdarCount,
     );
   }
 

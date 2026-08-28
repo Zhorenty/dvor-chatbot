@@ -155,6 +155,8 @@ final class SubscriptionAnalytics {
     required this.pendingCount,
     required this.cancelledOrRejectedCount,
     required this.approvedTotal,
+    this.activeBazaCount = 0,
+    this.activeUdarCount = 0,
   });
 
   final DateTime generatedAt;
@@ -163,4 +165,6 @@ final class SubscriptionAnalytics {
   final int pendingCount;
   final int cancelledOrRejectedCount;
   final int approvedTotal;
+  final int activeBazaCount;
+  final int activeUdarCount;
 }

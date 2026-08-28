@@ -342,6 +342,8 @@ abstract final class GoogleSheetsAnalyticsDashboard {
           label: 'Approved всего',
           value: subscriptions.approvedTotal,
         ),
+        GoogleSheetsKpiCard(label: 'БАЗА активные', value: subscriptions.activeBazaCount),
+        GoogleSheetsKpiCard(label: 'УДАР активные', value: subscriptions.activeUdarCount),
       ],
     );
   }

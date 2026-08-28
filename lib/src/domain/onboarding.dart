@@ -40,8 +40,6 @@ enum OnboardingQuizExperience {
 enum OnboardingTrack {
   oneOff,
   outdoor,
-  // TODO(subscription): вернуть трек PRO-абонемент в квизе.
-  // pro,
 }
 
 enum OnboardingMediaSlot {

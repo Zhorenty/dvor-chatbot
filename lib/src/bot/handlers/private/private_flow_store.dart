@@ -35,7 +35,9 @@ enum PrivateFlowStep {
   selectingPaymentsQueueCategory,
   selectingEconomicSummaryPeriod,
   viewingSubscriptionOverview,
+  selectingBoxingCardPlan,
   confirmingSubscriptionPayment,
+  enteringIndividualSessionTimes,
   selectingTraining,
   selectingBookingListSegment,
   paymentConfirmation,
@@ -193,6 +195,7 @@ final class PrivateFlowState {
     this.subscriptionModerationRequestId,
     this.subscriptionModerationReason,
     this.subscriptionSearchQuery,
+    this.selectedBoxingCardPlan,
     this.outdoorDetailType,
     this.adminClientNotificationAction,
     this.adminClientNotificationBooking,
@@ -233,6 +236,7 @@ final class PrivateFlowState {
   final int? subscriptionModerationRequestId;
   final String? subscriptionModerationReason;
   final String? subscriptionSearchQuery;
+  final BoxingCardPlan? selectedBoxingCardPlan;
   final OutdoorDetailType? outdoorDetailType;
   final AdminClientNotificationAction? adminClientNotificationAction;
   final TrainingBooking? adminClientNotificationBooking;
@@ -273,6 +277,7 @@ final class PrivateFlowState {
     Object? subscriptionModerationRequestId = _privateFlowUnset,
     Object? subscriptionModerationReason = _privateFlowUnset,
     Object? subscriptionSearchQuery = _privateFlowUnset,
+    Object? selectedBoxingCardPlan = _privateFlowUnset,
     Object? outdoorDetailType = _privateFlowUnset,
     Object? adminClientNotificationAction = _privateFlowUnset,
     Object? adminClientNotificationBooking = _privateFlowUnset,
@@ -343,6 +348,9 @@ final class PrivateFlowState {
       subscriptionSearchQuery: identical(subscriptionSearchQuery, _privateFlowUnset)
           ? this.subscriptionSearchQuery
           : subscriptionSearchQuery as String?,
+      selectedBoxingCardPlan: identical(selectedBoxingCardPlan, _privateFlowUnset)
+          ? this.selectedBoxingCardPlan
+          : selectedBoxingCardPlan as BoxingCardPlan?,
       outdoorDetailType: identical(outdoorDetailType, _privateFlowUnset)
           ? this.outdoorDetailType
           : outdoorDetailType as OutdoorDetailType?,

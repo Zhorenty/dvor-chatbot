@@ -80,12 +80,15 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     return progress.availableRewardsCount > 0;
   }
 
-  Future<bool> _hasProIncludedTrainingAvailable({
+  Future<bool> _hasBoxingCardIncludedTrainingAvailable({
     required int userId,
     required TrainingInfo training,
     required TrainingBooking booking,
   }) async {
     if (training.category != ActivityCategory.trainings) {
+      return false;
+    }
+    if (!isBoxingTrainingTitle(training.title)) {
       return false;
     }
     if (_isFreeActivity(training)) {
@@ -96,35 +99,79 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     }
     final now = _nowProvider();
     final membership = await _subscriptionRepository.getMembership(userId, now: now);
-    final remaining = await _proIncludedTrainingRemainingCount(
+    if (!BoxingCardLedger.isActiveBoxingCard(membership, now: now)) {
+      return false;
+    }
+    if (!BoxingCardLedger.trainingStartsInsidePeriod(training: training, membership: membership)) {
+      return false;
+    }
+    final remaining = await _boxingCardRemainingGroupCount(
       userId: userId,
       membership: membership,
     );
     return (remaining ?? 0) > 0;
   }
 
-  Future<int?> _proIncludedTrainingRemainingCount({
+  Future<int?> _boxingCardRemainingGroupCount({
     required int userId,
     required SubscriptionMembership membership,
   }) async {
+    final plan = membership.plan;
     final activeUntil = membership.activeUntil;
-    if (membership.level != MembershipLevel.pro || activeUntil == null) {
+    if (!BoxingCardLedger.isActiveBoxingCard(membership, now: _nowProvider()) ||
+        plan == null ||
+        activeUntil == null) {
       return null;
     }
-    final periodStart = activeUntil.subtract(const Duration(days: 30));
-    final paidBookings = await _bookingRepository.listPaidBookingsInRange(
-      fromInclusive: periodStart,
-      toExclusive: activeUntil.add(const Duration(seconds: 1)),
+    final from = BoxingCardLedger.periodStart(membership, now: _nowProvider());
+    final bookings = await _bookingRepository.listUserBookingsByPaymentNotes(
+      userId: userId,
+      paymentNotes: <String>{
+        MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+        MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+        MessageFormatters.boxingCardLateCancelPaymentNoteMarker,
+      },
+      startsFromInclusive: from,
+      startsToExclusive: activeUntil,
     );
-    final usedIncludedTrainings = paidBookings
-        .where(
-          (item) =>
-              item.userId == userId &&
-              item.paymentNote == MessageFormatters.proIncludedTrainingPaymentNoteMarker,
-        )
-        .length;
-    final remaining = PrivateHandlers._proIncludedTrainingsPerPeriod - usedIncludedTrainings;
-    return remaining < 0 ? 0 : remaining;
+    final used = BoxingCardLedger.usedGroupSlots(
+      bookings: bookings,
+      userId: userId,
+      periodStart: from,
+      periodEnd: activeUntil,
+    );
+    return BoxingCardLedger.remainingGroupSlots(plan: plan, used: used);
+  }
+
+  Future<bool> _isBoxingCardIndividualAvailable({
+    required SubscriptionMembership membership,
+  }) async {
+    final requestId = membership.requestId;
+    if (!BoxingCardLedger.isActiveBoxingCard(membership, now: _nowProvider()) ||
+        requestId == null) {
+      return false;
+    }
+    if (await _subscriptionRepository.hasApprovedIndividualInPeriod(
+      subscriptionRequestId: requestId,
+    )) {
+      return false;
+    }
+    if (await _subscriptionRepository.hasPendingIndividualInPeriod(
+      subscriptionRequestId: requestId,
+    )) {
+      return false;
+    }
+    return true;
+  }
+
+  Future<bool> _isBoxingCardIndividualUsed(SubscriptionMembership membership) async {
+    final requestId = membership.requestId;
+    if (requestId == null) {
+      return false;
+    }
+    return _subscriptionRepository.hasApprovedIndividualInPeriod(
+      subscriptionRequestId: requestId,
+    );
   }
 
   bool _isFreeActivity(TrainingInfo training) {
@@ -396,5 +443,41 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about outdoor interest: $error', stackTrace);
     }
+  }
+
+  Future<void> _openBoxingCardOverview({
+    required int chatId,
+    required int userId,
+  }) async {
+    final now = _nowProvider();
+    final membership = await _subscriptionRepository.getMembership(userId, now: now);
+    final remainingGroup = await _boxingCardRemainingGroupCount(
+      userId: userId,
+      membership: membership,
+    );
+    final snapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
+    final canApply = snapshot.latestPending == null;
+    final isRenewal = BoxingCardLedger.isActiveBoxingCard(membership, now: now);
+    final showIndividual = await _isBoxingCardIndividualAvailable(membership: membership);
+    _flowByUserId[userId] = const _PrivateFlowState(
+      step: _PrivateFlowStep.viewingSubscriptionOverview,
+      availableTrainings: <TrainingInfo>[],
+    );
+    await _sender.sendMessage(
+      chatId,
+      _templates.subscriptionOverview(
+        membershipLevel: membership.level,
+        plan: membership.plan,
+        activeUntil: membership.activeUntil,
+        remainingGroupTrainings: remainingGroup,
+        individualUsed: await _isBoxingCardIndividualUsed(membership),
+      ),
+      replyMarkup: _templates.subscriptionOverviewKeyboard(
+        canApply: canApply,
+        isRenewal: isRenewal,
+        showIndividual: showIndividual,
+      ),
+      parseMode: 'HTML',
+    );
   }
 }

@@ -254,11 +254,17 @@ extension MessageTemplatesKeyboards on MessageTemplates {
   Map<String, Object?> subscriptionOverviewKeyboard({
     required bool canApply,
     bool isRenewal = false,
+    bool showIndividual = false,
   }) {
     return TelegramKeyboards.subscriptionOverviewKeyboard(
       canApply: canApply,
       isRenewal: isRenewal,
+      showIndividual: showIndividual,
     );
+  }
+
+  Map<String, Object?> boxingCardPlanKeyboard() {
+    return TelegramKeyboards.boxingCardPlanKeyboard();
   }
 
   Map<String, Object?> adminSubscriptionFilterKeyboard() {

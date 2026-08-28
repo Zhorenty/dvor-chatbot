@@ -20,6 +20,7 @@ abstract interface class SubscriptionRepository {
     required int userId,
     String? userUsername,
     String? note,
+    required BoxingCardPlan plan,
     required int paymentProofChatId,
     required int paymentProofMessageId,
     required DateTime requestedAt,
@@ -82,6 +83,42 @@ abstract interface class SubscriptionRepository {
   });
 
   Future<void> markExpiryPromoSent({
+    required int requestId,
+    required DateTime sentAt,
+  });
+
+  Future<SubmitIndividualSessionResult> submitIndividualSessionRequest({
+    required int userId,
+    String? userUsername,
+    required String preferredTimes,
+    required DateTime requestedAt,
+  });
+
+  Future<List<IndividualSessionRequest>> listPendingIndividualRequests({int limit = 50});
+
+  Future<IndividualSessionRequest?> getIndividualSessionRequest(int requestId);
+
+  Future<ReviewIndividualSessionResult> reviewIndividualSessionRequest({
+    required int requestId,
+    required bool approve,
+    required DateTime reviewedAt,
+    String? comment,
+  });
+
+  Future<bool> hasApprovedIndividualInPeriod({
+    required int subscriptionRequestId,
+  });
+
+  Future<bool> hasPendingIndividualInPeriod({
+    required int subscriptionRequestId,
+  });
+
+  Future<List<SubscriptionRequest>> listIndividualReminderTargets({
+    required DateTime now,
+    int limit = 100,
+  });
+
+  Future<void> markIndividualReminderSent({
     required int requestId,
     required DateTime sentAt,
   });
@@ -187,6 +224,7 @@ final class NoopSubscriptionRepository implements SubscriptionRepository {
     required int userId,
     String? userUsername,
     String? note,
+    required BoxingCardPlan plan,
     required int paymentProofChatId,
     required int paymentProofMessageId,
     required DateTime requestedAt,
@@ -195,6 +233,68 @@ final class NoopSubscriptionRepository implements SubscriptionRepository {
       outcome: SubmitSubscriptionRequestOutcome.created,
     );
   }
+
+  @override
+  Future<SubmitIndividualSessionResult> submitIndividualSessionRequest({
+    required int userId,
+    String? userUsername,
+    required String preferredTimes,
+    required DateTime requestedAt,
+  }) async {
+    return const SubmitIndividualSessionResult(
+      outcome: SubmitIndividualSessionOutcome.noActiveCard,
+    );
+  }
+
+  @override
+  Future<List<IndividualSessionRequest>> listPendingIndividualRequests({int limit = 50}) async {
+    return const <IndividualSessionRequest>[];
+  }
+
+  @override
+  Future<IndividualSessionRequest?> getIndividualSessionRequest(int requestId) async {
+    return null;
+  }
+
+  @override
+  Future<ReviewIndividualSessionResult> reviewIndividualSessionRequest({
+    required int requestId,
+    required bool approve,
+    required DateTime reviewedAt,
+    String? comment,
+  }) async {
+    return const ReviewIndividualSessionResult(
+      outcome: ReviewIndividualSessionOutcome.notFound,
+    );
+  }
+
+  @override
+  Future<bool> hasApprovedIndividualInPeriod({
+    required int subscriptionRequestId,
+  }) async {
+    return false;
+  }
+
+  @override
+  Future<bool> hasPendingIndividualInPeriod({
+    required int subscriptionRequestId,
+  }) async {
+    return false;
+  }
+
+  @override
+  Future<List<SubscriptionRequest>> listIndividualReminderTargets({
+    required DateTime now,
+    int limit = 100,
+  }) async {
+    return const <SubscriptionRequest>[];
+  }
+
+  @override
+  Future<void> markIndividualReminderSent({
+    required int requestId,
+    required DateTime sentAt,
+  }) async {}
 
   @override
   Future<List<RenewalReminderTarget>> listRenewalReminderTargets({

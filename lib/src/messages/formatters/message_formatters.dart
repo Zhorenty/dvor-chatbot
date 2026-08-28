@@ -11,7 +11,23 @@ final class MessageFormatters {
   static const String everyFifthBonusPaymentNoteMarker = '__every_fifth_bonus__';
   static const String referralBonusPaymentNoteMarker = '__referral_bonus__';
   static const String proIncludedTrainingPaymentNoteMarker = '__pro_included_training__';
+  static const String boxingCardIncludedPaymentNoteMarker = '__boxing_card_included__';
+  static const String boxingCardLateCancelPaymentNoteMarker = '__boxing_card_late_cancel__';
   static const String dvorTeamFreePaymentNoteMarker = '__dvor_team_free__';
+
+  static bool isBoxingCardIncludedPaymentNote(String? paymentNote) {
+    return paymentNote == boxingCardIncludedPaymentNoteMarker ||
+        paymentNote == proIncludedTrainingPaymentNoteMarker;
+  }
+
+  static bool isBoxingCardLateCancelPaymentNote(String? paymentNote) {
+    return paymentNote == boxingCardLateCancelPaymentNoteMarker;
+  }
+
+  static bool isBoxingCardPaymentNote(String? paymentNote) {
+    return isBoxingCardIncludedPaymentNote(paymentNote) ||
+        isBoxingCardLateCancelPaymentNote(paymentNote);
+  }
 
   static String statusLabel(BookingStatus status) {
     return switch (status) {
@@ -46,8 +62,11 @@ final class MessageFormatters {
     if (booking.paymentNote == referralBonusPaymentNoteMarker) {
       return 'Бесплатно: реферальная тренировка 🎁';
     }
-    if (booking.paymentNote == proIncludedTrainingPaymentNoteMarker) {
-      return 'Включено в PRO (из 8 тренировок) 💎';
+    if (isBoxingCardIncludedPaymentNote(booking.paymentNote)) {
+      return 'Включено в бокс-карту 🥊';
+    }
+    if (isBoxingCardLateCancelPaymentNote(booking.paymentNote)) {
+      return 'Слот бокс-карты сгорел 🥊';
     }
     if (booking.paymentNote == dvorTeamFreePaymentNoteMarker) {
       return 'Бесплатно: команда DVOR 🖤';
