@@ -2156,6 +2156,17 @@ extension MessageTemplatesContent on MessageTemplates {
     return lines.join('\n');
   }
 
+  String subscriptionInterestAdminNotification({
+    required int userId,
+    required String? username,
+  }) {
+    return <String>[
+      '👀 <b>Кто-то заинтересовался абонементом</b>',
+      'Пользователь: ${_escapeHtml(_userTagById(userId, username: username))} ($userId)',
+      'Пока только открыл бокс-карту — заявки ещё нет.',
+    ].join('\n');
+  }
+
   String pendingPaymentReminder(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');

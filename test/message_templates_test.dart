@@ -713,6 +713,19 @@ void main() {
       expect(text, contains('записи ещё нет'));
     });
 
+    test('renders subscription interest admin notification', () {
+      final text = templates.subscriptionInterestAdminNotification(
+        userId: 77,
+        username: 'box_fan',
+      );
+
+      expect(text, contains('Кто-то заинтересовался абонементом'));
+      expect(text, contains('@box_fan'));
+      expect(text, contains('(77)'));
+      expect(text, contains('бокс-карту'));
+      expect(text, contains('заявки ещё нет'));
+    });
+
     test('renders from-to dates for multi-day hikes in schedule', () {
       final text = templates.hikes(<OutdoorActivityInfo>[
         OutdoorActivityInfo(

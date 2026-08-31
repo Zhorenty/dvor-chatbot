@@ -1224,9 +1224,11 @@ final class SqliteBookingRepository implements BookingRepository {
     required DateTime startsFromInclusive,
     required DateTime startsToInclusive,
     int limit = 100,
+    Set<ActivityCategory>? categories,
   }) async {
     _expireOverduePendingBookings();
     final db = _database;
+    final categorySql = _categoriesConditionSql(categories);
     final result = db.select(
       '''
       SELECT * FROM bookings
@@ -1235,6 +1237,7 @@ final class SqliteBookingRepository implements BookingRepository {
         AND starts_at <= ?
         AND COALESCE(participant_type, 'self') = 'self'
         AND status != ?
+        $categorySql
       ORDER BY starts_at ASC
       LIMIT ?;
       ''',
@@ -2850,6 +2853,14 @@ final class SqliteBookingRepository implements BookingRepository {
         'Participants limit reached for selected training.',
       );
     }
+  }
+
+  String _categoriesConditionSql(Set<ActivityCategory>? categories) {
+    if (categories == null || categories.isEmpty) {
+      return '';
+    }
+    final parts = categories.map(_categoryConditionSql).join(' OR ');
+    return 'AND ($parts)';
   }
 
   String _categoryConditionSql(ActivityCategory category) {

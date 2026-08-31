@@ -82,7 +82,12 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       if (userId == null) {
         return false;
       }
-      await _openBoxingCardOverview(chatId: chatId, userId: userId);
+      await _openBoxingCardOverview(
+        chatId: chatId,
+        userId: userId,
+        username: username,
+        notifyAdminInterest: true,
+      );
       return true;
     }
 

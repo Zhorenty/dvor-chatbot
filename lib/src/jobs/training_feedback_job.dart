@@ -61,15 +61,8 @@ final class TrainingFeedbackJob {
     }
     final nowUtc = _nowProvider().toUtc();
     final nowBusiness = inBusinessTimezone(nowUtc, timezoneOffsetHours: timezoneOffsetHours);
-    final candidateFrom = nowUtc.subtract(
-      outdoorLookback > lookback + delayAfterStart ? outdoorLookback : lookback + delayAfterStart,
-    );
     try {
-      final bookings = await _bookingRepository.listSelfPaidBookingsStartedBetween(
-        startsFromInclusive: candidateFrom,
-        startsToInclusive: nowUtc,
-        limit: 200,
-      );
+      final bookings = await _loadCandidates(nowUtc);
       final startedIds = (await _onboardingRepository.getAllStartedUserIds()).toSet();
       for (final booking in bookings) {
         try {
@@ -90,13 +83,6 @@ final class TrainingFeedbackJob {
             continue;
           }
           final category = _categoryFor(booking);
-          await _onboardingRepository.recordTrainingFeedbackRequest(
-            bookingId: booking.id,
-            userId: booking.userId,
-            sessionKey: booking.trainingKey,
-            trainingTitle: booking.trainingTitle,
-            sentAt: nowUtc,
-          );
           await _sender.sendMessage(
             booking.userId,
             _templates.trainingFeedbackAsk(
@@ -104,6 +90,13 @@ final class TrainingFeedbackJob {
               category: category,
             ),
             replyMarkup: _templates.trainingFeedbackInlineKeyboard(booking.id),
+          );
+          await _onboardingRepository.recordTrainingFeedbackRequest(
+            bookingId: booking.id,
+            userId: booking.userId,
+            sessionKey: booking.trainingKey,
+            trainingTitle: booking.trainingTitle,
+            sentAt: nowUtc,
           );
           await _onAskFeedback(
             userId: booking.userId,
@@ -121,6 +114,36 @@ final class TrainingFeedbackJob {
     } on Object catch (error, stackTrace) {
       l.w('Training feedback job failed: $error', stackTrace);
     }
+  }
+
+  /// Trainings and outdoor events have different due windows. A single 21-day
+  /// fetch with a small LIMIT prefers oldest rows and starves recent trainings.
+  Future<List<TrainingBooking>> _loadCandidates(DateTime nowUtc) async {
+    final trainingFrom = nowUtc.subtract(lookback + delayAfterStart);
+    final outdoorFrom = nowUtc.subtract(outdoorLookback);
+    final trainings = await _bookingRepository.listSelfPaidBookingsStartedBetween(
+      startsFromInclusive: trainingFrom,
+      startsToInclusive: nowUtc,
+      limit: 500,
+      categories: const <ActivityCategory>{ActivityCategory.trainings},
+    );
+    final outdoor = await _bookingRepository.listSelfPaidBookingsStartedBetween(
+      startsFromInclusive: outdoorFrom,
+      startsToInclusive: nowUtc,
+      limit: 500,
+      categories: const <ActivityCategory>{
+        ActivityCategory.hikes,
+        ActivityCategory.trails,
+      },
+    );
+    final seen = <int>{};
+    final merged = <TrainingBooking>[];
+    for (final booking in <TrainingBooking>[...trainings, ...outdoor]) {
+      if (seen.add(booking.id)) {
+        merged.add(booking);
+      }
+    }
+    return merged;
   }
 
   ActivityCategory _categoryFor(TrainingBooking booking) {

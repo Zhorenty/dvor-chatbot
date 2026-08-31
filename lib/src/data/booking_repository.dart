@@ -191,10 +191,13 @@ abstract interface class BookingRepository {
 
   /// Self bookings in paid-like statuses whose start is within
   /// `[startsFromInclusive, startsToInclusive]` (UTC-aware ISO compare).
+  ///
+  /// When [categories] is set, only matching training keys/titles are returned.
   Future<List<TrainingBooking>> listSelfPaidBookingsStartedBetween({
     required DateTime startsFromInclusive,
     required DateTime startsToInclusive,
     int limit = 100,
+    Set<ActivityCategory>? categories,
   });
 
   Future<bool> tryMarkEconomicReportSent({

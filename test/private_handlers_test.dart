@@ -462,6 +462,97 @@ void main() {
           contains(MessageTemplates.buttonSubscribeApply));
     });
 
+    test('notifies admin when user opens boxing card without a membership', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: _FakeSubscriptionRepository()
+          ..membershipLevel = MembershipLevel.normal,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -1001622,
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1622, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1622, 'username': 'curious_boxer'},
+        'text': MessageTemplates.buttonSubscription,
+      });
+
+      expect(handled, isTrue);
+      final adminNotify = sender.messages.firstWhere((message) => message.chatId == -1001622);
+      expect(adminNotify.text, contains('Кто-то заинтересовался абонементом'));
+      expect(adminNotify.text, contains('@curious_boxer'));
+      expect(adminNotify.text, contains('заявки ещё нет'));
+      expect(sender.lastContentMessage.chatId, 1622);
+      expect(sender.lastContentMessage.text, contains('DVOR BOXING CARD'));
+    });
+
+    test('does not notify admin about boxing card interest for active members', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: _FakeSubscriptionRepository()
+          ..membershipLevel = MembershipLevel.boxingCard
+          ..membershipPlan = BoxingCardPlan.baza
+          ..membershipActiveUntil = DateTime(2026, 9, 30),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -1001623,
+        nowProvider: () => DateTime(2026, 8, 31, 12),
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1623, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1623, 'username': 'member_boxer'},
+        'text': MessageTemplates.buttonSubscription,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages.any((message) => message.chatId == -1001623), isFalse);
+      expect(sender.lastContentMessage.text, contains('DVOR BOXING CARD'));
+    });
+
+    test('does not notify admin again when returning to boxing card from plan choice', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        subscriptionRepository: _FakeSubscriptionRepository()
+          ..membershipLevel = MembershipLevel.normal,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -1001624,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1624, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1624, 'username': 'curious_boxer'},
+        'text': MessageTemplates.buttonSubscription,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1624, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1624, 'username': 'curious_boxer'},
+        'text': MessageTemplates.buttonSubscribeApply,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 1624, 'type': 'private'},
+        'from': <String, dynamic>{'id': 1624, 'username': 'curious_boxer'},
+        'text': MessageTemplates.buttonBack,
+      });
+
+      expect(handled, isTrue);
+      expect(
+        sender.messages.where((message) => message.chatId == -1001624).length,
+        1,
+      );
+    });
+
     test('shows remaining slots and renew for active boxing card', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()

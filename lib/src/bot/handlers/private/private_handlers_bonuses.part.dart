@@ -445,9 +445,32 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     }
   }
 
+  Future<void> _notifyAdminAboutSubscriptionInterest({
+    required int userId,
+    required String? username,
+  }) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.subscriptionInterestAdminNotification(
+          userId: userId,
+          username: username,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about subscription interest: $error', stackTrace);
+    }
+  }
+
   Future<void> _openBoxingCardOverview({
     required int chatId,
     required int userId,
+    String? username,
+    bool notifyAdminInterest = false,
   }) async {
     final now = _nowProvider();
     final membership = await _subscriptionRepository.getMembership(userId, now: now);
@@ -459,6 +482,12 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     final canApply = snapshot.latestPending == null;
     final isRenewal = BoxingCardLedger.isActiveBoxingCard(membership, now: now);
     final showIndividual = await _isBoxingCardIndividualAvailable(membership: membership);
+    if (notifyAdminInterest && !isRenewal && snapshot.latestPending == null) {
+      await _notifyAdminAboutSubscriptionInterest(
+        userId: userId,
+        username: username,
+      );
+    }
     _flowByUserId[userId] = const _PrivateFlowState(
       step: _PrivateFlowStep.viewingSubscriptionOverview,
       availableTrainings: <TrainingInfo>[],

@@ -552,6 +552,7 @@ final class FakeBookingRepository implements BookingRepository {
     required DateTime startsFromInclusive,
     required DateTime startsToInclusive,
     int limit = 100,
+    Set<ActivityCategory>? categories,
   }) async {
     return queue
         .where(
@@ -561,10 +562,30 @@ final class FakeBookingRepository implements BookingRepository {
                   booking.status == BookingStatus.freeTraining ||
                   booking.status == BookingStatus.partialPaid) &&
               !booking.startsAt.isBefore(startsFromInclusive) &&
-              !booking.startsAt.isAfter(startsToInclusive),
+              !booking.startsAt.isAfter(startsToInclusive) &&
+              _matchesSelfPaidCategories(booking, categories),
         )
         .take(limit)
         .toList(growable: false);
+  }
+
+  bool _matchesSelfPaidCategories(
+    TrainingBooking booking,
+    Set<ActivityCategory>? categories,
+  ) {
+    if (categories == null || categories.isEmpty) {
+      return true;
+    }
+    final keyPrefix = booking.trainingKey.split('|').firstOrNull;
+    final category = switch (keyPrefix) {
+      'hikes' => ActivityCategory.hikes,
+      'trails' => ActivityCategory.trails,
+      'trainings' => ActivityCategory.trainings,
+      _ when booking.trainingTitle.startsWith('🥾 Поход:') => ActivityCategory.hikes,
+      _ when booking.trainingTitle.startsWith('🏃 Трейл:') => ActivityCategory.trails,
+      _ => ActivityCategory.trainings,
+    };
+    return categories.contains(category);
   }
 
   @override

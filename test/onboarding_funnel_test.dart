@@ -384,6 +384,110 @@ void main() {
       expect(sender.messages.first.text, contains('Как прошла тренировка'));
     });
 
+    test('training feedback still asks when older outdoor-window bookings fill the old limit',
+        () async {
+      final now = DateTime.utc(2026, 7, 25, 15);
+      final bookingRepo = FakeBookingRepository();
+      final oldStarts = now.subtract(const Duration(days: 10));
+      final dueStarts = now.subtract(const Duration(hours: 2, minutes: 5));
+      bookingRepo.queue = <TrainingBooking>[
+        for (var i = 0; i < 250; i++)
+          _paidFeedbackBooking(
+            id: i + 1,
+            userId: 808,
+            startsAt: oldStarts,
+            trainingTitle: 'Старая силовая $i',
+          ),
+        _paidFeedbackBooking(
+          id: 251,
+          userId: 808,
+          startsAt: dueStarts,
+          trainingTitle: 'Силовая',
+        ),
+      ];
+      final onboarding = FakeOnboardingRepository()
+        ..seedUser(userId: 808, phase: OnboardingPhase.legacySkipped);
+      final sender = FakeSender();
+      final job = TrainingFeedbackJob(
+        bookingRepository: bookingRepo,
+        onboardingRepository: onboarding,
+        sender: sender,
+        templates: const MessageTemplates(),
+        enabled: true,
+        nowProvider: () => now,
+        onAskFeedback: ({
+          required int userId,
+          required int bookingId,
+          required String sessionKey,
+          required String trainingTitle,
+        }) async {},
+      );
+
+      await job.run();
+
+      expect(onboarding.feedbackRequestBookingIds, contains(251));
+      expect(sender.messages.single.text, contains('Как прошла тренировка «Силовая»'));
+    });
+
+    test('hike feedback is not starved by a long list of older trainings', () async {
+      final now = DateTime.utc(2026, 6, 15, 9, 5);
+      final bookingRepo = FakeBookingRepository();
+      final oldTrainingStart = DateTime.utc(2026, 5, 28);
+      final hikeStart = DateTime(2026, 6, 14);
+      bookingRepo.queue = <TrainingBooking>[
+        for (var i = 0; i < 250; i++)
+          _paidFeedbackBooking(
+            id: i + 1,
+            userId: 909,
+            startsAt: oldTrainingStart,
+            trainingTitle: 'Силовая $i',
+          ),
+        _paidFeedbackBooking(
+          id: 301,
+          userId: 909,
+          startsAt: hikeStart,
+          trainingKey: 'hikes|2026-06-14T00:00:00.000Z|🥾 Поход: Ачишхо|Локация',
+          trainingTitle: '🥾 Поход: Ачишхо',
+        ),
+      ];
+      final schedule = FakeScheduleRepository(
+        const <TrainingInfo>[],
+        outdoorItems: <OutdoorActivityInfo>[
+          OutdoorActivityInfo(
+            type: OutdoorActivityType.hike,
+            title: 'Ачишхо',
+            dateFrom: DateTime(2026, 6, 14),
+            dateTo: DateTime(2026, 6, 14, 23, 59, 59),
+            description: 'однодневный',
+          ),
+        ],
+      );
+      final onboarding = FakeOnboardingRepository()
+        ..seedUser(userId: 909, phase: OnboardingPhase.legacySkipped);
+      final sender = FakeSender();
+      final job = TrainingFeedbackJob(
+        bookingRepository: bookingRepo,
+        onboardingRepository: onboarding,
+        sender: sender,
+        templates: const MessageTemplates(),
+        enabled: true,
+        catalogService: ActivityCatalogService(scheduleRepository: schedule),
+        timezoneOffsetHours: 3,
+        nowProvider: () => now,
+        onAskFeedback: ({
+          required int userId,
+          required int bookingId,
+          required String sessionKey,
+          required String trainingTitle,
+        }) async {},
+      );
+
+      await job.run();
+
+      expect(onboarding.feedbackRequestBookingIds, contains(301));
+      expect(sender.messages.single.text, contains('Как прошел поход'));
+    });
+
     test('hike feedback asks next day at noon after single-day end', () async {
       // Business noon on 15 June (UTC+3) = 09:00 UTC.
       final now = DateTime.utc(2026, 6, 15, 9, 5);
@@ -696,4 +800,26 @@ void main() {
       );
     });
   });
+}
+
+TrainingBooking _paidFeedbackBooking({
+  required int id,
+  required int userId,
+  required DateTime startsAt,
+  String trainingKey = 'trainings|k',
+  String trainingTitle = 'Силовая',
+}) {
+  return TrainingBooking(
+    id: id,
+    userId: userId,
+    userUsername: 'u$userId',
+    trainingKey: trainingKey,
+    trainingTitle: trainingTitle,
+    startsAt: startsAt,
+    location: 'Зал',
+    status: BookingStatus.paid,
+    trainingPrice: 1000,
+    createdAt: startsAt.subtract(const Duration(days: 1)),
+    updatedAt: startsAt.subtract(const Duration(days: 1)),
+  );
 }
