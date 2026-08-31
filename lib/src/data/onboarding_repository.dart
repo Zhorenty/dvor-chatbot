@@ -2,6 +2,7 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/group_membership.dart';
+import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 
@@ -168,6 +169,8 @@ abstract interface class OnboardingRepository {
     required int inviterUserId,
     required DateTime attributedAt,
   });
+
+  Future<List<ReferralAttribution>> listReferralAttributions();
 
   /// Returns IDs of all users who have started the bot (sent /start).
   /// Only these users can receive proactive DMs.
@@ -396,6 +399,10 @@ final class NoopOnboardingRepository implements OnboardingRepository {
     required int inviterUserId,
     required DateTime attributedAt,
   }) async {}
+
+  @override
+  Future<List<ReferralAttribution>> listReferralAttributions() async =>
+      const <ReferralAttribution>[];
 
   @override
   Future<List<int>> getAllStartedUserIds({bool outdoorPlusOnly = false}) async => const <int>[];

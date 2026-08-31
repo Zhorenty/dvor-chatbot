@@ -24,7 +24,7 @@ void main() {
     expect(sender.messages.single.parseMode, 'HTML');
     expect(sender.messages.single.text, contains('Приведи друга'));
     expect(sender.messages.single.text, contains('Реферальная программа'));
-    expect(sender.messages.single.text, contains('https://t.me/dvor_chatbot?start=book'));
+    expect(sender.messages.single.text, contains('1000 ⛰️'));
   });
 
   test('does not send referral broadcast outside Wednesday 10:00', () async {

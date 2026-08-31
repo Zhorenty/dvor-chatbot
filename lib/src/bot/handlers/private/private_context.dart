@@ -219,6 +219,11 @@ String? callbackToCommandText(String? callbackData) {
     final bookingId = int.tryParse(rawId);
     return bookingId == null ? null : '/use_bonus $bookingId';
   }
+  if (callbackData.startsWith(MessageCopy.callbackSpendLoyaltyPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackSpendLoyaltyPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/use_loyalty $bookingId';
+  }
   if (callbackData.startsWith(MessageCopy.callbackEnterPromoPrefix)) {
     final rawId = callbackData.substring(MessageCopy.callbackEnterPromoPrefix.length);
     final bookingId = int.tryParse(rawId);

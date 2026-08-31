@@ -806,7 +806,8 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.text, contains('Профиль DVOR'));
-      expect(sender.messages.single.text, contains('Лояльность'));
+      expect(sender.messages.single.text, contains('Вершинки'));
+      expect(sender.messages.single.text, contains('2 ⛰️ = 1 ₽'));
       expect(sender.messages.single.text, contains(MessageTemplates.buttonProfileBookings));
       expect(sender.messages.single.parseMode, 'HTML');
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
@@ -839,7 +840,8 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages.single.text, contains('Реферальная программа DVOR'));
       expect(sender.messages.single.text, contains('https://t.me/dvor_test_bot?start=ref_9503'));
-      expect(sender.messages.single.text, contains('Доступно бесплатных по рефералке: <b>1</b>'));
+      expect(sender.messages.single.text, contains('1000 ⛰️'));
+      expect(sender.messages.single.text, contains('45 дней'));
       expect(sender.messages.single.parseMode, 'HTML');
     });
 
@@ -1255,7 +1257,9 @@ void main() {
         sender.messages.single.text,
         contains('Показываю ближайшие тренировки, походы и трейлы'),
       );
-      expect(sender.messages.single.text, contains('каждая 5-я тренировка бесплатная'));
+      expect(sender.messages.single.text, contains('Вершинки'));
+      expect(sender.messages.single.text, contains('2 ⛰️ = 1 ₽'));
+      expect(sender.messages.single.text, isNot(contains('каждая 5-я')));
       expect(sender.messages.single.text, contains('Группа DVOR'));
       expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
       expect(sender.messages.single.text, contains('По остальным вопросам: @dvor_support'));
@@ -2919,13 +2923,8 @@ void main() {
       expect(adminMessage, contains('Формат: бесплатная тренировка за старт'));
     });
 
-    test('applies every-fifth bonus when starter bonus unavailable', () async {
+    test('starter bonus button is unavailable when no starter bonus', () async {
       final sender = _FakeSender();
-      final bookingRepository = _FakeBookingRepository()
-        ..everyFifthProgress = const EveryFifthRewardProgress(
-          qualifiedTrainingsCount: 8,
-          usedRewardsCount: 1,
-        );
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(
@@ -2934,10 +2933,11 @@ void main() {
               title: 'Fifth reward session',
               startsAt: DateTime(2026, 7, 14, 19, 0),
               location: 'Hall',
+              price: 500,
             ),
           ],
         ),
-        bookingRepository: bookingRepository,
+        bookingRepository: _FakeBookingRepository(),
         onboardingRepository: _FakeOnboardingRepository()..seedUser(userId: 1606),
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
@@ -2967,12 +2967,10 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.lastContentMessage.text, contains('каждая 5-я бесплатно'));
-      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100889).text;
-      expect(adminMessage, contains('каждая 5-я'));
+      expect(sender.lastContentMessage.text, isNot(contains('каждая 5-я')));
     });
 
-    test('applies referral bonus when referral reward is available', () async {
+    test('referral no longer applies a free training voucher', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository()
         ..referralProgress = const ReferralRewardProgress(
@@ -2987,6 +2985,7 @@ void main() {
               title: 'Referral reward session',
               startsAt: DateTime(2026, 7, 15, 19, 0),
               location: 'Hall',
+              price: 500,
             ),
           ],
         ),
@@ -3020,25 +3019,22 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.lastContentMessage.text,
-          contains('Реферальная бесплатная тренировка активирована'));
-      expect(bookingRepository.lastUpdatedPaymentNote,
-          MessageFormatters.referralBonusPaymentNoteMarker);
-      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100445).text;
-      expect(adminMessage, contains('реферальной программе'));
+      expect(
+        sender.lastContentMessage.text,
+        isNot(contains('Реферальная бесплатная тренировка активирована')),
+      );
+      expect(
+        bookingRepository.lastUpdatedPaymentNote,
+        isNot(MessageFormatters.referralBonusPaymentNoteMarker),
+      );
     });
 
-    test('notifies user and admin when every-fifth reward unlocks', () async {
+    test('opening bookings does not notify about every-fifth rewards', () async {
       final sender = _FakeSender();
-      final bookingRepository = _FakeBookingRepository()
-        ..everyFifthProgress = const EveryFifthRewardProgress(
-          qualifiedTrainingsCount: 4,
-          usedRewardsCount: 0,
-        );
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
-        bookingRepository: bookingRepository,
+        bookingRepository: _FakeBookingRepository(),
         onboardingRepository: _FakeOnboardingRepository()..seedUser(userId: 1607),
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
@@ -3052,10 +3048,14 @@ void main() {
       });
 
       expect(handled, isTrue);
-      final userNotify = sender.messages.firstWhere((message) => message.chatId == 167).text;
-      final adminNotify = sender.messages.firstWhere((message) => message.chatId == -100999).text;
-      expect(userNotify, contains('бесплатная тренировка уже доступна'));
-      expect(adminNotify, contains('@unlock_user'));
+      expect(
+        sender.messages.where((message) => message.chatId == -100999),
+        isEmpty,
+      );
+      expect(
+        sender.messages.map((message) => message.text).join('\n'),
+        isNot(contains('бесплатная тренировка уже доступна')),
+      );
     });
 
     test('notifies admin when user opens a hike card from the list', () async {

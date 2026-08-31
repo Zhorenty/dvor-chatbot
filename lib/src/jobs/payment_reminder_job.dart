@@ -1,4 +1,6 @@
+import 'package:dvor_chatbot/src/application/loyalty_service.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
@@ -10,17 +12,20 @@ final class PaymentReminderJob {
     required MessageTemplates templates,
     Duration pendingPaymentTtl = const Duration(minutes: 120),
     DateTime Function()? nowProvider,
+    LoyaltyService? loyaltyService,
   })  : _bookingRepository = bookingRepository,
         _sender = sender,
         _templates = templates,
         _pendingPaymentTtl = pendingPaymentTtl,
-        _nowProvider = nowProvider ?? DateTime.now;
+        _nowProvider = nowProvider ?? DateTime.now,
+        _loyaltyService = loyaltyService;
 
   final BookingRepository _bookingRepository;
   final MessageSender _sender;
   final MessageTemplates _templates;
   final Duration _pendingPaymentTtl;
   final DateTime Function() _nowProvider;
+  final LoyaltyService? _loyaltyService;
 
   Future<void> run() async {
     try {
@@ -35,6 +40,16 @@ final class PaymentReminderJob {
       for (final booking in expiredBookings) {
         if (booking.userId <= 0) {
           continue;
+        }
+        final spent = await _loyaltyService?.peaksSpentOnBooking(booking.id) ?? 0;
+        if (spent > 0) {
+          await _loyaltyService?.refund(
+            userId: booking.userId,
+            amount: spent,
+            idempotencyKey: LoyaltyKeys.refundBooking(booking.id),
+            now: now,
+            bookingId: booking.id,
+          );
         }
         try {
           await _sender.sendMessage(

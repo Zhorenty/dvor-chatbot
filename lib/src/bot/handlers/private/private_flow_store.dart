@@ -181,6 +181,7 @@ final class PrivateFlowState {
     this.selectedOutdoorActivity,
     this.bookingFromSchedulePreview = false,
     this.starterBonusOffered = false,
+    this.loyaltySpendOffered = false,
     this.adminViewingArchived = false,
     this.adminCreateStatus,
     this.adminCreateUsernames,
@@ -222,6 +223,7 @@ final class PrivateFlowState {
   final OutdoorActivityInfo? selectedOutdoorActivity;
   final bool bookingFromSchedulePreview;
   final bool starterBonusOffered;
+  final bool loyaltySpendOffered;
   final bool adminViewingArchived;
   final BookingStatus? adminCreateStatus;
   final List<String>? adminCreateUsernames;
@@ -263,6 +265,7 @@ final class PrivateFlowState {
     Object? selectedOutdoorActivity = _privateFlowUnset,
     bool? bookingFromSchedulePreview,
     bool? starterBonusOffered,
+    bool? loyaltySpendOffered,
     bool? adminViewingArchived,
     Object? adminCreateStatus = _privateFlowUnset,
     Object? adminCreateUsernames = _privateFlowUnset,
@@ -312,6 +315,7 @@ final class PrivateFlowState {
           : selectedOutdoorActivity as OutdoorActivityInfo?,
       bookingFromSchedulePreview: bookingFromSchedulePreview ?? this.bookingFromSchedulePreview,
       starterBonusOffered: starterBonusOffered ?? this.starterBonusOffered,
+      loyaltySpendOffered: loyaltySpendOffered ?? this.loyaltySpendOffered,
       adminViewingArchived: adminViewingArchived ?? this.adminViewingArchived,
       adminCreateStatus: identical(adminCreateStatus, _privateFlowUnset)
           ? this.adminCreateStatus

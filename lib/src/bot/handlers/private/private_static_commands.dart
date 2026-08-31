@@ -9,10 +9,10 @@ import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
 
 typedef StartCleanup = Future<void> Function(int userId);
-typedef EveryFifthNotifier = Future<void> Function({
+typedef StartLoyaltyHandler = Future<void> Function({
   required int userId,
   required int chatId,
-  required String? username,
+  required bool starterBonusAvailable,
 });
 typedef WelcomePinner = Future<void> Function({
   required int chatId,
@@ -44,7 +44,7 @@ final class PrivateStaticCommands {
     required MessageTemplates templates,
     required bool canViewParticipantsList,
     required StartCleanup onStartCleanup,
-    required EveryFifthNotifier onEveryFifthUnlocked,
+    required StartLoyaltyHandler onStartLoyalty,
     required WelcomePinner onPinWelcomeMessage,
     required NowProvider nowProvider,
     required BookingCategoryOpener onOpenBookingCategories,
@@ -76,7 +76,11 @@ final class PrivateStaticCommands {
         );
         runFunnel = await onboardingService.shouldRunFunnel(userId);
         starterBonusAvailable = await onboardingRepository.hasStarterBonusAvailable(userId);
-        await onEveryFifthUnlocked(userId: userId, chatId: chatId, username: username);
+        await onStartLoyalty(
+          userId: userId,
+          chatId: chatId,
+          starterBonusAvailable: starterBonusAvailable,
+        );
       }
 
       if (userId != null && runFunnel) {

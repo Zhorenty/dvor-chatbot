@@ -24,6 +24,75 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
       return true;
     }
 
+    if (text != null &&
+        (text.startsWith('/loyalty_grant ') || text.startsWith('/loyalty_debit '))) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      final parts = text.trim().split(RegExp(r'\s+'));
+      if (parts.length < 3) {
+        await _sendAdminMessage(
+          chatId,
+          'Формат: <code>/loyalty_grant userId 50</code> или '
+          '<code>/loyalty_debit userId 50</code>',
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      final targetUserId = int.tryParse(parts[1]);
+      final amount = int.tryParse(parts[2]);
+      if (targetUserId == null || amount == null) {
+        await _sendAdminMessage(
+          chatId,
+          'Формат: <code>/loyalty_grant userId 50</code>',
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      if (amount <= 0 || amount % LoyaltyMath.unit != 0) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.loyaltyAdminAmountInvalid(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      final granted = text.startsWith('/loyalty_grant ');
+      final result = granted
+          ? await _loyaltyService.adminGrant(userId: targetUserId, amount: amount)
+          : await _loyaltyService.adminDebit(userId: targetUserId, amount: amount);
+      if (!result.applied) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.loyaltyUnavailable(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      await _sendAdminMessage(
+        chatId,
+        _templates.loyaltyAdminMutationResult(
+          userId: targetUserId,
+          amount: amount,
+          remaining: result.account.remaining,
+          granted: granted,
+        ),
+        replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+      );
+      return true;
+    }
+
     if (text != null && text == MessageTemplates.buttonManageBookings) {
       if (!canRunAdminAction) {
         await _sendAdminMessage(
@@ -372,6 +441,19 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
         replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
       );
+      if (bookings.isNotEmpty) {
+        final targetUserId = bookings.first.userId;
+        final account = await _loyaltyService.account(targetUserId);
+        final recent = await _loyaltyService.recentLedger(targetUserId);
+        await _sendAdminMessage(
+          chatId,
+          _templates.loyaltyAdminOverview(
+            userId: targetUserId,
+            account: account,
+            recent: recent,
+          ),
+        );
+      }
       return true;
     }
 

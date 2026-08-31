@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/application/admin_analytics_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/application/group_membership_lookup.dart';
+import 'package:dvor_chatbot/src/application/loyalty_service.dart';
 import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/application/schedule_catalog_service.dart';
@@ -23,6 +24,8 @@ import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
 import 'package:dvor_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:dvor_chatbot/src/jobs/group_invite_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/job_scheduler.dart';
+import 'package:dvor_chatbot/src/jobs/loyalty_accrual_job.dart';
+import 'package:dvor_chatbot/src/jobs/loyalty_expiry_job.dart';
 import 'package:dvor_chatbot/src/jobs/onboarding_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/referral_broadcast_job.dart';
@@ -57,6 +60,7 @@ final class BotRunner {
     GoogleSheetsWriter? googleSheetsWriter,
     ScheduleCatalogService? scheduleCatalogService,
     ConversationLogRepository conversationLogRepository = const NoopConversationLogRepository(),
+    LoyaltyService? loyaltyService,
   })  : _config = config,
         _client = client,
         _scheduleRepository = scheduleRepository,
@@ -76,6 +80,7 @@ final class BotRunner {
           sender: sender,
           templates: templates,
           pendingPaymentTtl: Duration(minutes: config.pendingPaymentTtlMinutes),
+          loyaltyService: loyaltyService,
         ),
         _starterBonusReminderJob = StarterBonusReminderJob(
           onboardingRepository: onboardingRepository,
@@ -167,6 +172,24 @@ final class BotRunner {
             );
           },
         ),
+        _loyaltyExpiryJob = loyaltyService == null
+            ? null
+            : LoyaltyExpiryJob(
+                loyaltyService: loyaltyService,
+                sender: sender,
+                templates: templates,
+                jobDedupeRepository: jobDedupeRepository,
+              ),
+        _loyaltyAccrualJob = loyaltyService == null
+            ? null
+            : LoyaltyAccrualJob(
+                loyaltyService: loyaltyService,
+                bookingRepository: bookingRepository,
+                onboardingRepository: onboardingRepository,
+                sender: sender,
+                templates: templates,
+                catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
+              ),
         _privateHandlers = privateHandlers,
         _groupHandlers = groupHandlers,
         _googleSheetsWriter = googleSheetsWriter,
@@ -180,6 +203,7 @@ final class BotRunner {
                   bookingRepository: bookingRepository,
                   onboardingRepository: onboardingRepository,
                   subscriptionRepository: subscriptionRepository,
+                  loyaltyService: loyaltyService,
                 ),
                 economicSummaryService: EconomicSummaryService(
                   bookingRepository: bookingRepository,
@@ -218,6 +242,8 @@ final class BotRunner {
   final OnboardingNudgeJob _onboardingNudgeJob;
   final GroupInviteNudgeJob _groupInviteNudgeJob;
   final TrainingFeedbackJob _trainingFeedbackJob;
+  final LoyaltyExpiryJob? _loyaltyExpiryJob;
+  final LoyaltyAccrualJob? _loyaltyAccrualJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
   final GoogleSheetsWriter? _googleSheetsWriter;
@@ -270,6 +296,16 @@ final class BotRunner {
     _schedulePeriodic(const Duration(minutes: 10), 'onboarding nudge', _onboardingNudgeJob.run);
     _schedulePeriodic(const Duration(hours: 1), 'group invite nudge', _groupInviteNudgeJob.run);
     _schedulePeriodic(const Duration(minutes: 10), 'training feedback', _trainingFeedbackJob.run);
+    final loyaltyExpiryJob = _loyaltyExpiryJob;
+    if (loyaltyExpiryJob != null) {
+      _schedulePeriodic(const Duration(hours: 1), 'loyalty expiry', loyaltyExpiryJob.run);
+      _jobScheduler.launch('loyalty expiry', loyaltyExpiryJob.run);
+    }
+    final loyaltyAccrualJob = _loyaltyAccrualJob;
+    if (loyaltyAccrualJob != null) {
+      _schedulePeriodic(const Duration(hours: 1), 'loyalty accrual', loyaltyAccrualJob.run);
+      _jobScheduler.launch('loyalty accrual', loyaltyAccrualJob.run);
+    }
     final googleSheetsExportJob = _googleSheetsExportJob;
     if (googleSheetsExportJob != null) {
       _schedulePeriodic(

@@ -6,15 +6,36 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
     required TrainingBooking booking,
     required String text,
     required bool showStarterBonus,
+    bool? showLoyaltySpend,
     String? parseMode,
   }) async {
+    final offerLoyalty =
+        showLoyaltySpend ?? await _canOfferLoyaltySpend(userId: booking.userId, booking: booking);
+    final currentFlow = _flowByUserId[booking.userId];
+    if (currentFlow != null) {
+      _flowByUserId[booking.userId] = currentFlow.copyWith(loyaltySpendOffered: offerLoyalty);
+    }
+    var body = text;
+    if (offerLoyalty) {
+      final quote = await _loyaltyQuoteForBooking(userId: booking.userId, booking: booking);
+      if (quote.peaks > 0) {
+        final category = _catalogService.categoryForBooking(booking);
+        final outdoor = category == ActivityCategory.hikes || category == ActivityCategory.trails;
+        body = '$text\n\n${_templates.loyaltySpendQuoteLine(
+          peaks: quote.peaks,
+          remainderRub: quote.remainderRub,
+          outdoor: outdoor,
+        )}';
+      }
+    }
     await _sender.sendMessage(
       chatId,
-      text,
+      body,
       parseMode: parseMode,
       replyMarkup: _templates.paymentCardInlineKeyboard(
         booking.id,
         showStarterBonus: showStarterBonus,
+        showLoyaltySpend: offerLoyalty,
         showCancelBooking: _canCancelBookingByPolicy(booking),
         showOutdoorPaymentTypeChoice: _shouldShowOutdoorPaymentTypeChoice(booking),
         showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
@@ -50,6 +71,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       parseMode: parseMode,
       replyMarkup: _templates.paymentConfirmationKeyboard(
         showStarterBonus: flowState.starterBonusOffered,
+        showLoyaltySpend: flowState.loyaltySpendOffered,
         showCancelBooking: false,
         showOutdoorPaymentTypeChoice: false,
         showPromoCodeEntry: false,
@@ -156,6 +178,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       final isApproved =
           booking.status == BookingStatus.paid || booking.status == BookingStatus.partialPaid;
       if (isApproved) {
+        await _loyaltyService.touchActivity(booking.userId, now: _nowProvider());
         await _sender.sendMessage(
           booking.userId,
           _templates.paymentApprovedForUser(booking),
@@ -163,6 +186,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
         await _sendOutdoorPrepDetails(booking.userId, booking);
         await _maybeMarkOnboardingActivation(booking.userId);
       } else {
+        await _refundLoyaltyForBooking(booking);
         final starterBonusOffered =
             _catalogService.categoryForBooking(booking) == _ActivityCategory.trainings &&
                 !(_catalogService.trainingInfoForBooking(booking)?.promoRestricted ?? false) &&
@@ -405,6 +429,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       paymentProofMessageId: proofMessageId,
     );
     if (booking != null) {
+      await _loyaltyService.touchActivity(userId, now: _nowProvider());
       await _notifyAdminAboutPaymentSubmitted(booking);
     }
     _flowByUserId.remove(userId);

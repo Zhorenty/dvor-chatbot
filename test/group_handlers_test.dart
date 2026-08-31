@@ -3,6 +3,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/group_membership.dart';
+import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -577,6 +578,10 @@ final class _FakeOnboardingRepository implements OnboardingRepository {
     required int inviterUserId,
     required DateTime attributedAt,
   }) async {}
+
+  @override
+  Future<List<ReferralAttribution>> listReferralAttributions() async =>
+      const <ReferralAttribution>[];
 
   @override
   Future<void> registerGroupWelcome({

@@ -16,36 +16,6 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     }
   }
 
-  Future<void> _notifyAdminAboutEveryFifthBonusApplied(TrainingBooking booking) async {
-    final adminChatId = _adminChatId;
-    if (adminChatId == null) {
-      return;
-    }
-    try {
-      await _sendAdminMessage(
-        adminChatId,
-        _templates.everyFifthBonusAdminNotification(booking),
-      );
-    } on Object catch (error, stackTrace) {
-      l.w('Failed to notify admin chat about every-fifth bonus booking: $error', stackTrace);
-    }
-  }
-
-  Future<void> _notifyAdminAboutReferralBonusApplied(TrainingBooking booking) async {
-    final adminChatId = _adminChatId;
-    if (adminChatId == null) {
-      return;
-    }
-    try {
-      await _sendAdminMessage(
-        adminChatId,
-        _templates.referralBonusAdminNotification(booking),
-      );
-    } on Object catch (error, stackTrace) {
-      l.w('Failed to notify admin chat about referral bonus booking: $error', stackTrace);
-    }
-  }
-
   Future<void> _notifyAdminAboutPromoCodeApplied(TrainingBooking booking) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
@@ -61,23 +31,8 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     }
   }
 
-  Future<bool> _hasAnyFreeTrainingBonusAvailable(int userId) async {
-    final starterAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
-    if (starterAvailable) {
-      return true;
-    }
-    final referralProgress = await _bookingRepository.getReferralRewardProgress(
-      userId,
-      now: _nowProvider(),
-    );
-    if (referralProgress.availableRewardsCount > 0) {
-      return true;
-    }
-    final progress = await _bookingRepository.getEveryFifthRewardProgress(
-      userId,
-      now: _nowProvider(),
-    );
-    return progress.availableRewardsCount > 0;
+  Future<bool> _hasAnyFreeTrainingBonusAvailable(int userId) {
+    return _onboardingRepository.hasStarterBonusAvailable(userId);
   }
 
   Future<bool> _hasBoxingCardIncludedTrainingAvailable({
@@ -211,20 +166,6 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     if (starterAvailable) {
       return _FreeTrainingBonusType.starter;
     }
-    final referralProgress = await _bookingRepository.getReferralRewardProgress(
-      userId,
-      now: _nowProvider(),
-    );
-    if (referralProgress.availableRewardsCount > 0) {
-      return _FreeTrainingBonusType.referral;
-    }
-    final progress = await _bookingRepository.getEveryFifthRewardProgress(
-      userId,
-      now: _nowProvider(),
-    );
-    if (progress.availableRewardsCount > 0) {
-      return _FreeTrainingBonusType.everyFifth;
-    }
     return null;
   }
 
@@ -250,74 +191,6 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
         rollbackAt: _nowProvider(),
       );
       return null;
-    }
-  }
-
-  Future<TrainingBooking?> _applyEveryFifthBonus(TrainingBooking booking) async {
-    return _bookingRepository.updateStatus(
-      booking.id,
-      BookingStatus.paid,
-      paymentNote: MessageFormatters.everyFifthBonusPaymentNoteMarker,
-    );
-  }
-
-  Future<TrainingBooking?> _applyReferralBonus(TrainingBooking booking) async {
-    return _bookingRepository.updateStatus(
-      booking.id,
-      BookingStatus.paid,
-      paymentNote: MessageFormatters.referralBonusPaymentNoteMarker,
-    );
-  }
-
-  Future<void> _maybeNotifyEveryFifthRewardUnlocked({
-    required int userId,
-    required int chatId,
-    required String? username,
-  }) async {
-    final progress = await _bookingRepository.getEveryFifthRewardProgress(
-      userId,
-      now: _nowProvider(),
-    );
-    final earnedRewards = progress.earnedRewardsCount;
-    if (earnedRewards <= 0 || progress.availableRewardsCount <= 0) {
-      return;
-    }
-    final lastNotified = await _onboardingRepository.getEveryFifthLastNotifiedRewards(userId);
-    if (earnedRewards <= lastNotified) {
-      return;
-    }
-    try {
-      await _sender.sendMessage(
-        chatId,
-        _templates.everyFifthBonusUnlockedUser(
-          completedTrainingsCount: progress.qualifiedTrainingsCount,
-          availableRewardsCount: progress.availableRewardsCount,
-        ),
-      );
-      await _onboardingRepository.setEveryFifthLastNotifiedRewards(
-        userId,
-        rewardsCount: earnedRewards,
-        updatedAt: _nowProvider(),
-      );
-    } on Object catch (error, stackTrace) {
-      l.w('Failed to notify user about every-fifth reward unlock: $error', stackTrace);
-    }
-    final adminChatId = _adminChatId;
-    if (adminChatId == null) {
-      return;
-    }
-    try {
-      await _sendAdminMessage(
-        adminChatId,
-        _templates.everyFifthBonusUnlockedAdmin(
-          userId: userId,
-          username: username,
-          completedTrainingsCount: progress.qualifiedTrainingsCount,
-          availableRewardsCount: progress.availableRewardsCount,
-        ),
-      );
-    } on Object catch (error, stackTrace) {
-      l.w('Failed to notify admin chat about every-fifth reward unlock: $error', stackTrace);
     }
   }
 
@@ -508,5 +381,359 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       ),
       parseMode: 'HTML',
     );
+  }
+
+  Future<bool> _canOfferLoyaltySpend({
+    required int userId,
+    required TrainingBooking booking,
+  }) async {
+    if (booking.status != BookingStatus.pendingPayment &&
+        booking.status != BookingStatus.paymentRejected) {
+      return false;
+    }
+    if (await _loyaltyService.hasEntry(LoyaltyKeys.spendBooking(booking.id))) {
+      return false;
+    }
+    final training = _catalogService.trainingInfoForBooking(booking);
+    if (training?.promoRestricted == true) {
+      return false;
+    }
+    final price = booking.trainingPrice ?? training?.price ?? 0;
+    if (price <= 0) {
+      return false;
+    }
+    if (_isWhitelistedTrainerBooking(userId: userId, username: booking.userUsername) ||
+        await _isDvorTeamMember(username: booking.userUsername)) {
+      return false;
+    }
+    final balance = await _loyaltyService.availableBalance(userId, now: _nowProvider());
+    if (balance <= 0) {
+      return false;
+    }
+    final already = await _loyaltyService.peaksSpentOnBooking(booking.id);
+    final category = _catalogService.categoryForBooking(booking);
+    final target = category == ActivityCategory.trainings
+        ? LoyaltySpendTarget.training
+        : LoyaltySpendTarget.outdoor;
+    final quote = _loyaltyService.quoteSpend(
+      target: target,
+      priceRub: price,
+      balance: balance,
+      alreadySpent: already,
+    );
+    return quote.peaks > 0;
+  }
+
+  Future<LoyaltySpendQuote> _loyaltyQuoteForBooking({
+    required int userId,
+    required TrainingBooking booking,
+  }) async {
+    final price = booking.trainingPrice ?? 0;
+    final balance = await _loyaltyService.availableBalance(userId, now: _nowProvider());
+    final already = await _loyaltyService.peaksSpentOnBooking(booking.id);
+    final category = _catalogService.categoryForBooking(booking);
+    final target = category == ActivityCategory.trainings
+        ? LoyaltySpendTarget.training
+        : LoyaltySpendTarget.outdoor;
+    return _loyaltyService.quoteSpend(
+      target: target,
+      priceRub: price,
+      balance: balance,
+      alreadySpent: already,
+    );
+  }
+
+  Future<void> _handleStartLoyalty({
+    required int userId,
+    required int chatId,
+    required bool starterBonusAvailable,
+  }) async {
+    final now = _nowProvider();
+    final credited = await _loyaltyService.credit(
+      userId: userId,
+      amount: LoyaltyMath.startBonusPeaks,
+      reason: LoyaltyLedgerReason.start,
+      idempotencyKey: LoyaltyKeys.start(userId),
+      now: now,
+    );
+    await _loyaltyService.touchActivity(userId, now: now);
+    if (!credited.applied) {
+      return;
+    }
+    await _sender.sendMessage(
+      chatId,
+      _templates.loyaltyStartCredited(starterBonusAvailable: starterBonusAvailable),
+    );
+  }
+
+  Future<void> _refundLoyaltyForBooking(TrainingBooking booking) async {
+    final spent = await _loyaltyService.peaksSpentOnBooking(booking.id);
+    if (spent <= 0) {
+      return;
+    }
+    await _loyaltyService.refund(
+      userId: booking.userId,
+      amount: spent,
+      idempotencyKey: LoyaltyKeys.refundBooking(booking.id),
+      now: _nowProvider(),
+      bookingId: booking.id,
+    );
+  }
+
+  Future<bool> _applyLoyaltySpendToBooking({
+    required int chatId,
+    required int userId,
+    required bool isAdmin,
+    required bool showReturnToAdminMenu,
+    required TrainingBooking booking,
+  }) async {
+    final quote = await _loyaltyQuoteForBooking(userId: userId, booking: booking);
+    if (quote.peaks <= 0) {
+      await _sender.sendMessage(chatId, _templates.loyaltyUnavailable());
+      return true;
+    }
+    final result = await _loyaltyService.debit(
+      userId: userId,
+      amount: quote.peaks,
+      reason: LoyaltyLedgerReason.spend,
+      idempotencyKey: LoyaltyKeys.spendBooking(booking.id),
+      now: _nowProvider(),
+      bookingId: booking.id,
+    );
+    if (!result.applied) {
+      await _sender.sendMessage(chatId, _templates.loyaltyUnavailable());
+      return true;
+    }
+    final category = _catalogService.categoryForBooking(booking);
+    final outdoor = category == ActivityCategory.hikes || category == ActivityCategory.trails;
+    if (!outdoor && quote.coversFully) {
+      final paid = await _bookingRepository.updateStatus(
+        booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.loyaltyPeaksPaymentNoteMarker,
+      );
+      _flowByUserId.remove(userId);
+      await _maybeNotifyGroupAboutCapacity(
+        _trainingInfoFromBooking(paid ?? booking),
+        bookingStatus: BookingStatus.paid,
+      );
+      await _sender.sendMessage(
+        chatId,
+        _templates.loyaltySpendApplied(
+          peaks: quote.peaks,
+          remainderRub: 0,
+          coversFully: true,
+        ),
+        replyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          showReturnToAdminMenu: showReturnToAdminMenu,
+        ),
+      );
+      return true;
+    }
+    final live = (await _bookingRepository.listUserBookings(userId, limit: 50))
+        .where((item) => item.id == booking.id)
+        .firstOrNull;
+    final current = live ?? booking;
+    _flowByUserId[userId] = (_flowByUserId[userId] ??
+            _PrivateFlowState(
+              step: _PrivateFlowStep.paymentConfirmation,
+              availableTrainings: const <TrainingInfo>[],
+              activeBooking: current,
+            ))
+        .copyWith(
+      step: _PrivateFlowStep.paymentConfirmation,
+      activeBooking: current,
+      loyaltySpendOffered: false,
+    );
+    await _sendPayableBookingCard(
+      chatId: chatId,
+      booking: current,
+      text: outdoor
+          ? _templates.loyaltyOutdoorSpendApplied(
+              peaks: quote.peaks,
+              remainderRub: quote.remainderRub,
+            )
+          : _templates.loyaltySpendApplied(
+              peaks: quote.peaks,
+              remainderRub: quote.remainderRub,
+              coversFully: false,
+            ),
+      showStarterBonus: false,
+      showLoyaltySpend: false,
+      parseMode: 'HTML',
+    );
+    return true;
+  }
+
+  Future<void> _creditFeedbackLoyalty({
+    required int userId,
+    required int bookingId,
+    required int chatId,
+  }) async {
+    final result = await _loyaltyService.credit(
+      userId: userId,
+      amount: LoyaltyMath.feedbackPeaks,
+      reason: LoyaltyLedgerReason.feedback,
+      idempotencyKey: LoyaltyKeys.feedback(bookingId),
+      now: _nowProvider(),
+      bookingId: bookingId,
+    );
+    if (!result.applied) {
+      return;
+    }
+    await _sender.sendMessage(
+      chatId,
+      _templates.loyaltyCredited(
+        amount: LoyaltyMath.feedbackPeaks,
+        remaining: result.account.remaining,
+        reason: LoyaltyLedgerReason.feedback,
+      ),
+    );
+  }
+
+  Future<LoyaltySpendQuote> _loyaltyQuoteForCard({
+    required int userId,
+    required BoxingCardPlan plan,
+  }) async {
+    final balance = await _loyaltyService.availableBalance(userId, now: _nowProvider());
+    final already = await _loyaltyService.peaksSpentOnPendingCard(userId);
+    return _loyaltyService.quoteSpend(
+      target: LoyaltySpendTarget.boxingCard,
+      priceRub: plan.priceRub,
+      balance: balance,
+      alreadySpent: already,
+    );
+  }
+
+  Future<void> _refundPendingCardLoyalty(int userId) async {
+    final spent = await _loyaltyService.peaksSpentOnPendingCard(userId);
+    if (spent <= 0) {
+      return;
+    }
+    await _loyaltyService.refund(
+      userId: userId,
+      amount: spent,
+      idempotencyKey: LoyaltyKeys.pendingCardRefund(userId),
+      now: _nowProvider(),
+    );
+  }
+
+  Future<void> _accrueBoxingCardLoyalty(SubscriptionRequest request) async {
+    final plan = request.plan;
+    if (plan == null) {
+      return;
+    }
+    final spent = await _loyaltyService.peaksSpentOnPendingCard(request.userId);
+    final paidRub = LoyaltyMath.remainderRub(priceRub: plan.priceRub, peaksSpent: spent);
+    final amount = _loyaltyService.quoteCardEarn(paidRub);
+    if (amount <= 0) {
+      return;
+    }
+    final result = await _loyaltyService.credit(
+      userId: request.userId,
+      amount: amount,
+      reason: LoyaltyLedgerReason.boxingCard,
+      idempotencyKey: LoyaltyKeys.boxingCard(request.id),
+      now: _nowProvider(),
+      subscriptionRequestId: request.id,
+    );
+    if (!result.applied) {
+      return;
+    }
+    await _sender.sendMessage(
+      request.userId,
+      _templates.loyaltyCredited(
+        amount: amount,
+        remaining: result.account.remaining,
+        reason: LoyaltyLedgerReason.boxingCard,
+      ),
+    );
+  }
+
+  Future<bool> _applyLoyaltySpendToCard({
+    required int chatId,
+    required int userId,
+    required bool isAdmin,
+    required bool showReturnToAdminMenu,
+    required BoxingCardPlan plan,
+    required String? username,
+  }) async {
+    final quote = await _loyaltyQuoteForCard(userId: userId, plan: plan);
+    if (quote.peaks <= 0) {
+      await _sender.sendMessage(chatId, _templates.loyaltyUnavailable());
+      return true;
+    }
+    final result = await _loyaltyService.debit(
+      userId: userId,
+      amount: quote.peaks,
+      reason: LoyaltyLedgerReason.spend,
+      idempotencyKey: LoyaltyKeys.pendingCardSpend(userId),
+      now: _nowProvider(),
+    );
+    if (!result.applied) {
+      await _sender.sendMessage(chatId, _templates.loyaltyUnavailable());
+      return true;
+    }
+    if (quote.coversFully) {
+      final activated = await _subscriptionRepository.activateFromLoyaltyPeaks(
+        userId: userId,
+        userUsername: username,
+        plan: plan,
+        activatedAt: _nowProvider(),
+      );
+      _flowByUserId.remove(userId);
+      if (activated.outcome == SubmitSubscriptionRequestOutcome.alreadyPending) {
+        await _refundPendingCardLoyalty(userId);
+        await _sender.sendMessage(
+          chatId,
+          _templates.subscriptionAlreadyPending(),
+          replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+          ),
+        );
+        return true;
+      }
+      await _loyaltyService.touchActivity(userId, now: _nowProvider());
+      await _sender.sendMessage(
+        chatId,
+        _templates.loyaltyCardSpendApplied(
+          peaks: quote.peaks,
+          remainderRub: 0,
+          coversFully: true,
+        ),
+        replyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          showReturnToAdminMenu: showReturnToAdminMenu,
+        ),
+      );
+      return true;
+    }
+    _flowByUserId[userId] = (_flowByUserId[userId] ??
+            _PrivateFlowState(
+              step: _PrivateFlowStep.confirmingSubscriptionPayment,
+              availableTrainings: const <TrainingInfo>[],
+              selectedBoxingCardPlan: plan,
+            ))
+        .copyWith(
+      step: _PrivateFlowStep.confirmingSubscriptionPayment,
+      selectedBoxingCardPlan: plan,
+      loyaltySpendOffered: false,
+    );
+    await _sender.sendMessage(
+      chatId,
+      '${_templates.loyaltyCardSpendApplied(
+        peaks: quote.peaks,
+        remainderRub: quote.remainderRub,
+        coversFully: false,
+      )}\n\n${_templates.subscriptionPaymentInstructions(
+        plan: plan,
+        remainderRub: quote.remainderRub,
+      )}',
+      replyMarkup: _templates.subscriptionPaymentKeyboard(showLoyaltySpend: false),
+      parseMode: 'HTML',
+    );
+    return true;
   }
 }

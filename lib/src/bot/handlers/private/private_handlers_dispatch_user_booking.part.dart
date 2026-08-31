@@ -15,11 +15,6 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       if (userId == null) {
         return false;
       }
-      await _maybeNotifyEveryFifthRewardUnlocked(
-        userId: userId,
-        chatId: chatId,
-        username: username,
-      );
       if (flowState?.step == _PrivateFlowStep.selectingOutdoorDetailType &&
           flowState?.selectedOutdoorActivity != null) {
         final selectedTraining =

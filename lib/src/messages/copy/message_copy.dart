@@ -14,6 +14,7 @@ final class MessageCopy {
   static const String buttonPayFully = '💯 Оплатил полностью';
   static const String buttonPayPartially = '🟡 Оплатил предоплату';
   static const String buttonUseStarterBonus = '🎁 Использовать бесплатную тренировку';
+  static const String buttonSpendLoyaltyPeaks = '⛰️ Списать вершинки';
   static const String buttonEnterPromoCode = '🎟 Ввести промокод';
   static const String buttonRescheduleBooking = '🔁 Перенести запись';
   static const String buttonRepeatBooking = '🔂 Повторить запись';
@@ -54,7 +55,7 @@ final class MessageCopy {
   static const String buttonFunnelAnalytics = '📈 Воронка онбординга';
   static const String buttonFeedbackAnalytics = '📝 Анонимный фидбэк';
   static const String buttonBookingAnalytics = '📋 Бронирования';
-  static const String buttonLoyaltyAnalytics = '🎁 Бонусы и рефералы';
+  static const String buttonLoyaltyAnalytics = '⛰️ Вершинки';
   static const String buttonSubscriptionAnalytics = '💎 Сводка абонементов';
   static const String buttonSubscriptionsAdmin = '💎 Абонементы';
   static const String buttonSubscriptionsList = '📋 Список абонементов';
@@ -147,6 +148,7 @@ final class MessageCopy {
   static const String callbackPayFullPrefix = 'payment:full:';
   static const String callbackPayPartialPrefix = 'payment:partial:';
   static const String callbackUseBonusPrefix = 'payment:bonus:';
+  static const String callbackSpendLoyaltyPrefix = 'payment:loyalty:';
   static const String callbackEnterPromoPrefix = 'payment:promo:';
   static const String callbackOpenPaymentsQueue = 'payment:open_queue';
   static const String callbackNextPaymentInQueuePrefix = 'payment:next:';

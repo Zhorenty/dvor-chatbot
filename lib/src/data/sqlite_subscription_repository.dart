@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
+import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 final class SqliteSubscriptionRepository implements SubscriptionRepository {
@@ -315,6 +316,104 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
         request: pendingRow.isEmpty ? null : _rowToRequest(pendingRow.first),
       );
       shouldCommit = true;
+    } finally {
+      db.execute(shouldCommit ? 'COMMIT;' : 'ROLLBACK;');
+    }
+    return result;
+  }
+
+  @override
+  Future<SubmitSubscriptionRequestResult> activateFromLoyaltyPeaks({
+    required int userId,
+    String? userUsername,
+    required BoxingCardPlan plan,
+    required DateTime activatedAt,
+  }) async {
+    final db = _database;
+    final now = activatedAt.toUtc();
+    db.execute('BEGIN IMMEDIATE TRANSACTION;');
+    var shouldCommit = false;
+    late SubmitSubscriptionRequestResult result;
+    final normalizedUsername = _normalizeUsername(userUsername);
+    try {
+      final pending = db.select(
+        '''
+        SELECT * FROM subscription_requests
+        WHERE user_id = ?
+          AND status = ?
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1;
+        ''',
+        <Object?>[
+          userId,
+          SubscriptionRequestStatus.paymentSubmitted.dbValue,
+        ],
+      );
+      if (pending.isNotEmpty) {
+        result = SubmitSubscriptionRequestResult(
+          outcome: SubmitSubscriptionRequestOutcome.alreadyPending,
+          request: _rowToRequest(pending.first),
+        );
+        shouldCommit = true;
+      } else {
+        final maxActiveUntilRows = db.select(
+          '''
+          SELECT MAX(active_until) AS max_active_until
+          FROM subscription_requests
+          WHERE user_id = ?
+            AND status = ?
+            AND active_until IS NOT NULL;
+          ''',
+          <Object?>[
+            userId,
+            SubscriptionRequestStatus.active.dbValue,
+          ],
+        );
+        final maxActiveUntilRaw = maxActiveUntilRows.first['max_active_until'] as String?;
+        final maxActiveUntil = maxActiveUntilRaw == null ? null : DateTime.parse(maxActiveUntilRaw);
+        final baseUtc =
+            (maxActiveUntil != null && maxActiveUntil.isAfter(now)) ? maxActiveUntil : now;
+        final activeUntil = baseUtc.add(const Duration(days: 30));
+        db.execute(
+          '''
+          INSERT INTO subscription_requests (
+            user_id,
+            user_username,
+            status,
+            plan,
+            payment_note,
+            active_from,
+            active_until,
+            created_at,
+            updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+          ''',
+          <Object?>[
+            userId,
+            normalizedUsername,
+            SubscriptionRequestStatus.active.dbValue,
+            plan.dbValue,
+            MessageFormatters.loyaltyPeaksPaymentNoteMarker,
+            baseUtc.toIso8601String(),
+            activeUntil.toIso8601String(),
+            now.toIso8601String(),
+            now.toIso8601String(),
+          ],
+        );
+        final inserted = db.select(
+          '''
+          SELECT * FROM subscription_requests
+          WHERE id = ?
+          LIMIT 1;
+          ''',
+          <Object?>[db.lastInsertRowId],
+        );
+        result = SubmitSubscriptionRequestResult(
+          outcome: SubmitSubscriptionRequestOutcome.created,
+          request: inserted.isEmpty ? null : _rowToRequest(inserted.first),
+        );
+        shouldCommit = true;
+      }
     } finally {
       db.execute(shouldCommit ? 'COMMIT;' : 'ROLLBACK;');
     }

@@ -15,6 +15,7 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/group_membership.dart';
+import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/promo_code.dart';
@@ -249,18 +250,21 @@ final class FakeBookingRepository implements BookingRepository {
     if (configuredException != null) {
       throw configuredException;
     }
+    final created = fakeBooking(
+      id: 99,
+      userId: userId,
+      userUsername: userUsername,
+      trainingKey: training.sessionKey,
+      title: training.title,
+      startsAt: training.startsAt,
+      location: training.location,
+      locationUrl: training.locationUrl,
+      trainingPrice: training.price,
+      trainingPrepayPercent: training.prepayPercent,
+    );
+    userBookings = <TrainingBooking>[...userBookings, created];
     return BookingCreateResult(
-      booking: fakeBooking(
-        id: 99,
-        userId: userId,
-        userUsername: userUsername,
-        title: training.title,
-        startsAt: training.startsAt,
-        location: training.location,
-        locationUrl: training.locationUrl,
-        trainingPrice: training.price,
-        trainingPrepayPercent: training.prepayPercent,
-      ),
+      booking: created,
       created: true,
     );
   }
@@ -788,7 +792,11 @@ final class FakeSubscriptionRepository implements SubscriptionRepository {
   int cancelCalls = 0;
   int individualSubmitCalls = 0;
   int individualReviewCalls = 0;
+  int activateFromLoyaltyCalls = 0;
   BoxingCardPlan? lastSubmittedPlan;
+  SubmitSubscriptionRequestResult activateFromLoyaltyResult = const SubmitSubscriptionRequestResult(
+    outcome: SubmitSubscriptionRequestOutcome.created,
+  );
   CancelSubscriptionResult cancelResult = const CancelSubscriptionResult(
     outcome: CancelSubscriptionOutcome.notFound,
   );
@@ -913,6 +921,43 @@ final class FakeSubscriptionRepository implements SubscriptionRepository {
     submitCalls += 1;
     lastSubmittedPlan = plan;
     return submitResult;
+  }
+
+  @override
+  Future<SubmitSubscriptionRequestResult> activateFromLoyaltyPeaks({
+    required int userId,
+    String? userUsername,
+    required BoxingCardPlan plan,
+    required DateTime activatedAt,
+  }) async {
+    activateFromLoyaltyCalls += 1;
+    lastSubmittedPlan = plan;
+    if (activateFromLoyaltyResult.outcome == SubmitSubscriptionRequestOutcome.created &&
+        activateFromLoyaltyResult.request == null) {
+      final request = SubscriptionRequest(
+        id: 9000 + activateFromLoyaltyCalls,
+        userId: userId,
+        userUsername: userUsername,
+        status: SubscriptionRequestStatus.active,
+        createdAt: activatedAt,
+        updatedAt: activatedAt,
+        plan: plan,
+        activeFrom: activatedAt,
+        activeUntil: activatedAt.add(const Duration(days: 30)),
+        paymentNote: '__loyalty_peaks__',
+      );
+      activeSubscriptions = <SubscriptionRequest>[request, ...activeSubscriptions];
+      membershipLevel = MembershipLevel.boxingCard;
+      membershipPlan = plan;
+      membershipActiveFrom = request.activeFrom;
+      membershipActiveUntil = request.activeUntil;
+      membershipRequestId = request.id;
+      return SubmitSubscriptionRequestResult(
+        outcome: SubmitSubscriptionRequestOutcome.created,
+        request: request,
+      );
+    }
+    return activateFromLoyaltyResult;
   }
 
   @override
@@ -1458,6 +1503,7 @@ final class FakeOnboardingRepository implements OnboardingRepository {
       <OnboardingMediaSlot, OnboardingMediaAsset>{};
   final List<PendingWelcomeMessage> readyForDelete = <PendingWelcomeMessage>[];
   final Map<int, int> referralInviterByInvitee = <int, int>{};
+  final Map<int, DateTime> referralAttributedAt = <int, DateTime>{};
   final Set<String> sentNudgeKeys = <String>{};
   final Set<int> feedbackRequestBookingIds = <int>{};
   final Set<int> feedbackSubmittedBookingIds = <int>{};
@@ -1805,6 +1851,20 @@ final class FakeOnboardingRepository implements OnboardingRepository {
       return;
     }
     referralInviterByInvitee.putIfAbsent(inviteeUserId, () => inviterUserId);
+    referralAttributedAt.putIfAbsent(inviteeUserId, () => attributedAt);
+  }
+
+  @override
+  Future<List<ReferralAttribution>> listReferralAttributions() async {
+    return referralInviterByInvitee.entries
+        .map(
+          (entry) => ReferralAttribution(
+            inviteeUserId: entry.key,
+            inviterUserId: entry.value,
+            attributedAt: referralAttributedAt[entry.key] ?? DateTime.utc(2026),
+          ),
+        )
+        .toList(growable: false);
   }
 
   @override

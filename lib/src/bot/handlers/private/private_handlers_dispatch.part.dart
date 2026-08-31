@@ -69,7 +69,7 @@ extension PrivateHandlersDispatch on PrivateHandlers {
       templates: _templates,
       canViewParticipantsList: canRunParticipantsAction,
       onStartCleanup: _handleStartCleanup,
-      onEveryFifthUnlocked: _maybeNotifyEveryFifthRewardUnlocked,
+      onStartLoyalty: _handleStartLoyalty,
       onPinWelcomeMessage: _tryPinWelcomeMessage,
       nowProvider: _nowProvider,
       onOpenBookingCategories: ({

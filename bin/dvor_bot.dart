@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
+import 'package:dvor_chatbot/src/application/loyalty_service.dart';
 import 'package:dvor_chatbot/src/application/schedule_catalog_service.dart';
 import 'package:dvor_chatbot/src/bot/bot_runner.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
@@ -21,6 +22,7 @@ import 'package:dvor_chatbot/src/data/schedule_catalog_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_conversation_log_repository.dart';
+import 'package:dvor_chatbot/src/data/sqlite_loyalty_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/static_promo_code_repository.dart';
@@ -66,10 +68,15 @@ void main(List<String> args) {
       final conversationLogRepository = SqliteConversationLogRepository(
         databaseHandle: databaseHandle,
       );
+      final loyaltyRepository = SqliteLoyaltyRepository(
+        databaseHandle: databaseHandle,
+      );
       await bookingRepository.init();
       await subscriptionRepository.init();
       await onboardingRepository.init();
       await conversationLogRepository.init();
+      await loyaltyRepository.init();
+      final loyaltyService = LoyaltyService(repository: loyaltyRepository);
 
       GoogleSheetsWriter? googleSheetsWriter;
       if (config.googleSheetsWriteEnabled) {
@@ -129,6 +136,7 @@ void main(List<String> args) {
           onboardingDripEnabled: config.onboardingDripEnabled,
           scheduleCatalogService: scheduleCatalogService,
           timezoneOffsetHours: config.timezoneOffsetHours,
+          loyaltyService: loyaltyService,
         ),
         groupHandlers: GroupHandlers(
           sender: sender,
@@ -142,6 +150,7 @@ void main(List<String> args) {
         googleSheetsWriter: googleSheetsWriter,
         scheduleCatalogService: scheduleCatalogService,
         conversationLogRepository: conversationLogRepository,
+        loyaltyService: loyaltyService,
       );
 
       _registerShutdown(runner);

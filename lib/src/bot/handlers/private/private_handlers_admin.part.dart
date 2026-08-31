@@ -761,6 +761,8 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
       );
       if (review.outcome == ReviewSubscriptionRequestOutcome.success && review.request != null) {
+        await _loyaltyService.touchActivity(review.request!.userId, now: _nowProvider());
+        await _accrueBoxingCardLoyalty(review.request!);
         await _notifyUserAboutSubscriptionDecision(review.request!);
       }
       return;
@@ -790,6 +792,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
       );
       if (review.outcome == ReviewSubscriptionRequestOutcome.success && review.request != null) {
+        await _refundPendingCardLoyalty(review.request!.userId);
         await _notifyUserAboutSubscriptionDecision(review.request!);
       }
       return;

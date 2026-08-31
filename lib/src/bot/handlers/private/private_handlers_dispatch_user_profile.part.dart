@@ -15,22 +15,15 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       if (userId == null) {
         return false;
       }
-      await _maybeNotifyEveryFifthRewardUnlocked(
-        userId: userId,
-        chatId: chatId,
-        username: username,
-      );
       final now = _nowProvider();
       final bookings = await _bookingRepository.listUserBookings(userId, limit: 100);
-      final everyFifthProgress = await _bookingRepository.getEveryFifthRewardProgress(
-        userId,
-        now: now,
-      );
       final referralProgress = await _bookingRepository.getReferralRewardProgress(
         userId,
         now: now,
       );
       final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
+      final loyaltyAccount = await _loyaltyService.account(userId);
+      final loyaltyRecent = await _loyaltyService.recentLedger(userId);
       final subscriptionSnapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
       final membership = subscriptionSnapshot.membership;
       final remainingGroupTrainings = await _boxingCardRemainingGroupCount(
@@ -59,10 +52,10 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           activeBookings: activeBookings.length,
           visitedBookings: visitedBookings.length,
           cancelledBookings: cancelledBookings,
-          completedTrainingsCount: everyFifthProgress.qualifiedTrainingsCount,
-          availableEveryFifthRewards: everyFifthProgress.availableRewardsCount,
+          loyaltyRemaining: await _loyaltyService.availableBalance(userId, now: now),
+          loyaltyExpiresAt: loyaltyAccount.expiresAt(lifetime: LoyaltyMath.lifetime),
+          loyaltyRecent: loyaltyRecent,
           successfulReferralsCount: referralProgress.qualifiedReferralsCount,
-          availableReferralRewards: referralProgress.availableRewardsCount,
           starterBonusAvailable: starterBonusAvailable,
           membershipLevel: membership.level,
           subscriptionPlan: membership.plan,
@@ -96,7 +89,6 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         _templates.referralProgramOverview(
           userId: userId,
           successfulReferralsCount: referralProgress.qualifiedReferralsCount,
-          availableReferralRewards: referralProgress.availableRewardsCount,
         ),
         replyMarkup: _templates.profileActionsKeyboard(),
         parseMode: 'HTML',
@@ -109,11 +101,6 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       if (userId == null) {
         return false;
       }
-      await _maybeNotifyEveryFifthRewardUnlocked(
-        userId: userId,
-        chatId: chatId,
-        username: username,
-      );
       final bookings = await _bookingRepository.listUserBookings(userId, limit: 100);
       if (bookings.isEmpty) {
         await _sender.sendMessage(
@@ -366,6 +353,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       _flowByUserId.remove(userId);
       if (cancelResult.outcome == BookingActionOutcome.success && cancelResult.booking != null) {
         final cancelled = await _finalizeBoxingCardCancel(selectedBooking);
+        await _refundLoyaltyForBooking(selectedBooking);
         if (_shouldNotifyAdminAboutBookingCancellation(selectedBooking)) {
           await _notifyAdminAboutBookingCancelled(selectedBooking);
         }
@@ -796,18 +784,47 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         (text == MessageTemplates.buttonPlanBaza || text == MessageTemplates.buttonPlanUdar)) {
       final plan =
           text == MessageTemplates.buttonPlanBaza ? BoxingCardPlan.baza : BoxingCardPlan.udar;
+      final quote = await _loyaltyQuoteForCard(userId: userId, plan: plan);
+      final showLoyaltySpend = quote.peaks > 0;
       _flowByUserId[userId] = _PrivateFlowState(
         step: _PrivateFlowStep.confirmingSubscriptionPayment,
         availableTrainings: const <TrainingInfo>[],
         selectedBoxingCardPlan: plan,
+        loyaltySpendOffered: showLoyaltySpend,
       );
+      var textBody = _templates.subscriptionPaymentInstructions(plan: plan);
+      if (showLoyaltySpend) {
+        textBody = '$textBody\n\n${_templates.loyaltySpendQuoteLine(
+          peaks: quote.peaks,
+          remainderRub: quote.remainderRub,
+          outdoor: false,
+        )}';
+      }
       await _sender.sendMessage(
         chatId,
-        _templates.subscriptionPaymentInstructions(plan: plan),
-        replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: false),
+        textBody,
+        replyMarkup: _templates.subscriptionPaymentKeyboard(showLoyaltySpend: showLoyaltySpend),
         parseMode: 'HTML',
       );
       return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.confirmingSubscriptionPayment &&
+        text == MessageTemplates.buttonSpendLoyaltyPeaks &&
+        flowState?.loyaltySpendOffered == true) {
+      final plan = flowState?.selectedBoxingCardPlan;
+      if (plan == null) {
+        return false;
+      }
+      return _applyLoyaltySpendToCard(
+        chatId: chatId,
+        userId: userId,
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+        plan: plan,
+        username: username,
+      );
     }
 
     if (text == MessageTemplates.buttonIndividualSession) {
@@ -934,6 +951,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         paymentProofMessageId: paymentProof.messageId,
         requestedAt: _nowProvider(),
       );
+      await _loyaltyService.touchActivity(userId, now: _nowProvider());
       _flowByUserId.remove(userId);
       switch (submitResult.outcome) {
         case SubmitSubscriptionRequestOutcome.created:
@@ -1007,6 +1025,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         paymentProofMessageId: paymentProof.messageId,
       );
       if (booking != null) {
+        await _loyaltyService.touchActivity(userId, now: _nowProvider());
         await _notifyAdminAboutPaymentSubmitted(booking);
       }
       _flowByUserId.remove(userId);
@@ -1116,11 +1135,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         );
         return true;
       }
-      final updated = switch (bonusType) {
-        _FreeTrainingBonusType.starter => await _applyStarterBonus(activeBooking, userId),
-        _FreeTrainingBonusType.referral => await _applyReferralBonus(activeBooking),
-        _FreeTrainingBonusType.everyFifth => await _applyEveryFifthBonus(activeBooking),
-      };
+      final updated = await _applyStarterBonus(activeBooking, userId);
       if (updated == null) {
         await _sendPaymentFlowRePrompt(
           chatId: chatId,
@@ -1130,13 +1145,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         return true;
       }
       final booking = updated;
-      if (bonusType == _FreeTrainingBonusType.starter) {
-        await _notifyAdminAboutStarterBonusApplied(booking);
-      } else if (bonusType == _FreeTrainingBonusType.referral) {
-        await _notifyAdminAboutReferralBonusApplied(booking);
-      } else {
-        await _notifyAdminAboutEveryFifthBonusApplied(booking);
-      }
+      await _notifyAdminAboutStarterBonusApplied(booking);
       await _maybeNotifyGroupAboutCapacity(
         _trainingInfoFromBooking(booking),
         bookingStatus: booking.status,
@@ -1144,16 +1153,37 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
         chatId,
-        switch (bonusType) {
-          _FreeTrainingBonusType.starter => _templates.starterBonusApplied(booking),
-          _FreeTrainingBonusType.referral => _templates.referralBonusApplied(booking),
-          _FreeTrainingBonusType.everyFifth => _templates.everyFifthBonusApplied(booking),
-        },
+        _templates.starterBonusApplied(booking),
         replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
       );
       await _maybeMarkOnboardingActivation(userId);
       return true;
+    }
+
+    if (text != null &&
+        text == MessageTemplates.buttonSpendLoyaltyPeaks &&
+        flowState?.step == _PrivateFlowStep.paymentConfirmation) {
+      if (userId == null || flowState == null) {
+        return false;
+      }
+      final activeBooking = flowState.activeBooking;
+      if (activeBooking == null || !flowState.loyaltySpendOffered) {
+        await _sendPaymentFlowRePrompt(
+          chatId: chatId,
+          flowState: flowState,
+          text: _templates.loyaltyUnavailable(),
+        );
+        return true;
+      }
+      final handled = await _applyLoyaltySpendToBooking(
+        chatId: chatId,
+        userId: userId,
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+        booking: activeBooking,
+      );
+      return handled;
     }
 
     return false;

@@ -127,6 +127,8 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       totalPrice: totalPrice,
     );
 
+    await _loyaltyService.touchActivity(userId, now: _nowProvider());
+
     _flowByUserId[userId] = flowState.copyWith(
       step: _PrivateFlowStep.paymentConfirmation,
       activeBooking: first,
@@ -193,6 +195,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       return;
     }
     if (result.created) {
+      await _loyaltyService.touchActivity(userId, now: _nowProvider());
       await _sendTrainingPrepNotes(chatId: chatId, training: selectedTraining);
     }
     if (_isFreeActivity(selectedTraining)) {

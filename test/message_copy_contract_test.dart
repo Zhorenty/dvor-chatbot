@@ -30,6 +30,7 @@ void main() {
         ..._replyTexts(
           TelegramKeyboards.paymentConfirmationKeyboard(
             showStarterBonus: true,
+            showLoyaltySpend: true,
             showCancelBooking: true,
             showOutdoorPaymentTypeChoice: false,
           ),
@@ -67,6 +68,7 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonPayFully));
       expect(allTexts, contains(MessageCopy.buttonPayPartially));
       expect(allTexts, contains(MessageCopy.buttonUseStarterBonus));
+      expect(allTexts, contains(MessageCopy.buttonSpendLoyaltyPeaks));
       expect(allTexts, contains(MessageCopy.buttonCancelBooking));
       expect(allTexts, contains(MessageCopy.buttonContinuePayment));
       expect(allTexts, contains(MessageCopy.buttonConfirmCancelBooking));
@@ -85,6 +87,7 @@ void main() {
       final paymentCard = TelegramKeyboards.paymentCardInlineKeyboard(
         12,
         showStarterBonus: true,
+        showLoyaltySpend: true,
         showCancelBooking: true,
         showOutdoorPaymentTypeChoice: true,
         showPromoCodeEntry: true,
@@ -132,6 +135,7 @@ void main() {
       expect(callbacks, contains('${MessageCopy.callbackPayFullPrefix}12'));
       expect(callbacks, contains('${MessageCopy.callbackPayPartialPrefix}12'));
       expect(callbacks, contains('${MessageCopy.callbackUseBonusPrefix}12'));
+      expect(callbacks, contains('${MessageCopy.callbackSpendLoyaltyPrefix}12'));
       expect(callbacks, contains('${MessageCopy.callbackEnterPromoPrefix}12'));
       expect(callbacks, contains('${MessageCopy.callbackBookingCancelPrefix}12'));
       expect(callbacks, contains('${MessageCopy.callbackBookingReschedulePrefix}34'));

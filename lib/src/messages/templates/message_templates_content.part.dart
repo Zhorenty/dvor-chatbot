@@ -620,52 +620,148 @@ extension MessageTemplatesContent on MessageTemplates {
         'Запись #${booking.id} бесплатна, подтверждение оплаты не нужно 🎉';
   }
 
-  String everyFifthBonusApplied(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Готово! Тренировка по бонусу «каждая 5-я бесплатно» активирована 🎉\n'
-        'Запись: #${booking.id}\n'
-        'Тренировка: ${booking.trainingTitle}\n'
-        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
-        'Статус: ${_statusLabel(booking.status, booking: booking)}';
-  }
-
-  String referralBonusApplied(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return 'Готово! Реферальная бесплатная тренировка активирована 👥\n'
-        'Запись: #${booking.id}\n'
-        'Тренировка: ${booking.trainingTitle}\n'
-        '🕒 Когда: ${formatter.format(booking.startsAt)}\n'
-        'Статус: ${_statusLabel(booking.status, booking: booking)}';
-  }
-
-  String everyFifthBonusUnlockedUser({
-    required int completedTrainingsCount,
-    required int availableRewardsCount,
+  String loyaltyCredited({
+    required int amount,
+    required int remaining,
+    required LoyaltyLedgerReason reason,
   }) {
-    return 'Каждая 5-я: бесплатная тренировка уже доступна.\n'
-        'Оплаченных тренировок: $completedTrainingsCount.\n'
-        'Бесплатных сейчас: $availableRewardsCount.';
+    final reasonText = switch (reason) {
+      LoyaltyLedgerReason.start => 'за старт бота',
+      LoyaltyLedgerReason.training => 'за тренировку',
+      LoyaltyLedgerReason.feedback => 'за отзыв',
+      LoyaltyLedgerReason.hike => 'за поход',
+      LoyaltyLedgerReason.trail => 'за трейл',
+      LoyaltyLedgerReason.referral => 'за приглашение',
+      LoyaltyLedgerReason.boxingCard => 'за бокс-карту',
+      LoyaltyLedgerReason.refund => 'возврат',
+      LoyaltyLedgerReason.adminGrant => 'начисление',
+      LoyaltyLedgerReason.migration => 'перенос',
+      LoyaltyLedgerReason.expire ||
+      LoyaltyLedgerReason.spend ||
+      LoyaltyLedgerReason.adminDebit =>
+        '',
+    };
+    final reasonSuffix = reasonText.isEmpty ? '' : ' $reasonText';
+    return '+$amount ⛰️$reasonSuffix. Баланс: $remaining. '
+        'Живут 45 дней, срок обновляется, когда ты записываешься или стартуешь бота.';
   }
 
-  String everyFifthBonusUnlockedAdmin({
+  String loyaltyStartCredited({required bool starterBonusAvailable}) {
+    final starterLine = starterBonusAvailable
+        ? '\n\nСтартовая бесплатная тренировка по-прежнему отдельно — '
+            'её можно взять кнопкой «${MessageCopy.buttonUseStarterBonus}».'
+        : '';
+    return '+1000 ⛰️ за первый старт бота. '
+        'Живут 45 дней, срок обновляется от записи, оплаты, отзыва и /start.'
+        '$starterLine';
+  }
+
+  String loyaltyExpiryReminder({
+    required int remaining,
+    required DateTime expiresAt,
+  }) {
+    final day = DateFormat('dd.MM').format(expiresAt.toLocal());
+    return '$remaining ⛰️ сгорят $day, если не будет записи или другой активности. '
+        'Можно списать при следующей записи.';
+  }
+
+  String loyaltyExpired({
+    required int burned,
+    required int remaining,
+  }) {
+    return 'Сгорели $burned ⛰️. Баланс: $remaining.';
+  }
+
+  String loyaltySpendApplied({
+    required int peaks,
+    required int remainderRub,
+    required bool coversFully,
+  }) {
+    if (coversFully) {
+      return 'Списал $peaks ⛰️. Запись оплачена, чек не нужен.\n'
+          'Статус: оплачено.';
+    }
+    return 'Списал $peaks ⛰️. К оплате: $remainderRub ₽.\n'
+        'Дальше: переведи остаток и пришли чек в этот чат.';
+  }
+
+  String loyaltyOutdoorSpendApplied({
+    required int peaks,
+    required int remainderRub,
+  }) {
+    return 'Скидка $peaks ⛰️ (не полная оплата). К оплате: $remainderRub ₽.\n'
+        'Дальше: переведи остаток и пришли чек в этот чат.';
+  }
+
+  String loyaltySpendQuoteLine({
+    required int peaks,
+    required int remainderRub,
+    required bool outdoor,
+  }) {
+    if (outdoor) {
+      return 'Списать $peaks ⛰️ — скидка до 30%, остаток $remainderRub ₽.';
+    }
+    if (remainderRub <= 0) {
+      return 'Списать $peaks ⛰️ — закроет запись целиком, без чека.';
+    }
+    return 'Списать $peaks ⛰️, остаток $remainderRub ₽.';
+  }
+
+  String loyaltyCardSpendApplied({
+    required int peaks,
+    required int remainderRub,
+    required bool coversFully,
+  }) {
+    if (coversFully) {
+      return 'Списал $peaks ⛰️. Карта активна, чек не нужен.';
+    }
+    return 'Списал $peaks ⛰️. К оплате: $remainderRub ₽.\n'
+        'Дальше: переведи остаток и пришли чек в этот чат.';
+  }
+
+  String loyaltyUnavailable() {
+    return 'Сейчас списать вершинки нельзя.\n'
+        'Проверь баланс в профиле или дождись, пока запись будет ждать оплату.';
+  }
+
+  String loyaltyAdminOverview({
     required int userId,
-    required String? username,
-    required int completedTrainingsCount,
-    required int availableRewardsCount,
+    required LoyaltyAccount account,
+    required List<LoyaltyLedgerEntry> recent,
   }) {
-    return '🎁 <b>Новая бесплатная тренировка (каждая 5-я)</b>\n'
-        'Пользователь: ${_escapeHtml(_userTagById(userId, username: username))} ($userId)\n'
-        'Оплаченных и прошедших тренировок: <b>$completedTrainingsCount</b>\n'
-        'Доступно бесплатных тренировок: <b>$availableRewardsCount</b>';
+    final expires = account.expiresAt();
+    final expiresLabel = expires == null ? '—' : DateFormat('dd.MM.yyyy').format(expires.toLocal());
+    final lines = <String>[
+      '⛰️ <b>Вершинки</b> id $userId',
+      'Баланс: <b>${account.remaining}</b>',
+      'Сгорают: <b>$expiresLabel</b>',
+      '',
+      'Лента:',
+    ];
+    if (recent.isEmpty) {
+      lines.add('пусто');
+    } else {
+      lines.addAll(recent.map(_loyaltyLedgerLine));
+    }
+    lines
+      ..add('')
+      ..add('<code>/loyalty_grant $userId 50</code>')
+      ..add('<code>/loyalty_debit $userId 50</code>');
+    return lines.join('\n');
   }
 
-  String everyFifthBonusAdminNotification(TrainingBooking booking) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    return '🎁 <b>Бесплатная запись по правилу «каждая 5-я»</b>\n'
-        'Запись: <b>#${booking.id}</b>\n'
-        'Пользователь: ${_escapeHtml(_userTag(booking))} (${booking.userId})\n'
-        'Тренировка: ${_escapeHtml(booking.trainingTitle)}\n'
-        'Когда: ${formatter.format(booking.startsAt)}';
+  String loyaltyAdminMutationResult({
+    required int userId,
+    required int amount,
+    required int remaining,
+    required bool granted,
+  }) {
+    final verb = granted ? 'Начислил' : 'Списал';
+    return '$verb $amount ⛰️ пользователю $userId. Баланс: $remaining.';
+  }
+
+  String loyaltyAdminAmountInvalid() {
+    return 'Сумма должна быть кратна 50 ⛰️.';
   }
 
   String referralBonusAdminNotification(TrainingBooking booking) {
@@ -733,10 +829,10 @@ extension MessageTemplatesContent on MessageTemplates {
     required int activeBookings,
     required int visitedBookings,
     required int cancelledBookings,
-    required int completedTrainingsCount,
-    required int availableEveryFifthRewards,
+    required int loyaltyRemaining,
+    DateTime? loyaltyExpiresAt,
+    required List<LoyaltyLedgerEntry> loyaltyRecent,
     required int successfulReferralsCount,
-    required int availableReferralRewards,
     required bool starterBonusAvailable,
     required MembershipLevel membershipLevel,
     BoxingCardPlan? subscriptionPlan,
@@ -748,15 +844,7 @@ extension MessageTemplatesContent on MessageTemplates {
     DateTime? subscriptionCurrentPeriodStart,
     DateTime? now,
   }) {
-    final progressToNextFree = completedTrainingsCount % 4;
-    final trainingsLeftForNextFree = progressToNextFree == 0 ? 4 : 4 - progressToNextFree;
-    final rewardsHint = availableEveryFifthRewards > 0
-        ? '🎁 Бесплатных («каждая 5-я»): <b>$availableEveryFifthRewards</b>'
-        : '🎯 До бесплатной («каждая 5-я»): <b>$trainingsLeftForNextFree</b>';
-    final starterHint = starterBonusAvailable ? 'доступна' : 'недоступна';
-    final referralHint = availableReferralRewards > 0
-        ? 'реферальных бесплатных: <b>$availableReferralRewards</b>'
-        : 'успешных рефералов: <b>$successfulReferralsCount</b>';
+    final starterHint = starterBonusAvailable ? 'доступна' : 'нет';
     final untilLabel = subscriptionActiveUntil == null
         ? null
         : DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil.toLocal());
@@ -774,24 +862,60 @@ extension MessageTemplatesContent on MessageTemplates {
         : '';
     final requestStatusText =
         subscriptionRequestStatusLine == null ? '' : '\n• Заявка: $subscriptionRequestStatusLine';
+    final expiresLabel = loyaltyExpiresAt == null
+        ? 'нет срока, пока баланс 0'
+        : 'до ${DateFormat('dd.MM').format(loyaltyExpiresAt.toLocal())}';
+    final ledgerLines =
+        loyaltyRecent.isEmpty ? 'пока пусто' : loyaltyRecent.map(_loyaltyLedgerLine).join('\n');
     return '👤 <b>Профиль DVOR</b>\n\n'
+        '⛰️ Вершинки: <b>$loyaltyRemaining</b> · 2 ⛰️ = 1 ₽\n'
+        'Срок: $expiresLabel, обновляется от записи, оплаты, отзыва, /start.\n\n'
+        'Как копить:\n'
+        '• первый /start — 1000\n'
+        '• платная тренировка — от цены (350→200, 500→250)\n'
+        '• отзыв — 50\n'
+        '• поход/трейл — 10% от оплаты\n'
+        '• друг прошёл первую платную — 1000\n'
+        '• бокс-карта — 10% от оплаты ₽\n\n'
+        'Как списать: тренировка и карта — хоть целиком; поход/трейл — скидка до 30%.\n\n'
+        'Стартовая бесплатная: $starterHint\n'
+        'Рефералка: успешных приглашений <b>$successfulReferralsCount</b>\n\n'
+        'Последние операции:\n'
+        '$ledgerLines\n\n'
         '🥊 Бокс-карта: <b>$subscriptionHint</b>$remainingGroupText$individualText'
         '$requestStatusText\n\n'
         '📊 Записи: всего <b>$totalBookings</b> • '
         'актуальные <b>$activeBookings</b> • '
         'посещенные <b>$visitedBookings</b> • '
         'отмененные <b>$cancelledBookings</b>\n\n'
-        '🏋️ Лояльность: $rewardsHint\n'
-        '• Стартовая бесплатная: $starterHint\n'
-        '• Рефералка: $referralHint\n\n'
         'Дальше: «${MessageCopy.buttonProfileBookings}», '
         '«${MessageCopy.buttonSubscription}» или «${MessageCopy.buttonReferralProgram}».';
+  }
+
+  String _loyaltyLedgerLine(LoyaltyLedgerEntry entry) {
+    final date = DateFormat('dd.MM').format(entry.createdAt.toLocal());
+    final signed = entry.amount > 0 ? '+${entry.amount}' : '${entry.amount}';
+    final reason = switch (entry.reason) {
+      LoyaltyLedgerReason.start => 'за /start',
+      LoyaltyLedgerReason.training => 'за тренировку',
+      LoyaltyLedgerReason.feedback => 'за отзыв',
+      LoyaltyLedgerReason.hike => 'за поход',
+      LoyaltyLedgerReason.trail => 'за трейл',
+      LoyaltyLedgerReason.referral => 'за приглашение',
+      LoyaltyLedgerReason.boxingCard => 'за бокс-карту',
+      LoyaltyLedgerReason.expire => 'сгорание',
+      LoyaltyLedgerReason.spend => 'списание',
+      LoyaltyLedgerReason.refund => 'возврат',
+      LoyaltyLedgerReason.adminGrant => 'начисление',
+      LoyaltyLedgerReason.adminDebit => 'списание',
+      LoyaltyLedgerReason.migration => 'перенос',
+    };
+    return '$date · $signed ⛰️ $reason';
   }
 
   String referralProgramOverview({
     required int userId,
     required int successfulReferralsCount,
-    required int availableReferralRewards,
   }) {
     final link = _botReferralLink(userId);
     final linkLine = link == null
@@ -799,16 +923,14 @@ extension MessageTemplatesContent on MessageTemplates {
         : '<code>$link</code>';
     return '👥 <b>Реферальная программа DVOR</b>\n'
         '1) Пригласи друга по своей ссылке.\n'
-        '2) Друг должен зайти в бота именно по этой ссылке.\n'
-        '3) После того как друг успешно пройдет <b>первую платную тренировку</b>, '
-        'тебе начислится 1 бесплатная тренировка.\n\n'
+        '2) Друг заходит в бота по этой ссылке.\n'
+        '3) Когда друг пройдёт <b>первую платную тренировку</b> — тебе 1000 ⛰️.\n\n'
+        'Вершинки живут 45 дней. Срок обновляется, когда ты записываешься, '
+        'оплачиваешь, оставляешь отзыв или стартуешь бота.\n\n'
         'Твоя реферальная ссылка:\n'
         '$linkLine\n\n'
-        '📊 <b>Твой прогресс</b>\n'
-        '• Успешных платных рефералов: <b>$successfulReferralsCount</b>\n'
-        '• Доступно бесплатных по рефералке: <b>$availableReferralRewards</b>\n\n'
-        'Чтобы использовать бесплатную тренировку, нажми «${MessageCopy.buttonBookTraining}» '
-        'и при подтверждении записи выбери бонусную кнопку, если она доступна.';
+        'Успешных приглашений: <b>$successfulReferralsCount</b>\n\n'
+        'Баланс и списание — в «${MessageCopy.buttonProfile}».';
   }
 
   String subscriptionOverview({
@@ -848,11 +970,18 @@ extension MessageTemplatesContent on MessageTemplates {
         '30 дней с активации.';
   }
 
-  String subscriptionPaymentInstructions({required BoxingCardPlan plan}) {
-    final amount = _formatRub(plan.priceRub);
+  String subscriptionPaymentInstructions({
+    required BoxingCardPlan plan,
+    int? remainderRub,
+  }) {
+    final amount = _formatRub(remainderRub ?? plan.priceRub);
+    final remainderLine = remainderRub == null || remainderRub >= plan.priceRub
+        ? ''
+        : 'Остаток после вершинок: <b>$amount</b>\n';
     return '💳 <b>Оформление BOXING CARD</b>\n'
         'Тариф: <b>${plan.displayName}</b>\n'
-        'Сумма: <b>$amount</b>\n'
+        'Сумма: <b>${_formatRub(plan.priceRub)}</b>\n'
+        '$remainderLine'
         'Срок: 30 дней с активации.\n\n'
         'Реквизиты для оплаты:\n'
         '• Получатель: Денис Р.\n'
@@ -1509,6 +1638,7 @@ extension MessageTemplatesContent on MessageTemplates {
   Map<String, Object?> paymentCardInlineKeyboard(
     int bookingId, {
     required bool showStarterBonus,
+    bool showLoyaltySpend = false,
     bool showCancelBooking = false,
     bool showOutdoorPaymentTypeChoice = false,
     bool showPromoCodeEntry = false,
@@ -1516,6 +1646,7 @@ extension MessageTemplatesContent on MessageTemplates {
     return TelegramKeyboards.paymentCardInlineKeyboard(
       bookingId,
       showStarterBonus: showStarterBonus,
+      showLoyaltySpend: showLoyaltySpend,
       showCancelBooking: showCancelBooking,
       showOutdoorPaymentTypeChoice: showOutdoorPaymentTypeChoice,
       showPromoCodeEntry: showPromoCodeEntry,
@@ -2266,8 +2397,6 @@ extension MessageTemplatesContent on MessageTemplates {
         '• Бесплатные по цене мероприятия: <b>${summary.regularFreeBookingsCount}</b>',
       if (summary.starterFreeBookingsCount > 0)
         '• Бесплатные стартовые: <b>${summary.starterFreeBookingsCount}</b>',
-      if (summary.everyFifthFreeBookingsCount > 0)
-        '• Бесплатные по правилу «каждая 5-я»: <b>${summary.everyFifthFreeBookingsCount}</b>',
       if (summary.unknownPriceBookingsCount > 0)
         '• Без цены в данных: <b>${summary.unknownPriceBookingsCount}</b>',
       '',
@@ -2489,8 +2618,14 @@ extension MessageTemplatesContent on MessageTemplates {
   String loyaltyAnalytics(LoyaltyAnalytics analytics) {
     final generated = DateFormat('dd.MM.yyyy HH:mm').format(analytics.generatedAt.toLocal());
     final lines = <String>[
-      '🎁 <b>Бонусы и рефералы</b>',
+      '⛰️ <b>Вершинки</b>',
       'Срез: <b>$generated</b>',
+      '',
+      '<b>Вершинки:</b>',
+      '• Начислено: <b>${analytics.peaksEarned}</b>',
+      '• Списано: <b>${analytics.peaksSpent}</b>',
+      '• Сгорело: <b>${analytics.peaksExpired}</b>',
+      '• На балансах: <b>${analytics.peaksRemaining}</b>',
       '',
       '<b>Стартовый бонус:</b>',
       '• Доступен: <b>${analytics.starterBonusAvailable}</b>',
@@ -2500,11 +2635,8 @@ extension MessageTemplatesContent on MessageTemplates {
       '• Атрибуций всего: <b>${analytics.referralAttributionsTotal}</b>',
       '• За 30д: <b>${analytics.referralAttributionsLast30Days}</b>',
       '',
-      '<b>Бесплатные тренировки:</b>',
-      '• Всего: <b>${analytics.freeTrainingsTotal}</b>',
+      '<b>Бесплатные тренировки (стартовый бонус):</b>',
       '• Стартовый бонус: <b>${analytics.freeByStarterCount}</b>',
-      '• Реферальный бонус: <b>${analytics.freeByReferralCount}</b>',
-      '• Каждая 5-я: <b>${analytics.freeByEveryFifthCount}</b>',
       '',
       '<b>Отмены стартового бонуса:</b>',
       '• 30д: записали <b>${analytics.starterBonusBookedLast30Days}</b>, '

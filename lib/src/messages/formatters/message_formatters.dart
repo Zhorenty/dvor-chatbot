@@ -14,6 +14,7 @@ final class MessageFormatters {
   static const String boxingCardIncludedPaymentNoteMarker = '__boxing_card_included__';
   static const String boxingCardLateCancelPaymentNoteMarker = '__boxing_card_late_cancel__';
   static const String dvorTeamFreePaymentNoteMarker = '__dvor_team_free__';
+  static const String loyaltyPeaksPaymentNoteMarker = '__loyalty_peaks__';
 
   static bool isBoxingCardIncludedPaymentNote(String? paymentNote) {
     return paymentNote == boxingCardIncludedPaymentNoteMarker ||
@@ -70,6 +71,9 @@ final class MessageFormatters {
     }
     if (booking.paymentNote == dvorTeamFreePaymentNoteMarker) {
       return 'Бесплатно: команда DVOR 🖤';
+    }
+    if (booking.paymentNote == loyaltyPeaksPaymentNoteMarker) {
+      return 'Оплачено вершинками ⛰️';
     }
     final price = booking.trainingPrice;
     if (price != null && price <= 0) {

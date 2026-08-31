@@ -52,6 +52,7 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       _flowByUserId.remove(userId);
       if (cancelResult.outcome == BookingActionOutcome.success && cancelResult.booking != null) {
         final cancelled = await _finalizeBoxingCardCancel(selectedBooking);
+        await _refundLoyaltyForBooking(selectedBooking);
         if (_shouldNotifyAdminAboutBookingCancellation(selectedBooking)) {
           await _notifyAdminAboutBookingCancelled(selectedBooking);
         }
@@ -227,6 +228,55 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
           chatId: chatId,
           userId: userId,
           text: MessageTemplates.buttonUseStarterBonus,
+          isAdmin: isAdmin,
+          isConfiguredAdmin: ctx.isConfiguredAdmin,
+          showReturnToAdminMenu: showReturnToAdminMenu,
+          canRunAdminAction: ctx.canRunAdminAction,
+          canRunParticipantsAction: ctx.canRunParticipantsAction,
+          isWhitelistedTrainer: ctx.isWhitelistedTrainer,
+          flowState: _flowByUserId[userId],
+          paymentProof: null,
+          username: ctx.username,
+          message: ctx.message,
+          callbackMessage: ctx.callbackMessage,
+        ),
+      );
+    }
+
+    if (text.startsWith('/use_loyalty ')) {
+      final bookingId = _updateRouter.parseCommandId(text);
+      if (bookingId == null) {
+        return false;
+      }
+      final booking = await _findUserBooking(userId, bookingId);
+      if (booking == null || !_isPayableForProof(booking)) {
+        await _sender.sendMessage(
+          chatId,
+          _templates.noPendingPayment(),
+          replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+          ),
+        );
+        return true;
+      }
+      final starterBonusOffered =
+          _catalogService.categoryForBooking(booking) == _ActivityCategory.trainings &&
+              !(_catalogService.trainingInfoForBooking(booking)?.promoRestricted ?? false) &&
+              await _hasAnyFreeTrainingBonusAvailable(userId);
+      _flowByUserId[userId] = _PrivateFlowState(
+        step: _PrivateFlowStep.paymentConfirmation,
+        availableTrainings: const <TrainingInfo>[],
+        activeBooking: booking,
+        starterBonusOffered: starterBonusOffered,
+        loyaltySpendOffered: true,
+        paymentChoice: null,
+      );
+      return _dispatchUserProfileCommands(
+        PrivateRequestContext(
+          chatId: chatId,
+          userId: userId,
+          text: MessageTemplates.buttonSpendLoyaltyPeaks,
           isAdmin: isAdmin,
           isConfiguredAdmin: ctx.isConfiguredAdmin,
           showReturnToAdminMenu: showReturnToAdminMenu,

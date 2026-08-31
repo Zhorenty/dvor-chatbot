@@ -114,6 +114,10 @@ final class LoyaltyAnalytics {
     this.starterBonusBookedLast90Days = 0,
     this.starterBonusCancelledLast90Days = 0,
     this.starterBonusCancelledByCategoryLast30Days = const <String, int>{},
+    this.peaksEarned = 0,
+    this.peaksSpent = 0,
+    this.peaksExpired = 0,
+    this.peaksRemaining = 0,
   });
 
   final DateTime generatedAt;
@@ -129,8 +133,12 @@ final class LoyaltyAnalytics {
   final int starterBonusBookedLast90Days;
   final int starterBonusCancelledLast90Days;
   final Map<String, int> starterBonusCancelledByCategoryLast30Days;
+  final int peaksEarned;
+  final int peaksSpent;
+  final int peaksExpired;
+  final int peaksRemaining;
 
-  int get freeTrainingsTotal => freeByStarterCount + freeByReferralCount + freeByEveryFifthCount;
+  int get freeTrainingsTotal => freeByStarterCount + freeByReferralCount;
 
   double? get starterBonusCancelRate30Days {
     if (starterBonusBookedLast30Days <= 0) {

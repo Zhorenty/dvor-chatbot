@@ -1,6 +1,8 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
+import 'package:dvor_chatbot/src/domain/subscription.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -213,6 +215,7 @@ void main() {
       expect(text, contains('Приведи друга'));
       expect(text, contains('Реферальная программа'));
       expect(text, contains('первую платную тренировку'));
+      expect(text, contains('1000 ⛰️'));
       expect(text, contains('https://t.me/dvor_chatbot?start=book'));
       expect(text, isNot(contains('кайф')));
       expect(text, isNot(contains('Собирай свою команду')));
@@ -311,7 +314,47 @@ void main() {
     test('help opens as slot status, not a gym kiosk slogan', () {
       final text = templates.privateHelp();
       expect(text, contains('слоты, запись и статус'));
+      expect(text, contains('Вершинки'));
+      expect(text, contains('2 ⛰️ = 1 ₽'));
+      expect(text, contains('45 дней'));
+      expect(text, contains('профиле'));
+      expect(text, isNot(contains('каждая 5-я')));
       expect(text, isNot(contains('комьюнити')));
+    });
+
+    test('profile overview explains вершинки without every-fifth', () {
+      final text = templates.profileOverview(
+        totalBookings: 3,
+        activeBookings: 1,
+        visitedBookings: 1,
+        cancelledBookings: 1,
+        loyaltyRemaining: 600,
+        loyaltyExpiresAt: DateTime(2026, 3, 15),
+        loyaltyRecent: <LoyaltyLedgerEntry>[
+          LoyaltyLedgerEntry(
+            id: 1,
+            userId: 1,
+            amount: 200,
+            reason: LoyaltyLedgerReason.training,
+            idempotencyKey: '1+training',
+            createdAt: DateTime(2026, 3, 1),
+          ),
+        ],
+        successfulReferralsCount: 0,
+        starterBonusAvailable: true,
+        membershipLevel: MembershipLevel.normal,
+        subscriptionTotalApprovedCount: 0,
+      );
+      expect(text, contains('Вершинки'));
+      expect(text, contains('2 ⛰️ = 1 ₽'));
+      expect(text, contains('до 15.03'));
+      expect(text, contains('первый /start — 1000'));
+      expect(text, contains('350→200'));
+      expect(text, contains('500→250'));
+      expect(text, contains('скидка до 30%'));
+      expect(text, contains('Стартовая бесплатная: доступна'));
+      expect(text, isNot(contains('каждая 5-я')));
+      expect(text, isNot(contains('баллы')));
     });
 
     test('outdoor payment confirmation is status, not a manifesto', () {
@@ -337,13 +380,16 @@ void main() {
       expect(text, isNot(contains('часть команды')));
     });
 
-    test('loyalty unlock is gender-neutral', () {
-      final text = templates.everyFifthBonusUnlockedUser(
-        completedTrainingsCount: 5,
-        availableRewardsCount: 1,
+    test('peaks copy is gender-neutral and names вершинки', () {
+      final text = templates.loyaltyCredited(
+        amount: 200,
+        remaining: 600,
+        reason: LoyaltyLedgerReason.training,
       );
-      expect(text, contains('Каждая 5-я'));
+      expect(text, contains('+200 ⛰️'));
+      expect(text, contains('за тренировку'));
       expect(text, isNot(contains('завершил')));
+      expect(text, isNot(contains('баллы')));
     });
 
     test('payment submitted goes to review without administration wording', () {

@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/group_membership.dart';
+import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -795,6 +796,27 @@ final class SqliteOnboardingRepository implements OnboardingRepository {
         attributedAt.toUtc().toIso8601String(),
       ],
     );
+  }
+
+  @override
+  Future<List<ReferralAttribution>> listReferralAttributions() async {
+    final db = _database;
+    final rows = db.select(
+      '''
+      SELECT invitee_user_id, inviter_user_id, attributed_at
+      FROM referral_attributions
+      ORDER BY attributed_at ASC, invitee_user_id ASC;
+      ''',
+    );
+    return rows
+        .map(
+          (row) => ReferralAttribution(
+            inviteeUserId: row['invitee_user_id'] as int,
+            inviterUserId: row['inviter_user_id'] as int,
+            attributedAt: DateTime.parse(row['attributed_at'] as String).toUtc(),
+          ),
+        )
+        .toList(growable: false);
   }
 
   @override

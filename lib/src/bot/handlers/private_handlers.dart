@@ -7,6 +7,8 @@ import 'package:dvor_chatbot/src/application/boxing_card_ledger.dart';
 import 'package:dvor_chatbot/src/application/broadcast_service.dart';
 import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
+import 'package:dvor_chatbot/src/application/loyalty_math.dart';
+import 'package:dvor_chatbot/src/application/loyalty_service.dart';
 import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/application/payment_review_service.dart';
@@ -25,6 +27,7 @@ import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
 import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
+import 'package:dvor_chatbot/src/data/loyalty_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/promo_code_repository.dart';
 import 'package:dvor_chatbot/src/data/schedule_catalog_repository.dart';
@@ -36,6 +39,7 @@ import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/boxing_title.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
+import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
@@ -101,6 +105,7 @@ final class PrivateHandlers {
     ScheduleCatalogService? scheduleCatalogService,
     int timezoneOffsetHours = 3,
     void Function()? onGoogleSheetsExportRequested,
+    LoyaltyService? loyaltyService,
   })  : _sender = sender,
         _scheduleRepository = scheduleRepository,
         _bookingRepository = bookingRepository,
@@ -122,7 +127,9 @@ final class PrivateHandlers {
         _nowProvider = nowProvider ?? DateTime.now,
         _scheduleCatalogServiceOverride = scheduleCatalogService,
         _timezoneOffsetHours = timezoneOffsetHours,
-        _onGoogleSheetsExportRequested = onGoogleSheetsExportRequested;
+        _onGoogleSheetsExportRequested = onGoogleSheetsExportRequested,
+        _loyaltyService =
+            loyaltyService ?? LoyaltyService(repository: const NoopLoyaltyRepository());
 
   final MessageSender _sender;
   final TrainingScheduleRepository _scheduleRepository;
@@ -143,6 +150,7 @@ final class PrivateHandlers {
   final ScheduleCatalogService? _scheduleCatalogServiceOverride;
   final int _timezoneOffsetHours;
   void Function()? _onGoogleSheetsExportRequested;
+  final LoyaltyService _loyaltyService;
   final Map<int, PrivateFlowState> _flowByUserId = <int, PrivateFlowState>{};
   final Set<int> _adminsInClientMode = <int>{};
   final Map<int, Timer> _broadcastMediaFinalizeTimers = <int, Timer>{};
@@ -166,6 +174,7 @@ final class PrivateHandlers {
     bookingRepository: _bookingRepository,
     onboardingRepository: _onboardingRepository,
     subscriptionRepository: _subscriptionRepository,
+    loyaltyService: _loyaltyService,
   );
   late final NoblesListService _noblesListService = NoblesListService(
     bookingRepository: _bookingRepository,
@@ -216,7 +225,7 @@ typedef _PrivateFlowStep = PrivateFlowStep;
 typedef _ActivityCategory = ActivityCategory;
 typedef _AdminClientNotificationAction = AdminClientNotificationAction;
 
-enum _FreeTrainingBonusType { starter, referral, everyFifth }
+enum _FreeTrainingBonusType { starter }
 
 enum _EconomicSummaryRange {
   currentWeek('за текущую неделю'),

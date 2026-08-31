@@ -289,6 +289,7 @@ final class TelegramKeyboards {
   /// Secondary reply nav for payment step (primary CTAs are inline on the card).
   static Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
+    bool showLoyaltySpend = false,
     bool showCancelBooking = false,
     bool showOutdoorPaymentTypeChoice = false,
     bool showPromoCodeEntry = false,
@@ -299,6 +300,13 @@ final class TelegramKeyboards {
       rows.add(
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonUseStarterBonus},
+        ],
+      );
+    }
+    if (showLoyaltySpend) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonSpendLoyaltyPeaks},
         ],
       );
     }
@@ -338,6 +346,7 @@ final class TelegramKeyboards {
   static Map<String, Object?> paymentCardInlineKeyboard(
     int bookingId, {
     required bool showStarterBonus,
+    bool showLoyaltySpend = false,
     bool showCancelBooking = false,
     bool showOutdoorPaymentTypeChoice = false,
     bool showPromoCodeEntry = false,
@@ -372,6 +381,16 @@ final class TelegramKeyboards {
           <String, String>{
             'text': MessageCopy.buttonUseStarterBonus,
             'callback_data': '${MessageCopy.callbackUseBonusPrefix}$bookingId',
+          },
+        ],
+      );
+    }
+    if (showLoyaltySpend) {
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonSpendLoyaltyPeaks,
+            'callback_data': '${MessageCopy.callbackSpendLoyaltyPrefix}$bookingId',
           },
         ],
       );
@@ -460,6 +479,21 @@ final class TelegramKeyboards {
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonPlanUdar},
         ],
+        <Map<String, String>>[
+          <String, String>{'text': MessageCopy.buttonBack},
+          <String, String>{'text': MessageCopy.buttonMainMenu},
+        ],
+      ],
+    );
+  }
+
+  static Map<String, Object?> subscriptionPaymentKeyboard({bool showLoyaltySpend = false}) {
+    return _replyKeyboard(
+      <List<Map<String, String>>>[
+        if (showLoyaltySpend)
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonSpendLoyaltyPeaks},
+          ],
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonBack},
           <String, String>{'text': MessageCopy.buttonMainMenu},

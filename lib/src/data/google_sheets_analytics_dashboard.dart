@@ -252,8 +252,20 @@ abstract final class GoogleSheetsAnalyticsDashboard {
           value: loyalty.referralAttributionsLast30Days,
         ),
         GoogleSheetsKpiCard(
-          label: 'Бесплатных всего',
-          value: loyalty.freeTrainingsTotal,
+          label: 'Вершинки баланс',
+          value: loyalty.peaksRemaining,
+        ),
+        GoogleSheetsKpiCard(
+          label: 'Начислено ⛰️',
+          value: loyalty.peaksEarned,
+        ),
+        GoogleSheetsKpiCard(
+          label: 'Списано ⛰️',
+          value: loyalty.peaksSpent,
+        ),
+        GoogleSheetsKpiCard(
+          label: 'Сгорело ⛰️',
+          value: loyalty.peaksExpired,
         ),
       ],
     );
@@ -262,8 +274,6 @@ abstract final class GoogleSheetsAnalyticsDashboard {
     final firstData = sheet.nextRow;
     final freeRows = <(String, int)>[
       ('стартовый бонус', loyalty.freeByStarterCount),
-      ('реферальный бонус', loyalty.freeByReferralCount),
-      ('каждая 5-я', loyalty.freeByEveryFifthCount),
     ];
     for (final row in freeRows) {
       sheet.add(<Object?>[row.$1, row.$2]);
@@ -471,9 +481,6 @@ abstract final class GoogleSheetsAnalyticsDashboard {
     }
     if (summary.starterFreeBookingsCount > 0) {
       parts.add('стартовый: ${summary.starterFreeBookingsCount}');
-    }
-    if (summary.everyFifthFreeBookingsCount > 0) {
-      parts.add('каждая 5-я: ${summary.everyFifthFreeBookingsCount}');
     }
     return parts.join(' · ');
   }

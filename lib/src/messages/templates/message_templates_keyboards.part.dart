@@ -111,12 +111,14 @@ extension MessageTemplatesKeyboards on MessageTemplates {
 
   Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
+    bool showLoyaltySpend = false,
     bool showCancelBooking = false,
     bool showOutdoorPaymentTypeChoice = false,
     bool showPromoCodeEntry = false,
   }) {
     return TelegramKeyboards.paymentConfirmationKeyboard(
       showStarterBonus: showStarterBonus,
+      showLoyaltySpend: showLoyaltySpend,
       showCancelBooking: showCancelBooking,
       showOutdoorPaymentTypeChoice: showOutdoorPaymentTypeChoice,
       showPromoCodeEntry: showPromoCodeEntry,
@@ -265,6 +267,10 @@ extension MessageTemplatesKeyboards on MessageTemplates {
 
   Map<String, Object?> boxingCardPlanKeyboard() {
     return TelegramKeyboards.boxingCardPlanKeyboard();
+  }
+
+  Map<String, Object?> subscriptionPaymentKeyboard({bool showLoyaltySpend = false}) {
+    return TelegramKeyboards.subscriptionPaymentKeyboard(showLoyaltySpend: showLoyaltySpend);
   }
 
   Map<String, Object?> adminSubscriptionFilterKeyboard() {

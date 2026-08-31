@@ -388,6 +388,9 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         submittedAt: _nowProvider(),
         comment: comment,
       );
+      if (rating != TrainingFeedbackRating.skipped) {
+        await _creditFeedbackLoyalty(userId: userId, bookingId: bookingId, chatId: chatId);
+      }
       _flowByUserId.remove(userId);
       await _sender.sendMessage(
         chatId,

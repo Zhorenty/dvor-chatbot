@@ -26,6 +26,13 @@ abstract interface class SubscriptionRepository {
     required DateTime requestedAt,
   });
 
+  Future<SubmitSubscriptionRequestResult> activateFromLoyaltyPeaks({
+    required int userId,
+    String? userUsername,
+    required BoxingCardPlan plan,
+    required DateTime activatedAt,
+  });
+
   Future<List<SubscriptionRequest>> listPendingRequests({int limit = 50});
 
   Future<ReviewSubscriptionRequestResult> reviewPendingRequest({
@@ -228,6 +235,18 @@ final class NoopSubscriptionRepository implements SubscriptionRepository {
     required int paymentProofChatId,
     required int paymentProofMessageId,
     required DateTime requestedAt,
+  }) async {
+    return const SubmitSubscriptionRequestResult(
+      outcome: SubmitSubscriptionRequestOutcome.created,
+    );
+  }
+
+  @override
+  Future<SubmitSubscriptionRequestResult> activateFromLoyaltyPeaks({
+    required int userId,
+    String? userUsername,
+    required BoxingCardPlan plan,
+    required DateTime activatedAt,
   }) async {
     return const SubmitSubscriptionRequestResult(
       outcome: SubmitSubscriptionRequestOutcome.created,

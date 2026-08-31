@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
+import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
@@ -52,6 +53,7 @@ final class MessageTemplates {
   static const String buttonPayFully = MessageCopy.buttonPayFully;
   static const String buttonPayPartially = MessageCopy.buttonPayPartially;
   static const String buttonUseStarterBonus = MessageCopy.buttonUseStarterBonus;
+  static const String buttonSpendLoyaltyPeaks = MessageCopy.buttonSpendLoyaltyPeaks;
   static const String buttonEnterPromoCode = MessageCopy.buttonEnterPromoCode;
   static const String buttonRescheduleBooking = MessageCopy.buttonRescheduleBooking;
   static const String buttonRepeatBooking = MessageCopy.buttonRepeatBooking;
