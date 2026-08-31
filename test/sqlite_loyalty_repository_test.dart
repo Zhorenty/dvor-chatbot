@@ -29,8 +29,7 @@ void main() {
     }
   });
 
-  test('migration credits /start 1000 and past paid trainings without duplicating live /start',
-      () async {
+  test('quiet remigration credits only unused every-fifth, not /start or cashback', () async {
     final now = DateTime.utc(2026, 6, 1, 12);
     final onboarding = SqliteOnboardingRepository(databaseHandle: handle);
     final bookings = SqliteBookingRepository(
@@ -86,8 +85,7 @@ void main() {
     final service = LoyaltyService(repository: loyalty, nowProvider: () => now);
 
     final account = await service.account(7);
-    // 1000 start + 250 + 200 - 1000 used every-fifth = 450
-    expect(account.remaining, 450);
+    expect(account.remaining, 0);
 
     final repeat = await service.credit(
       userId: 7,
@@ -97,10 +95,10 @@ void main() {
       now: now,
     );
     expect(repeat.applied, isFalse);
-    expect((await service.account(7)).remaining, 450);
+    expect((await service.account(7)).remaining, 0);
   });
 
-  test('migration converts unused every-fifth voucher and leftover paid trainings', () async {
+  test('quiet remigration converts unused every-fifth voucher only', () async {
     final now = DateTime.utc(2026, 6, 1, 12);
     final onboarding = SqliteOnboardingRepository(databaseHandle: handle);
     final bookings = SqliteBookingRepository(
@@ -130,11 +128,12 @@ void main() {
     );
     await loyalty.init();
     final service = LoyaltyService(repository: loyalty, nowProvider: () => now);
-    // 1000 /start + 4×250 cashback + 1000 unused 5th
-    expect((await service.account(8)).remaining, 3000);
+    expect((await service.account(8)).remaining, 1000);
+    expect(await service.hasEntry(LoyaltyKeys.start(8)), isTrue);
   });
 
-  test('migration converts a still-available starter bonus into peaks and consumes it', () async {
+  test('quiet remigration converts a still-available starter bonus into peaks and consumes it',
+      () async {
     final now = DateTime.now().toUtc();
     final onboarding = SqliteOnboardingRepository(databaseHandle: handle);
     final bookings = SqliteBookingRepository(
@@ -156,8 +155,46 @@ void main() {
     );
     await loyalty.init();
     final service = LoyaltyService(repository: loyalty, nowProvider: () => now);
-    // 1000 /start + 1000 starter conversion
-    expect((await service.account(9)).remaining, 2000);
+    expect((await service.account(9)).remaining, 1000);
     expect(await onboarding.hasStarterBonusAvailable(9), isFalse);
+  });
+
+  test('v3 wipe recredits previously converted starter and drops cashback', () async {
+    final now = DateTime.utc(2026, 6, 1, 12);
+    final onboarding = SqliteOnboardingRepository(databaseHandle: handle);
+    final bookings = SqliteBookingRepository(
+      databaseHandle: handle,
+      nowProvider: () => now,
+    );
+    await bookings.init();
+    await onboarding.init();
+    await onboarding.ensureStartedUser(
+      10,
+      startedAt: now.subtract(const Duration(days: 2)),
+      entryType: OnboardingEntryType.group,
+    );
+
+    final loyalty = SqliteLoyaltyRepository(
+      databaseHandle: handle,
+      nowProvider: () => now,
+    );
+    await loyalty.init();
+    final service = LoyaltyService(repository: loyalty, nowProvider: () => now);
+    expect((await service.account(10)).remaining, 1000);
+
+    await service.credit(
+      userId: 10,
+      amount: 250,
+      reason: LoyaltyLedgerReason.training,
+      idempotencyKey: LoyaltyKeys.training(99),
+      now: now,
+    );
+    expect((await service.account(10)).remaining, 1250);
+
+    handle.database.execute("DELETE FROM loyalty_meta WHERE key = 'migration_v3';");
+    await loyalty.migrateIfNeeded(now: now);
+    expect((await service.account(10)).remaining, 1000);
+    expect(await service.hasEntry(LoyaltyKeys.training(99)), isFalse);
+    expect(await onboarding.hasStarterBonusAvailable(10), isFalse);
   });
 }

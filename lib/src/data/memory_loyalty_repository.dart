@@ -82,7 +82,7 @@ final class InMemoryLoyaltyRepository implements LoyaltyRepository {
     int userId, {
     int limit = 4,
   }) async {
-    final items = _ledger.where((entry) => entry.userId == userId).toList();
+    final items = _ledger.where((entry) => entry.userId == userId && entry.amount != 0).toList();
     items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     if (items.length <= limit) {
       return items;

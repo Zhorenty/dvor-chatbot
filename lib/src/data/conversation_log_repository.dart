@@ -30,6 +30,8 @@ abstract interface class ConversationLogRepository {
     int limit = 50,
   });
 
+  Future<List<ConversationLogEntry>> listOutboundWithTelegramId({int limit = 5000});
+
   Future<int?> resolveUserIdByUsername(String username);
 }
 
@@ -72,6 +74,11 @@ final class NoopConversationLogRepository implements ConversationLogRepository {
     int userId, {
     int limit = 50,
   }) async {
+    return const <ConversationLogEntry>[];
+  }
+
+  @override
+  Future<List<ConversationLogEntry>> listOutboundWithTelegramId({int limit = 5000}) async {
     return const <ConversationLogEntry>[];
   }
 

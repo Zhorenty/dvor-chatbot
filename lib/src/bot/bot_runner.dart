@@ -25,6 +25,7 @@ import 'package:dvor_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:dvor_chatbot/src/jobs/group_invite_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/job_scheduler.dart';
 import 'package:dvor_chatbot/src/jobs/loyalty_accrual_job.dart';
+import 'package:dvor_chatbot/src/jobs/loyalty_credit_dm_cleanup_job.dart';
 import 'package:dvor_chatbot/src/jobs/loyalty_expiry_job.dart';
 import 'package:dvor_chatbot/src/jobs/onboarding_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/payment_reminder_job.dart';
@@ -186,10 +187,13 @@ final class BotRunner {
                 loyaltyService: loyaltyService,
                 bookingRepository: bookingRepository,
                 onboardingRepository: onboardingRepository,
-                sender: sender,
-                templates: templates,
                 catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
               ),
+        _loyaltyCreditDmCleanupJob = LoyaltyCreditDmCleanupJob(
+          conversationLogRepository: conversationLogRepository,
+          sender: sender,
+          jobDedupeRepository: jobDedupeRepository,
+        ),
         _privateHandlers = privateHandlers,
         _groupHandlers = groupHandlers,
         _googleSheetsWriter = googleSheetsWriter,
@@ -244,6 +248,7 @@ final class BotRunner {
   final TrainingFeedbackJob _trainingFeedbackJob;
   final LoyaltyExpiryJob? _loyaltyExpiryJob;
   final LoyaltyAccrualJob? _loyaltyAccrualJob;
+  final LoyaltyCreditDmCleanupJob _loyaltyCreditDmCleanupJob;
   final PrivateHandlers _privateHandlers;
   final GroupHandlers _groupHandlers;
   final GoogleSheetsWriter? _googleSheetsWriter;
@@ -306,6 +311,12 @@ final class BotRunner {
       _schedulePeriodic(const Duration(hours: 1), 'loyalty accrual', loyaltyAccrualJob.run);
       _jobScheduler.launch('loyalty accrual', loyaltyAccrualJob.run);
     }
+    _schedulePeriodic(
+      const Duration(hours: 1),
+      'loyalty credit dm cleanup',
+      _loyaltyCreditDmCleanupJob.run,
+    );
+    _jobScheduler.launch('loyalty credit dm cleanup', _loyaltyCreditDmCleanupJob.run);
     final googleSheetsExportJob = _googleSheetsExportJob;
     if (googleSheetsExportJob != null) {
       _schedulePeriodic(

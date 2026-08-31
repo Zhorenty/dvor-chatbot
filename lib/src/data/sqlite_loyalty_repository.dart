@@ -18,6 +18,7 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
 
   static const String _metaMigrationKey = 'migration_v1';
   static const String _metaMigrationV2Key = 'migration_v2';
+  static const String _metaMigrationV3Key = 'migration_v3';
 
   final SqliteDatabaseHandle _handle;
   final DateTime Function() _nowProvider;
@@ -84,6 +85,11 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
       nowUtc: at,
       body: _runMigrationV2,
     );
+    await _runVersionedMigration(
+      metaKey: _metaMigrationV3Key,
+      nowUtc: at,
+      body: _runMigrationV3,
+    );
   }
 
   Future<void> _runVersionedMigration({
@@ -114,118 +120,137 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
   }
 
   void _runMigrationV1(Database db, DateTime nowUtc) {
+    // Superseded by v3: v1 credited /start, cashback, referrals and was not quiet.
+  }
+
+  void _runMigrationV2(Database db, DateTime nowUtc) {
+    // Superseded by v3: unused 5th + starter are re-applied from scratch there.
+  }
+
+  void _runMigrationV3(Database db, DateTime nowUtc) {
     final nowIso = nowUtc.toIso8601String();
-    Set<int> startedIds = <int>{};
+    final previouslyConvertedStarters = _snapshotStarterConversionUserIds(db);
+    db.execute('DELETE FROM loyalty_ledger;');
+    db.execute('DELETE FROM loyalty_accounts;');
+    _convertUnusedEveryFifth(db, nowUtc: nowUtc, nowIso: nowIso);
+    _convertUnusedStarterBonus(db, nowUtc: nowUtc, nowIso: nowIso);
+    for (final userId in previouslyConvertedStarters) {
+      _insertCreditUnlocked(
+        db,
+        userId: userId,
+        amount: LoyaltyMath.starterConversionPeaks,
+        reason: LoyaltyLedgerReason.migration,
+        key: LoyaltyKeys.migrationStarter(userId),
+        nowIso: nowIso,
+      );
+    }
+    _plantStartMarkers(db, nowIso);
+    _plantHistoricalAccrualMarkers(db, nowIso: nowIso);
+    db.execute(
+      '''
+      UPDATE loyalty_accounts
+      SET last_loyalty_activity_at = ?
+      WHERE user_id IN (
+        SELECT DISTINCT user_id FROM loyalty_ledger WHERE amount != 0
+      );
+      ''',
+      <Object?>[nowIso],
+    );
+  }
+
+  Set<int> _snapshotStarterConversionUserIds(Database db) {
     try {
-      startedIds = db
+      return db
           .select(
-            'SELECT user_id FROM onboarding_users WHERE started_at IS NOT NULL;',
+            '''
+            SELECT DISTINCT user_id
+            FROM loyalty_ledger
+            WHERE idempotency_key LIKE '%+starter';
+            ''',
           )
           .map((row) => row['user_id'] as int)
           .toSet();
     } on SqliteException {
-      startedIds = <int>{};
+      return <int>{};
     }
-    for (final userId in startedIds) {
-      _insertCreditUnlocked(
+  }
+
+  void _plantStartMarkers(Database db, String nowIso) {
+    ResultSet rows;
+    try {
+      rows = db.select(
+        'SELECT user_id FROM onboarding_users WHERE started_at IS NOT NULL;',
+      );
+    } on SqliteException {
+      return;
+    }
+    for (final row in rows) {
+      final userId = row['user_id'] as int;
+      _insertSilentMarker(
         db,
         userId: userId,
-        amount: LoyaltyMath.startBonusPeaks,
         reason: LoyaltyLedgerReason.start,
         key: LoyaltyKeys.start(userId),
         nowIso: nowIso,
       );
     }
+  }
 
-    final trainingsSql = "(training_key LIKE 'trainings|%' OR "
-        "(training_key NOT LIKE 'hikes|%' "
-        "AND training_key NOT LIKE 'trails|%' "
-        "AND training_title NOT LIKE '🥾 Поход:%' AND training_title NOT LIKE '🏃 Трейл:%'))";
-    final excludedNotes = LoyaltyRules.excludedTrainingPaymentNotes
-        .where((note) => note != MessageFormatters.loyaltyPeaksPaymentNoteMarker)
-        .toList(growable: false);
-    final excludedPlaceholders = List<String>.filled(excludedNotes.length, '?').join(', ');
-    ResultSet qualifiedRows;
+  void _plantHistoricalAccrualMarkers(
+    Database db, {
+    required String nowIso,
+  }) {
+    ResultSet bookingRows;
     try {
-      qualifiedRows = db.select(
+      bookingRows = db.select(
         '''
-        SELECT *
+        SELECT id, user_id, training_key, training_title
         FROM bookings
         WHERE COALESCE(participant_type, 'self') = 'self'
-          AND status = ?
-          AND starts_at < ?
-          AND ($trainingsSql)
-          AND (training_price IS NULL OR training_price > 0)
-          AND (payment_note IS NULL OR payment_note NOT IN ($excludedPlaceholders));
+          AND status IN (?, ?)
+          AND starts_at < ?;
         ''',
         <Object?>[
           BookingStatus.paid.dbValue,
+          BookingStatus.partialPaid.dbValue,
           nowIso,
-          ...excludedNotes,
         ],
       );
     } on SqliteException {
-      return;
+      bookingRows = db.select('SELECT 1 AS id WHERE 0;');
     }
-    for (final row in qualifiedRows) {
-      final userId = row['user_id'] as int;
-      final username = row['user_username'] as String?;
-      if (isTrainerBookingWhitelisted(userId: userId, username: username)) {
-        continue;
-      }
+    for (final row in bookingRows) {
       final bookingId = row['id'] as int;
-      final price = row['training_price'] as int?;
-      final amount = price == null || price <= 0
-          ? LoyaltyMath.missingTrainingPriceEarnPeaks
-          : LoyaltyMath.trainingEarnPeaks(price);
-      _insertCreditUnlocked(
-        db,
-        userId: userId,
-        amount: amount,
-        reason: LoyaltyLedgerReason.training,
-        key: LoyaltyKeys.training(bookingId),
-        nowIso: nowIso,
-        bookingId: bookingId,
-      );
-    }
-
-    final usedFifthRows = db.select(
-      '''
-      SELECT *
-      FROM bookings
-      WHERE COALESCE(participant_type, 'self') = 'self'
-        AND status = ?
-        AND starts_at < ?
-        AND ($trainingsSql)
-        AND payment_note = ?;
-      ''',
-      <Object?>[
-        BookingStatus.paid.dbValue,
-        nowIso,
-        MessageFormatters.everyFifthBonusPaymentNoteMarker,
-      ],
-    );
-    for (final row in usedFifthRows) {
       final userId = row['user_id'] as int;
-      final bookingId = row['id'] as int;
-      final price = row['training_price'] as int?;
-      final wanted = price == null || price <= 0
-          ? LoyaltyMath.missingEveryFifthDebitPeaks
-          : price * LoyaltyMath.peaksPerRub;
-      final remaining = _remainingUnlocked(db, userId);
-      final amount = remaining < wanted ? remaining : wanted;
-      if (amount <= 0) {
-        continue;
+      final key = row['training_key'] as String? ?? '';
+      final title = row['training_title'] as String? ?? '';
+      final isHike = key.startsWith('hikes|') || title.startsWith('🥾 Поход:');
+      final isTrail = key.startsWith('trails|') || title.startsWith('🏃 Трейл:');
+      if (isHike) {
+        _insertSilentMarker(
+          db,
+          userId: userId,
+          reason: LoyaltyLedgerReason.hike,
+          key: LoyaltyKeys.hike(bookingId),
+          nowIso: nowIso,
+        );
+      } else if (isTrail) {
+        _insertSilentMarker(
+          db,
+          userId: userId,
+          reason: LoyaltyLedgerReason.trail,
+          key: LoyaltyKeys.trail(bookingId),
+          nowIso: nowIso,
+        );
+      } else {
+        _insertSilentMarker(
+          db,
+          userId: userId,
+          reason: LoyaltyLedgerReason.training,
+          key: LoyaltyKeys.training(bookingId),
+          nowIso: nowIso,
+        );
       }
-      _insertDebitUnlocked(
-        db,
-        userId: userId,
-        amount: amount,
-        reason: LoyaltyLedgerReason.migration,
-        key: LoyaltyKeys.migrationEveryFifth(bookingId),
-        nowIso: nowIso,
-        bookingId: bookingId,
-      );
     }
 
     ResultSet attributions;
@@ -233,103 +258,23 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
       attributions = db.select(
         '''
         SELECT invitee_user_id, inviter_user_id
-        FROM referral_attributions
-        ORDER BY attributed_at ASC, invitee_user_id ASC;
+        FROM referral_attributions;
         ''',
       );
     } on SqliteException {
-      attributions = db.select('SELECT 1 AS invitee_user_id WHERE 0;');
+      return;
     }
     for (final row in attributions) {
       final inviteeId = row['invitee_user_id'] as int;
       final inviterId = row['inviter_user_id'] as int;
-      final qualified = db.select(
-        '''
-        SELECT 1
-        FROM bookings
-        WHERE user_id = ?
-          AND COALESCE(participant_type, 'self') = 'self'
-          AND status = ?
-          AND starts_at < ?
-          AND training_price > 0
-          AND ($trainingsSql)
-          AND (payment_note IS NULL OR payment_note NOT IN ($excludedPlaceholders))
-        LIMIT 1;
-        ''',
-        <Object?>[
-          inviteeId,
-          BookingStatus.paid.dbValue,
-          nowIso,
-          ...excludedNotes,
-        ],
-      );
-      if (qualified.isEmpty) {
-        continue;
-      }
-      _insertCreditUnlocked(
+      _insertSilentMarker(
         db,
         userId: inviterId,
-        amount: LoyaltyMath.referralPeaks,
         reason: LoyaltyLedgerReason.referral,
         key: LoyaltyKeys.referral(inviteeId),
         nowIso: nowIso,
-        inviteeUserId: inviteeId,
       );
     }
-
-    final usedReferralRows = db.select(
-      '''
-      SELECT id, user_id
-      FROM bookings
-      WHERE status = ?
-        AND payment_note = ?;
-      ''',
-      <Object?>[
-        BookingStatus.paid.dbValue,
-        MessageFormatters.referralBonusPaymentNoteMarker,
-      ],
-    );
-    for (final row in usedReferralRows) {
-      final userId = row['user_id'] as int;
-      final bookingId = row['id'] as int;
-      final remaining = _remainingUnlocked(db, userId);
-      final amount = remaining < LoyaltyMath.referralPeaks ? remaining : LoyaltyMath.referralPeaks;
-      if (amount <= 0) {
-        continue;
-      }
-      _insertDebitUnlocked(
-        db,
-        userId: userId,
-        amount: amount,
-        reason: LoyaltyLedgerReason.migration,
-        key: 'migration:$bookingId+referral_used',
-        nowIso: nowIso,
-        bookingId: bookingId,
-      );
-    }
-
-    db.execute(
-      '''
-      UPDATE loyalty_accounts
-      SET last_loyalty_activity_at = ?
-      WHERE user_id IN (SELECT DISTINCT user_id FROM loyalty_ledger);
-      ''',
-      <Object?>[nowIso],
-    );
-  }
-
-  void _runMigrationV2(Database db, DateTime nowUtc) {
-    final nowIso = nowUtc.toIso8601String();
-    _convertUnusedEveryFifth(db, nowUtc: nowUtc, nowIso: nowIso);
-    _convertUnusedStarterBonus(db, nowUtc: nowUtc, nowIso: nowIso);
-    db.execute(
-      '''
-      UPDATE loyalty_accounts
-      SET last_loyalty_activity_at = ?
-      WHERE user_id IN (SELECT DISTINCT user_id FROM loyalty_ledger);
-      ''',
-      <Object?>[nowIso],
-    );
   }
 
   void _convertUnusedEveryFifth(
@@ -485,15 +430,28 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
       .where((note) => note != MessageFormatters.loyaltyPeaksPaymentNoteMarker)
       .toList(growable: false);
 
-  int _remainingUnlocked(Database db, int userId) {
-    final rows = db.select(
-      'SELECT remaining FROM loyalty_accounts WHERE user_id = ? LIMIT 1;',
-      <Object?>[userId],
+  void _insertSilentMarker(
+    Database db, {
+    required int userId,
+    required LoyaltyLedgerReason reason,
+    required String key,
+    required String nowIso,
+  }) {
+    final existing = db.select(
+      'SELECT 1 FROM loyalty_ledger WHERE idempotency_key = ? LIMIT 1;',
+      <Object?>[key],
     );
-    if (rows.isEmpty) {
-      return 0;
+    if (existing.isNotEmpty) {
+      return;
     }
-    return (rows.first['remaining'] as int?) ?? 0;
+    db.execute(
+      '''
+      INSERT INTO loyalty_ledger (
+        user_id, amount, reason, idempotency_key, created_at
+      ) VALUES (?, 0, ?, ?, ?);
+      ''',
+      <Object?>[userId, reason.dbValue, key, nowIso],
+    );
   }
 
   void _insertCreditUnlocked(
@@ -534,44 +492,6 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
         last_loyalty_activity_at = excluded.last_loyalty_activity_at;
       ''',
       <Object?>[userId, amount, nowIso],
-    );
-  }
-
-  void _insertDebitUnlocked(
-    Database db, {
-    required int userId,
-    required int amount,
-    required LoyaltyLedgerReason reason,
-    required String key,
-    required String nowIso,
-    int? bookingId,
-  }) {
-    if (amount <= 0) {
-      return;
-    }
-    final existing = db.select(
-      'SELECT 1 FROM loyalty_ledger WHERE idempotency_key = ? LIMIT 1;',
-      <Object?>[key],
-    );
-    if (existing.isNotEmpty) {
-      return;
-    }
-    db.execute(
-      '''
-      INSERT INTO loyalty_ledger (
-        user_id, amount, reason, idempotency_key, created_at, booking_id
-      ) VALUES (?, ?, ?, ?, ?, ?);
-      ''',
-      <Object?>[userId, -amount, reason.dbValue, key, nowIso, bookingId],
-    );
-    db.execute(
-      '''
-      UPDATE loyalty_accounts
-      SET remaining = remaining - ?,
-          last_loyalty_activity_at = ?
-      WHERE user_id = ?;
-      ''',
-      <Object?>[amount, nowIso, userId],
     );
   }
 
@@ -640,6 +560,7 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
       '''
       SELECT * FROM loyalty_ledger
       WHERE user_id = ?
+        AND amount != 0
       ORDER BY created_at DESC, id DESC
       LIMIT ?;
       ''',

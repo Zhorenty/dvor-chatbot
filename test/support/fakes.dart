@@ -2253,6 +2253,20 @@ final class FakeConversationLogRepository implements ConversationLogRepository {
   }
 
   @override
+  Future<List<ConversationLogEntry>> listOutboundWithTelegramId({int limit = 5000}) async {
+    final filtered = entries
+        .where(
+          (entry) =>
+              entry.direction == ConversationDirection.outbound && entry.telegramMessageId != null,
+        )
+        .toList(growable: false);
+    if (filtered.length <= limit) {
+      return filtered;
+    }
+    return filtered.sublist(0, limit);
+  }
+
+  @override
   Future<int?> resolveUserIdByUsername(String username) async {
     final normalized = normalizeTelegramUsername(username);
     if (normalized == null) {

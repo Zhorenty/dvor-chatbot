@@ -7,8 +7,6 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
-import 'package:dvor_chatbot/src/messages/message_templates.dart';
-import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
 
 final class LoyaltyAccrualJob {
@@ -16,24 +14,18 @@ final class LoyaltyAccrualJob {
     required LoyaltyService loyaltyService,
     required BookingRepository bookingRepository,
     required OnboardingRepository onboardingRepository,
-    required MessageSender sender,
-    required MessageTemplates templates,
     ActivityCatalogService? catalogService,
     DateTime Function()? nowProvider,
-    this.lookback = const Duration(days: 90),
+    this.lookback = const Duration(days: 3),
   })  : _loyaltyService = loyaltyService,
         _bookingRepository = bookingRepository,
         _onboardingRepository = onboardingRepository,
-        _sender = sender,
-        _templates = templates,
         _catalogService = catalogService,
         _nowProvider = nowProvider ?? DateTime.now;
 
   final LoyaltyService _loyaltyService;
   final BookingRepository _bookingRepository;
   final OnboardingRepository _onboardingRepository;
-  final MessageSender _sender;
-  final MessageTemplates _templates;
   final ActivityCatalogService? _catalogService;
   final DateTime Function() _nowProvider;
   final Duration lookback;
@@ -83,7 +75,7 @@ final class LoyaltyAccrualJob {
       if (amount <= 0) {
         return;
       }
-      final result = await _loyaltyService.credit(
+      await _loyaltyService.credit(
         userId: booking.userId,
         amount: amount,
         reason: LoyaltyLedgerReason.training,
@@ -91,14 +83,6 @@ final class LoyaltyAccrualJob {
         now: now,
         bookingId: booking.id,
       );
-      if (result.applied) {
-        await _notifyCredit(
-          userId: booking.userId,
-          amount: amount,
-          remaining: result.account.remaining,
-          reason: LoyaltyLedgerReason.training,
-        );
-      }
       return;
     }
     if (category != ActivityCategory.hikes && category != ActivityCategory.trails) {
@@ -124,7 +108,7 @@ final class LoyaltyAccrualJob {
     final key = category == ActivityCategory.hikes
         ? LoyaltyKeys.hike(booking.id)
         : LoyaltyKeys.trail(booking.id);
-    final result = await _loyaltyService.credit(
+    await _loyaltyService.credit(
       userId: booking.userId,
       amount: amount,
       reason: reason,
@@ -132,17 +116,10 @@ final class LoyaltyAccrualJob {
       now: now,
       bookingId: booking.id,
     );
-    if (result.applied) {
-      await _notifyCredit(
-        userId: booking.userId,
-        amount: amount,
-        remaining: result.account.remaining,
-        reason: reason,
-      );
-    }
   }
 
   Future<void> _accrueReferrals(DateTime now) async {
+    final from = now.subtract(lookback);
     final attributions = await _onboardingRepository.listReferralAttributions();
     for (final attribution in attributions) {
       try {
@@ -155,6 +132,9 @@ final class LoyaltyAccrualJob {
         );
         var qualifies = false;
         for (final booking in bookings) {
+          if (booking.startsAt.isBefore(from) || booking.startsAt.isAfter(now)) {
+            continue;
+          }
           final category =
               _catalogService?.categoryForBooking(booking) ?? ActivityCategory.trainings;
           final peaksSpent = await _loyaltyService.peaksSpentOnBooking(booking.id);
@@ -171,7 +151,7 @@ final class LoyaltyAccrualJob {
         if (!qualifies) {
           continue;
         }
-        final result = await _loyaltyService.credit(
+        await _loyaltyService.credit(
           userId: attribution.inviterUserId,
           amount: LoyaltyMath.referralPeaks,
           reason: LoyaltyLedgerReason.referral,
@@ -179,40 +159,12 @@ final class LoyaltyAccrualJob {
           now: now,
           inviteeUserId: attribution.inviteeUserId,
         );
-        if (result.applied) {
-          await _notifyCredit(
-            userId: attribution.inviterUserId,
-            amount: LoyaltyMath.referralPeaks,
-            remaining: result.account.remaining,
-            reason: LoyaltyLedgerReason.referral,
-          );
-        }
       } on Object catch (error, stackTrace) {
         l.w(
           'Failed loyalty referral accrual for invitee ${attribution.inviteeUserId}: $error',
           stackTrace,
         );
       }
-    }
-  }
-
-  Future<void> _notifyCredit({
-    required int userId,
-    required int amount,
-    required int remaining,
-    required LoyaltyLedgerReason reason,
-  }) async {
-    try {
-      await _sender.sendMessage(
-        userId,
-        _templates.loyaltyCredited(
-          amount: amount,
-          remaining: remaining,
-          reason: reason,
-        ),
-      );
-    } on Object catch (error, stackTrace) {
-      l.w('Failed to notify loyalty credit for user $userId: $error', stackTrace);
     }
   }
 }

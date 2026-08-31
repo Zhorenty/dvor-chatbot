@@ -1,14 +1,17 @@
 import 'dart:io';
 
+import 'package:dvor_chatbot/src/application/loyalty_credit_dm.dart';
 import 'package:dvor_chatbot/src/application/loyalty_math.dart';
 import 'package:dvor_chatbot/src/application/loyalty_service.dart';
 import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/memory_loyalty_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/jobs/loyalty_accrual_job.dart';
+import 'package:dvor_chatbot/src/jobs/loyalty_credit_dm_cleanup_job.dart';
 import 'package:dvor_chatbot/src/jobs/loyalty_expiry_job.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -136,13 +139,10 @@ void main() {
           paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,
         ),
       ];
-    final sender = FakeSender();
     final job = LoyaltyAccrualJob(
       loyaltyService: service,
       bookingRepository: bookings,
       onboardingRepository: FakeOnboardingRepository(),
-      sender: sender,
-      templates: const MessageTemplates(),
       nowProvider: () => now,
     );
     await job.run();
@@ -150,6 +150,42 @@ void main() {
     expect((await service.account(32)).remaining, 0);
     expect((await service.account(33)).remaining, 0);
     expect((await service.account(34)).remaining, 0);
+  });
+
+  test('accrual ignores visits older than lookback and stays silent', () async {
+    final now = DateTime.utc(2026, 5, 20, 12);
+    final repository = InMemoryLoyaltyRepository(nowProvider: () => now);
+    final service = LoyaltyService(repository: repository, nowProvider: () => now);
+    final bookings = FakeBookingRepository()
+      ..queue = <TrainingBooking>[
+        fakeBooking(
+          id: 50,
+          userId: 51,
+          title: '🥾 Поход: Карелия',
+          trainingKey: 'hikes|50',
+          status: BookingStatus.paid,
+          trainingPrice: 2500,
+          startsAt: now.subtract(const Duration(days: 10)),
+        ),
+        fakeBooking(
+          id: 51,
+          userId: 52,
+          title: 'Силовая',
+          trainingKey: 'trainings|51',
+          status: BookingStatus.paid,
+          trainingPrice: 500,
+          startsAt: now.subtract(const Duration(hours: 2)),
+        ),
+      ];
+    final job = LoyaltyAccrualJob(
+      loyaltyService: service,
+      bookingRepository: bookings,
+      onboardingRepository: FakeOnboardingRepository(),
+      nowProvider: () => now,
+    );
+    await job.run();
+    expect((await service.account(51)).remaining, 0);
+    expect((await service.account(52)).remaining, 250);
   });
 
   test('referral accrues 1000 only when invitee paid with cash', () async {
@@ -185,12 +221,126 @@ void main() {
       loyaltyService: service,
       bookingRepository: bookings,
       onboardingRepository: onboarding,
-      sender: FakeSender(),
-      templates: const MessageTemplates(),
       nowProvider: () => now,
     );
     await job.run();
     expect((await service.account(400)).remaining, LoyaltyMath.referralPeaks);
     expect(await service.hasEntry(LoyaltyKeys.referral(402)), isFalse);
+  });
+
+  test('referral accrual skips invitee trainings outside lookback', () async {
+    final now = DateTime.utc(2026, 5, 20, 12);
+    final repository = InMemoryLoyaltyRepository(nowProvider: () => now);
+    final service = LoyaltyService(repository: repository, nowProvider: () => now);
+    final onboarding = FakeOnboardingRepository()..referralInviterByInvitee[501] = 500;
+    final bookings = FakeBookingRepository()
+      ..userBookings = <TrainingBooking>[
+        fakeBooking(
+          id: 20,
+          userId: 501,
+          title: 'Силовая',
+          trainingKey: 'trainings|20',
+          status: BookingStatus.paid,
+          trainingPrice: 500,
+          startsAt: now.subtract(const Duration(days: 10)),
+        ),
+      ];
+    final job = LoyaltyAccrualJob(
+      loyaltyService: service,
+      bookingRepository: bookings,
+      onboardingRepository: onboarding,
+      nowProvider: () => now,
+    );
+    await job.run();
+    expect((await service.account(500)).remaining, 0);
+    expect(await service.hasEntry(LoyaltyKeys.referral(501)), isFalse);
+  });
+
+  test('credit dm matcher keeps spend and help texts', () {
+    const templates = MessageTemplates();
+    expect(
+      LoyaltyCreditDm.matches(
+        templates.loyaltyCredited(
+          amount: 250,
+          remaining: 250,
+          reason: LoyaltyLedgerReason.hike,
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      LoyaltyCreditDm.matches(
+        templates.loyaltyStartCredited(starterBonusAvailable: false),
+      ),
+      isTrue,
+    );
+    expect(
+      LoyaltyCreditDm.matches(
+        templates.loyaltyExpiryReminder(
+          remaining: 200,
+          expiresAt: DateTime.utc(2026, 6, 1),
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      LoyaltyCreditDm.matches(templates.loyaltyExpired(burned: 200, remaining: 0)),
+      isTrue,
+    );
+    expect(
+      LoyaltyCreditDm.matches(
+        templates.loyaltySpendApplied(peaks: 200, remainderRub: 400, coversFully: false),
+      ),
+      isFalse,
+    );
+    expect(LoyaltyCreditDm.matches('Живут 45 дней, срок обновляется от записи.'), isFalse);
+  });
+
+  test('cleanup job deletes only credit DMs and claims once', () async {
+    final log = FakeConversationLogRepository();
+    await log.append(
+      direction: ConversationDirection.outbound,
+      peerUserId: 71,
+      chatId: 71,
+      telegramMessageId: 101,
+      contentType: ConversationContentType.text,
+      textPreview: '+200 ⛰️ за поход. Баланс: 200. Живут 45 дней, срок обновляется.',
+    );
+    await log.append(
+      direction: ConversationDirection.outbound,
+      peerUserId: 71,
+      chatId: 71,
+      telegramMessageId: 102,
+      contentType: ConversationContentType.text,
+      textPreview: 'Списал 200 ⛰️. К оплате: 400 ₽.',
+    );
+    await log.append(
+      direction: ConversationDirection.inbound,
+      peerUserId: 71,
+      chatId: 71,
+      telegramMessageId: 103,
+      contentType: ConversationContentType.text,
+      textPreview: '+200 ⛰️ за поход.',
+    );
+    final sender = FakeSender();
+    final tmpDir = await Directory.systemTemp.createTemp('loyalty-dm-cleanup-');
+    addTearDown(() async {
+      if (tmpDir.existsSync()) {
+        await tmpDir.delete(recursive: true);
+      }
+    });
+    final handle = SqliteDatabaseHandle.open('${tmpDir.path}/jobs.sqlite');
+    addTearDown(handle.close);
+    final dedupe = JobDedupeRepository(databaseHandle: handle)..initSchema();
+    final job = LoyaltyCreditDmCleanupJob(
+      conversationLogRepository: log,
+      sender: sender,
+      jobDedupeRepository: dedupe,
+    );
+    await job.run();
+    expect(sender.deletedMessages, hasLength(1));
+    expect(sender.deletedMessages.single.messageId, 101);
+    await job.run();
+    expect(sender.deletedMessages, hasLength(1));
   });
 }

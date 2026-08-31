@@ -215,6 +215,23 @@ final class SqliteConversationLogRepository implements ConversationLogRepository
   }
 
   @override
+  Future<List<ConversationLogEntry>> listOutboundWithTelegramId({int limit = 5000}) async {
+    final safeLimit = limit < 1 ? 1 : (limit > 10000 ? 10000 : limit);
+    final rows = _database.select(
+      '''
+      SELECT *
+      FROM conversation_log
+      WHERE direction = ?
+        AND telegram_message_id IS NOT NULL
+      ORDER BY id ASC
+      LIMIT ?;
+      ''',
+      <Object?>[ConversationDirection.outbound.name, safeLimit],
+    );
+    return rows.map(_mapRow).toList(growable: false);
+  }
+
+  @override
   Future<int?> resolveUserIdByUsername(String username) async {
     final normalized = normalizeTelegramUsername(username);
     if (normalized == null) {
