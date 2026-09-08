@@ -7,3 +7,5 @@ coverage/
 *.run
 secrets/*.json
 !secrets/*.example
+scripts/assets/week_stories/cache/
+scripts/assets/week_stories/last_photos.json

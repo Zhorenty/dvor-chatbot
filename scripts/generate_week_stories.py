@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import io
+import json
 import random
 import re
 import urllib.request
@@ -18,6 +19,7 @@ from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFo
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = Path(__file__).resolve().parent / "assets" / "week_stories"
+CACHE = ASSETS / "cache"
 SHEETS_ID = "1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q"
 TRAININGS_CSV = f"https://docs.google.com/spreadsheets/d/{SHEETS_ID}/export?format=csv&gid=0"
 HIKES_CSV = f"https://docs.google.com/spreadsheets/d/{SHEETS_ID}/export?format=csv&gid=294119056"
@@ -30,13 +32,45 @@ WHITE = (255, 255, 255, 255)
 ACCENT = (173, 184, 56, 255)
 MUTED = (255, 255, 255, 72)
 LINE_Y = 1768
+CONTENT_TOP = 208
+CONTENT_BOTTOM = 1748
+SUPER_GAP = 44
+SUPER_PAD = 44
 
 FONT_BLACK = ASSETS / "Montserrat-Black.ttf"
 FONT_EXTRABOLD = ASSETS / "Montserrat-ExtraBold.ttf"
 FONT_MEDIUM = ASSETS / "Montserrat-Medium.ttf"
 LOGO_MARK = ASSETS / "logo-dvor.png"
-BG_COVER = ASSETS / "court.jpg"
-BG_SCHED = ASSETS / "boxing.jpg"
+USED_PHOTOS = ASSETS / "last_photos.json"
+
+PHOTO_POOL = (
+    {"id": "1549719386-74dfcbf7dbed", "credit": "Bogdan Yukhymchuk", "url": "https://unsplash.com/photos/XmvuWRDimrg", "what": "боксёрские перчатки"},
+    {"id": "1554068865-24cecd4e34b8", "credit": "Moises Alex", "url": "https://unsplash.com/photos/WqI-PbYugn4", "what": "грунтовый корт"},
+    {"id": "1551632811-561732d1e306", "credit": "Toomas Tartes", "url": "https://unsplash.com/photos/Yizrl9N_eDA", "what": "тропа к горе"},
+    {"id": "1552674605-db6ffd4facb5", "credit": "Fitsum Admasu", "url": "https://unsplash.com/photos/oGv9xIl7DkY", "what": "бег, силуэты"},
+    {"id": "1534438327276-14e5300c3a48", "credit": "Unsplash", "url": "https://unsplash.com/photos/Hn3S88e9NII", "what": "зал"},
+    {"id": "1517836357463-d25dfeac3438", "credit": "Unsplash", "url": "https://unsplash.com/photos/gJtDg6WfMlQ", "what": "силовая"},
+    {"id": "1571019614242-c5c5dee9f50b", "credit": "Unsplash", "url": "https://unsplash.com/photos/p7o8eLQ14aI", "what": "тренировка"},
+    {"id": "1526506118085-60ce8714f8c5", "credit": "Unsplash", "url": "https://unsplash.com/photos/WNoLnJo7tS8", "what": "зал, движение"},
+    {"id": "1464822759023-fed622ff2c3b", "credit": "Unsplash", "url": "https://unsplash.com/photos/8bI5fVVtdp8", "what": "горы"},
+    {"id": "1518611012118-696072aa579a", "credit": "Unsplash", "url": "https://unsplash.com/photos/NTyBbu66_SI", "what": "растяжка / зал"},
+    {"id": "1517963879433-6ad2b056d712", "credit": "Unsplash", "url": "https://unsplash.com/photos/oX6d8wONM6Q", "what": "ринг"},
+    {"id": "1502905340366-9d32df4b7a0e", "credit": "Unsplash", "url": "https://unsplash.com/photos/NTyBbu66_SI", "what": "бег по дороге"},
+    {"id": "1483721310020-03333eadbdcc", "credit": "Unsplash", "url": "https://unsplash.com/photos/C1t1jbpHdeI", "what": "вершина, снег"},
+    {"id": "1506905925346-21bda4d32df4", "credit": "Unsplash", "url": "https://unsplash.com/photos/y2azHvupCVo", "what": "горный хребет"},
+    {"id": "1513593771513-7b58bdc7b6fd", "credit": "Unsplash", "url": "https://unsplash.com/photos/nCJ_XdqQhIg", "what": "бег в городе"},
+    {"id": "1536924430088-8bc494f2960a", "credit": "Unsplash", "url": "https://unsplash.com/photos/WNoLnJo7tS8", "what": "бокс"},
+    {"id": "1541534747586-6b2c80d8a4c0", "credit": "Unsplash", "url": "https://unsplash.com/photos/oX6d8wONM6Q", "what": "зал, гири"},
+    {"id": "1571902943202-507ec2616e34", "credit": "Unsplash", "url": "https://unsplash.com/photos/sHfo3WOgGTU", "what": "турники"},
+    {"id": "1434596823516-bd3824007d55", "credit": "Unsplash", "url": "https://unsplash.com/photos/TFyi0QOx08c", "what": "тропа в лесу"},
+    {"id": "1474412060476-77db9c3c3a84", "credit": "Unsplash", "url": "https://unsplash.com/photos/1Z2niiBPg5A", "what": "горы в облаках"},
+    {"id": "1522163182402-834f871ac7ae", "credit": "Unsplash", "url": "https://unsplash.com/photos/2Ts5HnA67k8", "what": "скалы"},
+    {"id": "1517838277536-f5f99be501cd", "credit": "Unsplash", "url": "https://unsplash.com/photos/p7o8eLQ14aI", "what": "штанга"},
+    {"id": "1599058917212-d750089bc04e", "credit": "Unsplash", "url": "https://unsplash.com/photos/sHfo3WOgGTU", "what": "боксёрский зал"},
+    {"id": "1571008887538-b36bb32f4571", "credit": "Unsplash", "url": "https://unsplash.com/photos/nCJ_XdqQhIg", "what": "бег, асфальт"},
+    {"id": "1476480862126-861e0f54db91", "credit": "Unsplash", "url": "https://unsplash.com/photos/nCJ_XdqQhIg", "what": "кроссовки, бег"},
+    {"id": "1549060279-7e168fcee0c2", "credit": "Unsplash", "url": "https://unsplash.com/photos/qC0oLKqPPdw", "what": "бег"},
+)
 
 EMOJI_RE = re.compile(
     "["
@@ -60,6 +94,14 @@ class Slot:
     notes: str | None
     is_super: bool
     super_tag: str | None = None
+
+
+@dataclass
+class Background:
+    path: Path
+    credit: str
+    url: str
+    what: str
 
 
 def font(path: Path, size: int) -> ImageFont.FreeTypeFont:
@@ -121,6 +163,105 @@ def wrap_text(text: str, fnt: ImageFont.FreeTypeFont, max_width: int, tracking: 
     return lines
 
 
+def fit_wrapped(text: str, fnt: ImageFont.FreeTypeFont, max_width: int, max_lines: int) -> list[str]:
+    text = clean_spaces(text).rstrip(" .")
+    if not text:
+        return []
+    sentences = [clean_spaces(part) for part in re.split(r"(?<=[.!?])\s+", text) if clean_spaces(part)]
+    if not sentences:
+        sentences = [text]
+
+    def lines_of(parts: list[str]) -> list[str]:
+        candidate = " ".join(parts)
+        if candidate and candidate[-1] not in ".!?":
+            candidate = f"{candidate}."
+        return wrap_text(candidate, fnt, max_width)
+
+    while sentences:
+        lines = lines_of(sentences)
+        if len(lines) <= max_lines:
+            return lines
+        if len(sentences) > 1:
+            sentences = sentences[:-1]
+            continue
+        words = sentences[0].rstrip(".!?").split()
+        while len(words) > 2:
+            words = words[:-1]
+            if words[-1].casefold() in {"в", "и", "на", "с", "по", "от", "для", "а"}:
+                continue
+            lines = lines_of([" ".join(words)])
+            if len(lines) <= max_lines:
+                return lines
+        break
+    return wrap_text(text, fnt, max_width)[:max_lines]
+
+
+def compact_from_chunks(chunks: list[str], max_chars: int) -> str:
+    picked: list[str] = []
+    for chunk in chunks:
+        trial = ". ".join(picked + [chunk])
+        if picked and len(trial) > max_chars:
+            break
+        picked.append(chunk)
+        if len(". ".join(picked)) >= max_chars * 0.55:
+            break
+    text = ". ".join(picked)
+    return text if text.endswith(".") else f"{text}."
+
+
+def accumulate_training(notes: str | None) -> str:
+    chunks = note_chunks(notes)
+    if not chunks:
+        return ""
+    blob = " ".join(chunks).casefold()
+    if "кроссфит" in blob or ("гимнастик" in blob and "кардио" in blob):
+        return (
+            "Функциональный кроссфит: тяжёлая атлетика, гимнастика и кардио. "
+            "Сила и координация. Нагрузка под любой уровень."
+        )
+    if "удар" in blob and "защит" in blob:
+        return (
+            "Комплексная нагрузка: техника ударов, защита, работа ног, ОФП и спарринг-имитация. "
+            "Реакция, взрывная сила и выносливость."
+        )
+    if "темп" in blob and ("дыш" in blob or "бег" in blob):
+        return (
+            "Субботний бег: держим темп и дыхание, не сбиваемся. "
+            "После — фильтр от Surf Coffee на веранде."
+        )
+    return compact_from_chunks(chunks, 150)
+
+
+def accumulate_super(notes: str | None, title: str) -> str:
+    raw = strip_emoji(notes or "")
+    blob = raw.casefold()
+    if not raw:
+        return clean_spaces(strip_emoji(title))
+    height = re.search(r"(\d{3,4}\s*м)", raw, flags=re.IGNORECASE)
+    name = re.sub(r"^восхождение на\s+", "", clean_spaces(strip_emoji(title)), flags=re.IGNORECASE)
+    head = name
+    if height:
+        head = f"{name} ({height.group(1)})"
+    if "outdvor" in blob:
+        head = f"{head} с Outdvor"
+    parts = [head]
+    place: list[str] = []
+    if "хребет" in blob:
+        place.append("Кавказский хребет")
+    if "фишт" in blob:
+        place.append("ледники Фишта")
+    if place:
+        parts.append("Панорама: " + ", ".join(place))
+    if "щел" in blob:
+        parts.append("Путь через Инструкторскую щель — ущелье с буками и родниками")
+    if "не для первого" in blob or "базовая выносливость" in blob:
+        parts.append("Не для первого похода: нужна выносливость")
+    if "первого восхождения" in blob or "для первого восхождения" in blob:
+        parts.append("Первое восхождение — без альпинизма")
+    text = ". ".join(parts)
+    return text if text.endswith(".") else f"{text}."
+
+
 def fetch_csv(url: str) -> list[dict[str, str]]:
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=20) as response:
@@ -170,7 +311,7 @@ def poster_location(location: str) -> str:
     return clean_spaces(raw).upper()
 
 
-def compress_notes(notes: str | None, *, super_event: bool) -> list[str]:
+def note_chunks(notes: str | None) -> list[str]:
     if not notes:
         return []
     text = strip_emoji(notes)
@@ -180,8 +321,6 @@ def compress_notes(notes: str | None, *, super_event: bool) -> list[str]:
     text = re.sub(r"ВАЖНО:[\s\S]*", "", text)
     text = re.sub(r"ЧТО БРАТЬ[\s\S]*", "", text, flags=re.IGNORECASE)
     text = re.sub(r"Тренер:[\s\S]*", "", text)
-    text = re.sub(r"Уровень сложности:\s*", "Сложность: ", text, flags=re.IGNORECASE)
-    chunks = [clean_spaces(part) for part in re.split(r"[\n.!?]+", text) if clean_spaces(part)]
     skip_prefixes = (
         "приглашаем",
         "ставь",
@@ -191,28 +330,20 @@ def compress_notes(notes: str | None, *, super_event: bool) -> list[str]:
         "финиш:",
         "календар",
     )
-    kept: list[str] = []
-    for chunk in chunks:
+    chunks: list[str] = []
+    for part in re.split(r"[\n.!?]+", text):
+        chunk = clean_spaces(part)
+        if not chunk:
+            continue
         lowered = chunk.casefold()
         if any(lowered.startswith(prefix) for prefix in skip_prefixes):
             continue
-        if re.fullmatch(r"\d{1,2}\s+сентября|\d{1,2}\.\d{2}(\.\d{4})?", lowered):
+        if re.fullmatch(r"\d{1,2}\s+[а-яё]+|\d{1,2}\.\d{2}(\.\d{4})?", lowered):
             continue
-        sentence = chunk if chunk.endswith(".") else f"{chunk}."
-        kept.append(sentence)
-        if super_event and len(kept) >= 3:
-            break
-        if not super_event:
-            break
-    if super_event:
-        return kept[:3]
-    if not kept:
-        return []
-    line = kept[0]
-    if len(line) > 92:
-        line = line[:89].rsplit(" ", 1)[0]
-        line = line if line.endswith(".") else f"{line}."
-    return [line]
+        if "руб" in lowered or "₽" in chunk:
+            continue
+        chunks.append(chunk)
+    return chunks
 
 
 def first_plan_time(plan: str | None) -> str | None:
@@ -239,6 +370,16 @@ def week_bounds(now: datetime) -> tuple[datetime, datetime]:
     monday = (local - timedelta(days=local.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
     sunday_end = monday + timedelta(days=7)
     return monday, sunday_end
+
+
+def short_day_month(value: datetime) -> str:
+    return f"{value.day}.{value:%m}"
+
+
+def week_range_label(now: datetime) -> str:
+    monday, sunday_end = week_bounds(now)
+    sunday = sunday_end - timedelta(seconds=1)
+    return f"{short_day_month(monday)} – {short_day_month(sunday)}"
 
 
 def load_week_slots(now: datetime) -> list[Slot]:
@@ -308,6 +449,57 @@ def titled(slot: Slot) -> str:
     return name
 
 
+def load_used_photo_ids() -> list[str]:
+    if not USED_PHOTOS.exists():
+        return []
+    try:
+        data = json.loads(USED_PHOTOS.read_text(encoding="utf-8"))
+        return list(data) if isinstance(data, list) else []
+    except json.JSONDecodeError:
+        return []
+
+
+def save_used_photo_ids(ids: list[str]) -> None:
+    USED_PHOTOS.write_text(json.dumps(ids[-8:], ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def download_photo(photo: dict[str, str], dest: Path) -> None:
+    url = f"https://images.unsplash.com/photo-{photo['id']}?auto=format&fit=crop&w=1400&h=2500&q=80"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as response:
+        dest.write_bytes(response.read())
+
+
+def pick_backgrounds() -> tuple[Background, Background]:
+    CACHE.mkdir(parents=True, exist_ok=True)
+    used = load_used_photo_ids()
+    order = [item for item in PHOTO_POOL if item["id"] not in used]
+    random.shuffle(order)
+    fallback = list(PHOTO_POOL)
+    random.shuffle(fallback)
+    candidates = order + [item for item in fallback if item not in order]
+    backgrounds: list[Background] = []
+    chosen_ids: list[str] = []
+    for photo in candidates:
+        if photo["id"] in chosen_ids:
+            continue
+        path = CACHE / f"{len(backgrounds)}-{photo['id']}-{random.randint(1000, 9999)}.jpg"
+        try:
+            download_photo(photo, path)
+        except Exception:
+            continue
+        backgrounds.append(
+            Background(path=path, credit=photo["credit"], url=photo["url"], what=photo["what"])
+        )
+        chosen_ids.append(photo["id"])
+        if len(backgrounds) == 2:
+            break
+    if len(backgrounds) < 2:
+        raise SystemExit("Could not download two fresh background photos.")
+    save_used_photo_ids(used + chosen_ids)
+    return backgrounds[0], backgrounds[1]
+
+
 def load_bg(path: Path, dark: float = 0.32, blur: float = 16, brightness: float = 1.0) -> Image.Image:
     im = Image.open(path).convert("RGB")
     im = ImageOps.fit(im, (W, H), Image.Resampling.LANCZOS, centering=(0.5, 0.45))
@@ -323,7 +515,7 @@ def load_bg(path: Path, dark: float = 0.32, blur: float = 16, brightness: float 
 
 
 def add_grain(im: Image.Image, amount: int = 28) -> Image.Image:
-    rng = random.Random(20260908)
+    rng = random.Random()
     noise = Image.new("L", (W, H))
     noise.putdata([rng.randint(0, 255) for _ in range(W * H)])
     noise = noise.filter(ImageFilter.GaussianBlur(0.4))
@@ -431,8 +623,8 @@ def paste_dvor_logo(im: Image.Image, cx: float, cy: float, width: int) -> None:
     im.alpha_composite(logo, (x, y))
 
 
-def cover(range_label: str) -> Image.Image:
-    im = load_bg(BG_COVER, dark=0.30, blur=16, brightness=1.05)
+def cover(range_label: str, background: Background) -> Image.Image:
+    im = load_bg(background.path, dark=0.30, blur=16, brightness=1.05)
     d = ImageDraw.Draw(im)
     pill_f = font(FONT_EXTRABOLD, 34)
     draw_pill_outline(im, range_label, (W // 2, 210), pill_f, ACCENT, tracking=-1, pad_x=34, pad_y=14, stroke=3)
@@ -440,6 +632,7 @@ def cover(range_label: str) -> Image.Image:
     draw_tracked(d, (W / 2, 560), "НЕДЕЛЯ", title_f, WHITE, tracking=-10, anchor="mt")
     draw_tracked(d, (W / 2, 770), "ДВОРА", title_f, WHITE, tracking=-10, anchor="mt")
     draw_story_line(d, ACCENT, x0=MARGIN, x1=W, start_dot=True, end_dot=False)
+    paste_dvor_logo(im, W / 2, 1844, width=268)
     return add_grain(im, 34)
 
 
@@ -449,111 +642,133 @@ def schedule_header(d: ImageDraw.ImageDraw) -> None:
     draw_tracked(d, (W / 2, 152), "НА НЕДЕЛЮ", f, WHITE, tracking=-3, anchor="mt")
 
 
-def regular_slot(im: Image.Image, d: ImageDraw.ImageDraw, y: int, slot: Slot) -> int:
-    date_f = font(FONT_EXTRABOLD, 22)
-    time_f = font(FONT_BLACK, 28)
-    title_f = font(FONT_BLACK, 26)
-    loc_f = font(FONT_EXTRABOLD, 20)
-    notes_f = font(FONT_MEDIUM, 20)
-    pill = draw_left_pill(im, date_pill(slot), MARGIN, y + 22, date_f, ACCENT)
-    d.text((pill[2] + 16, y + 6), time_label(slot), font=time_f, fill=WHITE)
+def regular_block_h(slot: Slot) -> int:
+    title_f = font(FONT_BLACK, 28)
+    notes_f = font(FONT_MEDIUM, 22)
+    block_w = W - MARGIN - 430
+    title_lines = wrap_text(titled(slot), title_f, block_w, tracking=-1)[:2]
+    note_lines = fit_wrapped(accumulate_training(slot.notes), notes_f, block_w, 3)
+    return 16 + 34 * len(title_lines) + 36 + 28 * max(len(note_lines), 1) + 22
+
+
+def regular_slot(im: Image.Image, d: ImageDraw.ImageDraw, y0: int, y1: int, slot: Slot, draw_rule: bool) -> None:
+    date_f = font(FONT_EXTRABOLD, 24)
+    time_f = font(FONT_BLACK, 30)
+    title_f = font(FONT_BLACK, 28)
+    loc_f = font(FONT_EXTRABOLD, 22)
+    notes_f = font(FONT_MEDIUM, 22)
     block_x = 430
     block_w = W - MARGIN - block_x
+    title_lines = wrap_text(titled(slot), title_f, block_w, tracking=-1)[:2]
+    note_lines = fit_wrapped(accumulate_training(slot.notes), notes_f, block_w, 3)
+    y = y0 + 16
+    pill = draw_left_pill(im, date_pill(slot), MARGIN, y + 22, date_f, ACCENT)
+    d.text((pill[2] + 16, y + 6), time_label(slot), font=time_f, fill=WHITE)
     ty = y
-    for line in wrap_text(titled(slot), title_f, block_w, tracking=-1)[:2]:
+    for line in title_lines:
         draw_tracked(d, (block_x, ty), line, title_f, WHITE, tracking=-1, anchor="lt")
-        ty += 32
-    draw_tracked(d, (block_x, ty + 2), poster_location(slot.location), loc_f, ACCENT, tracking=-1, anchor="lt")
-    ty += 30
-    for line in compress_notes(slot.notes, super_event=False)[:1]:
-        for wrapped in wrap_text(line, notes_f, block_w)[:1]:
-            d.text((block_x, ty), wrapped, font=notes_f, fill=WHITE)
-            ty += 26
-    return max(ty + 8, y + 118)
+        ty += 34
+    draw_tracked(d, (block_x, ty + 4), poster_location(slot.location), loc_f, ACCENT, tracking=-1, anchor="lt")
+    ty += 36
+    for line in note_lines:
+        d.text((block_x, ty), line, font=notes_f, fill=WHITE)
+        ty += 28
+    if draw_rule:
+        d.line((MARGIN, y1 - 2, W - MARGIN, y1 - 2), fill=MUTED, width=1)
 
 
-def super_card(im: Image.Image, y: int, slot: Slot) -> None:
+def super_block_h(slot: Slot) -> int:
+    title_f = font(FONT_BLACK, 30)
+    tag_f = font(FONT_EXTRABOLD, 20)
+    body_f = font(FONT_MEDIUM, 24)
+    rw = W - MARGIN + 8 - 360 - 24 - 24
+    title_lines = wrap_text(titled(slot), title_f, rw, tracking=-1)[:2]
+    tag_lines = wrap_text(slot.super_tag or "ВЫЕЗД", tag_f, rw)
+    note_lines = wrap_text(accumulate_super(slot.notes, slot.title), body_f, rw)
+    right = SUPER_PAD + 36 * len(title_lines) + 28 * len(tag_lines) + 18 + 32 * len(note_lines) + SUPER_PAD
+    left = SUPER_PAD + 220 + SUPER_PAD
+    return max(right, left, 360)
+
+
+def super_card(im: Image.Image, y0: int, y1: int, slot: Slot) -> None:
     d = ImageDraw.Draw(im)
     x0, x1 = MARGIN - 8, W - MARGIN + 8
-    y0, y1 = y, y + 390
     card = Image.new("RGBA", im.size, (0, 0, 0, 0))
     cd = ImageDraw.Draw(card)
     cd.rounded_rectangle((x0, y0, x1, y1), radius=24, fill=(8, 6, 4, 168), outline=ACCENT, width=3)
     im.alpha_composite(card)
     d = ImageDraw.Draw(im)
     split = 360
-    d.line((split, y0 + 32, split, y1 - 32), fill=(255, 255, 255, 160), width=2)
-    date_f = font(FONT_BLACK, 52)
-    day_f = font(FONT_EXTRABOLD, 26)
-    time_f = font(FONT_EXTRABOLD, 26)
-    title_f = font(FONT_BLACK, 28)
-    tag_f = font(FONT_EXTRABOLD, 18)
-    body_f = font(FONT_MEDIUM, 20)
+    d.line((split, y0 + SUPER_PAD, split, y1 - SUPER_PAD), fill=(255, 255, 255, 160), width=2)
+    date_f = font(FONT_BLACK, 56)
+    day_f = font(FONT_EXTRABOLD, 28)
+    time_f = font(FONT_EXTRABOLD, 28)
+    title_f = font(FONT_BLACK, 30)
+    tag_f = font(FONT_EXTRABOLD, 20)
+    body_f = font(FONT_MEDIUM, 24)
     left_cx = int((x0 + split) / 2)
-    draw_tracked(d, (left_cx, y0 + 48), f"{slot.starts_at:%d.%m}", date_f, ACCENT, tracking=-3, anchor="mt")
+    left_y = y0 + SUPER_PAD
+    draw_tracked(d, (left_cx, left_y), f"{slot.starts_at:%d.%m}", date_f, ACCENT, tracking=-3, anchor="mt")
     draw_tracked(
         d,
-        (left_cx, y0 + 112),
+        (left_cx, left_y + 72),
         f"({WEEKDAYS[slot.starts_at.weekday()]})",
         day_f,
         WHITE,
         tracking=0,
         anchor="mt",
     )
-    draw_pill_outline(im, time_label(slot), (left_cx, y0 + 200), time_f, WHITE, pad_x=22, pad_y=10, stroke=3)
+    draw_pill_outline(im, time_label(slot), (left_cx, left_y + 168), time_f, WHITE, pad_x=22, pad_y=10, stroke=3)
     rx = split + 24
     rw = x1 - rx - 24
-    ty = y0 + 36
-    for line in wrap_text(titled(slot), title_f, rw, tracking=-1)[:2]:
+    title_lines = wrap_text(titled(slot), title_f, rw, tracking=-1)[:2]
+    tag_lines = wrap_text(slot.super_tag or "ВЫЕЗД", tag_f, rw)
+    note_lines = wrap_text(accumulate_super(slot.notes, slot.title), body_f, rw)
+    ty = y0 + SUPER_PAD
+    for line in title_lines:
         draw_tracked(d, (rx, ty), line, title_f, WHITE, tracking=-1, anchor="lt")
-        ty += 34
-    for line in wrap_text(slot.super_tag or "ВЫЕЗД", tag_f, rw):
+        ty += 36
+    for line in tag_lines:
         draw_tracked(d, (rx, ty + 4), line, tag_f, ACCENT, tracking=0, anchor="lt")
-        ty += 26
-    ty += 8
-    body = compress_notes(slot.notes, super_event=True)
-    if not body:
-        body = ["Выезд."]
-    for line in body[:4]:
-        for wrapped in wrap_text(line, body_f, rw):
-            d.text((rx, ty), wrapped, font=body_f, fill=WHITE)
-            ty += 24
-            if ty > y1 - 28:
-                return
+        ty += 28
+    ty += 18
+    for line in note_lines:
+        d.text((rx, ty), line, font=body_f, fill=WHITE)
+        ty += 32
 
 
-def schedule(slots: list[Slot]) -> Image.Image:
-    im = load_bg(BG_SCHED, dark=0.28, blur=12, brightness=1.45)
+def schedule(slots: list[Slot], background: Background) -> Image.Image:
+    im = load_bg(background.path, dark=0.28, blur=12, brightness=1.25)
     d = ImageDraw.Draw(im)
     schedule_header(d)
     regulars = [item for item in slots if not item.is_super]
     supers = [item for item in slots if item.is_super]
-    y = 236
+    y = CONTENT_TOP
     for i, slot in enumerate(regulars):
-        y = regular_slot(im, d, y, slot)
-        if i < len(regulars) - 1:
-            d.line((MARGIN, y + 6, W - MARGIN, y + 6), fill=MUTED, width=1)
-            y += 22
-        else:
-            y += 18
-    for slot in supers:
-        super_card(im, y, slot)
-        y += 410
+        y1 = y + regular_block_h(slot)
+        regular_slot(im, d, y, y1, slot, draw_rule=i < len(regulars) - 1)
+        y = y1
+    if supers:
+        y += SUPER_GAP
+        for i, slot in enumerate(supers):
+            y1 = min(y + super_block_h(slot), CONTENT_BOTTOM)
+            super_card(im, y, y1, slot)
+            y = y1 + SUPER_GAP
     d = ImageDraw.Draw(im)
     draw_story_line(d, ACCENT, x0=0, x1=W // 2, start_dot=False, end_dot=True)
     paste_dvor_logo(im, W / 2, 1844, width=268)
     return add_grain(im, 30)
 
 
-def cover_range(slots: list[Slot]) -> str:
-    first = min(item.starts_at for item in slots)
-    last = max(item.starts_at for item in slots)
-    return f"{first:%d.%m} – {last:%d.%m}"
-
-
-def write_credits(out_dir: Path, slots: list[Slot]) -> None:
+def write_credits(
+    out_dir: Path,
+    slots: list[Slot],
+    week_label: str,
+    cover_bg: Background,
+    schedule_bg: Background,
+) -> None:
     lines = [
-        f"Неделя: {cover_range(slots)}",
+        f"Неделя: {week_label}",
         "",
         "Слоты:",
     ]
@@ -565,11 +780,11 @@ def write_credits(out_dir: Path, slots: list[Slot]) -> None:
         )
     lines += [
         "",
-        "Фоны — Unsplash License:",
-        "01-cover.png — Moises Alex (@arnok), грунт/корт",
-        "https://unsplash.com/photos/WqI-PbYugn4",
-        "02-schedule.png — Bogdan Yukhymchuk (@yuhy), боксёрские перчатки",
-        "https://unsplash.com/photos/XmvuWRDimrg",
+        "Фоны — Unsplash License, новые на каждую генерацию:",
+        f"01-cover.png — {cover_bg.credit}, {cover_bg.what}",
+        cover_bg.url,
+        f"02-schedule.png — {schedule_bg.credit}, {schedule_bg.what}",
+        schedule_bg.url,
         "",
         "Логотип DVOR — scripts/assets/week_stories/logo-dvor.png",
         "Акцент: #ADB838",
@@ -586,7 +801,7 @@ def main() -> None:
         if args.now
         else datetime.now(MOSCOW)
     )
-    for required in (FONT_BLACK, FONT_EXTRABOLD, FONT_MEDIUM, LOGO_MARK, BG_COVER, BG_SCHED):
+    for required in (FONT_BLACK, FONT_EXTRABOLD, FONT_MEDIUM, LOGO_MARK):
         if not required.exists():
             raise SystemExit(f"Missing asset: {required}")
 
@@ -594,14 +809,19 @@ def main() -> None:
     if not slots:
         raise SystemExit("No remaining slots for the current week.")
 
+    cover_bg, schedule_bg = pick_backgrounds()
+    week_label = week_range_label(now)
     out_dir = ROOT / "output" / f"stories-{now:%Y-%m-%d}"
     out_dir.mkdir(parents=True, exist_ok=True)
-    frames = [("01-cover.png", cover(cover_range(slots))), ("02-schedule.png", schedule(slots))]
+    frames = [
+        ("01-cover.png", cover(week_label, cover_bg)),
+        ("02-schedule.png", schedule(slots, schedule_bg)),
+    ]
     for name, im in frames:
         path = out_dir / name
         im.convert("RGB").save(path, "PNG", optimize=True)
         print("wrote", path)
-    write_credits(out_dir, slots)
+    write_credits(out_dir, slots, week_label, cover_bg, schedule_bg)
     print("wrote", out_dir / "CREDITS.txt")
 
 
