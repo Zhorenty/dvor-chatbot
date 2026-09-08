@@ -38,7 +38,9 @@ extension PrivateHandlersDispatch on PrivateHandlers {
     final isWhitelistedTrainer =
         userId != null && isTrainerBookingWhitelisted(userId: userId, username: username);
     final canRunAdminAction = _adminHandler.canRunAdminAction(isAdmin: isConfiguredAdmin);
-    final canRunParticipantsAction = canRunAdminAction || isWhitelistedTrainer;
+    final isCoachingStaffTrainer = _trainerDirectoryRepository.containsUsername(username);
+    final canRunParticipantsAction =
+        canRunAdminAction || isWhitelistedTrainer || isCoachingStaffTrainer;
     final flowState = userId == null ? null : _flowByUserId[userId];
     final paymentProof = extractPaymentProof(context.message);
     if (_isIgnorableServiceMessage(context.message)) {

@@ -1,26 +1,8 @@
 const Set<int> trainerBookingWhitelistUserIds = <int>{};
 
 const Set<String> trainerBookingWhitelistUsernames = <String>{
-  /// Катя
-  '@k_morozzovaa',
-
-  /// Даша
-  '@whatshapped',
-
-  /// Андрей
-  '@androdentio',
-
-  /// Саша Шум
-  '@shum_show',
-
-  /// Антон
-  '@dukarev_team',
-
-  /// Паша
-  '@benjaminnnnnm',
-
-  /// Родя
-  '@oh_rodya',
+  /// Босс
+  '@Zhorenty',
 
   /// Денчик
   '@nudden',
@@ -50,4 +32,28 @@ String? normalizeTelegramUsername(String? username) {
     return null;
   }
   return raw.toLowerCase();
+}
+
+String? telegramUsernameFromLink(String? rawLink) {
+  final trimmed = rawLink?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return null;
+  }
+  if (trimmed.startsWith('@')) {
+    return normalizeTelegramUsername(trimmed);
+  }
+  final withScheme = (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
+      ? trimmed
+      : 'https://$trimmed';
+  final uri = Uri.tryParse(withScheme);
+  final host = uri?.host.toLowerCase();
+  if (uri != null &&
+      (host == 't.me' ||
+          host == 'www.t.me' ||
+          host == 'telegram.me' ||
+          host == 'www.telegram.me')) {
+    final segment = uri.pathSegments.isEmpty ? '' : uri.pathSegments.first;
+    return normalizeTelegramUsername(segment);
+  }
+  return normalizeTelegramUsername(trimmed);
 }

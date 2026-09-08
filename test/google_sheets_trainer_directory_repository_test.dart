@@ -106,5 +106,26 @@ void main() {
       expect(refreshed, isTrue);
       expect(repository.list().single.link, 'https://t.me/@alex');
     });
+
+    test('matches coaching staff by username and t.me link', () async {
+      final repository = GoogleSheetsTrainerDirectoryRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'name,link,description,role\n'
+            'Alex,@alex,Head coach,Strength\n'
+            'Maria,https://t.me/maria_run,Running coach,Running',
+            200,
+          );
+        }),
+      );
+
+      expect(await repository.refresh(force: true), isTrue);
+      expect(repository.containsUsername('alex'), isTrue);
+      expect(repository.containsUsername('@Alex'), isTrue);
+      expect(repository.containsUsername('maria_run'), isTrue);
+      expect(repository.containsUsername('unknown_coach'), isFalse);
+      expect(repository.containsUsername(null), isFalse);
+    });
   });
 }

@@ -215,7 +215,7 @@ void main() {
         fakeBooking(
           id: 22,
           userId: 999001,
-          userUsername: '@whatshapped',
+          userUsername: '@Zhorenty',
           trainingKey: 'hikes|22',
           title: '🥾 Поход тренера',
           status: BookingStatus.paid,
@@ -225,7 +225,7 @@ void main() {
         fakeBooking(
           id: 23,
           userId: 999002,
-          userUsername: '@k_morozzovaa',
+          userUsername: '@Zhorenty',
           trainingKey: 'trainings|23',
           title: 'Бесплатная тренера',
           status: BookingStatus.freeTraining,

@@ -157,7 +157,7 @@ void main() {
 
       await repository.createPendingBooking(
         userId: 99001,
-        userUsername: '@whatshapped',
+        userUsername: '@nudden',
         training: training,
       );
 
@@ -1798,7 +1798,7 @@ void main() {
       // Whitelisted trainer username from trainer_booking_whitelist.dart.
       await repository.createPendingBookingGroup(
         managerUserId: 6401,
-        managerUsername: 'k_morozzovaa',
+        managerUsername: 'nudden',
         training: training,
         participants: const <BookingParticipantDraft>[
           BookingParticipantDraft.guest(name: 'Друг 1'),

@@ -35,6 +35,11 @@ final class GoogleSheetsTrainerDirectoryRepository implements TrainerDirectoryRe
   }
 
   @override
+  bool containsUsername(String? username) {
+    return trainerDirectoryContainsUsername(trainers: _cached, username: username);
+  }
+
+  @override
   Future<bool> refresh({bool force = false}) async {
     final current = _nowProvider();
     if (!force &&

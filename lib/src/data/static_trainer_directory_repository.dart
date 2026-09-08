@@ -12,5 +12,10 @@ final class StaticTrainerDirectoryRepository implements TrainerDirectoryReposito
   List<TrainerInfo> list({int limit = 20}) => _items.take(limit).toList(growable: false);
 
   @override
+  bool containsUsername(String? username) {
+    return trainerDirectoryContainsUsername(trainers: _items, username: username);
+  }
+
+  @override
   Future<bool> refresh({bool force = false}) async => true;
 }

@@ -1,0 +1,16 @@
+Неделя: 09.09 – 12.09
+
+Слоты:
+- 09.09 (ср) 19:30 [обычный] CROSSFIT (ИЛЬЯ ШУТЫЙ) / СТАДИОН «КУБАНЬ»
+- 10.09 (чт) 19:30 [обычный] OPEN BOXING DVOR (ДАВИД ГЕЦОВ) / СТАДИОН «КУБАНЬ»
+- 12.09 (сб) 05:00 [супер] «ВОСХОЖДЕНИЕ НА ОШТЕН» / АДЫГЕЯ
+- 12.09 (сб) 08:30 [обычный] DVOR MORNING RUN (АНТОН ДЮКАРЕВ) / SURF COFFEE X RIVERSIDE
+
+Фоны — Unsplash License:
+01-cover.png — Moises Alex (@arnok), грунт/корт
+https://unsplash.com/photos/WqI-PbYugn4
+02-schedule.png — Bogdan Yukhymchuk (@yuhy), боксёрские перчатки
+https://unsplash.com/photos/XmvuWRDimrg
+
+Логотип DVOR — scripts/assets/week_stories/logo-dvor.png
+Акцент: #ADB838

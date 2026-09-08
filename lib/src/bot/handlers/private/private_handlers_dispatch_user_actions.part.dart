@@ -9,7 +9,6 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
     final showReturnToAdminMenu = ctx.showReturnToAdminMenu;
     final canRunAdminAction = ctx.canRunAdminAction;
     final canRunParticipantsAction = ctx.canRunParticipantsAction;
-    final isWhitelistedTrainer = ctx.isWhitelistedTrainer;
     final flowState = ctx.flowState;
 
     if (text != null && text == MessageTemplates.buttonCancelBooking) {
@@ -510,7 +509,7 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       if (userId == null) {
         return false;
       }
-      if (isWhitelistedTrainer && !canRunAdminAction) {
+      if (canRunParticipantsAction && !canRunAdminAction) {
         _flowByUserId.remove(userId);
         await _sendParticipantsByCategory(
           chatId: chatId,

@@ -411,6 +411,39 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonSubscription)));
     });
 
+    test('shows participants button in private menu for coaching staff trainer', () async {
+      final sender = _FakeSender();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        trainerDirectoryRepository: _FakeTrainerDirectoryRepository(
+          const <TrainerInfo>[
+            TrainerInfo(
+              name: 'Алексей Петров',
+              link: 'https://t.me/alxpetrov',
+              description: 'Силовая подготовка',
+              role: 'Сила',
+            ),
+          ],
+        ),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4410, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4410, 'username': 'alxpetrov'},
+        'text': '/start',
+      });
+
+      expect(handled, isTrue);
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonParticipantsList));
+      expect(buttons, contains(MessageTemplates.buttonBookTraining));
+      expect(buttons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
+    });
+
     test('shows participants button in private menu for whitelisted trainer', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
@@ -2084,7 +2117,7 @@ void main() {
     test('skips payment confirmation flow for whitelisted trainer booking', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();
-      expect(isTrainerBookingWhitelisted(userId: 857655217, username: '@whatshapped'), isTrue);
+      expect(isTrainerBookingWhitelisted(userId: 857655217, username: '@nudden'), isTrue);
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(
@@ -2107,7 +2140,7 @@ void main() {
         'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
         'from': <String, dynamic>{
           'id': 857655217,
-          'username': 'whatshapped',
+          'username': 'nudden',
         },
         'text': '/book',
       });
@@ -2115,7 +2148,7 @@ void main() {
         'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
         'from': <String, dynamic>{
           'id': 857655217,
-          'username': 'whatshapped',
+          'username': 'nudden',
         },
         'text': MessageTemplates.buttonCategoryTrainings,
       });
@@ -2123,7 +2156,7 @@ void main() {
         'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
         'from': <String, dynamic>{
           'id': 857655217,
-          'username': 'whatshapped',
+          'username': 'nudden',
         },
         'text': '🎯 1. Paid session',
       });
@@ -2221,7 +2254,7 @@ void main() {
     test('prefers coaching staff free booking message when user is also in dvor team', () async {
       final sender = _FakeSender();
       final bookingRepository = _FakeBookingRepository();
-      expect(isTrainerBookingWhitelisted(userId: 857655217, username: '@whatshapped'), isTrue);
+      expect(isTrainerBookingWhitelisted(userId: 857655217, username: '@nudden'), isTrue);
       final handlers = PrivateHandlers(
         sender: sender,
         scheduleRepository: _FakeScheduleRepository(
@@ -2236,7 +2269,7 @@ void main() {
         ),
         bookingRepository: bookingRepository,
         dvorTeamRepository: FakeDvorTeamRepository(
-          usernames: const <String>{'@whatshapped'},
+          usernames: const <String>{'@nudden'},
         ),
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
@@ -2247,7 +2280,7 @@ void main() {
         'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
         'from': <String, dynamic>{
           'id': 857655217,
-          'username': 'whatshapped',
+          'username': 'nudden',
         },
         'text': '/book',
       });
@@ -2255,7 +2288,7 @@ void main() {
         'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
         'from': <String, dynamic>{
           'id': 857655217,
-          'username': 'whatshapped',
+          'username': 'nudden',
         },
         'text': MessageTemplates.buttonCategoryTrainings,
       });
@@ -2263,7 +2296,7 @@ void main() {
         'chat': <String, dynamic>{'id': 857655217, 'type': 'private'},
         'from': <String, dynamic>{
           'id': 857655217,
-          'username': 'whatshapped',
+          'username': 'nudden',
         },
         'text': '🎯 1. Paid session',
       });
@@ -4642,6 +4675,77 @@ void main() {
       expect(sender.lastContentMessage.text, isNot(contains('@runner_rejected')));
     });
 
+    test('shows trainings participants list directly for coaching staff trainer', () async {
+      final sender = _FakeSender();
+      final hike = TrainingInfo(
+        title: '🥾 Поход: Weekend',
+        startsAt: DateTime(2026, 9, 3, 8, 0),
+        location: 'Trailhead',
+        category: ActivityCategory.hikes,
+      );
+      final run = TrainingInfo(
+        title: 'Morning Run',
+        startsAt: DateTime(2026, 9, 3, 7, 0),
+        location: 'Park',
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          _booking(
+            id: 811,
+            userId: 8111,
+            userUsername: 'hiker',
+            trainingKey: hike.sessionKey,
+            title: hike.title,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.paid,
+          ),
+          _booking(
+            id: 812,
+            userId: 8112,
+            userUsername: 'runner',
+            trainingKey: run.sessionKey,
+            title: run.title,
+            startsAt: run.startsAt,
+            location: run.location,
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(<TrainingInfo>[run]),
+        bookingRepository: bookingRepository,
+        trainerDirectoryRepository: _FakeTrainerDirectoryRepository(
+          const <TrainerInfo>[
+            TrainerInfo(
+              name: 'Мария Романова',
+              link: '@maria_run',
+              description: 'Беговые тренировки',
+              role: 'Бег',
+            ),
+          ],
+        ),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 9, 1, 12, 0),
+      );
+
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4411, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4411, 'username': 'maria_run'},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+
+      expect(handled, isTrue);
+      expect(sender.messages, hasLength(1));
+      expect(sender.messages.single.text, contains('Список записавшихся по тренировкам'));
+      expect(sender.messages.single.text, contains('@runner'));
+      expect(sender.messages.single.text, isNot(contains('@hiker')));
+      expect(sender.messages.single.text, isNot(contains('Выбери категорию')));
+      final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(buttons, contains(MessageTemplates.buttonParticipantsList));
+    });
+
     test('shows trainings participants list directly for whitelisted trainer', () async {
       final sender = _FakeSender();
       final hike = TrainingInfo(
@@ -4684,11 +4788,12 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{},
+        nowProvider: () => DateTime(2026, 9, 1, 12, 0),
       );
 
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 4402, 'type': 'private'},
-        'from': <String, dynamic>{'id': 4402, 'username': 'androdentio'},
+        'from': <String, dynamic>{'id': 4402, 'username': 'nudden'},
         'text': MessageTemplates.buttonParticipantsList,
       });
 
@@ -4921,7 +5026,7 @@ void main() {
           _booking(
             id: 931,
             userId: 999001,
-            userUsername: '@whatshapped',
+            userUsername: '@nudden',
             trainingKey: hike.sessionKey,
             title: hike.title,
             startsAt: hike.startsAt,
@@ -4975,7 +5080,7 @@ void main() {
       final messageText = sender.lastContentMessage.text;
       expect(messageText, contains('@hike_user'));
       expect(messageText, contains('🧑‍🏫 Тренеры:'));
-      expect(messageText, contains('@whatshapped'));
+      expect(messageText, contains('@nudden'));
     });
 
     test('merges training participants when session date changes', () async {
@@ -5041,6 +5146,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{2003},
+        nowProvider: () => DateTime(2026, 8, 30, 12, 0),
       );
 
       await handlers.handle(<String, dynamic>{
@@ -5187,6 +5293,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{2001},
+        nowProvider: () => DateTime(2026, 9, 1, 12, 0),
       );
 
       final handled = await handlers.handle(<String, dynamic>{

@@ -76,6 +76,7 @@ void main(List<String> args) {
       await onboardingRepository.init();
       await conversationLogRepository.init();
       await loyaltyRepository.init();
+      await trainerDirectoryRepository.refresh();
       final loyaltyService = LoyaltyService(repository: loyaltyRepository);
 
       GoogleSheetsWriter? googleSheetsWriter;

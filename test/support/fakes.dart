@@ -1112,6 +1112,11 @@ final class FakeTrainerDirectoryRepository implements TrainerDirectoryRepository
   List<TrainerInfo> list({int limit = 20}) => items.take(limit).toList(growable: false);
 
   @override
+  bool containsUsername(String? username) {
+    return trainerDirectoryContainsUsername(trainers: items, username: username);
+  }
+
+  @override
   Future<bool> refresh({bool force = false}) async {
     refreshCalls += 1;
     return refreshResult;
