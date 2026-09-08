@@ -8,7 +8,10 @@ void main() {
         GoogleSheetsInputUi.sheets.map((sheet) => sheet.title),
         isNot(contains(GoogleSheetsInputUi.funnelTitle)),
       );
-      expect(GoogleSheetsInputUi.legendTitle, isNot(GoogleSheetsInputUi.funnelTitle));
+      expect(
+        GoogleSheetsInputUi.obsoleteInputSheetTitles,
+        containsAll(<String>['КАК ЗАПОЛНЯТЬ', 'Команда DVOR', 'ДВОРЯНЕ', 'ДЕЙСТВИЯ']),
+      );
     });
 
     test('maps live gids to human tab titles', () {
@@ -21,7 +24,6 @@ void main() {
           294119056: 'Походы',
           1220729038: 'Трейлы',
           195037978: 'Тренерский штаб',
-          2001400867: 'Команда DVOR',
           432112868: 'Промокоды',
         },
       );
@@ -93,6 +95,23 @@ void main() {
         'Походы',
         'Трейлы',
       ]);
+      expect(GoogleSheetsInputUi.staffRoleDropdownValues, <String>[
+        'Тренер',
+        'Команда DVOR',
+      ]);
+    });
+
+    test('staff sheet has role dropdown and direction, not a separate team tab', () {
+      expect(
+        GoogleSheetsInputUi.coaches.columns.map((column) => column.header).toList(),
+        <String>['имя', 'username', 'роль', 'направление', 'описание', 'статус'],
+      );
+      expect(GoogleSheetsInputUi.coaches.columnNamed('роль')?.kind,
+          GoogleSheetsInputColumnKind.staffRole);
+      expect(GoogleSheetsInputUi.coaches.matchingColumn('role')?.header, 'роль');
+      expect(GoogleSheetsInputUi.coaches.matchingColumn('specialization')?.header, 'направление');
+      expect(
+          GoogleSheetsInputUi.sheets.map((sheet) => sheet.title), isNot(contains('Команда DVOR')));
     });
 
     test('maps English live headers to the Russian spec', () {
@@ -115,6 +134,17 @@ void main() {
       expect(formula, contains('нет описания'));
       expect(formula, contains('предоплата 50% по умолчанию'));
       expect(formula, contains('дата_по пусто = один день'));
+    });
+
+    test('staff status requires description only for coaches', () {
+      final formula = GoogleSheetsInputUi.statusFormula(
+        spec: GoogleSheetsInputUi.coaches,
+        formulaSep: ';',
+        targetRows: 50,
+      );
+      expect(formula, contains('нет роли'));
+      expect(formula, contains('нет описания'));
+      expect(formula, contains('Команда DVOR'));
     });
   });
 }

@@ -3,13 +3,14 @@ import 'dart:convert';
 
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/dvor_team_repository.dart';
+import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:http/http.dart' as http;
 import 'package:l/l.dart';
 
 final class GoogleSheetsDvorTeamRepository implements DvorTeamRepository {
   GoogleSheetsDvorTeamRepository({
     required Uri csvUrl,
-    int dvorTeamSheetId = 2001400867,
+    int dvorTeamSheetId = 195037978,
     Duration requestTimeout = const Duration(seconds: 10),
     Duration minRefreshInterval = const Duration(minutes: 5),
     http.Client? httpClient,
@@ -89,7 +90,12 @@ final class GoogleSheetsDvorTeamRepository implements DvorTeamRepository {
         '@',
         'юзернейм',
         'username_telegram',
+        'ссылка',
       ],
+    );
+    final roleIndex = _firstExistingHeaderIndex(
+      headers,
+      const <String>['роль', 'role', 'staff_role', 'kind', 'тип'],
     );
 
     if (usernameIndex < 0) {
@@ -102,9 +108,13 @@ final class GoogleSheetsDvorTeamRepository implements DvorTeamRepository {
     for (final row in rows.skip(1)) {
       final raw = _cell(row, usernameIndex);
       final normalized = normalizeTelegramUsername(raw);
-      if (normalized != null) {
-        usernames.add(normalized);
+      if (normalized == null) {
+        continue;
       }
+      if (StaffKindLabels.parse(_cell(row, roleIndex)) != StaffKind.team) {
+        continue;
+      }
+      usernames.add(normalized);
     }
     return usernames;
   }

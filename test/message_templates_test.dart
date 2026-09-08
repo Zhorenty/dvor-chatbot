@@ -3,6 +3,7 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
+import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
@@ -73,7 +74,8 @@ void main() {
         participantsLimit: 15,
       );
 
-      expect(text, contains('📍 Где: Вершина хребта Магито в Карачаево-Черкесии'));
+      expect(text, contains('📍 Где'));
+      expect(text, contains('Вершина хребта Магито в Карачаево-Черкесии'));
       expect(text, isNot(contains('<a href=')));
       expect(text, isNot(contains('google.com/maps/search')));
       expect(text, isNot(contains('yandex.ru/maps')));
@@ -93,7 +95,8 @@ void main() {
         ),
       ]);
 
-      expect(text, contains('🕒 пн, 22.06.2026 19:00'));
+      expect(text, contains('🕒'));
+      expect(text, contains('пн, 22.06.2026 19:00'));
     });
 
     test('builds group promo for training day with booking cta', () {
@@ -227,7 +230,6 @@ void main() {
 
     test('welcome leads with booking, not a club lecture', () {
       final text = templates.onboardingWelcome();
-      expect(text, contains('Первый шаг — записаться на тренировку'));
       expect(text, contains('Что сейчас важнее'));
       expect(text, isNot(contains('комьюнити')));
       expect(text, isNot(contains('семья')));
@@ -235,10 +237,10 @@ void main() {
 
     test('club map is a booking CTA and optional group door', () {
       final text = templates.onboardingClubMap(starterBonusAvailable: true);
-      expect(text, contains('выбрать слот и записаться'));
+      expect(text, contains('слот'));
       expect(text, contains('Можно зайти и ничего не писать'));
       expect(text, contains('приходи один'));
-      expect(text, contains('бесплатная тренировка за старт'));
+      expect(text, contains('бесплатная тренировка'));
       expect(text, isNot(contains('успей')));
       expect(text, isNot(contains('движ')));
       expect(text, isNot(contains('знаком')));
@@ -250,10 +252,10 @@ void main() {
 
     test('private welcome is a slot door, not a cashier-only dump', () {
       final text = templates.privateWelcome();
-      expect(text, contains('слоты DVOR'));
-      expect(text, contains('Быстрый старт'));
+      expect(text, contains('Слоты'));
       expect(text, isNot(contains('комьюнити')));
       expect(text, isNot(contains('знаком')));
+      expect(text, isNot(contains('Быстрый старт')));
     });
 
     test('group welcome has no trophy closer', () {
@@ -298,7 +300,8 @@ void main() {
           ),
         ],
       );
-      expect(text, contains('Силовая: Утренняя силовая'));
+      expect(text, contains('Силовая'));
+      expect(text, contains('Утренняя силовая'));
       expect(text, isNot(contains('Даша')));
     });
 
@@ -317,7 +320,7 @@ void main() {
       expect(text, contains('Вершинки'));
       expect(text, contains('2 ⛰️ = 1 ₽'));
       expect(text, contains('45 дней'));
-      expect(text, contains('профиле'));
+      expect(text, contains('@dvor_support'));
       expect(text, isNot(contains('каждая 5-я')));
       expect(text, isNot(contains('комьюнити')));
     });
@@ -352,7 +355,8 @@ void main() {
       expect(text, contains('350→200'));
       expect(text, contains('500→250'));
       expect(text, contains('скидка до 30%'));
-      expect(text, contains('Стартовая бесплатная: доступна'));
+      expect(text, contains('Стартовая'));
+      expect(text, contains('доступна'));
       expect(text, isNot(contains('каждая 5-я')));
       expect(text, isNot(contains('баллы')));
     });
@@ -460,7 +464,8 @@ void main() {
       );
 
       expect(text, contains('Событие: 🥾 Поход: ПИК ЗАКАН'));
-      expect(text, contains('📍 Где: Вершина хребта Магито в Карачаево-Черкесии'));
+      expect(text, contains('📍 Где'));
+      expect(text, contains('Вершина хребта Магито в Карачаево-Черкесии'));
       expect(text, isNot(contains('Тренировка:')));
       expect(text, isNot(contains('google.com/maps/search')));
       expect(text, isNot(contains('yandex.ru/maps')));
@@ -498,7 +503,8 @@ void main() {
         text,
         contains('<a href="https://yandex.ru/maps/?text=%D0%97%D0%B0%D0%BB%20DVOR">'),
       );
-      expect(text, contains('📍 Где: <a href='));
+      expect(text, contains('📍 Где'));
+      expect(text, contains('<a href='));
       expect(text, isNot(contains('google.com/maps/search')));
     });
   });
@@ -578,7 +584,7 @@ void main() {
         ),
       );
 
-      expect(text, contains('К оплате: <b>750 ₽</b>'));
+      expect(text, contains('750 ₽'));
       expect(text, contains('SUMMER50'));
       expect(text, contains('−50%'));
     });
@@ -819,6 +825,35 @@ void main() {
       );
       expect(text, contains('• реальные подъемы и участки, где придется включать характер'));
       expect(text, contains('• живописные тропы, свежий горный воздух'));
+    });
+  });
+
+  group('MessageTemplates coaching staff', () {
+    const templates = MessageTemplates();
+
+    test('lists coaches first and then the DVOR team block', () {
+      final text = templates.coachingStaff(const <TrainerInfo>[
+        TrainerInfo(
+          name: 'Alex',
+          link: '@alex',
+          description: 'Head coach',
+          role: 'Strength',
+        ),
+        TrainerInfo(
+          name: 'Родион',
+          link: '@oh_rodya',
+          description: '',
+          kind: StaffKind.team,
+        ),
+      ]);
+
+      expect(text, contains('Тренерский штаб'));
+      expect(text, contains('1. Alex'));
+      expect(text, contains('Strength'));
+      expect(text, contains('Команда DVOR'));
+      expect(text, contains('2. Родион'));
+      expect(text.indexOf('Alex'), lessThan(text.indexOf('Команда DVOR')));
+      expect(text.indexOf('Команда DVOR'), lessThan(text.indexOf('Родион')));
     });
   });
 }

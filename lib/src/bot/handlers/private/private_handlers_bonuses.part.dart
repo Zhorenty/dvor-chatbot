@@ -365,7 +365,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       step: _PrivateFlowStep.viewingSubscriptionOverview,
       availableTrainings: <TrainingInfo>[],
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.subscriptionOverview(
         membershipLevel: membership.level,
@@ -379,7 +379,6 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
         isRenewal: isRenewal,
         showIndividual: showIndividual,
       ),
-      parseMode: 'HTML',
     );
   }
 
@@ -460,7 +459,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     if (!credited.applied) {
       return;
     }
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.loyaltyStartCredited(starterBonusAvailable: starterBonusAvailable),
     );
@@ -489,7 +488,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
   }) async {
     final quote = await _loyaltyQuoteForBooking(userId: userId, booking: booking);
     if (quote.peaks <= 0) {
-      await _sender.sendMessage(chatId, _templates.loyaltyUnavailable());
+      await _sendScreen(chatId, _templates.loyaltyUnavailable());
       return true;
     }
     final result = await _loyaltyService.debit(
@@ -501,7 +500,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       bookingId: booking.id,
     );
     if (!result.applied) {
-      await _sender.sendMessage(chatId, _templates.loyaltyUnavailable());
+      await _sendScreen(chatId, _templates.loyaltyUnavailable());
       return true;
     }
     final category = _catalogService.categoryForBooking(booking);
@@ -517,7 +516,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
         _trainingInfoFromBooking(paid ?? booking),
         bookingStatus: BookingStatus.paid,
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.loyaltySpendApplied(
           peaks: quote.peaks,
@@ -561,7 +560,6 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
             ),
       showStarterBonus: false,
       showLoyaltySpend: false,
-      parseMode: 'HTML',
     );
     return true;
   }
@@ -582,7 +580,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     if (!result.applied) {
       return;
     }
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.loyaltyCredited(
         amount: LoyaltyMath.feedbackPeaks,
@@ -641,7 +639,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     if (!result.applied) {
       return;
     }
-    await _sender.sendMessage(
+    await _sendScreen(
       request.userId,
       _templates.loyaltyCredited(
         amount: amount,
@@ -661,7 +659,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
   }) async {
     final quote = await _loyaltyQuoteForCard(userId: userId, plan: plan);
     if (quote.peaks <= 0) {
-      await _sender.sendMessage(chatId, _templates.loyaltyUnavailable());
+      await _sendScreen(chatId, _templates.loyaltyUnavailable());
       return true;
     }
     final result = await _loyaltyService.debit(
@@ -672,7 +670,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       now: _nowProvider(),
     );
     if (!result.applied) {
-      await _sender.sendMessage(chatId, _templates.loyaltyUnavailable());
+      await _sendScreen(chatId, _templates.loyaltyUnavailable());
       return true;
     }
     if (quote.coversFully) {
@@ -685,7 +683,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       _flowByUserId.remove(userId);
       if (activated.outcome == SubmitSubscriptionRequestOutcome.alreadyPending) {
         await _refundPendingCardLoyalty(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.subscriptionAlreadyPending(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -696,7 +694,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
         return true;
       }
       await _loyaltyService.touchActivity(userId, now: _nowProvider());
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.loyaltyCardSpendApplied(
           peaks: quote.peaks,
@@ -721,7 +719,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       selectedBoxingCardPlan: plan,
       loyaltySpendOffered: false,
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       '${_templates.loyaltyCardSpendApplied(
         peaks: quote.peaks,
@@ -732,7 +730,6 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
         remainderRub: quote.remainderRub,
       )}',
       replyMarkup: _templates.subscriptionPaymentKeyboard(showLoyaltySpend: false),
-      parseMode: 'HTML',
     );
     return true;
   }

@@ -59,7 +59,8 @@ final class SubscriptionRenewalJob {
       }
       try {
         final usage = await _usageFor(target.request, now: now);
-        await _sender.sendMessage(
+        await sendBotHtml(
+          _sender,
           target.request.userId,
           _templates.subscriptionRenewalReminder(
             activeUntil: until,
@@ -68,7 +69,6 @@ final class SubscriptionRenewalJob {
             groupQuota: usage.quota,
             individualUsed: usage.individualUsed,
           ),
-          parseMode: 'HTML',
         );
         await _subscriptionRepository.markRenewalReminderSent(
           requestId: target.request.id,
@@ -95,10 +95,10 @@ final class SubscriptionRenewalJob {
         continue;
       }
       try {
-        await _sender.sendMessage(
+        await sendBotHtml(
+          _sender,
           request.userId,
           _templates.subscriptionExpiryPromo(),
-          parseMode: 'HTML',
         );
         await _subscriptionRepository.markExpiryPromoSent(
           requestId: request.id,
@@ -149,13 +149,13 @@ final class SubscriptionRenewalJob {
               now: booking.startsAt,
             ) ??
             0;
-        await _sender.sendMessage(
+        await sendBotHtml(
+          _sender,
           booking.userId,
           _templates.boxingCardVisitDebited(
             remaining: remaining,
             quota: plan.groupQuota,
           ),
-          parseMode: 'HTML',
         );
       } on Object catch (error, stackTrace) {
         dedupe?.release(key);
@@ -175,10 +175,10 @@ final class SubscriptionRenewalJob {
         continue;
       }
       try {
-        await _sender.sendMessage(
+        await sendBotHtml(
+          _sender,
           request.userId,
           _templates.boxingCardIndividualReminder(activeUntil: until),
-          parseMode: 'HTML',
         );
         await _subscriptionRepository.markIndividualReminderSent(
           requestId: request.id,

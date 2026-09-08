@@ -3,6 +3,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/group_membership.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:l/l.dart';
 
 final class GroupHandlers {
@@ -329,15 +330,17 @@ final class GroupHandlers {
     }
 
     try {
-      final welcomeMessageId = await _sender.sendMessage(
+      final welcomeMessageId = await sendBotScreen(
+        _sender,
         chatId,
-        _templates.groupWelcome(
-          username: user['username']?.toString(),
-          userId: userId,
-          firstName: user['first_name']?.toString(),
+        InputRichMessage(
+          html: _templates.groupWelcome(
+            username: user['username']?.toString(),
+            userId: userId,
+            firstName: user['first_name']?.toString(),
+          ),
         ),
         disableNotification: true,
-        parseMode: 'HTML',
         replyMarkup: _templates.groupWelcomeUrlKeyboard(),
       );
       await _onboardingRepository.registerGroupWelcome(

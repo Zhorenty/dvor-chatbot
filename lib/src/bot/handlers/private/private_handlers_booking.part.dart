@@ -54,36 +54,32 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         participants: participants,
       );
     } on BookingParticipantsLimitExceededException {
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.bookingParticipantsLimitExceeded(),
         replyMarkup: _templates.simpleNavigationKeyboard(),
-        parseMode: 'HTML',
       );
       return;
     } on BookingManagerLimitExceededException {
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.partyManagerLimitExceeded(),
         replyMarkup: _templates.simpleNavigationKeyboard(),
-        parseMode: 'HTML',
       );
       return;
     } on BookingParticipantConflictException catch (error) {
       final label = error.message.replaceFirst('Participant already booked: ', '');
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.partyParticipantConflict(label),
         replyMarkup: _templates.simpleNavigationKeyboard(),
-        parseMode: 'HTML',
       );
       return;
     } on ArgumentError {
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.invalidPartyParticipantsInput(),
         replyMarkup: _templates.simpleNavigationKeyboard(),
-        parseMode: 'HTML',
       );
       return;
     }
@@ -108,7 +104,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         totalPrice: 0,
       );
       _flowByUserId.remove(userId);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.bookingGroupCreated(
           bookings: paidBookings,
@@ -116,7 +112,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
           totalPrice: 0,
         ),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
-        parseMode: 'HTML',
       );
       return;
     }
@@ -166,7 +161,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       )}\n\n'
           '$nextSteps',
       showStarterBonus: false,
-      parseMode: 'HTML',
     );
   }
 
@@ -187,7 +181,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         training: selectedTraining,
       );
     } on BookingParticipantsLimitExceededException {
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.bookingParticipantsLimitExceeded(),
         replyMarkup: onParticipantsLimitReplyMarkup,
@@ -213,13 +207,12 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         await _sendOutdoorPrepDetails(chatId, bookingForResponse);
       }
       _flowByUserId.remove(userId);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         result.created
             ? _templates.bookingCreatedWithoutPayment(bookingForResponse)
             : _templates.bookingAlreadyExists(bookingForResponse),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
-        parseMode: 'HTML',
       );
       return;
     }
@@ -237,13 +230,12 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         await _sendOutdoorPrepDetails(chatId, bookingForResponse);
       }
       await _notifyAdminAboutTrainerBookingCreated(bookingForResponse);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         result.created
             ? _templates.bookingCreatedForWhitelistedTrainer(bookingForResponse)
             : _templates.bookingAlreadyExists(bookingForResponse),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
-        parseMode: 'HTML',
       );
       return;
     }
@@ -264,13 +256,12 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         await _sendOutdoorPrepDetails(chatId, bookingForResponse);
       }
       await _notifyAdminAboutDvorTeamBookingCreated(bookingForResponse);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         result.created
             ? _templates.bookingCreatedForDvorTeamMember(bookingForResponse)
             : _templates.bookingAlreadyExists(bookingForResponse),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
-        parseMode: 'HTML',
       );
       return;
     }
@@ -302,7 +293,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       }
       final quota = membership.plan?.groupQuota ?? 0;
       final remainingAfter = ((remainingBefore ?? 1) - 1).clamp(0, quota);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         result.created
             ? _templates.boxingCardBookingCreated(
@@ -312,7 +303,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
               )
             : _templates.bookingAlreadyExists(bookingForResponse),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
-        parseMode: 'HTML',
       );
       return;
     }
@@ -326,10 +316,9 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       paymentChoice: null,
     );
     if (result.created && MessageFormatters.isOutdoorBooking(result.booking)) {
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.outdoorBookingRule(result.booking),
-        parseMode: 'HTML',
       );
     }
     await _sendPayableBookingCard(
@@ -339,7 +328,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
           ? _templates.bookingCreated(result.booking)
           : _templates.bookingAlreadyExists(result.booking),
       showStarterBonus: starterBonusOffered,
-      parseMode: 'HTML',
     );
   }
 
@@ -354,10 +342,9 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     if (notes == null || notes.isEmpty) {
       return;
     }
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.bookingSlotPrepNotes(trainingTitle: training.title, notes: notes),
-      parseMode: 'HTML',
     );
   }
 
@@ -369,15 +356,13 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     if (outdoorItem == null) {
       return;
     }
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.outdoorItineraryDetails(outdoorItem),
-      parseMode: 'HTML',
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.outdoorEquipmentDetails(outdoorItem),
-      parseMode: 'HTML',
     );
   }
 
@@ -386,7 +371,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required List<OutdoorActivityInfo> outdoorItems,
   }) async {
     final bookable = outdoorItems.map(_catalogService.toBookableInfo).toList(growable: false);
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.chooseTrainingForBooking(bookable),
       replyMarkup: _templates.bookingSelectionKeyboard(bookable),
@@ -400,14 +385,13 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required _ActivityCategory category,
     required bool fromSchedulePreview,
     String? messageText,
-    String? parseMode,
     bool disableWebPagePreview = true,
   }) async {
     if (_isOutdoorCategory(category)) {
       final outdoorItems = _catalogService.outdoorItems(category);
       if (outdoorItems.isEmpty) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.noUpcomingForBooking(),
           replyMarkup:
@@ -427,7 +411,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     final upcoming = _bookableItemsByCategory(category);
     if (upcoming.isEmpty) {
       _flowByUserId.remove(userId);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.noUpcomingForBooking(),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
@@ -440,11 +424,10 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       selectedCategory: category,
       bookingFromSchedulePreview: fromSchedulePreview,
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       messageText ?? _templates.chooseTrainingForBooking(upcoming),
       replyMarkup: _templates.bookingSelectionKeyboard(upcoming),
-      parseMode: parseMode,
       disableWebPagePreview: disableWebPagePreview,
     );
   }
@@ -464,9 +447,9 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     final bookings = await _bookingRepository.listUserBookings(userId, limit: 100);
     if (bookings.isEmpty) {
       _flowByUserId.remove(userId);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
-        'У тебя пока нет записей на мероприятия 🙃',
+        _templates.noBookingsYet(),
         replyMarkup: _templates.profileActionsKeyboard(),
       );
       return;
@@ -480,14 +463,13 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       availableTrainings: const <TrainingInfo>[],
       availableBookings: bookings,
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.chooseMyBookingsSegment(),
       replyMarkup: _templates.myBookingSegmentKeyboard(
         currentCount: currentCount,
         pastCount: pastCount,
       ),
-      parseMode: 'HTML',
     );
   }
 
@@ -514,7 +496,7 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       adminBookingsPage: page,
       availableBookings: allBookings,
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.chooseMyBookingFromList(
         pageBookings,
@@ -530,7 +512,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
               hasPreviousPage: page > 0,
               hasNextPage: page < maxPage,
             ),
-      parseMode: 'HTML',
     );
   }
 
@@ -580,17 +561,31 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     );
   }
 
+  List<List<RichMessageButton>> _bookingActionsRichButtons(TrainingBooking? booking) {
+    if (booking == null) {
+      return const <List<RichMessageButton>>[];
+    }
+    final canContinuePayment = _isPayableForProof(booking);
+    return _templates.bookingActionsRichButtons(
+      bookingId: booking.id,
+      canReschedule: _bookingPolicyService.canReschedule(booking),
+      canCancel: _canCancelBookingByPolicy(booking),
+      canRepeat: !canContinuePayment && booking.status != BookingStatus.partialPaid,
+      canCompletePayment: false,
+      canContinuePayment: canContinuePayment,
+    );
+  }
+
   Future<void> _sendBookingActionsCard({
     required int chatId,
     required TrainingBooking booking,
   }) async {
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.bookingActions(booking),
-      replyMarkup: _bookingActionsInlineKeyboard(booking),
-      parseMode: 'HTML',
+      buttonRows: _bookingActionsRichButtons(booking),
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.paymentCardNavHint(),
       replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -607,13 +602,12 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
             burnsSlot: BoxingCardLedger.burnsSlotOnCancel(booking, now: _nowProvider()),
           )
         : _templates.bookingCancelConfirm(booking);
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       confirmText,
-      replyMarkup: _templates.bookingCancelConfirmInlineKeyboard(booking.id),
-      parseMode: 'HTML',
+      buttonRows: _templates.bookingCancelConfirmRichButtons(booking.id),
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.paymentCardNavHint(),
       replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -667,7 +661,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
             training: training,
             participantsLimit: participantsLimit,
           ),
-          parseMode: 'HTML',
         );
         if (sent) {
           _fullCapacityNotifiedTrainingKeys.add(training.sessionKey);
@@ -693,7 +686,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
           freeSpots: freeSpots,
           participantsLimit: participantsLimit,
         ),
-        parseMode: 'HTML',
       );
       if (sent) {
         _lowCapacityNotifiedTrainingKeys.add(training.sessionKey);

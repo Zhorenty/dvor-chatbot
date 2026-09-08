@@ -85,8 +85,6 @@ void main() {
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.chatId, 11);
       expect(sender.messages.single.text, contains('Добро пожаловать в DVOR'));
-      expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
-      expect(sender.messages.single.text, contains('Группа DVOR'));
       expect(sender.messages.single.replyMarkup, isNotNull);
       expect(sender.pinnedMessages, hasLength(1));
       expect(sender.pinnedMessages.single.chatId, 11);
@@ -147,10 +145,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(2));
       expect(sender.messages.first.text, contains('Добро пожаловать в DVOR'));
-      expect(sender.messages.first.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
       expect(sender.lastContentMessage.text, contains('бесплатная тренировка'));
-      expect(sender.lastContentMessage.text, contains('Записаться'));
-      expect(sender.lastContentMessage.text, contains(MessageTemplates.buttonUseStarterBonus));
       expect(sender.pinnedMessages, hasLength(1));
       expect(sender.pinnedMessages.single.chatId, 112);
       expect(sender.pinnedMessages.single.messageId, 1);
@@ -630,8 +625,10 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages.single.text, contains('Групповые: <b>6/8</b>'));
-      expect(sender.messages.single.text, contains('Индивидуальная: <b>0/1</b>'));
+      expect(sender.messages.single.text, contains('Групповые'));
+      expect(sender.messages.single.text, contains('6/8'));
+      expect(sender.messages.single.text, contains('Индивидуальная'));
+      expect(sender.messages.single.text, contains('0/1'));
       expect(
         _keyboardTexts(sender.messages.single.replyMarkup),
         contains(MessageTemplates.buttonRenewSubscription),
@@ -750,7 +747,7 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.lastContentMessage.text, contains('Тариф: <b>БАЗА</b>'));
+      expect(sender.lastContentMessage.text, contains('БАЗА'));
     });
 
     test('admin can cancel active subscription by command', () async {
@@ -841,7 +838,6 @@ void main() {
       expect(sender.messages.single.text, contains('Профиль DVOR'));
       expect(sender.messages.single.text, contains('Вершинки'));
       expect(sender.messages.single.text, contains('2 ⛰️ = 1 ₽'));
-      expect(sender.messages.single.text, contains(MessageTemplates.buttonProfileBookings));
       expect(sender.messages.single.parseMode, 'HTML');
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonProfileBookings));
@@ -874,7 +870,6 @@ void main() {
       expect(sender.messages.single.text, contains('Реферальная программа DVOR'));
       expect(sender.messages.single.text, contains('https://t.me/dvor_test_bot?start=ref_9503'));
       expect(sender.messages.single.text, contains('1000 ⛰️'));
-      expect(sender.messages.single.text, contains('45 дней'));
       expect(sender.messages.single.parseMode, 'HTML');
     });
 
@@ -968,17 +963,17 @@ void main() {
       expect(profileHandled, isTrue);
       expect(trainerDirectoryRepository.refreshCalls, 1);
       expect(sender.messages, hasLength(3));
-      expect(sender.messages.first.text, contains('Тренерский штаб DVOR'));
+      expect(sender.messages.first.text, contains('Тренерский штаб'));
       expect(sender.messages.first.text, contains('Алексей Петров'));
       expect(sender.messages.first.text, contains('Силовые и функциональные тренировки'));
-      expect(sender.messages.first.text, isNot(contains('📝')));
-      expect(sender.messages[1].text, contains('Выбери тренера'));
-      expect(sender.lastContentMessage.text, contains('<b>Мария Романова</b>'));
+      expect(sender.messages.first.text, isNot(contains('О тренере')));
+      expect(sender.messages[1].text, contains('Выбери имя из списка'));
+      expect(sender.lastContentMessage.text, contains('Мария Романова'));
       expect(sender.lastContentMessage.text, contains('Направление'));
-      expect(sender.lastContentMessage.text, contains('📝 <b>О тренере:</b>'));
+      expect(sender.lastContentMessage.text, contains('О тренере'));
       expect(
         sender.lastContentMessage.text,
-        contains('\n🔗 <b>Контакт:</b> <a href="https://t.me/maria_run">@maria_run</a>'),
+        contains('<a href="https://t.me/maria_run">@maria_run</a>'),
       );
       expect(sender.lastContentMessage.text, contains('Беговые тренировки\n\nи восстановление'));
       expect(sender.messages.first.disableWebPagePreview, isTrue);
@@ -1288,14 +1283,13 @@ void main() {
       expect(sender.messages, hasLength(1));
       expect(
         sender.messages.single.text,
-        contains('Показываю ближайшие тренировки, походы и трейлы'),
+        contains('слоты, запись и статус'),
       );
       expect(sender.messages.single.text, contains('Вершинки'));
       expect(sender.messages.single.text, contains('2 ⛰️ = 1 ₽'));
       expect(sender.messages.single.text, isNot(contains('каждая 5-я')));
-      expect(sender.messages.single.text, contains('Группа DVOR'));
-      expect(sender.messages.single.text, contains('https://t.me/+n4ksCb3kFRQ5MTcy'));
-      expect(sender.messages.single.text, contains('По остальным вопросам: @dvor_support'));
+      expect(sender.messages.single.text, contains('Группа'));
+      expect(sender.messages.single.text, contains('@dvor_support'));
       expect(sender.messages.single.text, isNot(contains('внешнего источника')));
     });
 
@@ -1416,7 +1410,6 @@ void main() {
       expect(handled, isTrue);
       expect(sender.messages, hasLength(1));
       expect(sender.messages.single.text, contains('Пока не понял сообщение'));
-      expect(sender.messages.single.text, contains(MessageTemplates.buttonHelp));
       expect(sender.messages.single.replyMarkup, isNotNull);
     });
 
@@ -3231,7 +3224,8 @@ void main() {
       expect(sender.lastContentMessage.text, contains('записал тебя'));
       expect(sender.lastContentMessage.text, contains('Событие: 🥾 Поход: Поход на хребет'));
       expect(sender.lastContentMessage.text, isNot(contains('Тренировка:')));
-      expect(sender.lastContentMessage.text, contains('📍 Где: Лаго-Наки, старт от кордона'));
+      expect(sender.lastContentMessage.text, contains('📍 Где'));
+      expect(sender.lastContentMessage.text, contains('Лаго-Наки, старт от кордона'));
       final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPayFully));
       expect(buttons, contains(MessageTemplates.buttonPayPartially));
@@ -3727,8 +3721,10 @@ void main() {
       final existingText = templates.bookingAlreadyExists(outdoorBooking);
       final reminderText = templates.pendingPaymentReminder(outdoorBooking);
 
-      expect(createdText, contains('🕒 Когда: 07.06.2026'));
-      expect(existingText, contains('🕒 Когда: 07.06.2026'));
+      expect(createdText, contains('🕒 Когда'));
+      expect(createdText, contains('07.06.2026'));
+      expect(existingText, contains('🕒 Когда'));
+      expect(existingText, contains('07.06.2026'));
       expect(reminderText, contains('ЧЕРНОГОР ВОСХОЖДЕНИЕ (07.06.2026)'));
 
       expect(createdText, isNot(contains('07.06.2026 14:30')));

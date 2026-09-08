@@ -2,61 +2,87 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/boxing_title.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
+import 'package:dvor_chatbot/src/messages/html_escaper.dart';
+import 'package:dvor_chatbot/src/messages/rich_html.dart';
 import 'package:intl/intl.dart';
 
 final class PrivateNavigationTemplates {
   const PrivateNavigationTemplates();
 
   String privateWelcome() {
-    return 'Добро пожаловать в DVOR 🤝\n\n'
-        'В боте — слоты DVOR. Дальше: выбрать, оплатить, прийти.\n\n'
-        'Быстрый старт:\n'
-        '1) Нажми «${MessageCopy.buttonBookTraining}» и выбери мероприятие.\n'
-        '2) Оплати и отправь чек в этот чат.\n'
-        '3) Следи за статусом в «${MessageCopy.buttonProfile}».\n\n'
-        'Ещё здесь: запись друга, тренерский штаб и помощь.\n'
-        'Группа DVOR: ${MessageCopy.dvorGroupInviteUrl}';
+    return RichHtml.screen(
+      title: 'Добро пожаловать в DVOR',
+      lead: 'Слоты здесь: выбрать, оплатить чеком, прийти.',
+      paragraphs: <String>[
+        'Внизу — запись, друг, штаб, профиль и помощь.',
+      ],
+    );
   }
 
   String onboardingWelcome() {
-    return 'Добро пожаловать в DVOR.\n\n'
-        'Первый шаг — записаться на тренировку.\n'
-        'Что сейчас важнее?';
+    return RichHtml.screen(
+      title: 'Старт в DVOR',
+      lead: 'Что сейчас важнее?',
+    );
   }
 
   String onboardingQuizGoal() {
-    return 'Что сейчас важнее?';
+    return RichHtml.screen(
+      title: 'Цель',
+      lead: 'Что сейчас важнее?',
+    );
   }
 
   String onboardingQuizExperience() {
-    return 'Какой у тебя опыт?';
+    return RichHtml.screen(
+      title: 'Опыт',
+      lead: 'Какой у тебя опыт?',
+    );
   }
 
   String onboardingTrackChoice() {
-    return 'С чего начнём?';
+    return RichHtml.screen(
+      title: 'Формат',
+      lead: 'С чего начнём?',
+    );
   }
 
   String onboardingClubMap({
     required bool starterBonusAvailable,
     List<TrainingInfo> citySlots = const <TrainingInfo>[],
   }) {
-    final bonusLine =
-        starterBonusAvailable ? '\n\nУ тебя есть бесплатная тренировка за старт.' : '';
-    final slotsBlock = _citySlotsBlock(citySlots);
-    return 'Следующий шаг — выбрать слот и записаться.\n\n'
-        'В боте — расписание и запись.\n'
-        'Не с кем идти — приходи один. На площадке уже будут свои.\n'
-        '$slotsBlock'
-        '\nВ группе — афиши: ${MessageCopy.dvorGroupInviteUrl}\n'
-        'Можно зайти и ничего не писать.'
-        '$bonusLine';
+    final buffer = StringBuffer()
+      ..write(RichHtml.heading('Карта клуба'))
+      ..write(RichHtml.paragraph('Следующий шаг — слот.'))
+      ..write(RichHtml.paragraph('В боте — расписание и запись.'));
+    final slots = _citySlotsBlock(citySlots);
+    if (slots.isNotEmpty) {
+      buffer
+        ..write(RichHtml.heading('Ближайшие слоты в городе', level: 3))
+        ..write(slots);
+    }
+    buffer.write(
+      RichHtml.paragraph(
+        'Группа — афиши. Можно зайти и ничего не писать: '
+        '<a href="${escapeHtml(MessageCopy.dvorGroupInviteUrl)}">'
+        '${escapeHtml(MessageCopy.dvorGroupInviteUrl)}</a>',
+        alreadyEscaped: true,
+      ),
+    );
+    if (starterBonusAvailable) {
+      buffer.write(RichHtml.paragraph('За старт есть одна бесплатная тренировка.'));
+    }
+    buffer.write(
+      RichHtml.paragraph('Не с кем идти — приходи один. На площадке уже будут свои.'),
+    );
+    return buffer.toString();
   }
 
   String _citySlotsBlock(List<TrainingInfo> citySlots) {
     if (citySlots.isEmpty) {
       return '';
     }
-    final lines = <String>['', 'Ближайшие слоты в городе:', ''];
+    final rows = <(String, String)>[];
     for (final slot in citySlots) {
       final kind = switch (_citySlotKind(slot.title)) {
         'boxing' => 'Бокс',
@@ -64,12 +90,9 @@ final class PrivateNavigationTemplates {
         'run' => 'Забег',
         _ => slot.title,
       };
-      lines
-        ..add('$kind: ${slot.title}')
-        ..add('${_slotWhen(slot)} · ${slot.location}')
-        ..add('');
+      rows.add((kind, '${slot.title} · ${_slotWhen(slot)} · ${slot.location}'));
     }
-    return lines.join('\n');
+    return RichHtml.table(rows);
   }
 
   String _citySlotKind(String title) {
@@ -87,26 +110,38 @@ final class PrivateNavigationTemplates {
   }
 
   String onboardingNeedHelp() {
-    return 'На связи поддержка DVOR: @dvor_support\n'
-        'Напиши, на каком шаге застрял — поможем.';
+    return RichHtml.screen(
+      title: 'Помощь',
+      lead: 'На связи @dvor_support.',
+      paragraphs: <String>[
+        'Напиши, на каком шаге застрял.',
+      ],
+    );
   }
 
   String onboardingNudgeQuizReminder() {
-    return 'Остался один короткий шаг — ответь на пару вопросов, '
-        'и покажу слоты.\n'
-        'Или сразу открой запись.';
+    return RichHtml.screen(
+      title: 'Один шаг',
+      lead: 'Осталось ответить на пару вопросов — покажу слоты.',
+    );
   }
 
   String onboardingNudgePrimaryCta({TrainingInfo? nearest}) {
     if (nearest == null) {
-      return 'Ближайшие слоты уже в расписании.\n'
-          'Выбери один и запишись.';
+      return RichHtml.screen(
+        title: 'Слоты',
+        lead: 'Ближайшие слоты уже в расписании.',
+        paragraphs: <String>['Выбери один и запишись.'],
+      );
     }
-    final when = _slotWhen(nearest);
-    return 'Ближайший слот уже в расписании.\n\n'
-        '${nearest.title}\n'
-        '$when · ${nearest.location}\n\n'
-        'Запишись, если подходит.';
+    return RichHtml.screen(
+      title: 'Ближайший слот',
+      paragraphs: <String>[
+        nearest.title,
+        '${_slotWhen(nearest)} · ${nearest.location}',
+        'Запишись, если подходит.',
+      ],
+    );
   }
 
   String _slotWhen(TrainingInfo nearest) {
@@ -126,38 +161,63 @@ final class PrivateNavigationTemplates {
   }
 
   String onboardingNudgeDay5Alt() {
-    return 'Если привычный формат не зашёл — попробуй другой: '
-        'тренировка или outdoor. Главное — выбрать слот и прийти.';
+    return RichHtml.screen(
+      title: 'Другой формат',
+      lead: 'Если привычный формат не зашёл — попробуй другой: тренировка или outdoor.',
+      paragraphs: <String>['Главное — выбрать слот и прийти.'],
+    );
   }
 
   String onboardingNudgeDay7() {
-    return 'Неделя прошла. Ближайшие слоты — в расписании.\n'
-        'Если что-то мешает, напиши @dvor_support — поможем.';
+    return RichHtml.screen(
+      title: 'Неделя',
+      lead: 'Неделя прошла. Ближайшие слоты — в расписании.',
+      paragraphs: <String>['Если что-то мешает, напиши @dvor_support.'],
+    );
   }
 
   String groupInviteNudge(int index) {
     return switch (index) {
-      2 => 'Группа DVOR — это афиши и живой чат. Бот их не дублирует.\n\n'
-          'Представляться не обязательно. Если ещё не внутри — вот вход.',
-      3 => 'Бот умеет запись. Группа — новости и общение.\n\n'
-          'Ссылка, если ещё не заходил. Можно просто читать.',
-      _ => '<b>Новости и общение — в группе DVOR</b>\n\n'
-          'В боте — расписание и запись. Афиши и чат — там.\n\n'
-          'Если зайдёшь — можно ничего не писать. '
-          'Кто хочет, коротко: имя и чем занимаешься.\n\n'
-          'Заходи, когда будет удобно.',
+      2 => RichHtml.screen(
+          title: 'Группа DVOR',
+          lead: 'Там афиши и живой чат. Бот их не дублирует.',
+          paragraphs: <String>[
+            'Представляться не обязательно.',
+          ],
+        ),
+      3 => RichHtml.screen(
+          title: 'Группа DVOR',
+          lead: 'В боте — запись. В группе — новости.',
+          paragraphs: <String>[
+            'Можно просто читать.',
+          ],
+        ),
+      _ => RichHtml.screen(
+          title: 'Новости и общение — в группе DVOR',
+          lead: 'В боте — расписание и запись. Афиши и чат — в группе.',
+          paragraphs: <String>[
+            'Если зайдёшь — можно ничего не писать.',
+          ],
+        ),
     };
   }
 
   String onboardingActivationSuccess() {
-    return 'Первая тренировка в DVOR — есть.\n'
-        'Дальше проще: вторая закрепляет ритм.\n'
-        'Друга можно записать по рефералке в профиле.';
+    return RichHtml.screen(
+      title: 'Первая тренировка',
+      lead: 'Первая тренировка в DVOR — есть.',
+      paragraphs: <String>[
+        'Дальше проще: вторая закрепляет ритм.',
+        'Друга можно записать по рефералке в профиле.',
+      ],
+    );
   }
 
   String onboardingSnoozeAck() {
-    return 'Ок, без давления. Когда будет удобно — «${MessageCopy.buttonBookTraining}» '
-        'или «${MessageCopy.buttonTrainings}». Я рядом.';
+    return RichHtml.screen(
+      title: 'Ок',
+      lead: 'Без давления. Когда будет удобно — запись в меню.',
+    );
   }
 
   String trainingFeedbackAsk({
@@ -169,16 +229,22 @@ final class PrivateNavigationTemplates {
       ActivityCategory.trails => 'Как прошел трейл «$trainingTitle»?',
       ActivityCategory.trainings => 'Как прошла тренировка «$trainingTitle»?',
     };
-    return '$question\nОтвет анонимный — только чтобы становилось лучше.';
+    return RichHtml.screen(
+      title: 'Отзыв',
+      lead: question,
+      paragraphs: <String>['Ответ анонимный.'],
+    );
   }
 
   String trainingFeedbackCommentAsk() {
-    return 'Если хочешь — одним сообщением, что зашло или что улучшить. '
-        'Можно пропустить.';
+    return RichHtml.screen(
+      title: 'Комментарий',
+      lead: 'Если хочешь — одним сообщением, что зашло или что улучшить.',
+    );
   }
 
   String trainingFeedbackThanks() {
-    return 'Спасибо — это помогает делать DVOR лучше.';
+    return 'Спасибо.';
   }
 
   String trainingFeedbackAdminNotification({
@@ -192,51 +258,83 @@ final class PrivateNavigationTemplates {
       ActivityCategory.trails => 'трейле',
       ActivityCategory.trainings => 'тренировке',
     };
-    final lines = <String>[
-      '📝 <b>Новый анонимный отзыв о $subject</b>',
-      'Занятие: <b>$trainingTitle</b>',
-      'Оценка: <b>$ratingLabel</b>',
+    final rows = <(String, String)>[
+      ('Занятие', trainingTitle),
+      ('Оценка', ratingLabel),
     ];
     final trimmed = comment?.trim();
-    if (trimmed != null && trimmed.isNotEmpty) {
-      lines
-        ..add('')
-        ..add('Комментарий:')
-        ..add(trimmed);
-    }
-    return lines.join('\n');
+    return RichHtml.screen(
+      title: 'Новый анонимный отзыв о $subject',
+      rows: rows,
+      detailsSummary: trimmed == null || trimmed.isEmpty ? null : 'Комментарий',
+      detailsBody: trimmed,
+    );
   }
 
   String starterBonusOnboardingOffer() {
-    return 'Тебе доступна бесплатная тренировка за старт.\n\n'
-        'Нажми «${MessageCopy.buttonBookTraining}», выбери тренировку '
-        'и в подтверждении записи нажми «${MessageCopy.buttonUseStarterBonus}».';
+    return RichHtml.screen(
+      title: 'Стартовая',
+      lead: 'Тебе доступна бесплатная тренировка за старт.',
+      paragraphs: <String>[
+        'Выбери слот. На карточке записи будет кнопка «${MessageCopy.buttonUseStarterBonus}».',
+      ],
+    );
   }
 
   String privateHelp() {
-    return 'В боте — слоты, запись и статус. Вот чем могу помочь 👇\n'
-        '• Показываю ближайшие тренировки, походы и трейлы 📅\n'
-        '• Бокс-карта — в профиле: групповые слоты бокса и одна индивидуальная 🥊\n'
-        '• Показываю список тренеров и контакты штаба 🧑‍🏫\n'
-        '• Помогаю записаться на выбранное мероприятие ✍️\n'
-        '• Вершинки ⛰️ — внутренняя валюта DVOR: 2 ⛰️ = 1 ₽. Живут 45 дней, срок обновляется от записи, оплаты, отзыва и /start. Баланс и как копить — в профиле. Тратить можно на тренировку и бокс-карту (хоть целиком) и как скидку до 30% на поход/трейл.\n'
-        '• Показываю профиль: записи, статусы, вершинки и бокс-карту 👤\n'
-        '• Принимаю файл с подтверждением оплаты и передаю его на проверку 💸\n'
-        '• Напоминаю об оплате, если она еще не подтверждена ⏰\n\n'
-        'Правила отмены:\n'
-        '• Походы и трейлы — не позже чем за 7 дней до старта.\n'
-        '• Бесплатные тренировки — можно отменить в любой момент.\n'
-        '• Бокс-карта: перенос и возврат слота — если предупредил за 24 часа, только на бокс.\n'
-        '• Платные тренировки — через поддержку @dvor_support.\n\n'
-        'Перенос доступен для тренировок на слот той же стоимости.\n\n'
-        '🔥 Группа DVOR: ${MessageCopy.dvorGroupInviteUrl}\n'
-        'По остальным вопросам: @dvor_support 💬';
+    return RichHtml.screen(
+      title: 'Помощь',
+      lead: 'В боте — слоты, запись и статус.',
+      bullets: <String>[
+        'Запись — выбрать слот и прислать чек',
+        'Нет мест — другое мероприятие в расписании',
+        'Бокс-карта — в профиле, только групповой бокс',
+        'Вершинки — 2 ⛰️ = 1 ₽, 45 дней, в профиле',
+        'Группа — афиши, представляться не обязательно',
+        'Человек на связи — @dvor_support',
+      ],
+      detailsSummary: 'Правила отмен',
+      detailsBody: 'Походы и трейлы — не позже чем за 7 дней до старта.\n'
+          'Бесплатные тренировки — в любой момент.\n'
+          'Бокс-карта: перенос и возврат слота — за 24 часа, только на бокс.\n'
+          'Платные тренировки — через @dvor_support.\n'
+          'Перенос тренировки — на слот той же стоимости.',
+    );
   }
 
   String privateFallback() {
-    return 'Пока не понял сообщение 🤔\n'
-        'Используй кнопки меню ниже.\n'
-        'Если запутался в шаге записи, нажми «${MessageCopy.buttonMainMenu}» '
-        'или «${MessageCopy.buttonHelp}».';
+    return RichHtml.screen(
+      title: 'Не понял',
+      lead: 'Пока не понял сообщение.',
+    );
+  }
+
+  String privateMenuHint() {
+    return RichHtml.screen(
+      title: 'Меню',
+      lead: 'Меню внизу.',
+    );
+  }
+
+  String returnedToMainMenu() {
+    return RichHtml.screen(
+      title: 'Меню',
+      lead: 'Главное меню.',
+    );
+  }
+
+  String alreadyInMainMenu() {
+    return RichHtml.screen(
+      title: 'Меню',
+      lead: 'Ты уже в главном меню.',
+    );
+  }
+
+  String noBookingsYet() {
+    return RichHtml.screen(
+      title: 'Записи',
+      lead: 'Пока нет записей на мероприятия.',
+      paragraphs: <String>['Запись — в меню внизу.'],
+    );
   }
 }

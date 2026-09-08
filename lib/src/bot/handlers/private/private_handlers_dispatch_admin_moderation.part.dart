@@ -247,14 +247,13 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
       final request = review.request;
       if (review.outcome == ReviewIndividualSessionOutcome.success && request != null) {
         try {
-          await _sender.sendMessage(
+          await _sendScreen(
             request.userId,
             request.status == IndividualSessionRequestStatus.approved
                 ? _templates.boxingCardIndividualApprovedForUser()
                 : _templates.boxingCardIndividualRejectedForUser(
                     comment: request.moderationComment,
                   ),
-            parseMode: 'HTML',
           );
         } on Object catch (error, stackTrace) {
           l.w('Failed to notify user about individual session review: $error', stackTrace);

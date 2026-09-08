@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:http/http.dart' as http;
@@ -31,7 +32,7 @@ final class GoogleSheetsTrainerDirectoryRepository implements TrainerDirectoryRe
 
   @override
   List<TrainerInfo> list({int limit = 20}) {
-    return _cached.take(limit).toList(growable: false);
+    return staffDirectoryList(people: _cached, limit: limit);
   }
 
   @override
@@ -89,12 +90,16 @@ final class GoogleSheetsTrainerDirectoryRepository implements TrainerDirectoryRe
     );
     final roleIndex = _firstExistingHeaderIndex(
       headers,
-      const <String>['role', 'specialization', 'direction', 'роль', 'направление'],
+      const <String>['роль', 'role', 'staff_role', 'kind', 'тип'],
+    );
+    final directionIndex = _firstExistingHeaderIndex(
+      headers,
+      const <String>['направление', 'specialization', 'direction', 'role_detail'],
     );
 
-    if (nameIndex < 0 || linkIndex < 0 || descriptionIndex < 0) {
+    if (nameIndex < 0 || linkIndex < 0) {
       throw const FormatException(
-        'Trainers CSV must contain name/link/description columns',
+        'Trainers CSV must contain name and username columns',
       );
     }
 
@@ -103,16 +108,36 @@ final class GoogleSheetsTrainerDirectoryRepository implements TrainerDirectoryRe
       final name = _cell(row, nameIndex);
       final link = _cell(row, linkIndex);
       final description = _cell(row, descriptionIndex);
-      final role = _cell(row, roleIndex);
-      if (name.isEmpty || link.isEmpty || description.isEmpty) {
+      final staffRoleRaw = _cell(row, roleIndex);
+      final directionRaw = _cell(row, directionIndex);
+      if (link.isEmpty) {
+        continue;
+      }
+      final kind = StaffKindLabels.parse(staffRoleRaw);
+      final specialization = directionRaw.isNotEmpty
+          ? directionRaw
+          : (StaffKindLabels.isKnown(staffRoleRaw) ? '' : staffRoleRaw);
+      if (kind == StaffKind.coach) {
+        if (name.isEmpty || description.isEmpty) {
+          continue;
+        }
+        items.add(
+          TrainerInfo(
+            name: name,
+            link: _normalizeLink(link),
+            description: description,
+            role: specialization,
+          ),
+        );
         continue;
       }
       items.add(
         TrainerInfo(
-          name: name,
+          name: name.isEmpty ? _displayNameFromLink(link) : name,
           link: _normalizeLink(link),
           description: description,
-          role: role,
+          role: specialization,
+          kind: StaffKind.team,
         ),
       );
     }
@@ -145,6 +170,14 @@ final class GoogleSheetsTrainerDirectoryRepository implements TrainerDirectoryRe
       return value;
     }
     return '@$value';
+  }
+
+  String _displayNameFromLink(String raw) {
+    final normalized = telegramUsernameFromLink(_normalizeLink(raw));
+    if (normalized == null || normalized.isEmpty) {
+      return raw.trim();
+    }
+    return '@$normalized';
   }
 
   String _cell(List<dynamic> row, int index) {

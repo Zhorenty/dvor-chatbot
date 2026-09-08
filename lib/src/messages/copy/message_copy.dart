@@ -10,19 +10,19 @@ final class MessageCopy {
   static const String buttonProfile = '👤 Профиль';
   static const String buttonProfileBookings = '🗂 Мои записи';
   static const String buttonReferralProgram = '👥 Реферальная программа';
-  static const String buttonSubmitPayment = '💸 Я оплатил';
-  static const String buttonPayFully = '💯 Оплатил полностью';
-  static const String buttonPayPartially = '🟡 Оплатил предоплату';
-  static const String buttonUseStarterBonus = '🎁 Использовать бесплатную тренировку';
-  static const String buttonSpendLoyaltyPeaks = '⛰️ Списать вершинки';
-  static const String buttonEnterPromoCode = '🎟 Ввести промокод';
+  static const String buttonSubmitPayment = 'Отправить чек';
+  static const String buttonPayFully = 'Полная оплата';
+  static const String buttonPayPartially = 'Предоплата';
+  static const String buttonUseStarterBonus = 'Стартовая';
+  static const String buttonSpendLoyaltyPeaks = 'Списать ⛰️';
+  static const String buttonEnterPromoCode = 'Промокод';
   static const String buttonRescheduleBooking = '🔁 Перенести запись';
   static const String buttonRepeatBooking = '🔂 Повторить запись';
   static const String buttonContinuePayment = '💸 Продолжить оплату';
   static const String buttonCompletePayment = '💳 Доплатить';
   static const String buttonCancelBooking = '❌ Отменить запись';
-  static const String buttonConfirmCancelBooking = '✅ Да, отменить';
-  static const String buttonKeepBooking = '↩️ Оставить запись';
+  static const String buttonConfirmCancelBooking = 'Отменить запись';
+  static const String buttonKeepBooking = 'Оставить';
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';
   static const String buttonHelp = '🆘 Помощь';
@@ -101,8 +101,8 @@ final class MessageCopy {
   static const String buttonEditBookingPayment = '💳 Изменить оплату';
   static const String buttonEditBookingUsername = '👤 Изменить пользователя';
   static const String buttonEditBookingEvent = '📌 Изменить мероприятие';
-  static const String buttonConfirmDeleteBooking = '✅ Да, удалить';
-  static const String buttonCancelDeleteBooking = '↩️ Не удалять';
+  static const String buttonConfirmDeleteBooking = 'Удалить запись';
+  static const String buttonCancelDeleteBooking = 'Оставить';
   static const String buttonBackToBookingsList = '📋 К списку записей';
   static const String buttonBookingsPreviousPage = '⬅️ Предыдущая страница';
   static const String buttonBookingsNextPage = '➡️ Следующая страница';
@@ -111,8 +111,8 @@ final class MessageCopy {
   static const String buttonCreateAnotherBooking = '➕ Создать еще';
   static const String buttonConfirmCreateBooking = '✅ Создать';
   static const String buttonCancelCreateBooking = '↩️ Не создавать';
-  static const String buttonNotifyClientYes = '📣 Уведомить клиента';
-  static const String buttonNotifyClientNo = '🔕 Не уведомлять';
+  static const String buttonNotifyClientYes = 'Уведомить';
+  static const String buttonNotifyClientNo = 'Не уведомлять';
   static const String buttonStatusPendingPayment = '⏳ Ожидает оплату';
   static const String buttonStatusPaymentSubmitted = 'На проверке 🧾';
   static const String buttonStatusPartialPaid = '🟡 Предоплата внесена';
@@ -135,8 +135,8 @@ final class MessageCopy {
   static const String buttonAdminUserSearch = '🔍 Поиск по пользователю';
   static const String buttonAdminRecentActions = '📜 Последние действия';
   static const String buttonAdminUserDialog = '💬 Диалог по @username';
-  static const String buttonBroadcastToUsers = '👥 Только пользователям';
-  static const String buttonBroadcastToOutdoorPlus = '🥾 Outdoor+';
+  static const String buttonBroadcastToUsers = 'Всем, кто нажал Start';
+  static const String buttonBroadcastToOutdoorPlus = 'Квиз / трек outdoor';
   static const String buttonBroadcastToGroup = '💬 Только в группу';
   static const String buttonBroadcastToUsersAndGroup = '📢 Пользователям и в группу';
   static const String buttonBroadcastCancel = '✖️ Отменить';
@@ -200,5 +200,11 @@ final class MessageCopy {
   static const String scheduleDocumentUrl =
       'https://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';
   static const String dvorGroupInviteUrl = 'https://t.me/+n4ksCb3kFRQ5MTcy';
+  static const String sbpPaymentLink =
+      'https://finance.ozon.ru/apps/sbp/ozonbankpay/019dcdcb-4af8-7579-9c1b-4a388fd85d6c';
   static const String buttonOpenGroup = 'Открыть группу';
+  static const String buttonPaySbp = 'Оплатить СБП';
+  static const String buttonCopySbp = 'Скопировать СБП';
+  static const String buttonCopyReferral = 'Скопировать ссылку';
+  static const String buttonOpenBot = 'Открыть бота';
 }

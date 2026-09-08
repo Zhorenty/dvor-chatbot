@@ -51,7 +51,8 @@ final class LoyaltyExpiryJob {
         continue;
       }
       try {
-        await _sender.sendMessage(
+        await sendBotHtml(
+          _sender,
           account.userId,
           _templates.loyaltyExpiryReminder(
             remaining: account.remaining,
@@ -76,7 +77,8 @@ final class LoyaltyExpiryJob {
         if (!result.applied || result.amount <= 0) {
           continue;
         }
-        await _sender.sendMessage(
+        await sendBotHtml(
+          _sender,
           account.userId,
           _templates.loyaltyExpired(
             burned: result.amount,

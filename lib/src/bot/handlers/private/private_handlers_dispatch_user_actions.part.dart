@@ -23,7 +23,7 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         targetBooking = flowState?.selectedBooking;
       }
       if (targetBooking == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           'Чтобы отменить запись, открой её в «${MessageTemplates.buttonProfile}» → '
           '«${MessageTemplates.buttonProfileBookings}».',
@@ -36,7 +36,7 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       }
       final category = _catalogService.categoryForBooking(targetBooking);
       if (!_bookingPolicyService.supportsCancellationForBooking(targetBooking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingCancelNotAvailable(targetBooking),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -45,7 +45,7 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         return true;
       }
       if (!_canCancelBookingByPolicy(targetBooking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _cancellationTooLateText(targetBooking, category: category),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -80,7 +80,7 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
           bookingId: pinnedBookingId,
         );
         if (!opened) {
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.noPendingPayment(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -95,7 +95,7 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
           userId: userId,
         );
         if (!opened) {
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.noPendingPayment(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -116,7 +116,6 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
                 prepayPercent: activeBooking.trainingPrepayPercent,
               )
             : _templates.paymentProofRequired(),
-        parseMode: needsPaymentChoice ? 'HTML' : null,
       );
       return true;
     }
@@ -138,7 +137,7 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         return true;
       }
       _flowByUserId[userId] = flowState.copyWith(step: _PrivateFlowStep.enteringPromoCode);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.promoCodeEntryPrompt(),
         replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -156,7 +155,7 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
       final activeBooking = currentFlow.activeBooking;
       if (activeBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.noPendingPayment(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -213,10 +212,9 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
           bookingStatus: updatedBooking.status,
         );
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.promoCodeAppliedFree(updatedBooking, originalPrice: originalPrice),
-          parseMode: 'HTML',
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
@@ -231,7 +229,6 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
         booking: updatedBooking,
         text: _templates.promoCodeApplied(updatedBooking, originalPrice: originalPrice),
         showStarterBonus: currentFlow.starterBonusOffered,
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -252,7 +249,6 @@ extension PrivateHandlersDispatchUserActions on PrivateHandlers {
                 prepayPercent: activeBooking.trainingPrepayPercent,
               )
             : _templates.paymentProofRequired(),
-        parseMode: needsPaymentChoice ? 'HTML' : null,
       );
       return true;
     }

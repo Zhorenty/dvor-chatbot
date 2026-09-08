@@ -21,20 +21,19 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       final selectedBooking = await _findUserBooking(userId, bookingId) ??
           (flowState?.selectedBooking?.id == bookingId ? flowState?.selectedBooking : null);
       if (selectedBooking == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingNotFound(bookingId),
           replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin,
             showReturnToAdminMenu: showReturnToAdminMenu,
           ),
-          parseMode: 'HTML',
         );
         return true;
       }
       final category = _catalogService.categoryForBooking(selectedBooking);
       if (!_canCancelBookingByPolicy(selectedBooking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _cancellationTooLateText(selectedBooking, category: category),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -56,7 +55,7 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
         if (_shouldNotifyAdminAboutBookingCancellation(selectedBooking)) {
           await _notifyAdminAboutBookingCancelled(selectedBooking);
         }
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingCancelled(cancelled ?? cancelResult.booking!),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -66,14 +65,13 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
         );
         return true;
       }
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.bookingNotFound(selectedBooking.id),
         replyMarkup: _templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           showReturnToAdminMenu: showReturnToAdminMenu,
         ),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -85,14 +83,13 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       }
       final booking = await _findUserBooking(userId, bookingId);
       if (booking == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingNotFound(bookingId),
           replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin,
             showReturnToAdminMenu: showReturnToAdminMenu,
           ),
-          parseMode: 'HTML',
         );
         return true;
       }
@@ -116,28 +113,27 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       }
       final targetBooking = await _findUserBooking(userId, bookingId);
       if (targetBooking == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingNotFound(bookingId),
           replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin,
             showReturnToAdminMenu: showReturnToAdminMenu,
           ),
-          parseMode: 'HTML',
         );
         return true;
       }
       final category = _catalogService.categoryForBooking(targetBooking);
       if (!_bookingPolicyService.supportsCancellationForBooking(targetBooking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingCancelNotAvailable(targetBooking),
-          replyMarkup: _bookingActionsInlineKeyboard(targetBooking),
+          buttonRows: _bookingActionsRichButtons(targetBooking),
         );
         return true;
       }
       if (!_canCancelBookingByPolicy(targetBooking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _cancellationTooLateText(targetBooking, category: category),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -172,7 +168,7 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
         bookingId: bookingId,
       );
       if (!opened) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.noPendingPayment(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -202,7 +198,7 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       }
       final booking = await _findUserBooking(userId, bookingId);
       if (booking == null || !_isPayableForProof(booking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.noPendingPayment(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -250,7 +246,7 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       }
       final booking = await _findUserBooking(userId, bookingId);
       if (booking == null || !_isPayableForProof(booking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.noPendingPayment(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -303,7 +299,7 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
         bookingId: bookingId,
       );
       if (!opened) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.noPendingPayment(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -317,7 +313,7 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       if (currentFlow?.step == _PrivateFlowStep.paymentConfirmation &&
           _shouldShowPromoCodeEntry(currentFlow?.activeBooking)) {
         _flowByUserId[userId] = currentFlow!.copyWith(step: _PrivateFlowStep.enteringPromoCode);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.promoCodeEntryPrompt(),
           replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -333,14 +329,13 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       }
       final selectedBooking = await _findUserBooking(userId, bookingId);
       if (selectedBooking == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingNotFound(bookingId),
           replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin,
             showReturnToAdminMenu: showReturnToAdminMenu,
           ),
-          parseMode: 'HTML',
         );
         return true;
       }
@@ -376,14 +371,13 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       }
       final selectedBooking = await _findUserBooking(userId, bookingId);
       if (selectedBooking == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingNotFound(bookingId),
           replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin,
             showReturnToAdminMenu: showReturnToAdminMenu,
           ),
-          parseMode: 'HTML',
         );
         return true;
       }

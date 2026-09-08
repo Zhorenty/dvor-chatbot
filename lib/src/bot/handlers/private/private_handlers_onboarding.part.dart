@@ -11,7 +11,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     }
     try {
       await _sendOnboardingMediaIfAny(chatId: userId, slot: OnboardingMediaSlot.venue);
-      await _sender.sendMessage(
+      await _sendScreen(
         userId,
         _templates.onboardingActivationSuccess(),
         replyMarkup: _templates.onboardingActivationKeyboard(),
@@ -30,7 +30,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     required bool canViewParticipantsList,
   }) async {
     if (text == MessageTemplates.buttonOnboardingNeedHelp) {
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.onboardingNeedHelp(),
         replyMarkup: _templates.privateMenuKeyboard(
@@ -47,7 +47,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         until: _nowProvider().toUtc().add(const Duration(hours: 48)),
       );
       _flowByUserId.remove(userId);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.onboardingSnoozeAck(),
         replyMarkup: _templates.privateMenuKeyboard(
@@ -101,7 +101,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
           phase: OnboardingPhase.phase1Quiz,
           step: OnboardingStep.quizGoal,
         );
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.onboardingWelcome(),
           replyMarkup: _templates.onboardingQuizGoalKeyboard(),
@@ -112,7 +112,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
 
     if (step == PrivateFlowStep.onboardingQuizGoal) {
       if (text == MessageTemplates.buttonOnboardingContinue) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.onboardingWelcome(),
           replyMarkup: _templates.onboardingQuizGoalKeyboard(),
@@ -127,7 +127,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         _ => null,
       };
       if (goal == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.onboardingQuizGoal(),
           replyMarkup: _templates.onboardingQuizGoalKeyboard(),
@@ -139,7 +139,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         step: PrivateFlowStep.onboardingQuizExperience,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.onboardingQuizExperience(),
         replyMarkup: _templates.onboardingQuizExperienceKeyboard(),
@@ -155,7 +155,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         _ => null,
       };
       if (experience == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.onboardingQuizExperience(),
           replyMarkup: _templates.onboardingQuizExperienceKeyboard(),
@@ -167,7 +167,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         step: PrivateFlowStep.onboardingTrack,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.onboardingTrackChoice(),
         replyMarkup: _templates.onboardingTrackKeyboard(),
@@ -182,7 +182,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         _ => null,
       };
       if (track == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.onboardingTrackChoice(),
           replyMarkup: _templates.onboardingTrackKeyboard(),
@@ -226,7 +226,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     );
     await _onboardingService.markMapShown(userId);
     await _sendOnboardingMediaIfAny(chatId: chatId, slot: OnboardingMediaSlot.cameAlone);
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.onboardingClubMap(
         starterBonusAvailable: starterBonusAvailable,
@@ -312,7 +312,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
       };
       if (rating == null) {
         final bookingId = flow?.feedbackBookingId;
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.trainingFeedbackAsk(
             trainingTitle: flow?.feedbackTrainingTitle ?? 'тренировка',
@@ -338,7 +338,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
       );
       if (rating == TrainingFeedbackRating.skipped) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.trainingFeedbackThanks(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -357,7 +357,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         step: PrivateFlowStep.awaitingTrainingFeedbackComment,
         feedbackRating: rating,
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.trainingFeedbackCommentAsk(),
         replyMarkup: _templates.trainingFeedbackCommentKeyboard(),
@@ -392,7 +392,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         await _creditFeedbackLoyalty(userId: userId, bookingId: bookingId, chatId: chatId);
       }
       _flowByUserId.remove(userId);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.trainingFeedbackThanks(),
         replyMarkup: _templates.privateMenuKeyboard(

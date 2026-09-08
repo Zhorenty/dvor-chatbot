@@ -6,7 +6,6 @@ import 'package:dvor_chatbot/src/application/economic_summary_service.dart';
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
 import 'package:dvor_chatbot/src/application/group_membership_lookup.dart';
 import 'package:dvor_chatbot/src/application/loyalty_service.dart';
-import 'package:dvor_chatbot/src/application/nobles_list_service.dart';
 import 'package:dvor_chatbot/src/application/onboarding_service.dart';
 import 'package:dvor_chatbot/src/application/schedule_catalog_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/group_handlers.dart';
@@ -213,13 +212,6 @@ final class BotRunner {
                   bookingRepository: bookingRepository,
                   catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
                 ),
-                noblesListService: NoblesListService(
-                  bookingRepository: bookingRepository,
-                  catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
-                ),
-                conversationLogRepository: conversationLogRepository,
-                adminUserIds: config.adminUserIds,
-                recentActionsLimit: config.googleSheetsRecentActionsLimit,
               ) {
     final exportJob = _googleSheetsExportJob;
     if (exportJob != null) {

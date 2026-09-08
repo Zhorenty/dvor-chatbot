@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/group_membership.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:l/l.dart';
 
 final class GroupInviteNudgeJob {
@@ -100,11 +101,11 @@ final class GroupInviteNudgeJob {
       return;
     }
 
-    await _sender.sendMessage(
+    await sendBotScreen(
+      _sender,
       candidate.userId,
-      _templates.groupInviteNudge(decision.index),
+      InputRichMessage(html: _templates.groupInviteNudge(decision.index)),
       disableWebPagePreview: true,
-      parseMode: 'HTML',
       replyMarkup: _templates.groupInviteUrlKeyboard(),
     );
     await _onboardingRepository.markGroupInviteNudgeSent(

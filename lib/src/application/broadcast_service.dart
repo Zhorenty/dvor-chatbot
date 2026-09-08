@@ -124,10 +124,10 @@ final class BroadcastService {
     if (htmlText == null || htmlText.isEmpty) {
       throw const TelegramApiException('Broadcast content is empty');
     }
-    await _sender.sendMessage(
+    await sendBotHtml(
+      _sender,
       chatId,
       htmlText,
-      parseMode: 'HTML',
       disableWebPagePreview: true,
     );
   }

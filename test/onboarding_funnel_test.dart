@@ -35,7 +35,7 @@ void main() {
       await harness.handleText(chatId: 101, userId: 101, text: '/start');
 
       final texts = harness.messagesTo(101).map((m) => m.text).join('\n');
-      expect(texts, contains('Быстрый старт'));
+      expect(texts, contains('Добро пожаловать в DVOR'));
       expect(texts, isNot(contains('Первый шаг — записаться на тренировку')));
     });
 
@@ -45,9 +45,8 @@ void main() {
       await harness.handleText(chatId: 202, userId: 202, text: '/start');
       expect(
         harness.messagesTo(202).last.text,
-        contains('Первый шаг — записаться на тренировку'),
+        contains('Что сейчас важнее'),
       );
-      expect(harness.messagesTo(202).last.text, contains('Что сейчас важнее'));
 
       await harness.handleText(
         chatId: 202,
@@ -71,7 +70,7 @@ void main() {
       expect(state?.phase, OnboardingPhase.phase2Activation);
       expect(
         harness.messagesTo(202).last.text,
-        contains('выбрать слот и записаться'),
+        contains('Следующий шаг — слот'),
       );
       expect(harness.messagesTo(202).last.text, contains('Можно зайти и ничего не писать'));
       expect(harness.messagesTo(202).last.text, isNot(contains('успей')));
@@ -90,7 +89,7 @@ void main() {
 
       expect(
         harness.messagesTo(232).last.text,
-        contains('выбрать слот и записаться'),
+        contains('Следующий шаг — слот'),
       );
       final state = await harness.onboarding.getOnboardingState(232);
       expect(state?.phase, OnboardingPhase.phase2Activation);
@@ -682,9 +681,11 @@ void main() {
 
       final text = harness.messagesTo(303).last.text;
       expect(text, contains('Ближайшие слоты в городе'));
-      expect(text, contains('Силовая: Утренняя силовая'));
-      expect(text, contains('Бокс: Бокс'));
-      expect(text, contains('Забег: Общий забег'));
+      expect(text, contains('Силовая'));
+      expect(text, contains('Утренняя силовая'));
+      expect(text, contains('Бокс'));
+      expect(text, contains('Забег'));
+      expect(text, contains('Общий забег'));
       expect(text, isNot(contains('Даша')));
       expect(text, isNot(contains('в среду')));
     });

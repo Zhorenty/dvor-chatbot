@@ -61,7 +61,8 @@ final class OnboardingNudgeJob {
             OnboardingNudgeKind.day5Alt => _templates.onboardingNudgeDay5Alt(),
             OnboardingNudgeKind.day7Book => _templates.onboardingNudgeDay7(),
           };
-          await _sender.sendMessage(
+          await sendBotHtml(
+            _sender,
             candidate.userId,
             text,
             replyMarkup: _templates.onboardingNudgeKeyboard(quizIncomplete: quizIncomplete),

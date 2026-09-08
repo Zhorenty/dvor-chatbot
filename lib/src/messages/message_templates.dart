@@ -17,9 +17,11 @@ import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/html_escaper.dart';
 import 'package:dvor_chatbot/src/messages/keyboards/telegram_keyboards.dart';
+import 'package:dvor_chatbot/src/messages/rich_html.dart';
 import 'package:dvor_chatbot/src/messages/templates/group_templates.dart';
 import 'package:dvor_chatbot/src/messages/templates/private_navigation_templates.dart';
 import 'package:dvor_chatbot/src/messages/templates/schedule_templates.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:intl/intl.dart';
 
 part 'templates/message_templates_content.part.dart';
@@ -27,8 +29,7 @@ part 'templates/message_templates_admin_schedule.part.dart';
 part 'templates/message_templates_keyboards.part.dart';
 part 'templates/message_templates_helpers.part.dart';
 
-const String _sbpPaymentLink =
-    'https://finance.ozon.ru/apps/sbp/ozonbankpay/019dcdcb-4af8-7579-9c1b-4a388fd85d6c';
+const String _sbpPaymentLink = MessageCopy.sbpPaymentLink;
 
 final class MessageTemplates {
   const MessageTemplates({
@@ -257,5 +258,21 @@ final class MessageTemplates {
 
   String privateFallback() {
     return _privateNavigationTemplates.privateFallback();
+  }
+
+  String privateMenuHint() {
+    return _privateNavigationTemplates.privateMenuHint();
+  }
+
+  String returnedToMainMenu() {
+    return _privateNavigationTemplates.returnedToMainMenu();
+  }
+
+  String alreadyInMainMenu() {
+    return _privateNavigationTemplates.alreadyInMainMenu();
+  }
+
+  String noBookingsYet() {
+    return _privateNavigationTemplates.noBookingsYet();
   }
 }

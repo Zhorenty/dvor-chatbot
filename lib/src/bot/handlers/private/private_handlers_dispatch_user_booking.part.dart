@@ -47,7 +47,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         step: _PrivateFlowStep.selectingBookingCategory,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.chooseBookingCategory(),
         replyMarkup: _templates.categorySelectionKeyboard(),
@@ -64,11 +64,10 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         step: _PrivateFlowStep.selectingBookFriendCategory,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.chooseBookFriendCategory(),
         replyMarkup: _templates.categorySelectionKeyboard(),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -92,18 +91,17 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
       if (trainers.isEmpty) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.coachingStaff(trainers),
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
-          parseMode: 'HTML',
           disableWebPagePreview: true,
         );
         return true;
       }
       _flowByUserId[userId] = flowState!.copyWith(step: _PrivateFlowStep.selectingTrainerProfile);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.chooseTrainerProfile(trainers),
         replyMarkup: _templates.trainerSelectionKeyboard(trainers),
@@ -116,11 +114,10 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         text != null &&
         !text.startsWith('/')) {
       final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.coachingStaff(trainers),
         replyMarkup: _templates.coachingStaffActionsKeyboard(),
-        parseMode: 'HTML',
         disableWebPagePreview: true,
       );
       return true;
@@ -133,7 +130,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
       final index = _parseTrainerSelectionIndex(text);
       if (index == null || index < 1 || index > trainers.length) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownTrainerSelection(),
           replyMarkup: _templates.trainerSelectionKeyboard(trainers),
@@ -141,11 +138,10 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         return true;
       }
       final trainer = trainers[index - 1];
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.trainerProfile(trainer),
         replyMarkup: _templates.trainerSelectionKeyboard(trainers),
-        parseMode: 'HTML',
         disableWebPagePreview: true,
       );
       return true;
@@ -175,7 +171,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         !text.startsWith('/')) {
       final category = flowState?.selectedCategory;
       if (category == null || !_isOutdoorCategory(category)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownCategory(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -186,7 +182,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       final bookable = outdoorItems.map(_catalogService.toBookableInfo).toList(growable: false);
       final index = _parseTrainingSelectionIndex(text);
       if (index == null || index < 1 || index > outdoorItems.length) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownOutdoorSelection(),
           replyMarkup: _templates.bookingSelectionKeyboard(bookable),
@@ -203,11 +199,10 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         username: username,
         activity: selectedOutdoor,
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.chooseOutdoorDetailType(selectedOutdoor),
         replyMarkup: _templates.outdoorDetailTypeKeyboard(),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -218,7 +213,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         !text.startsWith('/')) {
       final selectedOutdoor = flowState?.selectedOutdoorActivity;
       if (selectedOutdoor == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownOutdoorSelection(),
           replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -226,28 +221,25 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         return true;
       }
       if (text == MessageTemplates.buttonOutdoorEquipment) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.outdoorEquipmentDetails(selectedOutdoor),
           replyMarkup: _templates.outdoorDetailTypeKeyboard(),
-          parseMode: 'HTML',
         );
         return true;
       }
       if (text == MessageTemplates.buttonOutdoorItinerary) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.outdoorItineraryDetails(selectedOutdoor),
           replyMarkup: _templates.outdoorDetailTypeKeyboard(),
-          parseMode: 'HTML',
         );
         return true;
       }
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.chooseOutdoorDetailType(selectedOutdoor),
         replyMarkup: _templates.outdoorDetailTypeKeyboard(),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -258,7 +250,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         !text.startsWith('/')) {
       final category = _parseCategory(text);
       if (category == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownCategory(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -274,10 +266,9 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
           bookingFromSchedulePreview: true,
         );
         await _refreshTrainerDirectoryForSchedule();
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _scheduleTextByCategory(category),
-          parseMode: 'HTML',
           disableWebPagePreview: true,
         );
         await _sendOutdoorEventSelection(chatId: chatId, outdoorItems: outdoorItems);
@@ -292,7 +283,6 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
           messageText: '${_scheduleTextByCategory(category)}\n\n\n'
               '<b>Что дальше:</b>\n'
               '${_templates.bookingSelectionPrompt()}',
-          parseMode: 'HTML',
           disableWebPagePreview: true,
         );
       }
@@ -305,7 +295,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         !text.startsWith('/')) {
       final category = _parseCategory(text);
       if (category == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownCategory(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -328,7 +318,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         !text.startsWith('/')) {
       final category = _parseCategory(text);
       if (category == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownCategory(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -352,7 +342,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       final category = _parseCategory(text);
       if (category == null) {
         final counters = await _paymentReviewService.queueCounters();
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownCategory(),
           replyMarkup: _templates.paymentsQueueCategorySelectionKeyboard(
@@ -378,7 +368,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         !text.startsWith('/')) {
       final index = _parseTrainingSelectionIndex(text);
       if (index == null || index < 1 || index > flowState!.availableTrainings.length) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _bookingHandler.unknownSelectionText(),
           replyMarkup: _templates.bookingSelectionKeyboard(flowState!.availableTrainings),
@@ -406,7 +396,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         !text.startsWith('/')) {
       final category = _parseCategory(text);
       if (category == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownCategory(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -415,7 +405,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       }
       final items = _bookableItemsByCategory(category);
       if (items.isEmpty) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.noUpcomingForBooking(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -427,11 +417,10 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         availableTrainings: items,
         selectedCategory: category,
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.chooseBookFriendEvent(items),
         replyMarkup: _templates.bookingSelectionKeyboard(items),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -443,7 +432,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       final index = _parseTrainingSelectionIndex(text);
       final items = flowState?.availableTrainings ?? const <TrainingInfo>[];
       if (index == null || index < 1 || index > items.length) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _bookingHandler.unknownSelectionText(),
           replyMarkup: _templates.bookingSelectionKeyboard(items),
@@ -456,11 +445,10 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         partyTraining: selectedTraining,
         partyParticipants: const <BookingParticipantDraft>[],
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.askPartyParticipants(training: selectedTraining),
         replyMarkup: _templates.simpleNavigationKeyboard(),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -472,9 +460,9 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       final training = flowState?.partyTraining;
       if (training == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
-          'Вернул в главное меню 👇',
+          _templates.returnedToMainMenu(),
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
@@ -482,30 +470,27 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
       }
       final participants = _parsePartyParticipantsInput(text, managerUsername: username);
       if (participants == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.invalidPartyParticipantsInput(),
           replyMarkup: _templates.simpleNavigationKeyboard(),
-          parseMode: 'HTML',
         );
         return true;
       }
       if (participants.length > maxManagedGuestsPerEvent) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.partyManagerLimitExceeded(),
           replyMarkup: _templates.simpleNavigationKeyboard(),
-          parseMode: 'HTML',
         );
         return true;
       }
       final duplicate = _findDuplicatePartyParticipant(participants, managerUserId: userId);
       if (duplicate != null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.partyDuplicateParticipant(duplicate.displayLabel),
           replyMarkup: _templates.simpleNavigationKeyboard(),
-          parseMode: 'HTML',
         );
         return true;
       }

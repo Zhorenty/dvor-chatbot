@@ -29,8 +29,8 @@ Project guidance for AI/code agents in this repository.
   - `lib/src/domain/training_info.dart`
  - `lib/src/data/training_schedule_repository.dart`
  - `lib/src/data/static_schedule_repository.dart`
- - `lib/src/data/dvor_team_repository.dart` (+ Google Sheets gid `2001400867`)
- - `lib/src/data/google_sheets_api_writer.dart` (bot-owned sheets `FUNNEL`, `АНАЛИТИКА`, `ДВОРЯНЕ`, `ДЕЙСТВИЯ`)
+ - `lib/src/data/dvor_team_repository.dart` (staff sheet `Тренерский штаб`, role `Команда DVOR`)
+ - `lib/src/data/google_sheets_api_writer.dart` (bot-owned sheets `FUNNEL`, `АНАЛИТИКА`)
  - `lib/src/data/google_sheets_schedule_catalog_repository.dart` (admin CRUD of trainings/hikes/trails)
  - `lib/src/application/schedule_catalog_service.dart`
  - `lib/src/jobs/schedule_retention_job.dart` (delete past events from Sheets after 2 days)
@@ -97,7 +97,7 @@ Avoid: «дорогие друзья», «от лица команды», «ад
   - `ANTISPAM_ENABLED`
   - `ONBOARDING_DRIP_ENABLED`
   - `GROUP_INVITE_NUDGE_ENABLED`
-  - `GOOGLE_SHEETS_WRITE_ENABLED` / `GOOGLE_SHEETS_CREDENTIALS_PATH` / `GOOGLE_SHEETS_SPREADSHEET_ID` / `GOOGLE_SHEETS_RECENT_ACTIONS_LIMIT`
+  - `GOOGLE_SHEETS_WRITE_ENABLED` / `GOOGLE_SHEETS_CREDENTIALS_PATH` / `GOOGLE_SHEETS_SPREADSHEET_ID`
   - `LOG_LEVEL`
 
 ## Reliability Baseline

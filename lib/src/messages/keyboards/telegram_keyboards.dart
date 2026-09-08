@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:dvor_chatbot/src/messages/keyboards/keyboard_builders.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 
 final class TelegramKeyboards {
   const TelegramKeyboards._();
@@ -286,7 +287,7 @@ final class TelegramKeyboards {
     );
   }
 
-  /// Secondary reply nav for payment step (primary CTAs are inline on the card).
+  /// Secondary reply nav for payment step (primary CTAs are inline / in-message).
   static Map<String, Object?> paymentConfirmationKeyboard({
     required bool showStarterBonus,
     bool showLoyaltySpend = false,
@@ -294,52 +295,7 @@ final class TelegramKeyboards {
     bool showOutdoorPaymentTypeChoice = false,
     bool showPromoCodeEntry = false,
   }) {
-    final rows = <List<Map<String, String>>>[];
-    // Legacy reply actions kept for backward-compatible reply taps during migration.
-    if (showStarterBonus) {
-      rows.add(
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonUseStarterBonus},
-        ],
-      );
-    }
-    if (showLoyaltySpend) {
-      rows.add(
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonSpendLoyaltyPeaks},
-        ],
-      );
-    }
-    if (showOutdoorPaymentTypeChoice) {
-      rows.add(
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonPayFully},
-          <String, String>{'text': MessageCopy.buttonPayPartially},
-        ],
-      );
-    }
-    if (!showOutdoorPaymentTypeChoice) {
-      rows.add(
-        <Map<String, String>>[
-          <String, String>{'text': MessageCopy.buttonSubmitPayment},
-        ],
-      );
-    }
-    if (showPromoCodeEntry || showCancelBooking) {
-      rows.add(
-        <Map<String, String>>[
-          if (showPromoCodeEntry) <String, String>{'text': MessageCopy.buttonEnterPromoCode},
-          if (showCancelBooking) <String, String>{'text': MessageCopy.buttonCancelBooking},
-        ],
-      );
-    }
-    rows.add(
-      <Map<String, String>>[
-        <String, String>{'text': MessageCopy.buttonBack},
-        <String, String>{'text': MessageCopy.buttonMainMenu},
-      ],
-    );
-    return _replyKeyboard(rows);
+    return simpleNavigationKeyboard();
   }
 
   /// Entity-bound payment CTAs under the requisites / reject card.
@@ -351,15 +307,27 @@ final class TelegramKeyboards {
     bool showOutdoorPaymentTypeChoice = false,
     bool showPromoCodeEntry = false,
   }) {
-    final rows = <List<Map<String, String>>>[];
+    final rows = <List<Map<String, Object?>>>[];
+    rows.add(
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'text': MessageCopy.buttonPaySbp,
+          'url': MessageCopy.sbpPaymentLink,
+        },
+        <String, Object?>{
+          'text': MessageCopy.buttonCopySbp,
+          'copy_text': <String, Object?>{'text': MessageCopy.sbpPaymentLink},
+        },
+      ],
+    );
     if (showOutdoorPaymentTypeChoice) {
       rows.add(
-        <Map<String, String>>[
-          <String, String>{
+        <Map<String, Object?>>[
+          <String, Object?>{
             'text': MessageCopy.buttonPayFully,
             'callback_data': '${MessageCopy.callbackPayFullPrefix}$bookingId',
           },
-          <String, String>{
+          <String, Object?>{
             'text': MessageCopy.buttonPayPartially,
             'callback_data': '${MessageCopy.callbackPayPartialPrefix}$bookingId',
           },
@@ -367,8 +335,8 @@ final class TelegramKeyboards {
       );
     } else {
       rows.add(
-        <Map<String, String>>[
-          <String, String>{
+        <Map<String, Object?>>[
+          <String, Object?>{
             'text': MessageCopy.buttonSubmitPayment,
             'callback_data': '${MessageCopy.callbackPayBookingPrefix}$bookingId',
           },
@@ -377,8 +345,8 @@ final class TelegramKeyboards {
     }
     if (showStarterBonus) {
       rows.add(
-        <Map<String, String>>[
-          <String, String>{
+        <Map<String, Object?>>[
+          <String, Object?>{
             'text': MessageCopy.buttonUseStarterBonus,
             'callback_data': '${MessageCopy.callbackUseBonusPrefix}$bookingId',
           },
@@ -387,8 +355,8 @@ final class TelegramKeyboards {
     }
     if (showLoyaltySpend) {
       rows.add(
-        <Map<String, String>>[
-          <String, String>{
+        <Map<String, Object?>>[
+          <String, Object?>{
             'text': MessageCopy.buttonSpendLoyaltyPeaks,
             'callback_data': '${MessageCopy.callbackSpendLoyaltyPrefix}$bookingId',
           },
@@ -397,14 +365,14 @@ final class TelegramKeyboards {
     }
     if (showPromoCodeEntry || showCancelBooking) {
       rows.add(
-        <Map<String, String>>[
+        <Map<String, Object?>>[
           if (showPromoCodeEntry)
-            <String, String>{
+            <String, Object?>{
               'text': MessageCopy.buttonEnterPromoCode,
               'callback_data': '${MessageCopy.callbackEnterPromoPrefix}$bookingId',
             },
           if (showCancelBooking)
-            <String, String>{
+            <String, Object?>{
               'text': MessageCopy.buttonCancelBooking,
               'callback_data': '${MessageCopy.callbackBookingCancelPrefix}$bookingId',
             },
@@ -412,6 +380,92 @@ final class TelegramKeyboards {
       );
     }
     return <String, Object?>{'inline_keyboard': rows};
+  }
+
+  static List<List<RichMessageButton>> paymentCardRichButtons(
+    int bookingId, {
+    required bool showStarterBonus,
+    bool showLoyaltySpend = false,
+    bool showCancelBooking = false,
+    bool showOutdoorPaymentTypeChoice = false,
+    bool showPromoCodeEntry = false,
+  }) {
+    final rows = <List<RichMessageButton>>[
+      <RichMessageButton>[
+        RichMessageButton.url(
+          text: MessageCopy.buttonPaySbp,
+          url: MessageCopy.sbpPaymentLink,
+          style: RichButtonStyle.primary,
+        ),
+        RichMessageButton.copy(
+          text: MessageCopy.buttonCopySbp,
+          copyText: MessageCopy.sbpPaymentLink,
+        ),
+      ],
+    ];
+    if (showOutdoorPaymentTypeChoice) {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonPayFully,
+            callbackData: '${MessageCopy.callbackPayFullPrefix}$bookingId',
+            style: RichButtonStyle.success,
+          ),
+          RichMessageButton.callback(
+            text: MessageCopy.buttonPayPartially,
+            callbackData: '${MessageCopy.callbackPayPartialPrefix}$bookingId',
+          ),
+        ],
+      );
+    } else {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonSubmitPayment,
+            callbackData: '${MessageCopy.callbackPayBookingPrefix}$bookingId',
+            style: RichButtonStyle.primary,
+          ),
+        ],
+      );
+    }
+    if (showStarterBonus) {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonUseStarterBonus,
+            callbackData: '${MessageCopy.callbackUseBonusPrefix}$bookingId',
+          ),
+        ],
+      );
+    }
+    if (showLoyaltySpend) {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonSpendLoyaltyPeaks,
+            callbackData: '${MessageCopy.callbackSpendLoyaltyPrefix}$bookingId',
+          ),
+        ],
+      );
+    }
+    if (showPromoCodeEntry || showCancelBooking) {
+      rows.add(
+        <RichMessageButton>[
+          if (showPromoCodeEntry)
+            RichMessageButton.callback(
+              text: MessageCopy.buttonEnterPromoCode,
+              callbackData: '${MessageCopy.callbackEnterPromoPrefix}$bookingId',
+            ),
+          if (showCancelBooking)
+            RichMessageButton.callback(
+              text: MessageCopy.buttonCancelBooking,
+              callbackData: '${MessageCopy.callbackBookingCancelPrefix}$bookingId',
+              style: RichButtonStyle.danger,
+            ),
+        ],
+      );
+    }
+    return rows;
   }
 
   static Map<String, Object?> simpleNavigationKeyboard() {
@@ -638,6 +692,22 @@ final class TelegramKeyboards {
     };
   }
 
+  static List<List<RichMessageButton>> bookingCancelConfirmRichButtons(int bookingId) {
+    return <List<RichMessageButton>>[
+      <RichMessageButton>[
+        RichMessageButton.callback(
+          text: MessageCopy.buttonConfirmCancelBooking,
+          callbackData: '${MessageCopy.callbackBookingCancelConfirmPrefix}$bookingId',
+          style: RichButtonStyle.danger,
+        ),
+        RichMessageButton.callback(
+          text: MessageCopy.buttonKeepBooking,
+          callbackData: '${MessageCopy.callbackBookingCancelKeepPrefix}$bookingId',
+        ),
+      ],
+    ];
+  }
+
   static Map<String, Object?> bookingActionsInlineKeyboard({
     required int bookingId,
     required bool canReschedule,
@@ -700,6 +770,71 @@ final class TelegramKeyboards {
     return <String, Object?>{'inline_keyboard': rows};
   }
 
+  static List<List<RichMessageButton>> bookingActionsRichButtons({
+    required int bookingId,
+    required bool canReschedule,
+    required bool canCancel,
+    required bool canRepeat,
+    bool canCompletePayment = false,
+    bool canContinuePayment = false,
+  }) {
+    final rows = <List<RichMessageButton>>[];
+    if (canContinuePayment) {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonContinuePayment,
+            callbackData: '${MessageCopy.callbackBookingContinuePayPrefix}$bookingId',
+            style: RichButtonStyle.primary,
+          ),
+        ],
+      );
+    }
+    if (canReschedule) {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonRescheduleBooking,
+            callbackData: '${MessageCopy.callbackBookingReschedulePrefix}$bookingId',
+          ),
+        ],
+      );
+    }
+    if (canCancel) {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonCancelBooking,
+            callbackData: '${MessageCopy.callbackBookingCancelPrefix}$bookingId',
+            style: RichButtonStyle.danger,
+          ),
+        ],
+      );
+    }
+    if (canRepeat) {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonRepeatBooking,
+            callbackData: '${MessageCopy.callbackBookingRepeatPrefix}$bookingId',
+          ),
+        ],
+      );
+    }
+    if (canCompletePayment) {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonCompletePayment,
+            callbackData: '${MessageCopy.callbackBookingContinuePayPrefix}$bookingId',
+            style: RichButtonStyle.primary,
+          ),
+        ],
+      );
+    }
+    return rows;
+  }
+
   static Map<String, Object?> pendingPaymentReminderKeyboard(int bookingId) {
     return <String, Object?>{
       'inline_keyboard': <List<Map<String, String>>>[
@@ -738,6 +873,41 @@ final class TelegramKeyboards {
           <String, String>{
             'text': label,
             'url': url,
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> copyTextInlineKeyboard({
+    required String label,
+    required String text,
+  }) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, Object?>>>[
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': label,
+            'copy_text': <String, Object?>{'text': text},
+          },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> referralActionsInlineKeyboard(String link) {
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, Object?>>>[
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageCopy.buttonCopyReferral,
+            'copy_text': <String, Object?>{'text': link},
+          },
+        ],
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageCopy.buttonOpenGroup,
+            'url': MessageCopy.dvorGroupInviteUrl,
           },
         ],
       ],
@@ -800,14 +970,50 @@ final class TelegramKeyboards {
     return <String, Object?>{'inline_keyboard': rows};
   }
 
-  static Map<String, Object?> adminBookingDeleteConfirmInlineKeyboard(int bookingId) {
+  static List<List<RichMessageButton>> adminBookingActionsRichButtons(
+    int bookingId, {
+    required bool canRestore,
+  }) {
+    final rows = <List<RichMessageButton>>[
+      <RichMessageButton>[
+        RichMessageButton.callback(
+          text: MessageCopy.buttonEditBooking,
+          callbackData: '${MessageCopy.callbackAdminBookingEditPrefix}$bookingId',
+        ),
+        RichMessageButton.callback(
+          text: MessageCopy.buttonDeleteBooking,
+          callbackData: '${MessageCopy.callbackAdminBookingDeletePrefix}$bookingId',
+          style: RichButtonStyle.danger,
+        ),
+      ],
+    ];
+    if (canRestore) {
+      rows.add(
+        <RichMessageButton>[
+          RichMessageButton.callback(
+            text: MessageCopy.buttonRestoreBooking,
+            callbackData: '${MessageCopy.callbackAdminBookingRestorePrefix}$bookingId',
+            style: RichButtonStyle.success,
+          ),
+        ],
+      );
+    }
+    return rows;
+  }
+
+  static Map<String, Object?> adminBookingDeleteConfirmInlineKeyboard(
+    int bookingId, {
+    String? confirmLabel,
+  }) {
     return <String, Object?>{
       'inline_keyboard': <List<Map<String, String>>>[
         <Map<String, String>>[
           <String, String>{
-            'text': MessageCopy.buttonConfirmDeleteBooking,
+            'text': confirmLabel ?? '${MessageCopy.buttonConfirmDeleteBooking} #$bookingId',
             'callback_data': '${MessageCopy.callbackAdminBookingDeleteConfirmPrefix}$bookingId',
           },
+        ],
+        <Map<String, String>>[
           <String, String>{
             'text': MessageCopy.buttonCancelDeleteBooking,
             'callback_data': '${MessageCopy.callbackAdminBookingDeleteAbortPrefix}$bookingId',
@@ -859,6 +1065,33 @@ final class TelegramKeyboards {
     return <String, Object?>{
       'inline_keyboard': rows,
     };
+  }
+
+  static List<List<RichMessageButton>> paymentDecisionRichButtons(
+    int bookingId, {
+    bool approvePartial = false,
+  }) {
+    final approve = approvePartial
+        ? RichMessageButton.callback(
+            text: '🟡 Подтвердить предоплату',
+            callbackData: '${MessageCopy.callbackApprovePartialPaymentPrefix}$bookingId',
+            style: RichButtonStyle.success,
+          )
+        : RichMessageButton.callback(
+            text: '✅ Подтвердить оплату',
+            callbackData: '${MessageCopy.callbackApprovePaymentPrefix}$bookingId',
+            style: RichButtonStyle.success,
+          );
+    return <List<RichMessageButton>>[
+      <RichMessageButton>[approve],
+      <RichMessageButton>[
+        RichMessageButton.callback(
+          text: '❌ Отклонить',
+          callbackData: '${MessageCopy.callbackRejectPaymentPrefix}$bookingId',
+          style: RichButtonStyle.danger,
+        ),
+      ],
+    ];
   }
 
   static Map<String, Object?> openPaymentsQueueInlineKeyboard({

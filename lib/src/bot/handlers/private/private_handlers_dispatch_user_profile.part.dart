@@ -45,7 +45,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           .toList(growable: false);
       final cancelledBookings =
           bookings.where((booking) => booking.status == BookingStatus.cancelled).length;
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.profileOverview(
           totalBookings: bookings.length,
@@ -69,7 +69,6 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           now: now,
         ),
         replyMarkup: _templates.profileActionsKeyboard(),
-        parseMode: 'HTML',
       );
       _flowByUserId.remove(userId);
       return true;
@@ -84,14 +83,27 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         userId,
         now: _nowProvider(),
       );
-      await _sender.sendMessage(
+      final referralLink = _templates.referralLink(userId);
+      await sendBotScreen(
+        _sender,
         chatId,
-        _templates.referralProgramOverview(
-          userId: userId,
-          successfulReferralsCount: referralProgress.qualifiedReferralsCount,
+        InputRichMessage(
+          html: _templates.referralProgramOverview(
+            userId: userId,
+            successfulReferralsCount: referralProgress.qualifiedReferralsCount,
+          ),
+          buttonRows: referralLink == null
+              ? const <List<RichMessageButton>>[]
+              : <List<RichMessageButton>>[
+                  <RichMessageButton>[
+                    RichMessageButton.copy(
+                      text: MessageCopy.buttonCopyReferral,
+                      copyText: referralLink,
+                    ),
+                  ],
+                ],
         ),
         replyMarkup: _templates.profileActionsKeyboard(),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -103,9 +115,9 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       }
       final bookings = await _bookingRepository.listUserBookings(userId, limit: 100);
       if (bookings.isEmpty) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
-          'У тебя пока нет записей на мероприятия 🙃',
+          _templates.noBookingsYet(),
           replyMarkup: _templates.profileActionsKeyboard(),
         );
         return true;
@@ -119,14 +131,13 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         availableTrainings: const <TrainingInfo>[],
         availableBookings: bookings,
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.chooseMyBookingsSegment(),
         replyMarkup: _templates.myBookingSegmentKeyboard(
           currentCount: currentCount,
           pastCount: pastCount,
         ),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -218,7 +229,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         text == MessageTemplates.buttonRescheduleBooking) {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null || !_bookingPolicyService.canReschedule(selectedBooking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingRescheduleNotAvailable(selectedBooking),
           replyMarkup: _templates.bookingActionsKeyboard(
@@ -232,10 +243,10 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       }
       if (MessageFormatters.isBoxingCardPaymentNote(selectedBooking.paymentNote) &&
           !BoxingCardLedger.canReschedule(selectedBooking, now: _nowProvider())) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.boxingCardRescheduleTooLate(),
-          replyMarkup: _bookingActionsInlineKeyboard(selectedBooking),
+          buttonRows: _bookingActionsRichButtons(selectedBooking),
         );
         return true;
       }
@@ -244,7 +255,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         trainings = trainings.where(BoxingCardLedger.isAllowedRescheduleTarget).toList();
       }
       if (trainings.isEmpty) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.chooseTrainingForReschedule(const <TrainingInfo>[], booking: selectedBooking),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -257,7 +268,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         step: _PrivateFlowStep.selectingRescheduleTraining,
         availableTrainings: trainings,
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.chooseTrainingForReschedule(trainings, booking: selectedBooking),
         replyMarkup: _templates.bookingSelectionKeyboard(trainings),
@@ -274,15 +285,15 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       if (selectedBooking == null ||
           category == null ||
           !_bookingPolicyService.supportsCancellationForBooking(selectedBooking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingCancelNotAvailable(selectedBooking),
-          replyMarkup: _bookingActionsInlineKeyboard(selectedBooking),
+          buttonRows: _bookingActionsRichButtons(selectedBooking),
         );
         return true;
       }
       if (!_canCancelBookingByPolicy(selectedBooking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _cancellationTooLateText(selectedBooking, category: category),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -305,7 +316,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -328,7 +339,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           selectedBooking == null ? null : _catalogService.categoryForBooking(selectedBooking);
       if (selectedBooking == null || category == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -337,7 +348,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         return true;
       }
       if (!_canCancelBookingByPolicy(selectedBooking)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _cancellationTooLateText(selectedBooking, category: category),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -357,7 +368,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         if (_shouldNotifyAdminAboutBookingCancellation(selectedBooking)) {
           await _notifyAdminAboutBookingCancelled(selectedBooking);
         }
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingCancelled(cancelled ?? cancelResult.booking!),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -365,12 +376,11 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         );
         return true;
       }
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.bookingNotFound(selectedBooking.id),
         replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -380,7 +390,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         text == MessageTemplates.buttonCompletePayment) {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -388,10 +398,10 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         );
         return true;
       }
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.partialPaidRemainderOffline(selectedBooking),
-        replyMarkup: _bookingActionsInlineKeyboard(selectedBooking),
+        buttonRows: _bookingActionsRichButtons(selectedBooking),
       );
       return true;
     }
@@ -424,7 +434,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       if (selectedBooking == null || !_isPayableForProof(selectedBooking)) {
         if (pending.isEmpty) {
           _flowByUserId.remove(userId);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.noPendingPayment(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -432,7 +442,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           );
           return true;
         }
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.choosePendingPaymentBooking(pending),
           replyMarkup: _templates.bookingManagementSelectionKeyboard(pending),
@@ -465,7 +475,6 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           )}\n\n'
               'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
           showStarterBonus: openedFlow.starterBonusOffered,
-          parseMode: 'HTML',
         );
         return true;
       }
@@ -489,7 +498,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
             text == MessageTemplates.buttonContinuePayment)) {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -499,12 +508,12 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       }
       if (text == MessageTemplates.buttonContinuePayment || _isPayableForProof(selectedBooking)) {
         if (!_isPayableForProof(selectedBooking)) {
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             selectedBooking.status == BookingStatus.partialPaid
                 ? _templates.partialPaidRemainderOffline(selectedBooking)
                 : _templates.bookingActions(selectedBooking),
-            replyMarkup: _bookingActionsInlineKeyboard(selectedBooking),
+            buttonRows: _bookingActionsRichButtons(selectedBooking),
           );
           return true;
         }
@@ -533,9 +542,9 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       final selectedBooking = currentFlow.selectedBooking;
       if (selectedBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
-          'Вернул в главное меню 👇',
+          _templates.returnedToMainMenu(),
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
@@ -543,7 +552,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       }
       final index = _parseTrainingSelectionIndex(text);
       if (index == null || index < 1 || index > currentFlow.availableTrainings.length) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _bookingHandler.unknownSelectionText(),
           replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
@@ -552,7 +561,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       }
       final targetTraining = currentFlow.availableTrainings[index - 1];
       if (targetTraining.sessionKey == selectedBooking.trainingKey) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.bookingRescheduleSameTraining(),
           replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
@@ -561,7 +570,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       }
       if (MessageFormatters.isBoxingCardPaymentNote(selectedBooking.paymentNote)) {
         if (!BoxingCardLedger.canReschedule(selectedBooking, now: _nowProvider())) {
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.boxingCardRescheduleTooLate(),
             replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
@@ -569,7 +578,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           return true;
         }
         if (!BoxingCardLedger.isAllowedRescheduleTarget(targetTraining)) {
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.boxingCardRescheduleTargetNotBoxing(),
             replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
@@ -591,7 +600,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           ReschedulePaymentTypeViolation.priceMismatch =>
             _templates.bookingReschedulePriceMismatchNotAllowed(),
         };
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           message,
           replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
@@ -609,7 +618,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           _flowByUserId.remove(userId);
           final after = result.booking ?? before;
           await _notifyAdminAboutBookingRescheduled(before: before, after: after);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.bookingRescheduled(from: before, to: after),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -618,7 +627,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           return true;
         case BookingRescheduleOutcome.notFound:
           _flowByUserId.remove(userId);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.bookingNotFound(selectedBooking.id),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -626,7 +635,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           );
           return true;
         case BookingRescheduleOutcome.conflict:
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.bookingRescheduleConflict(),
             replyMarkup: _templates.bookingSelectionKeyboard(currentFlow.availableTrainings),
@@ -666,7 +675,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
       // Never fall back to an unrelated payable booking (wrong event / receipt).
       if (liveBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.noPendingPayment(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -716,7 +725,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         flowState?.step != _PrivateFlowStep.paymentConfirmation) {
       final opened = await _openPendingPaymentFlow(chatId: chatId, userId: userId);
       if (!opened) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.noPendingPayment(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -769,11 +778,10 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         step: _PrivateFlowStep.selectingBoxingCardPlan,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.boxingCardPlanChoice(),
         replyMarkup: _templates.boxingCardPlanKeyboard(),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -800,11 +808,10 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           outdoor: false,
         )}';
       }
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         textBody,
         replyMarkup: _templates.subscriptionPaymentKeyboard(showLoyaltySpend: showLoyaltySpend),
-        parseMode: 'HTML',
       );
       return true;
     }
@@ -837,7 +844,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           await _subscriptionRepository.hasPendingIndividualInPeriod(
             subscriptionRequestId: membership.requestId!,
           )) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.boxingCardIndividualAlreadyPending(),
           replyMarkup: _templates.subscriptionOverviewKeyboard(
@@ -848,7 +855,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         return true;
       }
       if (!await _isBoxingCardIndividualAvailable(membership: membership)) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           BoxingCardLedger.isActiveBoxingCard(membership, now: _nowProvider())
               ? _templates.boxingCardIndividualQuotaUsed()
@@ -864,7 +871,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         step: _PrivateFlowStep.enteringIndividualSessionTimes,
         availableTrainings: <TrainingInfo>[],
       );
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.boxingCardIndividualPrompt(),
         replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -891,7 +898,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           if (request != null) {
             await _notifyAdminAboutIndividualSessionSubmitted(request);
           }
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.boxingCardIndividualSubmitted(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -899,7 +906,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           );
           return true;
         case SubmitIndividualSessionOutcome.alreadyPending:
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.boxingCardIndividualAlreadyPending(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -907,7 +914,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           );
           return true;
         case SubmitIndividualSessionOutcome.quotaUsed:
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.boxingCardIndividualQuotaUsed(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -915,7 +922,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           );
           return true;
         case SubmitIndividualSessionOutcome.noActiveCard:
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.boxingCardIndividualNeedActiveCard(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -934,11 +941,10 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           step: _PrivateFlowStep.selectingBoxingCardPlan,
           availableTrainings: <TrainingInfo>[],
         );
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.boxingCardPlanChoice(),
           replyMarkup: _templates.boxingCardPlanKeyboard(),
-          parseMode: 'HTML',
         );
         return true;
       }
@@ -959,7 +965,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           if (request != null) {
             await _notifyAdminAboutSubscriptionSubmitted(request);
           }
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.subscriptionPaymentSubmitted(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -967,7 +973,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           );
           return true;
         case SubmitSubscriptionRequestOutcome.alreadyPending:
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.subscriptionAlreadyPending(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -981,7 +987,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         flowState?.step == _PrivateFlowStep.confirmingSubscriptionPayment &&
         text != null &&
         !text.startsWith('/')) {
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.subscriptionPaymentProofRequired(),
         replyMarkup: _templates.subscriptionOverviewKeyboard(canApply: true),
@@ -1010,7 +1016,6 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           )}\n\n'
               'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
           showStarterBonus: currentFlow.starterBonusOffered,
-          parseMode: 'HTML',
         );
         return true;
       }
@@ -1029,7 +1034,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         await _notifyAdminAboutPaymentSubmitted(booking);
       }
       _flowByUserId.remove(userId);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         booking == null ? _templates.noPendingPayment() : _templates.paymentSubmitted(booking),
         replyMarkup: _templates.privateMenuKeyboard(
@@ -1045,7 +1050,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         final alreadySubmitted = bookings.any(
           (item) => item.status == BookingStatus.paymentSubmitted,
         );
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           alreadySubmitted
               ? _templates.paymentSubmittedAlreadyPending()
@@ -1064,7 +1069,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           pendingPaymentProofMessageId: paymentProof.messageId,
           pendingPaymentProofCaption: paymentProof.caption,
         );
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.choosePendingPaymentBooking(payable),
           replyMarkup: _templates.bookingManagementSelectionKeyboard(payable),
@@ -1090,7 +1095,6 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           )}\n\n'
               'Чек уже получил — выбери тип оплаты, и заявка уйдёт на проверку.',
           showStarterBonus: _flowByUserId[userId]?.starterBonusOffered ?? false,
-          parseMode: 'HTML',
         );
         return true;
       }
@@ -1151,7 +1155,7 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         bookingStatus: booking.status,
       );
       _flowByUserId.remove(userId);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.starterBonusApplied(booking),
         replyMarkup: _templates.privateMenuKeyboard(

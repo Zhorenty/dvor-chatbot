@@ -9,7 +9,7 @@ final class StaticTrainerDirectoryRepository implements TrainerDirectoryReposito
   final List<TrainerInfo> _items;
 
   @override
-  List<TrainerInfo> list({int limit = 20}) => _items.take(limit).toList(growable: false);
+  List<TrainerInfo> list({int limit = 20}) => staffDirectoryList(people: _items, limit: limit);
 
   @override
   bool containsUsername(String? username) {

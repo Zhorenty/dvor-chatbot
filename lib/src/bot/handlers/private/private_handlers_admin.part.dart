@@ -447,7 +447,10 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     await _sendAdminMessage(
       chatId,
       _templates.adminBookingActions(booking),
-      replyMarkup: _adminBookingActionsInlineKeyboard(booking),
+      buttonRows: _templates.adminBookingActionsRichButtons(
+        booking.id,
+        canRestore: _canRestoreBooking(booking),
+      ),
     );
     await _sendAdminMessage(
       chatId,
@@ -596,14 +599,35 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     bool disableNotification = true,
     bool disableWebPagePreview = true,
     Map<String, Object?>? replyMarkup,
+    List<List<RichMessageButton>> buttonRows = const <List<RichMessageButton>>[],
   }) {
-    return _sender.sendMessage(
+    return sendBotScreen(
+      _sender,
       chatId,
-      text,
+      InputRichMessage(html: text, buttonRows: buttonRows),
       disableNotification: disableNotification,
       disableWebPagePreview: disableWebPagePreview,
       replyMarkup: replyMarkup,
-      parseMode: 'HTML',
+    );
+  }
+
+  Future<int> _sendScreen(
+    int chatId,
+    String text, {
+    bool disableNotification = true,
+    bool disableWebPagePreview = true,
+    Map<String, Object?>? replyMarkup,
+    bool transactional = false,
+    List<List<RichMessageButton>> buttonRows = const <List<RichMessageButton>>[],
+  }) {
+    return sendBotScreen(
+      _sender,
+      chatId,
+      InputRichMessage(html: text, buttonRows: buttonRows),
+      transactional: transactional,
+      disableNotification: disableNotification,
+      disableWebPagePreview: disableWebPagePreview,
+      replyMarkup: replyMarkup,
     );
   }
 
@@ -816,13 +840,12 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     );
     if (cancelResult.outcome == CancelSubscriptionOutcome.success && cancelResult.request != null) {
       try {
-        await _sender.sendMessage(
+        await _sendScreen(
           cancelResult.request!.userId,
           _templates.subscriptionCancelledForUser(
             reason: reason,
             comment: comment,
           ),
-          parseMode: 'HTML',
         );
       } on Object catch (error, stackTrace) {
         l.w('Failed to notify user about subscription cancel: $error', stackTrace);
@@ -833,23 +856,21 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
   Future<void> _notifyUserAboutSubscriptionDecision(SubscriptionRequest request) async {
     try {
       if (request.status == SubscriptionRequestStatus.active) {
-        await _sender.sendMessage(
+        await _sendScreen(
           request.userId,
           _templates.subscriptionApprovedForUser(
             activeUntil: request.activeUntil ?? _nowProvider(),
             plan: request.plan,
           ),
-          parseMode: 'HTML',
         );
         return;
       }
-      await _sender.sendMessage(
+      await _sendScreen(
         request.userId,
         _templates.subscriptionRejectedForUser(
           reason: request.moderationReason,
           comment: request.moderationComment,
         ),
-        parseMode: 'HTML',
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify user about subscription review: $error', stackTrace);
@@ -861,7 +882,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
       return 'Невалидный userId у записи: ${booking.userId}.';
     }
     try {
-      await _sender.sendMessage(
+      await _sendScreen(
         booking.userId,
         _templates.adminBookingDeletedForUser(booking),
       );
@@ -897,7 +918,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
       return 'Невалидный userId у записи: ${booking.userId}.';
     }
     try {
-      await _sender.sendMessage(
+      await _sendScreen(
         booking.userId,
         _templates.adminBookingCreatedForUser(booking),
       );
@@ -913,7 +934,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
       return 'Невалидный userId у записи: ${booking.userId}.';
     }
     try {
-      await _sender.sendMessage(
+      await _sendScreen(
         booking.userId,
         _templates.adminBookingRestoredForUser(booking),
       );
@@ -929,7 +950,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
       return 'Невалидный userId у записи: ${booking.userId}.';
     }
     try {
-      await _sender.sendMessage(
+      await _sendScreen(
         booking.userId,
         _templates.adminBookingPaymentStatusUpdatedForUser(booking),
       );
@@ -945,7 +966,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
       return 'Невалидный userId у записи: ${booking.userId}.';
     }
     try {
-      await _sender.sendMessage(
+      await _sendScreen(
         booking.userId,
         _templates.adminBookingUsernameUpdatedForUser(booking),
       );
@@ -961,7 +982,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
       return 'Невалидный userId у записи: ${booking.userId}.';
     }
     try {
-      await _sender.sendMessage(
+      await _sendScreen(
         booking.userId,
         _templates.adminBookingEventUpdatedForUser(booking),
       );

@@ -1,6 +1,7 @@
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/html_escaper.dart';
+import 'package:dvor_chatbot/src/messages/rich_html.dart';
 import 'package:intl/intl.dart';
 
 final class GroupTemplates {
@@ -9,16 +10,21 @@ final class GroupTemplates {
   final String? _botUsername;
 
   String clubInfoPrivate() {
-    return 'Добро пожаловать в DVOR 🤝\n\n'
-        'В боте — слоты: расписание, запись и подарок за старт.\n'
-        'Нажми /start или «Записаться», чтобы начать 👌';
+    return RichHtml.screen(
+      title: 'DVOR',
+      lead: 'В боте — слоты: расписание, запись и подарок за старт.',
+    );
   }
 
   String groupFallback({required String? botUsername}) {
     final botLink = botUsername == null || botUsername.isEmpty
-        ? 'Напиши боту в личку и нажми Start 🙌'
-        : 'Открой личку с ботом: https://t.me/$botUsername и нажми Start 🙌';
-    return 'Не удалось отправить личное сообщение новому участнику 😕 $botLink';
+        ? 'Напишите боту в личку и нажмите Start.'
+        : 'Откройте личку с ботом: https://t.me/$botUsername и нажмите Start.';
+    return RichHtml.screen(
+      title: 'Личка закрыта',
+      lead: 'Не получилось написать в личку. Это нормально.',
+      paragraphs: <String>[botLink],
+    );
   }
 
   String groupWelcome({
@@ -28,13 +34,17 @@ final class GroupTemplates {
   }) {
     final mention = _groupMention(username: username, userId: userId, firstName: firstName);
     final botLink = _botStartDeepLink();
-    final botPrompt = botLink == null
-        ? '🤖 Чат с ботом: напиши боту в личку и нажми Start'
-        : '🤖 Чат с ботом: <a href="$botLink">нажми, чтобы открыть — там первый шаг и подарок за старт</a>';
-    return 'Привет, $mention! 🏃\n'
-        'Добро пожаловать в DVOR.\n'
-        'В боте — расписание, запись и подарок за старт.\n'
-        '$botPrompt';
+    final botLine = botLink == null
+        ? RichHtml.paragraph(
+            'В боте — расписание, запись и подарок за старт. Напишите боту в личку и нажмите Start.')
+        : RichHtml.paragraph(
+            'В боте — расписание, запись и подарок за старт. '
+            '<a href="${escapeHtml(botLink)}">Открыть бота</a>',
+            alreadyEscaped: true,
+          );
+    return '<h2>Привет, $mention!</h2>'
+        '${RichHtml.paragraph('Добро пожаловать в DVOR.')}'
+        '$botLine';
   }
 
   String groupScheduleBroadcast({
@@ -42,59 +52,56 @@ final class GroupTemplates {
     required int weekday,
   }) {
     final headline = switch (weekday) {
-      DateTime.sunday => 'Новая неделя DVOR уже в расписании 🔥',
-      DateTime.tuesday => 'Середина недели — самое время записаться 💪',
-      DateTime.thursday => 'Слоты до выходных уже в расписании ⚡',
-      _ => 'Расписание DVOR уже в боте 🔥',
+      DateTime.sunday => 'Новая неделя DVOR уже в расписании',
+      DateTime.tuesday => 'Середина недели',
+      DateTime.thursday => 'Слоты до выходных уже в расписании',
+      _ => 'Расписание DVOR',
     };
     final lead = switch (weekday) {
-      DateTime.sunday => 'Свежий план на ближайшие дни уже здесь. Выбирай формат и слот.',
-      DateTime.tuesday => 'Неделя в разгаре, а места на тренировки разбирают быстро. '
-          'Загляни в расписание и закрепи слот за собой.',
-      DateTime.thursday =>
-        'До выходных осталось чуть-чуть. Загляни в ближайшие занятия и закрепи слот.',
-      _ => 'Ближайшие тренировки уже в календаре. Выбирай формат и слот.',
+      DateTime.sunday => 'План на ближайшие дни уже здесь.',
+      DateTime.tuesday => 'Места на тренировки разбирают быстро. Запись в боте.',
+      DateTime.thursday => 'До выходных осталось чуть-чуть. Запись в боте.',
+      _ => 'Ближайшие тренировки уже в календаре.',
     };
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>[
-      '📅 <b>$headline</b>',
-      '',
-      lead,
-      '',
-      '<b>Что будет:</b>',
-    ];
-    for (var index = 0; index < trainings.length; index++) {
-      final training = trainings[index];
+    final rows = <(String, String)>[];
+    for (final training in trainings) {
       final coach = training.coach?.trim();
       final weekdayShort = _weekdayShort(training.startsAt.weekday);
       final dateLabel = weekdayShort.isEmpty
           ? formatter.format(training.startsAt)
           : '$weekdayShort, ${formatter.format(training.startsAt)}';
-      lines.addAll(<String>[
-        '',
-        '<b>${index + 1}. ${_escapeHtml(training.title)}</b>',
-        '🕒 $dateLabel',
-        '📍 ${_escapeHtml(training.location)}',
-        if (training.price != null) '💳 ${MessageFormatters.trainingPriceLabel(training.price)}',
-        if (coach != null && coach.isNotEmpty) '🧑‍🏫 ${_escapeHtml(coach)}',
-      ]);
+      final bits = <String>[
+        dateLabel,
+        training.location,
+        if (training.price != null) MessageFormatters.trainingPriceLabel(training.price),
+        if (coach != null && coach.isNotEmpty) coach,
+      ];
+      rows.add((training.title, bits.join(' · ')));
     }
-    lines.addAll(<String>[
-      '',
-      'Запись в пару тапов в боте — места разлетаются быстро 👇',
-      _groupBookingCta(),
-    ]);
-    return lines.join('\n');
+    final buffer = StringBuffer()
+      ..write(RichHtml.heading(headline))
+      ..write(RichHtml.paragraph(lead))
+      ..write(RichHtml.table(rows))
+      ..write(RichHtml.paragraph('Запись в пару тапов в боте.'))
+      ..write(RichHtml.paragraph(_groupBookingCta(), alreadyEscaped: true));
+    return buffer.toString();
   }
 
   String groupReferralBroadcast() {
-    return '🎁 <b>Приведи друга — 1000 ⛰️</b>\n\n'
-        'Можно записать друга в боте:\n'
-        '1) Открой бота → <b>Профиль</b> → <b>Реферальная программа</b>\n'
-        '2) Отправь другу свою персональную ссылку\n'
-        '3) Когда друг пройдет <b>первую платную тренировку</b> — '
-        'тебе начислится <b>1000 ⛰️</b>\n\n'
-        '${_groupBookingCta()}';
+    final buffer = StringBuffer()
+      ..write(RichHtml.heading('Приведи друга — 1000 ⛰️'))
+      ..write(
+        RichHtml.bullets(
+          <String>[
+            'Откройте бота → Профиль → Реферальная программа',
+            'Отправьте другу свою ссылку',
+            'Друг прошёл первую платную тренировку — вам 1000 ⛰️',
+          ],
+        ),
+      )
+      ..write(RichHtml.paragraph(_groupBookingCta(), alreadyEscaped: true));
+    return buffer.toString();
   }
 
   String _groupMention({
@@ -104,7 +111,7 @@ final class GroupTemplates {
   }) {
     final normalizedName = firstName?.trim();
     final hasName = normalizedName != null && normalizedName.isNotEmpty;
-    final displayName = hasName ? _escapeHtml(normalizedName) : 'участник';
+    final displayName = hasName ? escapeHtml(normalizedName) : 'участник';
 
     final normalizedUsername = username?.trim();
     final handle = normalizedUsername == null || normalizedUsername.isEmpty
@@ -114,7 +121,7 @@ final class GroupTemplates {
             : normalizedUsername);
     if (handle != null && handle.isNotEmpty) {
       if (hasName) {
-        return '<a href="https://t.me/${_escapeHtml(handle)}">$displayName</a>';
+        return '<a href="https://t.me/${escapeHtml(handle)}">$displayName</a>';
       }
       return '@$handle';
     }
@@ -140,9 +147,9 @@ final class GroupTemplates {
   String _groupBookingCta() {
     final deepLink = _botBookDeepLink();
     if (deepLink != null) {
-      return 'Открыть бота: $deepLink';
+      return 'Открыть бота: <a href="${escapeHtml(deepLink)}">${escapeHtml(deepLink)}</a>';
     }
-    return 'Чтобы записаться, открой бота в личке и нажми /start.';
+    return 'Чтобы записаться, откройте бота в личке и нажмите /start.';
   }
 
   String _weekdayShort(int weekday) {
@@ -157,6 +164,4 @@ final class GroupTemplates {
       _ => '',
     };
   }
-
-  String _escapeHtml(String value) => escapeHtml(value);
 }

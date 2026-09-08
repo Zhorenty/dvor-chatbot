@@ -30,7 +30,6 @@ final class AppConfig {
     this.googleSheetsSpreadsheetId,
     this.googleSheetsWriteSheetTitle = 'FUNNEL',
     this.googleSheetsWriteIntervalSeconds = 300,
-    this.googleSheetsRecentActionsLimit = 200,
   });
 
   final String botToken;
@@ -56,7 +55,6 @@ final class AppConfig {
   final String? googleSheetsSpreadsheetId;
   final String googleSheetsWriteSheetTitle;
   final int googleSheetsWriteIntervalSeconds;
-  final int googleSheetsRecentActionsLimit;
 
   static AppConfig fromArgs(List<String> args) {
     final parser = ArgParser()
@@ -136,10 +134,6 @@ final class AppConfig {
       ..addOption(
         'google-sheets-write-interval-seconds',
         help: 'Bookings export interval in seconds (default: 300)',
-      )
-      ..addOption(
-        'google-sheets-recent-actions-limit',
-        help: 'Max DM log rows on the ДЕЙСТВИЯ sheet (default: 200)',
       )
       ..addOption('log-level', help: 'Log level: debug/info/warn/error');
 
@@ -229,10 +223,6 @@ final class AppConfig {
       'GOOGLE_SHEETS_WRITE_INTERVAL_SECONDS',
       'google-sheets-write-interval-seconds',
     );
-    final googleSheetsRecentActionsLimitRaw = resolve(
-      'GOOGLE_SHEETS_RECENT_ACTIONS_LIMIT',
-      'google-sheets-recent-actions-limit',
-    );
 
     final scheduleSource = _parseScheduleSource(scheduleSourceRaw);
     if (scheduleSource == ScheduleSource.googleSheets &&
@@ -297,8 +287,6 @@ final class AppConfig {
       googleSheetsWriteSheetTitle: googleSheetsWriteSheetTitle,
       googleSheetsWriteIntervalSeconds:
           int.tryParse(googleSheetsWriteIntervalRaw ?? '')?.clamp(30, 86400) ?? 300,
-      googleSheetsRecentActionsLimit:
-          int.tryParse(googleSheetsRecentActionsLimitRaw ?? '')?.clamp(20, 1000) ?? 200,
     );
   }
 }

@@ -46,6 +46,27 @@ void main() {
         ..._replyTexts(TelegramKeyboards.bookingCancelConfirmKeyboard()),
         ..._replyTexts(TelegramKeyboards.profileActionsKeyboard()),
       };
+      final inlineTexts = <String>{
+        ..._inlineTexts(
+          TelegramKeyboards.paymentCardInlineKeyboard(
+            1,
+            showStarterBonus: true,
+            showLoyaltySpend: true,
+            showCancelBooking: true,
+            showOutdoorPaymentTypeChoice: true,
+            showPromoCodeEntry: true,
+          ),
+        ),
+        ..._inlineTexts(
+          TelegramKeyboards.paymentCardInlineKeyboard(
+            1,
+            showStarterBonus: true,
+            showLoyaltySpend: true,
+            showCancelBooking: true,
+            showOutdoorPaymentTypeChoice: false,
+          ),
+        ),
+      };
 
       expect(allTexts, contains(MessageCopy.buttonBack));
       expect(allTexts, contains(MessageCopy.buttonMainMenu));
@@ -64,11 +85,16 @@ void main() {
       expect(allTexts, contains(MessageCopy.buttonClientMenu));
       expect(allTexts, contains(MessageCopy.buttonAdminMenu));
       expect(allTexts, contains(MessageCopy.buttonSubscriptionsSearch));
-      expect(allTexts, contains(MessageCopy.buttonSubmitPayment));
-      expect(allTexts, contains(MessageCopy.buttonPayFully));
-      expect(allTexts, contains(MessageCopy.buttonPayPartially));
-      expect(allTexts, contains(MessageCopy.buttonUseStarterBonus));
-      expect(allTexts, contains(MessageCopy.buttonSpendLoyaltyPeaks));
+      expect(allTexts, isNot(contains(MessageCopy.buttonSubmitPayment)));
+      expect(allTexts, isNot(contains(MessageCopy.buttonPayFully)));
+      expect(allTexts, isNot(contains(MessageCopy.buttonPayPartially)));
+      expect(allTexts, isNot(contains(MessageCopy.buttonUseStarterBonus)));
+      expect(allTexts, isNot(contains(MessageCopy.buttonSpendLoyaltyPeaks)));
+      expect(inlineTexts, contains(MessageCopy.buttonSubmitPayment));
+      expect(inlineTexts, contains(MessageCopy.buttonPayFully));
+      expect(inlineTexts, contains(MessageCopy.buttonPayPartially));
+      expect(inlineTexts, contains(MessageCopy.buttonUseStarterBonus));
+      expect(inlineTexts, contains(MessageCopy.buttonSpendLoyaltyPeaks));
       expect(allTexts, contains(MessageCopy.buttonCancelBooking));
       expect(allTexts, contains(MessageCopy.buttonContinuePayment));
       expect(allTexts, contains(MessageCopy.buttonConfirmCancelBooking));
@@ -163,6 +189,25 @@ void main() {
 
 Set<String> _replyTexts(Map<String, Object?> keyboard) {
   final rowsRaw = keyboard['keyboard'];
+  if (rowsRaw is! List) {
+    return const <String>{};
+  }
+  final result = <String>{};
+  for (final row in rowsRaw) {
+    if (row is! List) {
+      continue;
+    }
+    for (final button in row) {
+      if (button is Map && button['text'] is String) {
+        result.add(button['text']! as String);
+      }
+    }
+  }
+  return result;
+}
+
+Set<String> _inlineTexts(Map<String, Object?> keyboard) {
+  final rowsRaw = keyboard['inline_keyboard'];
   if (rowsRaw is! List) {
     return const <String>{};
   }

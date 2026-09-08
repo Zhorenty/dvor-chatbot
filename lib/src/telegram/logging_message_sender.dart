@@ -1,6 +1,7 @@
 import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:l/l.dart';
 
 /// Decorates [MessageSender] and persists outbound private DM traffic.
@@ -38,6 +39,45 @@ final class LoggingMessageSender implements MessageSender {
       textPreview: text,
     );
     return messageId;
+  }
+
+  @override
+  Future<int> sendRichMessage(
+    int chatId,
+    InputRichMessage richMessage, {
+    bool disableNotification = true,
+    bool disableWebPagePreview = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final messageId = await _inner.sendRichMessage(
+      chatId,
+      richMessage,
+      disableNotification: disableNotification,
+      disableWebPagePreview: disableWebPagePreview,
+      replyMarkup: replyMarkup,
+    );
+    await _safeAppend(
+      chatId: chatId,
+      telegramMessageId: messageId,
+      contentType: ConversationContentType.text,
+      textPreview: richMessage.html,
+    );
+    return messageId;
+  }
+
+  @override
+  Future<void> editRichMessage(
+    int chatId, {
+    required int messageId,
+    required InputRichMessage richMessage,
+    Map<String, Object?>? replyMarkup,
+  }) {
+    return _inner.editRichMessage(
+      chatId,
+      messageId: messageId,
+      richMessage: richMessage,
+      replyMarkup: replyMarkup,
+    );
   }
 
   @override

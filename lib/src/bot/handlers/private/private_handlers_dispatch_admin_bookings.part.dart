@@ -262,7 +262,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
         !text.startsWith('/')) {
       final category = _parseCategory(text);
       if (category == null) {
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.unknownCategory(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -336,7 +336,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -360,7 +360,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -380,7 +380,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -427,7 +427,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -484,7 +484,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -516,7 +516,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
         final category = _catalogService.categoryForBooking(selectedBooking);
         final items = _bookableItemsByCategory(category);
         if (items.isEmpty) {
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.noUpcomingForBooking(),
             replyMarkup: _adminBookingActionsInlineKeyboard(selectedBooking),
@@ -600,7 +600,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -659,7 +659,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
       final selectedBooking = flowState?.selectedBooking;
       if (selectedBooking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(
@@ -846,7 +846,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
         final usernames = flowState?.adminCreateUsernames;
         final status = flowState?.adminCreateStatus;
         if (training == null || usernames == null || usernames.isEmpty || status == null) {
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.privateFallback(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -912,7 +912,7 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
       final booking = flowState?.adminClientNotificationBooking;
       if (action == null || booking == null) {
         _flowByUserId.remove(userId);
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.privateFallback(),
           replyMarkup: _templates.privateMenuKeyboard(

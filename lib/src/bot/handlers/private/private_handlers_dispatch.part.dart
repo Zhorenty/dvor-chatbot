@@ -85,7 +85,7 @@ extension PrivateHandlersDispatch on PrivateHandlers {
           step: PrivateFlowStep.selectingBookingCategory,
           availableTrainings: <TrainingInfo>[],
         );
-        await _sender.sendMessage(
+        await _sendScreen(
           chatId,
           _templates.chooseBookingCategory(),
           replyMarkup: _templates.categorySelectionKeyboard(),
@@ -148,7 +148,7 @@ extension PrivateHandlersDispatch on PrivateHandlers {
       return true;
     }
 
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.privateFallback(),
       replyMarkup: _templates.privateMenuKeyboard(

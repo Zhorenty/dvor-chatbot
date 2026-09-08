@@ -107,7 +107,14 @@ final class GoogleSheetsDashboard {
     required this.styles,
     this.bandedTables = const <GoogleSheetsBandedTable>[],
     this.columnWidthsPx = const <int>[],
-    this.obsoleteSheetTitles = const <String>['bot_bookings'],
+    this.obsoleteSheetTitles = const <String>[
+      'bot_bookings',
+      'ДВОРЯНЕ',
+      'ДЕЙСТВИЯ',
+      'КАК ЗАПОЛНЯТЬ',
+      'Как заполнять',
+      'Команда DVOR',
+    ],
     this.frozenRowCount = 1,
   });
 

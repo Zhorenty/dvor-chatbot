@@ -83,7 +83,8 @@ final class TrainingFeedbackJob {
             continue;
           }
           final category = _categoryFor(booking);
-          await _sender.sendMessage(
+          await sendBotHtml(
+            _sender,
             booking.userId,
             _templates.trainingFeedbackAsk(
               trainingTitle: booking.trainingTitle,

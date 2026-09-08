@@ -7,7 +7,6 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
     required String text,
     required bool showStarterBonus,
     bool? showLoyaltySpend,
-    String? parseMode,
   }) async {
     final offerLoyalty =
         showLoyaltySpend ?? await _canOfferLoyaltySpend(userId: booking.userId, booking: booking);
@@ -28,11 +27,10 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
         )}';
       }
     }
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       body,
-      parseMode: parseMode,
-      replyMarkup: _templates.paymentCardInlineKeyboard(
+      buttonRows: _templates.paymentCardRichButtons(
         booking.id,
         showStarterBonus: showStarterBonus,
         showLoyaltySpend: offerLoyalty,
@@ -41,7 +39,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
         showPromoCodeEntry: _shouldShowPromoCodeEntry(booking),
       ),
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.paymentCardNavHint(),
       replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -52,7 +50,6 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
     required int chatId,
     required _PrivateFlowState flowState,
     required String text,
-    String? parseMode,
   }) async {
     final booking = flowState.activeBooking;
     if (booking != null) {
@@ -61,14 +58,12 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
         booking: booking,
         text: text,
         showStarterBonus: flowState.starterBonusOffered,
-        parseMode: parseMode,
       );
       return;
     }
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       text,
-      parseMode: parseMode,
       replyMarkup: _templates.paymentConfirmationKeyboard(
         showStarterBonus: flowState.starterBonusOffered,
         showLoyaltySpend: flowState.loyaltySpendOffered,
@@ -86,7 +81,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
   }) async {
     final filtered = await _paymentReviewService.queueByCategory(category);
     if (filtered.isEmpty) {
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.paymentsQueueEmpty(),
         replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
@@ -129,7 +124,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
         booking,
         groupBookings: groupBookings,
       ),
-      replyMarkup: _templates.paymentDecisionInlineKeyboard(
+      buttonRows: _templates.paymentDecisionRichButtons(
         booking.id,
         approvePartial: _hasPartialPaymentChoice(booking.paymentNote),
       ),
@@ -179,7 +174,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
           booking.status == BookingStatus.paid || booking.status == BookingStatus.partialPaid;
       if (isApproved) {
         await _loyaltyService.touchActivity(booking.userId, now: _nowProvider());
-        await _sender.sendMessage(
+        await _sendScreen(
           booking.userId,
           _templates.paymentApprovedForUser(booking),
         );
@@ -274,7 +269,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
   }) async {
     if (booking.status == BookingStatus.partialPaid) {
       _flowByUserId.remove(userId);
-      await _sender.sendMessage(
+      await _sendScreen(
         chatId,
         _templates.partialPaidRemainderOffline(booking),
         replyMarkup: _templates.simpleNavigationKeyboard(),
@@ -297,7 +292,6 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       booking: booking,
       text: _templates.paymentDetailsSent(booking),
       showStarterBonus: starterBonusOffered,
-      parseMode: 'HTML',
     );
   }
 
@@ -338,7 +332,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       availableTrainings: const <TrainingInfo>[],
       availableBookings: pending,
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       _templates.choosePendingPaymentBooking(pending),
       replyMarkup: _templates.bookingManagementSelectionKeyboard(pending),
@@ -433,7 +427,7 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
       await _notifyAdminAboutPaymentSubmitted(booking);
     }
     _flowByUserId.remove(userId);
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
       booking == null ? _templates.noPendingPayment() : _templates.paymentSubmitted(booking),
       replyMarkup: _templates.privateMenuKeyboard(

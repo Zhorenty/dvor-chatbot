@@ -6,6 +6,7 @@ import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:l/l.dart';
 
 typedef StartCleanup = Future<void> Function(int userId);
@@ -94,9 +95,10 @@ final class PrivateStaticCommands {
             showReturnToAdminMenu: showReturnToAdminMenu,
           );
           if (starterBonusAvailable) {
-            await sender.sendMessage(
+            await sendBotScreen(
+              sender,
               chatId,
-              templates.starterBonusOnboardingOffer(),
+              InputRichMessage(html: templates.starterBonusOnboardingOffer()),
               replyMarkup: templates.categorySelectionKeyboard(),
             );
           }
@@ -128,9 +130,10 @@ final class PrivateStaticCommands {
             step: PrivateFlowStep.onboardingTrack,
             availableTrainings: <TrainingInfo>[],
           );
-          await sender.sendMessage(
+          await sendBotScreen(
+            sender,
             chatId,
-            templates.onboardingTrackChoice(),
+            InputRichMessage(html: templates.onboardingTrackChoice()),
             replyMarkup: templates.onboardingTrackKeyboard(),
           );
         } else if (resumeAtExperience) {
@@ -138,9 +141,10 @@ final class PrivateStaticCommands {
             step: PrivateFlowStep.onboardingQuizExperience,
             availableTrainings: <TrainingInfo>[],
           );
-          await sender.sendMessage(
+          await sendBotScreen(
+            sender,
             chatId,
-            templates.onboardingQuizExperience(),
+            InputRichMessage(html: templates.onboardingQuizExperience()),
             replyMarkup: templates.onboardingQuizExperienceKeyboard(),
           );
         } else {
@@ -153,30 +157,32 @@ final class PrivateStaticCommands {
             phase: OnboardingPhase.phase1Quiz,
             step: OnboardingStep.quizGoal,
           );
-          await sender.sendMessage(
+          await sendBotScreen(
+            sender,
             chatId,
-            templates.onboardingWelcome(),
+            InputRichMessage(html: templates.onboardingWelcome()),
             replyMarkup: templates.onboardingQuizGoalKeyboard(),
           );
         }
         return true;
       }
 
-      final welcomeMessageId = await sender.sendMessage(
+      final welcomeMessageId = await sendBotScreen(
+        sender,
         chatId,
-        templates.privateWelcome(),
+        InputRichMessage(html: templates.privateWelcome()),
         replyMarkup: templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
           showReturnToAdminMenu: showReturnToAdminMenu,
         ),
-        parseMode: 'HTML',
       );
       await onPinWelcomeMessage(chatId: chatId, messageId: welcomeMessageId);
       if (starterBonusAvailable) {
-        await sender.sendMessage(
+        await sendBotScreen(
+          sender,
           chatId,
-          templates.starterBonusOnboardingOffer(),
+          InputRichMessage(html: templates.starterBonusOnboardingOffer()),
           replyMarkup: templates.privateMenuKeyboard(
             isAdmin: isAdmin,
             canViewParticipantsList: canViewParticipantsList,
@@ -207,9 +213,10 @@ final class PrivateStaticCommands {
         step: PrivateFlowStep.selectingScheduleCategory,
         availableTrainings: <TrainingInfo>[],
       );
-      await sender.sendMessage(
+      await sendBotScreen(
+        sender,
         chatId,
-        templates.chooseScheduleCategory(),
+        InputRichMessage(html: templates.chooseScheduleCategory()),
         replyMarkup: templates.categorySelectionKeyboard(),
       );
       return true;
@@ -228,12 +235,11 @@ final class PrivateStaticCommands {
           availableTrainers: trainers,
         );
       }
-      await sender.sendMessage(
+      await sendBotScreen(
+        sender,
         chatId,
-        templates.coachingStaff(trainers),
+        InputRichMessage(html: templates.coachingStaff(trainers)),
         replyMarkup: templates.coachingStaffActionsKeyboard(),
-        parseMode: 'HTML',
-        disableWebPagePreview: true,
       );
       return true;
     }
@@ -242,9 +248,10 @@ final class PrivateStaticCommands {
       if (userId != null) {
         flowByUserId.remove(userId);
       }
-      await sender.sendMessage(
+      await sendBotScreen(
+        sender,
         chatId,
-        templates.privateHelp(),
+        InputRichMessage(html: templates.privateHelp()),
         replyMarkup: templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
@@ -259,9 +266,14 @@ final class PrivateStaticCommands {
         return false;
       }
       flowByUserId.remove(userId);
-      await sender.sendMessage(
+      await sendBotScreen(
+        sender,
         chatId,
-        text == MessageTemplates.buttonAdminMenu ? 'Админ-меню 👇' : 'Главное меню 👇',
+        InputRichMessage(
+          html: text == MessageTemplates.buttonAdminMenu
+              ? '<h2>Админ-меню</h2>'
+              : '<h2>Главное меню</h2>',
+        ),
         replyMarkup: templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
@@ -291,9 +303,11 @@ final class PrivateStaticCommands {
       availableTrainings: <TrainingInfo>[],
     );
     await onboardingService.markMapShown(userId);
-    await sender.sendMessage(
+    await sendBotScreen(
+      sender,
       chatId,
-      templates.onboardingClubMap(starterBonusAvailable: starterBonusAvailable),
+      InputRichMessage(
+          html: templates.onboardingClubMap(starterBonusAvailable: starterBonusAvailable)),
       replyMarkup: templates.onboardingMapCtaKeyboard(outdoorTrack: outdoor),
     );
   }

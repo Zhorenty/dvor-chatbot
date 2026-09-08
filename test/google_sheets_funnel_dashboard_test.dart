@@ -9,6 +9,8 @@ void main() {
 
       expect(dashboard.sheetTitle, 'FUNNEL');
       expect(dashboard.obsoleteSheetTitles, contains('bot_bookings'));
+      expect(dashboard.obsoleteSheetTitles,
+          containsAll(<String>['ДВОРЯНЕ', 'ДЕЙСТВИЯ', 'КАК ЗАПОЛНЯТЬ', 'Команда DVOR']));
       expect(dashboard.rows.first.first, 'DVOR · Воронка');
       expect(
         dashboard.rows.any((row) => row.contains('1. Начали квиз')),

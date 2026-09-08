@@ -52,7 +52,8 @@ final class PaymentReminderJob {
           );
         }
         try {
-          await _sender.sendMessage(
+          await sendBotHtml(
+            _sender,
             booking.userId,
             _templates.pendingPaymentExpired(booking),
             replyMarkup: _templates.ctaBookInlineKeyboard(),
@@ -74,11 +75,11 @@ final class PaymentReminderJob {
       for (final booking in bookings) {
         try {
           if (booking.userId > 0) {
-            await _sender.sendMessage(
+            await sendBotHtml(
+              _sender,
               booking.userId,
               _templates.pendingPaymentReminder(booking),
               replyMarkup: _templates.pendingPaymentReminderKeyboard(booking.id),
-              parseMode: 'HTML',
             );
           }
           await _bookingRepository.markReminderSent(booking.id);

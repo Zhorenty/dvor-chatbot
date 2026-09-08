@@ -5,11 +5,20 @@ import 'package:dvor_chatbot/src/data/google_sheets_funnel_dashboard.dart';
 /// these tabs stay as CSV forms. The bot must never rewrite them on a timer.
 abstract final class GoogleSheetsInputUi {
   static const String spreadsheetId = '1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q';
-  static const String legendTitle = 'КАК ЗАПОЛНЯТЬ';
   static const String funnelTitle = 'FUNNEL';
   static const String coachesTitle = 'Тренерский штаб';
+  static const String staffRoleCoach = 'Тренер';
+  static const String staffRoleTeam = 'Команда DVOR';
   static const int extraRows = 180;
   static const String statusHeader = 'статус';
+  static const int legacyTeamGid = 2001400867;
+  static const List<String> obsoleteInputSheetTitles = <String>[
+    'КАК ЗАПОЛНЯТЬ',
+    'Как заполнять',
+    'Команда DVOR',
+    'ДВОРЯНЕ',
+    'ДЕЙСТВИЯ',
+  ];
 
   static const GoogleSheetsRgb paper = GoogleSheetsFunnelDashboard.paper;
   static const GoogleSheetsRgb ink = GoogleSheetsFunnelDashboard.ink;
@@ -24,7 +33,6 @@ abstract final class GoogleSheetsInputUi {
     hikes,
     trails,
     coaches,
-    team,
     promoCodes,
   ];
 
@@ -246,14 +254,14 @@ abstract final class GoogleSheetsInputUi {
     gid: 195037978,
     title: coachesTitle,
     tabColor: GoogleSheetsFunnelDashboard.kpiC,
-    requiredHeaders: <String>['имя', 'username', 'описание'],
+    requiredHeaders: <String>['имя', 'username', 'роль'],
     columns: <GoogleSheetsInputColumn>[
       GoogleSheetsInputColumn(
         header: 'имя',
         aliases: <String>['name', 'trainer_name', 'coach', 'fio'],
         widthPx: 200,
         missingLabel: 'нет имени',
-        note: 'Имя. Строка без имени / username / описания пропускается.',
+        note: 'Имя в списке штаба. Строка без имени и username пропускается.',
       ),
       GoogleSheetsInputColumn(
         header: 'username',
@@ -264,10 +272,19 @@ abstract final class GoogleSheetsInputUi {
       ),
       GoogleSheetsInputColumn(
         header: 'роль',
-        aliases: <String>['role', 'specialization', 'direction', 'направление'],
+        aliases: <String>['role', 'staff_role', 'kind', 'тип'],
+        widthPx: 160,
+        kind: GoogleSheetsInputColumnKind.staffRole,
+        missingLabel: 'нет роли',
+        note: 'Тренер или Команда DVOR. Тренеры в списке выше, команда — ниже. '
+            'Команда ходит бесплатно.',
+      ),
+      GoogleSheetsInputColumn(
+        header: 'направление',
+        aliases: <String>['specialization', 'direction', 'role_detail'],
         widthPx: 220,
         wrap: true,
-        note: 'Роль в кратком списке. Необязательно.',
+        note: 'Направление в карточке. Необязательно. Не путать с ролью.',
       ),
       GoogleSheetsInputColumn(
         header: 'описание',
@@ -275,39 +292,7 @@ abstract final class GoogleSheetsInputUi {
         widthPx: 420,
         wrap: true,
         missingLabel: 'нет описания',
-        note: 'Текст в карточке тренера. Обязательно вместе с именем и username.',
-      ),
-      _statusColumn,
-    ],
-  );
-
-  static const GoogleSheetsInputSheetSpec team = GoogleSheetsInputSheetSpec(
-    gid: 2001400867,
-    title: 'Команда DVOR',
-    tabColor: headerTab,
-    requiredHeaders: <String>['username'],
-    columns: <GoogleSheetsInputColumn>[
-      GoogleSheetsInputColumn(
-        header: 'имя',
-        aliases: <String>['name'],
-        widthPx: 200,
-        note: 'ФИО для людей. Бот эту колонку не читает. Не клади ФИО в username.',
-      ),
-      GoogleSheetsInputColumn(
-        header: 'username',
-        aliases: <String>[
-          'user_name',
-          'telegram',
-          'tg',
-          'link',
-          'ат',
-          '@',
-          'юзернейм',
-          'username_telegram',
-        ],
-        widthPx: 200,
-        missingLabel: 'нет username',
-        note: '@name или name. Только ник. Whitelist бесплатной записи.',
+        note: 'Текст в карточке. Для тренера обязательно. Для команды DVOR можно пусто.',
       ),
       _statusColumn,
     ],
@@ -375,6 +360,11 @@ abstract final class GoogleSheetsInputUi {
     'Трейлы',
   ];
 
+  static const List<String> staffRoleDropdownValues = <String>[
+    staffRoleCoach,
+    staffRoleTeam,
+  ];
+
   static String normalizeHeader(String value) {
     return value.trim().toLowerCase().replaceAll(' ', '_').replaceAll('ё', 'е');
   }
@@ -416,6 +406,14 @@ abstract final class GoogleSheetsInputUi {
       for (final header in requiredHeaders)
         'IF(${cell(header)}="";"${spec.columnNamed(header)!.missingLabel}";"")',
     ];
+    if (spec.gid == coaches.gid) {
+      final roleCell = cell('роль');
+      final descriptionCell = cell('описание');
+      requiredParts.add('OR($roleCell="$staffRoleTeam"$formulaSep $descriptionCell<>"")');
+      missingParts.add(
+        'IF(AND($roleCell<>"$staffRoleTeam"$formulaSep $descriptionCell="");"нет описания";"")',
+      );
+    }
     final hintParts = <String>[
       for (final column in spec.columns)
         if (column.emptyHint != null) 'IF(${cell(column.header)}="";"${column.emptyHint}";"")',
@@ -449,6 +447,7 @@ enum GoogleSheetsInputColumnKind {
   percent,
   checkbox,
   categories,
+  staffRole,
   url,
   coach,
   status,

@@ -65,9 +65,9 @@ extension PrivateHandlersAdminSchedule on PrivateHandlers {
       _templates.adminScheduleRoot(),
       replyMarkup: _templates.adminScheduleRootInlineKeyboard(),
     );
-    await _sender.sendMessage(
+    await _sendScreen(
       chatId,
-      'Назад — в админ-меню.',
+      _templates.adminScheduleNavHint(),
       replyMarkup: _templates.adminScheduleNavKeyboard(),
     );
     return true;
@@ -211,9 +211,16 @@ extension PrivateHandlersAdminSchedule on PrivateHandlers {
     } else {
       keyboard = _templates.adminScheduleSkipInlineKeyboard(showSkip: optional);
     }
+    final category = schedule.category;
+    final fields = category == null ? const <String>[] : _createFields(category);
+    final index = fields.indexOf(field);
     await _sendAdminMessage(
       chatId,
-      _templates.adminScheduleFieldPrompt(field),
+      _templates.adminScheduleFieldPrompt(
+        field,
+        step: index >= 0 ? index + 1 : null,
+        total: fields.isEmpty ? null : fields.length,
+      ),
       replyMarkup: keyboard,
     );
   }

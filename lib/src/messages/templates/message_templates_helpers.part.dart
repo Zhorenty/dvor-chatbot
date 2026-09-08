@@ -36,26 +36,19 @@ extension MessageTemplatesHelpers on MessageTemplates {
     );
   }
 
-  String _myBookingParticipantLine(TrainingBooking booking) {
-    if (!booking.isManagedForOther) {
-      return '';
-    }
-    return '👤 ${_escapeHtml(booking.participantDisplayLabel)}\n';
-  }
-
-  List<String> _adminBookingIdentityLines(TrainingBooking booking) {
+  List<(String, String)> _adminBookingIdentityRows(TrainingBooking booking) {
     final organizerTag = _userTagById(
       booking.managerUserId,
       username: booking.userUsername,
     );
     if (!booking.isManagedForOther) {
-      return <String>[
-        '👤 ${_escapeHtml(organizerTag)} (${booking.managerUserId})',
+      return <(String, String)>[
+        ('Пользователь', '$organizerTag (${booking.managerUserId})'),
       ];
     }
-    return <String>[
-      '👤 Организатор: ${_escapeHtml(organizerTag)} (${booking.managerUserId})',
-      '👥 Участник: ${_escapeHtml(booking.participantDisplayLabel)}',
+    return <(String, String)>[
+      ('Организатор', '$organizerTag (${booking.managerUserId})'),
+      ('Участник', booking.participantDisplayLabel),
     ];
   }
 

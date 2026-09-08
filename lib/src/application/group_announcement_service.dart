@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:l/l.dart';
 
 /// Types of automatic group announcements, ordered by business priority.
@@ -114,10 +115,10 @@ final class GroupAnnouncementService {
       }
     }
 
-    final messageId = await _sender.sendMessage(
+    final messageId = await _sender.sendRichMessage(
       chatId,
-      text,
-      parseMode: parseMode,
+      InputRichMessage(html: text),
+      disableNotification: true,
       disableWebPagePreview: disableWebPagePreview,
       replyMarkup: replyMarkup,
     );

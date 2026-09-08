@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:args/args.dart';
+import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_credentials.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_dashboard.dart';
 import 'package:dvor_chatbot/src/data/google_sheets_ids.dart';
@@ -59,8 +60,6 @@ final class _FormatInputSheets {
     var meta = await _loadMeta();
     _formulaSep = (meta.locale ?? '').toLowerCase().startsWith('ru') ? ';' : ',';
     stdout.writeln('Spreadsheet $_spreadsheetId locale=${meta.locale ?? "unknown"}');
-    await _ensureLegendSheet(meta);
-    meta = await _loadMeta();
 
     for (final spec in GoogleSheetsInputUi.sheets) {
       final live = _sheetByGid(meta, spec.gid);
@@ -96,7 +95,7 @@ final class _FormatInputSheets {
         ),
       ]);
     }
-    await _writeLegend();
+    await _deleteObsoleteSheets(await _loadMeta());
     await _verifyCsvHeaders();
     stdout.writeln('Done. Input sheets formatted in place; FUNNEL was not rebuilt.');
   }
@@ -133,32 +132,31 @@ final class _FormatInputSheets {
 
   bool _isFunnel(Sheet sheet) => sheet.properties?.title == GoogleSheetsInputUi.funnelTitle;
 
-  Future<void> _ensureLegendSheet(_SpreadsheetMeta meta) async {
-    if (_sheetByTitle(meta, GoogleSheetsInputUi.legendTitle) != null) {
+  Future<void> _deleteObsoleteSheets(_SpreadsheetMeta meta) async {
+    final seen = <int>{};
+    final requests = <Request>[];
+    void queue(Sheet? sheet, String label) {
+      final sheetId = sheet?.properties?.sheetId;
+      if (sheetId == null || seen.contains(sheetId)) {
+        return;
+      }
+      seen.add(sheetId);
+      stdout.writeln('Delete obsolete sheet $label (gid=$sheetId)');
+      requests.add(Request(deleteSheet: DeleteSheetRequest(sheetId: sheetId)));
+    }
+
+    for (final title in GoogleSheetsInputUi.obsoleteInputSheetTitles) {
+      queue(_sheetByTitle(meta, title), title);
+    }
+    queue(_sheetByGid(meta, GoogleSheetsInputUi.legacyTeamGid), 'Команда DVOR');
+    if (requests.isEmpty) {
       return;
     }
-    stdout.writeln('Add sheet ${GoogleSheetsInputUi.legendTitle}');
-    await _api.spreadsheets.batchUpdate(
-      BatchUpdateSpreadsheetRequest(
-        requests: <Request>[
-          Request(
-            addSheet: AddSheetRequest(
-              properties: SheetProperties(
-                title: GoogleSheetsInputUi.legendTitle,
-                index: 0,
-                tabColorStyle: ColorStyle(rgbColor: _color(GoogleSheetsInputUi.headerTab)),
-                gridProperties: GridProperties(
-                  frozenRowCount: 1,
-                  rowCount: 16,
-                  columnCount: 2,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-      _spreadsheetId,
-    );
+    if (meta.sheets.length - requests.length < 1) {
+      stderr.writeln('Skip deleting obsolete sheets: spreadsheet would have no tabs left.');
+      return;
+    }
+    await _batch(requests);
   }
 
   Future<_SheetPlan> _planSheet(GoogleSheetsInputSheetSpec spec, Sheet live) async {
@@ -218,7 +216,10 @@ final class _FormatInputSheets {
     }
 
     final lastContent = _lastContentRow(rows, skipCols);
-    final reshaped = _reshapeRows(spec, rows, lastContent);
+    var reshaped = _reshapeRows(spec, rows, lastContent);
+    if (spec.gid == GoogleSheetsInputUi.coaches.gid) {
+      reshaped = _finalizeCoachesRows(reshaped, await _loadLegacyTeamMembers());
+    }
     final indexByHeader = <String, int>{
       for (var i = 0; i < spec.columns.length; i++)
         GoogleSheetsInputUi.normalizeHeader(spec.columns[i].header): i,
@@ -656,7 +657,8 @@ final class _FormatInputSheets {
           column.kind == GoogleSheetsInputColumnKind.date ||
           column.kind == GoogleSheetsInputColumnKind.time ||
           column.kind == GoogleSheetsInputColumnKind.number ||
-          column.kind == GoogleSheetsInputColumnKind.percent) {
+          column.kind == GoogleSheetsInputColumnKind.percent ||
+          column.kind == GoogleSheetsInputColumnKind.staffRole) {
         requests.add(
           Request(
             repeatCell: RepeatCellRequest(
@@ -810,6 +812,19 @@ final class _FormatInputSheets {
           showCustomUi: true,
           strict: false,
         );
+      case GoogleSheetsInputColumnKind.staffRole:
+        return DataValidationRule(
+          condition: BooleanCondition(
+            type: 'ONE_OF_LIST',
+            values: [
+              for (final value in GoogleSheetsInputUi.staffRoleDropdownValues)
+                ConditionValue(userEnteredValue: value),
+            ],
+          ),
+          inputMessage: 'Тренер или Команда DVOR.',
+          showCustomUi: true,
+          strict: true,
+        );
       case GoogleSheetsInputColumnKind.coach:
         return DataValidationRule(
           condition: BooleanCondition(
@@ -840,6 +855,7 @@ final class _FormatInputSheets {
       case GoogleSheetsInputColumnKind.text:
       case GoogleSheetsInputColumnKind.checkbox:
       case GoogleSheetsInputColumnKind.categories:
+      case GoogleSheetsInputColumnKind.staffRole:
       case GoogleSheetsInputColumnKind.url:
       case GoogleSheetsInputColumnKind.coach:
       case GoogleSheetsInputColumnKind.status:
@@ -994,6 +1010,7 @@ final class _FormatInputSheets {
           case GoogleSheetsInputColumnKind.text:
           case GoogleSheetsInputColumnKind.checkbox:
           case GoogleSheetsInputColumnKind.categories:
+          case GoogleSheetsInputColumnKind.staffRole:
           case GoogleSheetsInputColumnKind.url:
           case GoogleSheetsInputColumnKind.coach:
           case GoogleSheetsInputColumnKind.status:
@@ -1076,159 +1093,117 @@ final class _FormatInputSheets {
     return grid;
   }
 
-  Future<void> _writeLegend() async {
-    final live = _sheetByTitle(await _loadMeta(), GoogleSheetsInputUi.legendTitle);
-    if (live == null) {
-      throw StateError('Legend sheet ${GoogleSheetsInputUi.legendTitle} is missing.');
+  List<List<String>> _finalizeCoachesRows(
+    List<List<String>> reshaped,
+    List<({String name, String username})> teamMembers,
+  ) {
+    final spec = GoogleSheetsInputUi.coaches;
+    final roleIndex = spec.indexOfHeader('роль')!;
+    final directionIndex = spec.indexOfHeader('направление')!;
+    final nameIndex = spec.indexOfHeader('имя')!;
+    final usernameIndex = spec.indexOfHeader('username')!;
+    final knownRoles = {
+      for (final value in GoogleSheetsInputUi.staffRoleDropdownValues)
+        GoogleSheetsInputUi.normalizeHeader(value),
+    };
+    final result = <List<String>>[reshaped.first];
+    final seenUsernames = <String>{};
+    for (final row in reshaped.skip(1)) {
+      final next = List<String>.from(row);
+      while (next.length < spec.columns.length) {
+        next.add('');
+      }
+      final role = next[roleIndex];
+      if (!knownRoles.contains(GoogleSheetsInputUi.normalizeHeader(role))) {
+        if (next[directionIndex].trim().isEmpty && role.trim().isNotEmpty) {
+          next[directionIndex] = role;
+        }
+        final hasData = next.indexed.any(
+          (entry) =>
+              entry.$1 != roleIndex &&
+              spec.columns[entry.$1].kind != GoogleSheetsInputColumnKind.status &&
+              entry.$2.trim().isNotEmpty,
+        );
+        next[roleIndex] = hasData ? GoogleSheetsInputUi.staffRoleCoach : '';
+      }
+      result.add(next);
+      final username = normalizeTelegramUsername(next[usernameIndex]);
+      if (username != null) {
+        seenUsernames.add(username);
+      }
     }
-    final sheetId = live.properties!.sheetId!;
-    final rows = <List<Object?>>[
-      <Object?>['Как заполнять', ''],
-      <Object?>[
-        'Расписание можно править в боте (📅 Управление расписанием) или в таблице. После бота синк не обязателен. FUNNEL руками не трогать.',
-        '',
-      ],
-      <Object?>['', ''],
-      <Object?>[
-        '=HYPERLINK("#gid=0"$_formulaSep"Тренировки")',
-        'Обязательно: название, дата, время, место. Иначе бот строку пропустит — смотри колонку статус.',
-      ],
-      <Object?>[
-        '',
-        'тренеры_в_лимите — считать тренеров в лимите мест, не «пригласить». '
-            'без_промокода — промо на эту тренировку не действует. Время как 19:30.',
-      ],
-      <Object?>[
-        '=HYPERLINK("#gid=294119056"$_formulaSep"Походы")',
-        'Обязательно: название, дата_с, описание. дата_по пусто = один день. '
-            'предоплата пусто = 50% (не пиши 50 в пустую ячейку).',
-      ],
-      <Object?>[
-        '=HYPERLINK("#gid=1220729038"$_formulaSep"Трейлы")',
-        'Те же поля, что у походов. Пустая предоплата тоже 50%.',
-      ],
-      <Object?>[
-        '=HYPERLINK("#gid=195037978"$_formulaSep"Тренерский штаб")',
-        'Обязательно: имя, username, описание. Без username строка не попадёт в бота.',
-      ],
-      <Object?>[
-        '=HYPERLINK("#gid=2001400867"$_formulaSep"Команда DVOR")',
-        'В username только ник (@name). Колонка имя — для людей, бот её не читает.',
-      ],
-      <Object?>[
-        '=HYPERLINK("#gid=432112868"$_formulaSep"Промокоды")',
-        'Обязательно: промокод и скидка. Категории: все / Тренировки / Походы / Трейлы. '
-            'Пусто или «все» = все категории. Дубль кода: побеждает нижняя строка.',
-      ],
-      <Object?>['', ''],
-      <Object?>[
-        GoogleSheetsInputUi.funnelTitle,
-        'Не заполнять. Лист пересобирает бот.',
-      ],
-      <Object?>['', ''],
-      <Object?>[
-        'gid (админу)',
-        'Тренировки 0 · Походы 294119056 · Трейлы 1220729038 · '
-            'Тренерский штаб 195037978 · Команда DVOR 2001400867 · Промокоды 432112868',
-      ],
+    var merged = 0;
+    for (final member in teamMembers) {
+      final username = normalizeTelegramUsername(member.username);
+      if (username == null || seenUsernames.contains(username)) {
+        continue;
+      }
+      final next = List<String>.filled(spec.columns.length, '');
+      final rawName = member.name.trim();
+      next[nameIndex] = rawName.isEmpty ? '@$username' : rawName;
+      next[usernameIndex] = '@$username';
+      next[roleIndex] = GoogleSheetsInputUi.staffRoleTeam;
+      result.add(next);
+      seenUsernames.add(username);
+      merged += 1;
+    }
+    if (merged > 0) {
+      stdout.writeln('  merged $merged row(s) from Команда DVOR');
+    }
+    return result;
+  }
+
+  Future<List<({String name, String username})>> _loadLegacyTeamMembers() async {
+    final meta = await _loadMeta();
+    final live =
+        _sheetByGid(meta, GoogleSheetsInputUi.legacyTeamGid) ?? _sheetByTitle(meta, 'Команда DVOR');
+    if (live == null) {
+      return const <({String name, String username})>[];
+    }
+    final quoted = quoteA1SheetTitle(live.properties?.title ?? 'Команда DVOR');
+    final formatted = await _api.spreadsheets.values.get(_spreadsheetId, '$quoted!A:Z');
+    final rows = _asStringRows(formatted.values);
+    if (rows.isEmpty) {
+      return const <({String name, String username})>[];
+    }
+    final headers = [
+      for (final cell in rows.first) GoogleSheetsInputUi.normalizeHeader(cell),
     ];
-    final quoted = quoteA1SheetTitle(GoogleSheetsInputUi.legendTitle);
-    await _api.spreadsheets.values.clear(ClearValuesRequest(), _spreadsheetId, '$quoted!A:Z');
-    await _api.spreadsheets.values.update(
-      ValueRange(values: rows),
-      _spreadsheetId,
-      '$quoted!A1',
-      valueInputOption: 'USER_ENTERED',
-    );
-    await _batch(<Request>[
-      Request(
-        updateSheetProperties: UpdateSheetPropertiesRequest(
-          properties: SheetProperties(
-            sheetId: sheetId,
-            title: GoogleSheetsInputUi.legendTitle,
-            index: 0,
-            tabColorStyle: ColorStyle(rgbColor: _color(GoogleSheetsInputUi.headerTab)),
-            gridProperties: GridProperties(
-              frozenRowCount: 1,
-              rowCount: 16,
-              columnCount: 2,
-              hideGridlines: false,
-            ),
-          ),
-          fields: 'title,index,tabColorStyle,gridProperties.frozenRowCount,'
-              'gridProperties.rowCount,gridProperties.columnCount,gridProperties.hideGridlines',
-        ),
-      ),
-      Request(
-        repeatCell: RepeatCellRequest(
-          range: GridRange(
-            sheetId: sheetId,
-            startRowIndex: 0,
-            endRowIndex: 16,
-            startColumnIndex: 0,
-            endColumnIndex: 2,
-          ),
-          cell: CellData(
-            userEnteredFormat: CellFormat(
-              backgroundColor: _color(GoogleSheetsInputUi.paper),
-              textFormat: TextFormat(
-                foregroundColor: _color(GoogleSheetsInputUi.ink),
-                fontSize: 10,
-              ),
-              wrapStrategy: 'WRAP',
-              verticalAlignment: 'MIDDLE',
-            ),
-          ),
-          fields: 'userEnteredFormat(backgroundColor,textFormat,wrapStrategy,verticalAlignment)',
-        ),
-      ),
-      Request(
-        repeatCell: RepeatCellRequest(
-          range: GridRange(
-            sheetId: sheetId,
-            startRowIndex: 0,
-            endRowIndex: 1,
-            startColumnIndex: 0,
-            endColumnIndex: 2,
-          ),
-          cell: CellData(
-            userEnteredFormat: CellFormat(
-              backgroundColor: _color(GoogleSheetsInputUi.headerTab),
-              textFormat: TextFormat(
-                bold: true,
-                foregroundColor: _color(GoogleSheetsInputUi.headerText),
-                fontSize: 11,
-              ),
-            ),
-          ),
-          fields: 'userEnteredFormat(backgroundColor,textFormat)',
-        ),
-      ),
-      Request(
-        updateDimensionProperties: UpdateDimensionPropertiesRequest(
-          range: DimensionRange(
-            sheetId: sheetId,
-            dimension: 'COLUMNS',
-            startIndex: 0,
-            endIndex: 1,
-          ),
-          properties: DimensionProperties(pixelSize: 200),
-          fields: 'pixelSize',
-        ),
-      ),
-      Request(
-        updateDimensionProperties: UpdateDimensionPropertiesRequest(
-          range: DimensionRange(
-            sheetId: sheetId,
-            dimension: 'COLUMNS',
-            startIndex: 1,
-            endIndex: 2,
-          ),
-          properties: DimensionProperties(pixelSize: 640),
-          fields: 'pixelSize',
-        ),
-      ),
-    ]);
+    var usernameIndex = -1;
+    var nameIndex = -1;
+    const usernameHeaders = <String>{
+      'username',
+      'user_name',
+      'telegram',
+      'tg',
+      'link',
+      'ат',
+      '@',
+      'юзернейм',
+      'username_telegram',
+      'ссылка',
+    };
+    const nameHeaders = <String>{'имя', 'name'};
+    for (var index = 0; index < headers.length; index++) {
+      if (usernameIndex < 0 && usernameHeaders.contains(headers[index])) {
+        usernameIndex = index;
+      }
+      if (nameIndex < 0 && nameHeaders.contains(headers[index])) {
+        nameIndex = index;
+      }
+    }
+    if (usernameIndex < 0) {
+      return const <({String name, String username})>[];
+    }
+    final members = <({String name, String username})>[];
+    for (final row in rows.skip(1)) {
+      final username = _cell(row, usernameIndex);
+      if (normalizeTelegramUsername(username) == null) {
+        continue;
+      }
+      members.add((name: _cell(row, nameIndex), username: username));
+    }
+    return members;
   }
 
   Future<void> _verifyCsvHeaders() async {

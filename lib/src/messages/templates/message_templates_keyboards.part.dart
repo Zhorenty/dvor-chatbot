@@ -134,52 +134,73 @@ extension MessageTemplatesKeyboards on MessageTemplates {
   }
 
   String chooseBookFriendCategory() {
-    return '👥 <b>Записать друга</b>\n'
-        'Выбери категорию мероприятия 👇';
+    return RichHtml.screen(
+      title: 'Записать друга',
+      lead: 'Выбери категорию мероприятия.',
+    );
   }
 
   String chooseBookFriendEvent(List<TrainingInfo> items) {
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final lines = <String>[
-      '👥 <b>Записать друга</b>',
-      'Выбери мероприятие 👇',
-    ];
+    final buffer = StringBuffer()
+      ..write(RichHtml.heading('Записать друга'))
+      ..write(RichHtml.paragraph('Выбери мероприятие.'));
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
-      final price = item.price == null ? '' : ' · ${_trainingPriceLabel(item.price)}';
-      lines.add(
-        '${index + 1}. <b>${_escapeHtml(item.title)}</b> — ${formatter.format(item.startsAt)}'
-        ' (${_escapeHtml(item.location)}$price)',
+      buffer.write(
+        RichHtml.table(
+          <(String, String)>[
+            ('${index + 1}', item.title),
+            ('Когда', formatter.format(item.startsAt)),
+            ('Где', item.location),
+            if (item.price != null) ('Цена', _trainingPriceLabel(item.price)),
+          ],
+        ),
       );
     }
-    return lines.join('\n');
+    return buffer.toString();
   }
 
   String askPartyParticipants({required TrainingInfo training}) {
     final unitPrice = training.price ?? 0;
-    return '👥 <b>Кого записать?</b>\n'
-        'Событие: <b>${_escapeHtml(training.title)}</b>\n'
-        'Цена за человека: <b>${_trainingPriceLabel(unitPrice)}</b>\n\n'
-        'Напиши Telegram-username с <b>@</b> или ФИО через запятую (или с новой строки).\n'
-        'Примеры:\n'
-        '• <code>@anna, @ivan</code>\n'
-        '• <code>Бабушка Мария, Дедушка Пётр</code>\n'
-        '• <code>@anna, Бабушка Мария</code>\n\n'
-        'Без @ имя считается гостем (ФИО), а не Telegram-аккаунтом.\n'
-        'Можно записать до 5 человек.\n'
-        'Свою запись это не создаёт — себя запиши отдельно через «Записаться».';
+    return '${RichHtml.heading('Кого записать?')}'
+        '${RichHtml.table(
+      <(String, String)>[
+        ('Событие', training.title),
+        ('Цена за человека', _trainingPriceLabel(unitPrice)),
+      ],
+    )}'
+        '${RichHtml.paragraph(
+      'Напиши Telegram-username с @ или ФИО через запятую (или с новой строки).',
+    )}'
+        '${RichHtml.paragraph('Примеры:')}'
+        '${RichHtml.paragraph('<code>@anna, @ivan</code>', alreadyEscaped: true)}'
+        '${RichHtml.paragraph('<code>Бабушка Мария, Дедушка Пётр</code>', alreadyEscaped: true)}'
+        '${RichHtml.paragraph('<code>@anna, Бабушка Мария</code>', alreadyEscaped: true)}'
+        '${RichHtml.bullets(
+      <String>[
+        'Без @ имя считается гостем (ФИО), а не Telegram-аккаунтом.',
+        'Можно записать до 5 человек.',
+        'Свою запись это не создаёт — себя запиши отдельно через «Записаться».',
+      ],
+    )}';
   }
 
   String invalidPartyParticipantsInput() {
-    return 'Не понял список участников 🤔\n'
-        'Telegram-username указывай с <b>@</b>, иначе это будет ФИО гостя.\n'
-        'Нельзя указать свой собственный @username.\n'
-        'Пример: <code>@anna, Бабушка Мария</code>\n'
-        'До 5 человек за раз.';
+    return '${RichHtml.heading('Не понял список участников')}'
+        '${RichHtml.paragraph(
+      'Telegram-username указывай с @, иначе это будет ФИО гостя.',
+    )}'
+        '${RichHtml.paragraph('Нельзя указать свой собственный @username.')}'
+        '${RichHtml.paragraph('<code>@anna, Бабушка Мария</code>', alreadyEscaped: true)}'
+        '${RichHtml.paragraph('До 5 человек за раз.')}';
   }
 
   String partyParticipantConflict(String label) {
-    return '⚠️ ${_escapeHtml(label)} уже записан(а) на это мероприятие.';
+    return RichHtml.screen(
+      title: 'Уже есть запись',
+      lead: '$label — уже есть запись на это мероприятие.',
+    );
   }
 
   String partyManagerLimitExceeded() {
@@ -188,7 +209,10 @@ extension MessageTemplatesKeyboards on MessageTemplates {
   }
 
   String partyDuplicateParticipant(String label) {
-    return '⚠️ ${_escapeHtml(label)} указан(а) в списке больше одного раза.';
+    return RichHtml.screen(
+      title: 'Повтор в списке',
+      lead: '$label повторяется в списке.',
+    );
   }
 
   String bookingGroupCreated({
@@ -198,23 +222,25 @@ extension MessageTemplatesKeyboards on MessageTemplates {
   }) {
     final first = bookings.first;
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final buffer = StringBuffer()
-      ..writeln('✅ <b>Записи созданы (${bookings.length} чел.)</b>')
-      ..writeln('Событие: ${_escapeHtml(first.trainingTitle)}')
-      ..writeln('Дата: ${formatter.format(first.startsAt)}')
-      ..writeln('Локация: ${_escapeHtml(first.location)}')
-      ..writeln('')
-      ..writeln('<b>Участники:</b>');
-    for (final booking in bookings) {
-      buffer.writeln('• ${_escapeHtml(booking.participantDisplayLabel)}');
-    }
-    buffer
-      ..writeln('')
-      ..writeln(
-        'К оплате: <b>${bookings.length} × ${_trainingPriceLabel(unitPrice)} = '
-        '${_trainingPriceLabel(totalPrice)}</b>',
-      );
-    return buffer.toString().trimRight();
+    return '${RichHtml.heading('Записи созданы (${bookings.length} чел.)')}'
+        '${RichHtml.table(
+      <(String, String)>[
+        ('Событие', first.trainingTitle),
+        ('Дата', formatter.format(first.startsAt)),
+        ('Локация', first.location),
+        (
+          'К оплате',
+          '${bookings.length} × ${_trainingPriceLabel(unitPrice)} = ${_trainingPriceLabel(totalPrice)}',
+        ),
+      ],
+    )}'
+        '${RichHtml.details(
+      summary: 'Участники',
+      body: RichHtml.bullets(
+        bookings.map((booking) => booking.participantDisplayLabel).toList(growable: false),
+      ),
+      alreadyEscaped: true,
+    )}';
   }
 
   String paymentInstructionsForGroup({
@@ -231,26 +257,56 @@ extension MessageTemplatesKeyboards on MessageTemplates {
       final groupPrepayment = totalPrice <= 0
           ? 0
           : MessageFormatters.outdoorPrepaymentAmount(totalPrice, prepayPercent: prepayPercent);
-      return '💳 <b>Реквизиты OUTDVOR</b>\n'
-          '• Получатель: <b>Денис Р.</b>\n'
-          '• Банк: <b>🟦 OZON БАНК 🟦</b>\n'
-          '• Полная сумма за группу: <b>$participantsCount × ${_trainingPriceLabel(unitPrice)} = '
-          '${_trainingPriceLabel(totalPrice)}</b>\n'
-          '• К оплате сейчас при предоплате: <b>${_trainingPriceLabel(groupPrepayment)}</b> '
-          '($prepayPercent% от суммы группы)\n'
-          '• Остальные $remainderPercent% — $outdoorFinalPaymentAfter.\n'
-          '• <a href="$_sbpPaymentLink">Оплатить через СБП</a> — перейди по ссылке и введи сумму.\n\n'
-          '⏳ Если не оплатить в течение <b>30 минут</b> — запись отменится автоматически. '
-          'После отмены нужно записаться заново.';
+      return '💳 <h3>Реквизиты OUTDVOR</h3>'
+          '${RichHtml.table(
+        <(String, String)>[
+          ('Получатель', 'Денис Р.'),
+          ('Банк', 'Ozon Банк'),
+          (
+            'Полная сумма за группу',
+            '$participantsCount × ${_trainingPriceLabel(unitPrice)} = ${_trainingPriceLabel(totalPrice)}',
+          ),
+          (
+            'К оплате сейчас при предоплате',
+            '${_trainingPriceLabel(groupPrepayment)} ($prepayPercent% от суммы группы)',
+          ),
+          ('Остаток', 'Остальные $remainderPercent% — $outdoorFinalPaymentAfter.'),
+        ],
+      )}'
+          '${RichHtml.paragraph(
+        '<a href="$_sbpPaymentLink">${MessageCopy.buttonPaySbp}</a> — '
+        'перейди по ссылке и введи сумму.',
+        alreadyEscaped: true,
+      )}'
+          '${RichHtml.paragraph(
+        'На перевод 30 минут. Если не оплатить, запись отменится автоматически. '
+        'После отмены нужно записаться заново.',
+      )}';
     }
-    final base = paymentInstructions(booking);
-    final totalLine =
-        '• К оплате за группу: <b>$participantsCount × ${_trainingPriceLabel(unitPrice)} = '
-        '${_trainingPriceLabel(totalPrice)}</b>\n';
-    if (base.contains('• К оплате:')) {
-      return base.replaceFirst(RegExp(r'• К оплате:.*\n'), totalLine);
-    }
-    return '$totalLine$base';
+    return '💳 <h3>Реквизиты для оплаты</h3>'
+        '${RichHtml.table(
+      <(String, String)>[
+        ('Получатель', 'Денис Р.'),
+        ('Банк', 'Ozon Банк'),
+        (
+          'К оплате за группу',
+          '$participantsCount × ${_trainingPriceLabel(unitPrice)} = ${_trainingPriceLabel(totalPrice)}',
+        ),
+        if (booking.promoCode != null)
+          (
+            'Промокод',
+            '${booking.promoCode!} · −${booking.promoDiscountPercent ?? 0}%',
+          ),
+      ],
+    )}'
+        '${RichHtml.paragraph(
+      '<a href="$_sbpPaymentLink">${MessageCopy.buttonPaySbp}</a> — ссылка: <code>$_sbpPaymentLink</code>',
+      alreadyEscaped: true,
+    )}'
+        '${RichHtml.paragraph(
+      'На перевод 30 минут. Если не оплатить, запись отменится автоматически. '
+      'После отмены нужно записаться заново.',
+    )}';
   }
 
   Map<String, Object?> subscriptionOverviewKeyboard({

@@ -23,9 +23,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.viewingSubscriptionOverview:
         case _PrivateFlowStep.selectingBookingListSegment:
           _flowByUserId.remove(userId);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
-            'Вернул в главное меню 👇',
+            _templates.returnedToMainMenu(),
             replyMarkup: _templates.privateMenuKeyboard(
                 isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
@@ -35,11 +35,10 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingAdminAnalyticsAction,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseAdminAnalyticsAction(),
             replyMarkup: _templates.adminAnalyticsKeyboard(),
-            parseMode: 'HTML',
           );
           return true;
         case _PrivateFlowStep.selectingAdminAnalyticsAction:
@@ -47,11 +46,10 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingAdminToolsAction,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseAdminToolsAction(),
             replyMarkup: _templates.adminToolsKeyboard(),
-            parseMode: 'HTML',
           );
           return true;
         case _PrivateFlowStep.selectingBookFriendEvent:
@@ -59,11 +57,10 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingBookFriendCategory,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseBookFriendCategory(),
             replyMarkup: _templates.categorySelectionKeyboard(),
-            parseMode: 'HTML',
           );
           return true;
         case _PrivateFlowStep.enteringPartyParticipants:
@@ -73,21 +70,19 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             partyParticipants: const <BookingParticipantDraft>[],
             partyTraining: null,
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseBookFriendEvent(items),
             replyMarkup: _templates.bookingSelectionKeyboard(items),
-            parseMode: 'HTML',
           );
           return true;
         case _PrivateFlowStep.selectingTrainerProfile:
           final trainers = flowState?.availableTrainers ?? const <TrainerInfo>[];
           _flowByUserId[userId] = flowState!.copyWith(step: _PrivateFlowStep.viewingCoachingStaff);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.coachingStaff(trainers),
             replyMarkup: _templates.coachingStaffActionsKeyboard(),
-            parseMode: 'HTML',
             disableWebPagePreview: true,
           );
           return true;
@@ -100,7 +95,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             selectedOutdoorActivity: null,
             outdoorDetailType: null,
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             fromSchedule ? _templates.chooseScheduleCategory() : _templates.chooseBookingCategory(),
             replyMarkup: _templates.categorySelectionKeyboard(),
@@ -110,9 +105,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           final selectedCategory = flowState?.selectedCategory;
           if (selectedCategory == null || !_isOutdoorCategory(selectedCategory)) {
             _flowByUserId.remove(userId);
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
-              'Вернул в главное меню 👇',
+              _templates.returnedToMainMenu(),
               replyMarkup: _templates.privateMenuKeyboard(
                   isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
@@ -129,7 +124,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.viewingScheduleCategory:
           _flowByUserId[userId] =
               flowState!.copyWith(step: _PrivateFlowStep.selectingScheduleCategory);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseScheduleCategory(),
             replyMarkup: _templates.categorySelectionKeyboard(),
@@ -142,7 +137,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
               step: _PrivateFlowStep.selectingScheduleCategory,
               availableTrainings: const <TrainingInfo>[],
             );
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
               _templates.chooseScheduleCategory(),
               replyMarkup: _templates.categorySelectionKeyboard(),
@@ -153,7 +148,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingBookingCategory,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseBookingCategory(),
             replyMarkup: _templates.categorySelectionKeyboard(),
@@ -168,11 +163,10 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
               starterBonusOffered: false,
               paymentChoice: null,
             );
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
               _templates.chooseOutdoorDetailType(selectedOutdoor),
               replyMarkup: _templates.outdoorDetailTypeKeyboard(),
-              parseMode: 'HTML',
             );
             return true;
           }
@@ -184,7 +178,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
               starterBonusOffered: false,
               paymentChoice: null,
             );
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
               _templates.chooseBookingCategory(),
               replyMarkup: _templates.categorySelectionKeyboard(),
@@ -192,7 +186,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             return true;
           }
           _flowByUserId[userId] = flowState.copyWith(step: _PrivateFlowStep.selectingTraining);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseTrainingForBooking(items),
             replyMarkup: _templates.bookingSelectionKeyboard(items),
@@ -202,9 +196,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           final activeBooking = flowState!.activeBooking;
           if (activeBooking == null) {
             _flowByUserId.remove(userId);
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
-              'Вернул в главное меню 👇',
+              _templates.returnedToMainMenu(),
               replyMarkup: _templates.privateMenuKeyboard(
                   isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
@@ -233,7 +227,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.viewingSubscriptionOverview,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.subscriptionOverview(
               membershipLevel: membership.level,
@@ -247,7 +241,6 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
               isRenewal: BoxingCardLedger.isActiveBoxingCard(membership, now: now),
               showIndividual: await _isBoxingCardIndividualAvailable(membership: membership),
             ),
-            parseMode: 'HTML',
           );
           return true;
         case _PrivateFlowStep.selectingBoxingCardPlan:
@@ -265,9 +258,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           return true;
         case _PrivateFlowStep.selectingPendingPaymentBooking:
           _flowByUserId.remove(userId);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
-            'Вернул в главное меню 👇',
+            _templates.returnedToMainMenu(),
             replyMarkup: _templates.privateMenuKeyboard(
                 isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
@@ -276,9 +269,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           final selectedBooking = flowState?.selectedBooking;
           if (selectedBooking == null) {
             _flowByUserId.remove(userId);
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
-              'Вернул в главное меню 👇',
+              _templates.returnedToMainMenu(),
               replyMarkup: _templates.privateMenuKeyboard(
                   isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
@@ -295,9 +288,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           final selectedBooking = flowState?.selectedBooking;
           if (selectedBooking == null) {
             _flowByUserId.remove(userId);
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
-              'Вернул в главное меню 👇',
+              _templates.returnedToMainMenu(),
               replyMarkup: _templates.privateMenuKeyboard(
                   isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
@@ -312,11 +305,10 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingAdminToolsAction,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseAdminToolsAction(),
             replyMarkup: _templates.adminToolsKeyboard(),
-            parseMode: 'HTML',
           );
           return true;
         case _PrivateFlowStep.awaitingOnboardingMediaFile:
@@ -327,11 +319,10 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingAdminToolsAction,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseAdminToolsAction(),
             replyMarkup: _templates.adminToolsKeyboard(),
-            parseMode: 'HTML',
           );
           return true;
         case _PrivateFlowStep.selectingAdminToolsAction:
@@ -346,9 +337,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.enteringAdminDialogUsernameQuery:
           _cancelBroadcastMediaCollection(userId);
           _flowByUserId.remove(userId);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
-            'Вернул в главное меню 👇',
+            _templates.returnedToMainMenu(),
             replyMarkup: _templates.privateMenuKeyboard(
                 isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
@@ -358,7 +349,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingAdminBookingManagementAction,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseBookingManagementAction(),
             replyMarkup: _templates.adminBookingManagementKeyboard(),
@@ -377,7 +368,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             selectedBooking: null,
             adminBookingsPage: 0,
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseBookingManagementCategory(),
             replyMarkup: _templates.categorySelectionKeyboard(),
@@ -394,9 +385,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           final selectedBooking = flowState?.selectedBooking;
           if (selectedBooking == null) {
             _flowByUserId.remove(userId);
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
-              'Вернул в главное меню 👇',
+              _templates.returnedToMainMenu(),
               replyMarkup: _templates.privateMenuKeyboard(
                   isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
@@ -412,9 +403,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           final selectedBooking = flowState?.selectedBooking;
           if (selectedBooking == null) {
             _flowByUserId.remove(userId);
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
-              'Вернул в главное меню 👇',
+              _templates.returnedToMainMenu(),
               replyMarkup: _templates.privateMenuKeyboard(
                   isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
@@ -422,7 +413,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           }
           _flowByUserId[userId] =
               flowState!.copyWith(step: _PrivateFlowStep.selectingAdminBookingEditField);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseAdminBookingEditField(selectedBooking),
             replyMarkup: _templates.adminBookingEditFieldsKeyboard(),
@@ -432,9 +423,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           final selectedBooking = flowState?.selectedBooking;
           if (selectedBooking == null) {
             _flowByUserId.remove(userId);
-            await _sender.sendMessage(
+            await _sendScreen(
               chatId,
-              'Вернул в главное меню 👇',
+              _templates.returnedToMainMenu(),
               replyMarkup: _templates.privateMenuKeyboard(
                   isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
             );
@@ -449,7 +440,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingAdminBookingManagementAction,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseBookingManagementAction(),
             replyMarkup: _templates.adminBookingManagementKeyboard(),
@@ -460,7 +451,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingAdminCreateCategory,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseCreateBookingCategory(),
             replyMarkup: _templates.categorySelectionKeyboard(),
@@ -470,7 +461,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           final trainings = flowState!.availableTrainings;
           _flowByUserId[userId] =
               flowState.copyWith(step: _PrivateFlowStep.selectingAdminCreateEvent);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseCreateBookingEvent(trainings),
             replyMarkup: _templates.bookingSelectionKeyboard(trainings),
@@ -479,7 +470,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.selectingAdminCreateStatus:
           _flowByUserId[userId] =
               flowState!.copyWith(step: _PrivateFlowStep.enteringAdminCreateUsername);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.createBookingAskUsername(),
             replyMarkup: _templates.privateMenuKeyboard(
@@ -489,7 +480,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.confirmingAdminCreate:
           _flowByUserId[userId] =
               flowState!.copyWith(step: _PrivateFlowStep.selectingAdminCreateStatus);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseCreateBookingPaymentStatus(),
             replyMarkup: _templates.bookingPaymentStatusKeyboard(),
@@ -500,7 +491,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             step: _PrivateFlowStep.selectingAdminBookingManagementAction,
             availableTrainings: <TrainingInfo>[],
           );
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
             _templates.chooseBookingManagementAction(),
             replyMarkup: _templates.adminBookingAfterActionKeyboard(),
@@ -514,18 +505,18 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.awaitingTrainingFeedbackRating:
         case _PrivateFlowStep.awaitingTrainingFeedbackComment:
           _flowByUserId.remove(userId);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
-            'Вернул в главное меню 👇',
+            _templates.returnedToMainMenu(),
             replyMarkup: _templates.privateMenuKeyboard(
                 isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
         case _PrivateFlowStep.selectingAdminScheduleRoot:
           _flowByUserId.remove(userId);
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
-            'Вернул в главное меню 👇',
+            _templates.returnedToMainMenu(),
             replyMarkup: _templates.privateMenuKeyboard(
                 isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
@@ -555,9 +546,9 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
           await _openAdminScheduleList(chatId: chatId, userId: userId, category: category);
           return true;
         case null:
-          await _sender.sendMessage(
+          await _sendScreen(
             chatId,
-            'Ты уже в главном меню 👇',
+            _templates.alreadyInMainMenu(),
             replyMarkup: _templates.privateMenuKeyboard(
                 isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );

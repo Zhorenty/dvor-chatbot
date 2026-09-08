@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -123,6 +124,67 @@ void main() {
 
     final member = await client.getChatMember(chatId: -100123, userId: 42);
     expect(member['status'], 'member');
+    client.close();
+  });
+
+  test('sendRichMessage posts InputRichMessage.html', () async {
+    Map<String, Object?>? captured;
+    final client = TelegramClient(
+      token: 'token',
+      httpClient: MockClient((request) async {
+        expect(request.url.pathSegments.last, 'sendRichMessage');
+        captured = Map<String, Object?>.from(jsonDecode(request.body) as Map<String, dynamic>);
+        return http.Response(
+          jsonEncode(<String, Object?>{
+            'ok': true,
+            'result': <String, Object?>{'message_id': 9},
+          }),
+          200,
+        );
+      }),
+    );
+
+    final id = await client.sendRichMessage(
+      7,
+      InputRichMessage(html: '<h2>Профиль</h2><p>Вершинки</p>'),
+    );
+    expect(id, 9);
+    final rich = captured!['rich_message'] as Map<String, dynamic>;
+    expect(rich['html'], contains('<h2>Профиль</h2>'));
+    client.close();
+  });
+
+  test('sendRichMessage falls back to sendMessage HTML on 400', () async {
+    final methods = <String>[];
+    final client = TelegramClient(
+      token: 'token',
+      httpClient: MockClient((request) async {
+        methods.add(request.url.pathSegments.last);
+        if (request.url.pathSegments.last == 'sendRichMessage') {
+          return http.Response(
+            jsonEncode(<String, Object?>{
+              'ok': false,
+              'description': 'Bad Request: method not found',
+            }),
+            400,
+          );
+        }
+        return http.Response(
+          jsonEncode(<String, Object?>{
+            'ok': true,
+            'result': <String, Object?>{'message_id': 3},
+          }),
+          200,
+        );
+      }),
+    );
+
+    final id = await client.sendRichMessage(
+      7,
+      InputRichMessage(html: '<h2>Помощь</h2><p>слоты</p>'),
+    );
+    expect(id, 3);
+    expect(methods, equals(<String>['sendRichMessage', 'sendMessage']));
     client.close();
   });
 }

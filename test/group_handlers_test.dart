@@ -8,6 +8,7 @@ import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -375,6 +376,32 @@ final class _FakeSender implements MessageSender {
     );
     return messages.length;
   }
+
+  @override
+  Future<int> sendRichMessage(
+    int chatId,
+    InputRichMessage richMessage, {
+    bool disableNotification = true,
+    bool disableWebPagePreview = true,
+    Map<String, Object?>? replyMarkup,
+  }) {
+    return sendMessage(
+      chatId,
+      richMessage.html,
+      disableNotification: disableNotification,
+      disableWebPagePreview: disableWebPagePreview,
+      replyMarkup: replyMarkup,
+      parseMode: 'HTML',
+    );
+  }
+
+  @override
+  Future<void> editRichMessage(
+    int chatId, {
+    required int messageId,
+    required InputRichMessage richMessage,
+    Map<String, Object?>? replyMarkup,
+  }) async {}
 
   @override
   Future<int> sendVideo(

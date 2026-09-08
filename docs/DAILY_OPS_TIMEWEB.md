@@ -50,9 +50,9 @@ GOOGLE_SHEETS_WRITE_ENABLED=true
 GOOGLE_SHEETS_CREDENTIALS_PATH=/app/secrets/google-sheets.json
 GOOGLE_SHEETS_SPREADSHEET_ID=<id из URL таблицы>
 GOOGLE_SHEETS_WRITE_SHEET_TITLE=FUNNEL
-GOOGLE_SHEETS_RECENT_ACTIONS_LIMIT=200
+GOOGLE_SHEETS_WRITE_INTERVAL_SECONDS=300
 ```
 
 JSON сервис-аккаунта: `/opt/dvor-chatbot-project/secrets/google-sheets.json` (не в git). После смены `.env` — полный деплой или хотя бы `docker compose up -d --force-recreate`.
 
-Тот же service account пишет входные листы `Тренировки` / `Походы` / `Трейлы` из админ-кнопки `📅 Управление расписанием` и раз в час удаляет события старше 2 дней. Bot-owned вкладки `FUNNEL` / `АНАЛИТИКА` / `ДВОРЯНЕ` / `ДЕЙСТВИЯ` пересоздаются отдельно по TTL и по кнопке `🔄 Обновить Google Sheets`; входные вкладки бот не wipe.
+Тот же service account пишет входные листы `Тренировки` / `Походы` / `Трейлы` из админ-кнопки `📅 Управление расписанием` и раз в час удаляет события старше 2 дней. Bot-owned вкладки `FUNNEL` / `АНАЛИТИКА` пересоздаются отдельно по TTL и по кнопке `🔄 Обновить Google Sheets`; входные вкладки бот не wipe. Листы `ДВОРЯНЕ`, `ДЕЙСТВИЯ`, `КАК ЗАПОЛНЯТЬ` и `Команда DVOR` бот удаляет при экспорте.

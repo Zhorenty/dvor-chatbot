@@ -12,17 +12,30 @@ abstract interface class TrainerDirectoryRepository {
 bool trainerDirectoryContainsUsername({
   required Iterable<TrainerInfo> trainers,
   required String? username,
+  bool coachesOnly = true,
 }) {
   final normalized = normalizeTelegramUsername(username);
   if (normalized == null) {
     return false;
   }
   for (final trainer in trainers) {
+    if (coachesOnly && trainer.kind != StaffKind.coach) {
+      continue;
+    }
     if (telegramUsernameFromLink(trainer.link) == normalized) {
       return true;
     }
   }
   return false;
+}
+
+List<TrainerInfo> staffDirectoryList({
+  required Iterable<TrainerInfo> people,
+  int limit = 20,
+}) {
+  final coaches = people.where((item) => item.kind == StaffKind.coach);
+  final team = people.where((item) => item.kind == StaffKind.team);
+  return <TrainerInfo>[...coaches, ...team].take(limit).toList(growable: false);
 }
 
 final class NoopTrainerDirectoryRepository implements TrainerDirectoryRepository {

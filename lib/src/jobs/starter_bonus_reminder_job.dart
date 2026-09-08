@@ -29,7 +29,8 @@ final class StarterBonusReminderJob {
       );
       for (final target in targets) {
         try {
-          await _sender.sendMessage(
+          await sendBotHtml(
+            _sender,
             target.userId,
             _templates.starterBonusExpiryReminder(expiresAt: target.expiresAt),
             replyMarkup: _templates.ctaBookInlineKeyboard(),

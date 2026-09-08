@@ -3,6 +3,7 @@ import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:l/l.dart';
 
 final class EconomicSummaryJob {
@@ -59,10 +60,10 @@ final class EconomicSummaryJob {
     final summary = await _economicSummaryService.buildSummary(period);
     final text = _templates.economicSummary(summary);
     try {
-      await _sender.sendMessage(
+      await sendBotScreen(
+        _sender,
         adminChatId,
-        text,
-        parseMode: 'HTML',
+        InputRichMessage(html: text),
       );
     } on Object catch (error, stackTrace) {
       await _bookingRepository.rollbackEconomicReportSent(

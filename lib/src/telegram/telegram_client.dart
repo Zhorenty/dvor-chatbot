@@ -2,8 +2,10 @@ import 'dart:convert';
 
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:dvor_chatbot/src/telegram/retry.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:http/http.dart' as http;
+import 'package:l/l.dart';
 
 final class TelegramClient implements MessageSender {
   static const int _maxTelegramMessageLength = 4096;
@@ -135,6 +137,74 @@ final class TelegramClient implements MessageSender {
       );
     }
     return lastMessageId;
+  }
+
+  @override
+  Future<int> sendRichMessage(
+    int chatId,
+    InputRichMessage richMessage, {
+    bool disableNotification = true,
+    bool disableWebPagePreview = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final body = <String, Object?>{
+      'chat_id': chatId,
+      'rich_message': richMessage.toApiJson(),
+      'disable_notification': disableNotification,
+    };
+    if (replyMarkup != null) {
+      body['reply_markup'] = replyMarkup;
+    }
+    try {
+      final payload = await _post('sendRichMessage', body: body);
+      final result = payload['result'];
+      if (result is! Map || result['message_id'] is! int) {
+        throw const TelegramApiException('Telegram did not return message_id');
+      }
+      return result['message_id'] as int;
+    } on TelegramApiException catch (error, stackTrace) {
+      l.w('sendRichMessage failed, falling back to sendMessage: $error', stackTrace);
+      return sendMessage(
+        chatId,
+        richMessage.fallbackHtml,
+        disableNotification: disableNotification,
+        disableWebPagePreview: disableWebPagePreview,
+        replyMarkup: replyMarkup ?? richMessage.fallbackInlineKeyboard(),
+        parseMode: 'HTML',
+      );
+    }
+  }
+
+  @override
+  Future<void> editRichMessage(
+    int chatId, {
+    required int messageId,
+    required InputRichMessage richMessage,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    try {
+      await _post(
+        'editMessageText',
+        body: <String, Object?>{
+          'chat_id': chatId,
+          'message_id': messageId,
+          'rich_message': richMessage.toApiJson(),
+          if (replyMarkup != null) 'reply_markup': replyMarkup,
+        },
+      );
+    } on TelegramApiException catch (error, stackTrace) {
+      l.w('editRichMessage failed, falling back to HTML text: $error', stackTrace);
+      await _post(
+        'editMessageText',
+        body: <String, Object?>{
+          'chat_id': chatId,
+          'message_id': messageId,
+          'text': richMessage.fallbackHtml,
+          'parse_mode': 'HTML',
+          if (replyMarkup != null) 'reply_markup': replyMarkup,
+        },
+      );
+    }
   }
 
   Future<int> _sendMessageChunk(

@@ -2,8 +2,17 @@ part of '../message_templates.dart';
 
 extension MessageTemplatesAdminSchedule on MessageTemplates {
   String adminScheduleRoot() {
-    return '📅 <b>Управление расписанием</b>\n'
-        'Выбери вкладку.';
+    return RichHtml.screen(
+      title: 'Управление расписанием',
+      lead: 'Выбери вкладку.',
+    );
+  }
+
+  String adminScheduleNavHint() {
+    return RichHtml.screen(
+      title: 'Меню',
+      lead: 'Назад — в админ-меню.',
+    );
   }
 
   String adminScheduleUnavailableStatic() {
@@ -27,151 +36,175 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
       ActivityCategory.trails => 'Трейлы',
     };
     if (total == 0) {
-      return '📅 <b>$title</b>\n'
-          'Ближайших событий нет.\n'
-          'Дальше: ➕ Добавить.';
+      return RichHtml.screen(
+        title: title,
+        lead: 'Ближайших событий нет.',
+        paragraphs: <String>['Дальше: ➕ Добавить.'],
+      );
     }
-    final pageLine = totalPages > 1 ? '\nСтраница ${page + 1} из $totalPages.' : '';
-    return '📅 <b>$title</b>\n'
-        'Ближайшие: $shown из $total.$pageLine\n'
-        'Открой карточку или добавь событие.';
+    final pageLine = totalPages > 1 ? 'Страница ${page + 1} из $totalPages.' : null;
+    return RichHtml.screen(
+      title: title,
+      lead: 'Ближайшие: $shown из $total.',
+      paragraphs: <String>[
+        if (pageLine != null) pageLine,
+        'Открой карточку или добавь событие.',
+      ],
+    );
   }
 
   String adminScheduleEventCard(ScheduleCatalogItem item) {
-    final lines = <String>['📅 <b>${_escapeHtml(item.title)}</b>'];
+    final rows = <(String, String)>[];
     final training = item.training;
     final outdoor = item.outdoor;
     if (training != null) {
-      lines.add('🕒 ${_escapeHtml(DateFormat('dd.MM.yyyy HH:mm').format(training.startsAt))}');
-      lines.add('📍 ${_escapeHtml(training.location)}');
+      rows.addAll(<(String, String)>[
+        ('🕒', DateFormat('dd.MM.yyyy HH:mm').format(training.startsAt)),
+        ('📍', training.location),
+      ]);
       final map = training.locationUrl?.trim();
       if (map != null && map.isNotEmpty) {
-        lines.add('🗺 ${_escapeHtml(map)}');
+        rows.add(('Карта', map));
       }
       final coach = training.coach?.trim();
       if (coach != null && coach.isNotEmpty) {
-        lines.add('🧑‍🏫 ${_escapeHtml(coach)}');
+        rows.add(('Тренер', coach));
       }
       if (training.price != null) {
-        lines.add('💳 ${_escapeHtml(_trainingPriceLabel(training.price))}');
+        rows.add(('Цена', _trainingPriceLabel(training.price)));
       }
       if (training.participantsLimit != null) {
-        lines.add('👥 лимит ${training.participantsLimit}');
+        rows.add(('Лимит', '${training.participantsLimit}'));
       }
       final notes = training.notes?.trim();
       if (notes != null && notes.isNotEmpty) {
-        lines.add('📝 ${_escapeHtml(notes)}');
+        rows.add(('Заметки', notes));
       }
-      lines.add(training.includeTrainersInParticipants
-          ? 'Тренеры в лимите: да'
-          : 'Тренеры в лимите: нет');
-      lines.add(training.promoRestricted ? 'Без промокода: да' : 'Без промокода: нет');
+      rows
+        ..add(('Тренеры в лимите', training.includeTrainersInParticipants ? 'да' : 'нет'))
+        ..add(('Без промокода', training.promoRestricted ? 'да' : 'нет'));
     } else if (outdoor != null) {
-      lines.add(
-          '🕒 ${_escapeHtml(MessageFormatters.outdoorDateLabel(outdoor.dateFrom, outdoor.dateTo))}');
+      rows.add(('🕒', MessageFormatters.outdoorDateLabel(outdoor.dateFrom, outdoor.dateTo)));
       final location = outdoor.location?.trim();
       if (location != null && location.isNotEmpty) {
-        lines.add('📍 ${_escapeHtml(location)}');
+        rows.add(('Место', location));
       }
-      lines.add(_escapeHtml(outdoor.description));
+      rows.add(('Описание', outdoor.description));
       if (outdoor.price != null) {
-        lines.add('💳 ${_escapeHtml(_trainingPriceLabel(outdoor.price))}');
+        rows.add(('Цена', _trainingPriceLabel(outdoor.price)));
       }
       if (outdoor.prepayPercent != 50) {
-        lines.add('Предоплата ${outdoor.prepayPercent}%');
+        rows.add(('Предоплата', '${outdoor.prepayPercent}%'));
       }
       if (outdoor.participantsLimit != null) {
-        lines.add('👥 лимит ${outdoor.participantsLimit}');
+        rows.add(('Лимит', '${outdoor.participantsLimit}'));
       }
       final equipment = outdoor.equipment?.trim();
       if (equipment != null && equipment.isNotEmpty) {
-        lines.add('🎒 ${_escapeHtml(equipment)}');
+        rows.add(('Экипировка', equipment));
       }
       final itinerary = outdoor.itinerary?.trim();
       if (itinerary != null && itinerary.isNotEmpty) {
-        lines.add('🗺 ${_escapeHtml(itinerary)}');
+        rows.add(('План', itinerary));
       }
     }
-    return lines.join('\n');
+    return RichHtml.screen(
+      title: item.title,
+      rows: rows,
+    );
   }
 
   String adminScheduleDeleteConfirm(ScheduleCatalogItem item) {
-    return '🗑 <b>Удалить событие?</b>\n'
-        '${_escapeHtml(item.title)}\n'
-        'Строка пропадёт из таблицы.';
+    return RichHtml.screen(
+      title: 'Удалить событие',
+      lead: item.title,
+      paragraphs: <String>['Строка пропадёт из таблицы.'],
+    );
   }
 
-  String adminScheduleFieldPrompt(String field) {
-    return switch (field) {
+  String adminScheduleFieldPrompt(
+    String field, {
+    int? step,
+    int? total,
+  }) {
+    final body = switch (field) {
       'title' => 'Название.\nПример: BOXING DVOR.',
       'date' => 'Дата.\nФормат 19.08.2026.',
       'time' => 'Время начала.\nПиши 19:30 или 8:30.',
       'location' => 'Место.\nПример: Стадион Кубань.',
-      'map' => 'Ссылка на Яндекс Карты.\nМожно пропустить: тогда бот ищет по месту.',
-      'coach' => 'Тренер.\nИмя из штаба или разовое. Можно пропустить.',
-      'price' => 'Цена в рублях, число.\nМожно пропустить.',
-      'limit' => 'Лимит мест, число.\nМожно пропустить.',
-      'notes' => 'Заметки в карточке.\nМожно пропустить.',
+      'map' => 'Ссылка на Яндекс Карты.\nМожно пропустить кнопкой.',
+      'coach' => 'Тренер.\nИмя из штаба или разовое. Можно пропустить кнопкой.',
+      'price' => 'Цена в рублях, число.\nМожно пропустить кнопкой.',
+      'limit' => 'Лимит мест, число.\nМожно пропустить кнопкой.',
+      'notes' => 'Заметки в карточке.\nМожно пропустить кнопкой.',
       'include_trainers' => 'Считать тренеров в лимите мест?',
       'promo_restricted' => 'Промокод на это событие не действует?',
       'date_from' => 'Дата начала.\nФормат 19.08.2026.',
-      'date_to' => 'Дата окончания.\nПусто = один день. Можно пропустить.',
+      'date_to' => 'Дата окончания.\nПусто = один день. Можно пропустить кнопкой.',
       'description' => 'Описание в карточке.',
-      'prepay' => 'Предоплата 1–100.\nПусто = 50%. Можно пропустить.',
-      'equipment' => 'Экипировка.\nМожно пропустить.',
-      'itinerary' => 'План / тайминг.\nМожно пропустить.',
+      'prepay' => 'Предоплата 1–100.\nПусто = 50%. Можно пропустить кнопкой.',
+      'equipment' => 'Экипировка.\nМожно пропустить кнопкой.',
+      'itinerary' => 'План / тайминг.\nМожно пропустить кнопкой.',
       _ => 'Введи значение.',
     };
+    final stepLine = step != null && total != null ? 'Шаг $step из $total.' : null;
+    return RichHtml.screen(
+      title: stepLine ?? 'Поле',
+      lead: body.split('\n').first,
+      paragraphs: body.split('\n').skip(1).toList(),
+    );
   }
 
   String adminScheduleCreatePreview(ScheduleEventDraft draft) {
-    final lines = <String>['📅 <b>Проверь перед записью</b>'];
+    final rows = <(String, String)>[];
     void add(String label, String? value) {
       if (value == null || value.trim().isEmpty) {
         return;
       }
-      lines.add('$label ${_escapeHtml(value.trim())}');
+      rows.add((label, value.trim()));
     }
 
-    add('Название:', draft.title);
+    add('Название', draft.title);
     if (draft.category == ActivityCategory.trainings) {
-      add('Дата:', draft.date);
-      add('Время:', draft.time);
-      add('Место:', draft.location);
-      add('Карта:', draft.locationUrl);
-      add('Тренер:', draft.coach);
+      add('Дата', draft.date);
+      add('Время', draft.time);
+      add('Место', draft.location);
+      add('Карта', draft.locationUrl);
+      add('Тренер', draft.coach);
       if (draft.price != null) {
-        add('Цена:', '${draft.price} ₽');
+        add('Цена', '${draft.price} ₽');
       }
       if (draft.participantsLimit != null) {
-        add('Лимит:', '${draft.participantsLimit}');
+        add('Лимит', '${draft.participantsLimit}');
       }
-      add('Заметки:', draft.notes);
+      add('Заметки', draft.notes);
       if (draft.includeTrainersInParticipants == true) {
-        lines.add('Тренеры в лимите: да');
+        add('Тренеры в лимите', 'да');
       }
       if (draft.promoRestricted == true) {
-        lines.add('Без промокода: да');
+        add('Без промокода', 'да');
       }
     } else {
-      add('Дата с:', draft.dateFrom);
-      add('Дата по:', draft.dateTo);
-      add('Описание:', draft.description);
-      add('Место:', draft.location);
+      add('Дата с', draft.dateFrom);
+      add('Дата по', draft.dateTo);
+      add('Описание', draft.description);
+      add('Место', draft.location);
       if (draft.price != null) {
-        add('Цена:', '${draft.price} ₽');
+        add('Цена', '${draft.price} ₽');
       }
       if (draft.prepayPercent != null) {
-        add('Предоплата:', '${draft.prepayPercent}%');
+        add('Предоплата', '${draft.prepayPercent}%');
       }
       if (draft.participantsLimit != null) {
-        add('Лимит:', '${draft.participantsLimit}');
+        add('Лимит', '${draft.participantsLimit}');
       }
-      add('Экипировка:', draft.equipment);
-      add('План:', draft.itinerary);
+      add('Экипировка', draft.equipment);
+      add('План', draft.itinerary);
     }
-    lines.add('Дальше: сохранить или отмена.');
-    return lines.join('\n');
+    return RichHtml.screen(
+      title: 'Проверь перед записью',
+      rows: rows,
+    );
   }
 
   String adminScheduleSaved({required bool refreshOk}) {

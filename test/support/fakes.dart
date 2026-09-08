@@ -26,6 +26,7 @@ import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_feedback.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 
 final class FakeScheduleRepository implements TrainingScheduleRepository {
   FakeScheduleRepository(
@@ -1109,7 +1110,7 @@ final class FakeTrainerDirectoryRepository implements TrainerDirectoryRepository
   int refreshCalls = 0;
 
   @override
-  List<TrainerInfo> list({int limit = 20}) => items.take(limit).toList(growable: false);
+  List<TrainerInfo> list({int limit = 20}) => staffDirectoryList(people: items, limit: limit);
 
   @override
   bool containsUsername(String? username) {
@@ -1219,9 +1220,12 @@ final class FakeSender implements MessageSender {
   final List<PinnedMessage> pinnedMessages = <PinnedMessage>[];
   final List<AnsweredCallback> answeredCallbacks = <AnsweredCallback>[];
   final List<EditedReplyMarkup> editedReplyMarkups = <EditedReplyMarkup>[];
+  final List<InputRichMessage> richMessages = <InputRichMessage>[];
+  final List<EditedRichMessage> editedRichMessages = <EditedRichMessage>[];
   final Map<int, Exception> sendMessageFailuresByChatId = <int, Exception>{};
+  final Map<int, Exception> sendRichMessageFailuresByChatId = <int, Exception>{};
 
-  static const String navHintText = 'Навигация 👇';
+  static const String navHintText = 'Меню внизу.';
 
   SentMessage get lastContentMessage {
     if (messages.isEmpty) {
@@ -1262,6 +1266,55 @@ final class FakeSender implements MessageSender {
       ),
     );
     return messages.length;
+  }
+
+  @override
+  Future<int> sendRichMessage(
+    int chatId,
+    InputRichMessage richMessage, {
+    bool disableNotification = true,
+    bool disableWebPagePreview = true,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    final delay = sendDelay;
+    if (delay != null) {
+      await Future<void>.delayed(delay);
+    }
+    final failure = sendRichMessageFailuresByChatId[chatId] ?? sendMessageFailuresByChatId[chatId];
+    if (failure != null) {
+      throw failure;
+    }
+    richMessages.add(richMessage);
+    messages.add(
+      SentMessage(
+        chatId: chatId,
+        text: richMessage.html,
+        disableNotification: disableNotification,
+        disableWebPagePreview: disableWebPagePreview,
+        replyMarkup: replyMarkup ?? richMessage.fallbackInlineKeyboard(),
+        parseMode: 'HTML',
+        isRich: true,
+        fallbackHtml: richMessage.fallbackHtml,
+      ),
+    );
+    return messages.length;
+  }
+
+  @override
+  Future<void> editRichMessage(
+    int chatId, {
+    required int messageId,
+    required InputRichMessage richMessage,
+    Map<String, Object?>? replyMarkup,
+  }) async {
+    editedRichMessages.add(
+      EditedRichMessage(
+        chatId: chatId,
+        messageId: messageId,
+        richMessage: richMessage,
+        replyMarkup: replyMarkup,
+      ),
+    );
   }
 
   @override
@@ -1402,6 +1455,8 @@ final class SentMessage {
     required this.disableWebPagePreview,
     required this.replyMarkup,
     required this.parseMode,
+    this.isRich = false,
+    this.fallbackHtml,
   });
 
   final int chatId;
@@ -1410,6 +1465,22 @@ final class SentMessage {
   final bool disableWebPagePreview;
   final Map<String, Object?>? replyMarkup;
   final String? parseMode;
+  final bool isRich;
+  final String? fallbackHtml;
+}
+
+final class EditedRichMessage {
+  const EditedRichMessage({
+    required this.chatId,
+    required this.messageId,
+    required this.richMessage,
+    required this.replyMarkup,
+  });
+
+  final int chatId;
+  final int messageId;
+  final InputRichMessage richMessage;
+  final Map<String, Object?>? replyMarkup;
 }
 
 enum SentMediaKind { video, videoNote }

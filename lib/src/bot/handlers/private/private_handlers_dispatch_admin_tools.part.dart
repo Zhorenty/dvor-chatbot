@@ -39,8 +39,7 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
       if (parts.length < 3) {
         await _sendAdminMessage(
           chatId,
-          'Формат: <code>/loyalty_grant userId 50</code> или '
-          '<code>/loyalty_debit userId 50</code>',
+          _templates.loyaltyAdminCommandUsage(),
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
@@ -51,7 +50,7 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
       if (targetUserId == null || amount == null) {
         await _sendAdminMessage(
           chatId,
-          'Формат: <code>/loyalty_grant userId 50</code>',
+          _templates.loyaltyAdminCommandUsage(),
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );

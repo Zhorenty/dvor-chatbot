@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('GoogleSheetsTrainerDirectoryRepository', () {
-    test('loads trainers from dedicated gid', () async {
+    test('loads trainers from dedicated gid and keeps old role as specialization', () async {
       final repository = GoogleSheetsTrainerDirectoryRepository(
         csvUrl: Uri.parse('https://example.com/schedule.csv?gid=0'),
         httpClient: MockClient((request) async {
@@ -126,6 +126,33 @@ void main() {
       expect(repository.containsUsername('maria_run'), isTrue);
       expect(repository.containsUsername('unknown_coach'), isFalse);
       expect(repository.containsUsername(null), isFalse);
+    });
+
+    test('lists coaches first, then DVOR team, and team is not coaching staff', () async {
+      final repository = GoogleSheetsTrainerDirectoryRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          return http.Response(
+            'имя,username,роль,направление,описание\n'
+            'Родион,@oh_rodya,Команда DVOR,,\n'
+            'Alex,@alex,Тренер,Strength,Head coach\n'
+            'Maria,@maria_run,Команда DVOR,Ops,\n',
+            200,
+            headers: const <String, String>{'content-type': 'text/csv; charset=utf-8'},
+          );
+        }),
+      );
+
+      expect(await repository.refresh(force: true), isTrue);
+      expect(
+        repository.list().map((item) => item.name).toList(),
+        <String>['Alex', 'Родион', 'Maria'],
+      );
+      expect(repository.list().first.kind, StaffKind.coach);
+      expect(repository.list().last.kind, StaffKind.team);
+      expect(repository.containsUsername('alex'), isTrue);
+      expect(repository.containsUsername('oh_rodya'), isFalse);
+      expect(repository.containsUsername('maria_run'), isFalse);
     });
   });
 }

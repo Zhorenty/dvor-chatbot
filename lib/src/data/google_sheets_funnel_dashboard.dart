@@ -6,8 +6,6 @@ import 'package:intl/intl.dart';
 abstract final class GoogleSheetsFunnelDashboard {
   static const String defaultSheetTitle = 'FUNNEL';
   static const String analyticsSheetTitle = 'АНАЛИТИКА';
-  static const String noblesSheetTitle = 'ДВОРЯНЕ';
-  static const String recentActionsSheetTitle = 'ДЕЙСТВИЯ';
   static const int columnCount = 12;
 
   static const GoogleSheetsRgb ink = GoogleSheetsRgb(0.12, 0.16, 0.14);
@@ -45,6 +43,14 @@ abstract final class GoogleSheetsFunnelDashboard {
       styles: sheet.styles,
       bandedTables: sheet.bandedTables,
       columnWidthsPx: const <int>[250, 110, 120, 250, 110, 120, 200, 90, 90, 90, 90, 180],
+      obsoleteSheetTitles: const <String>[
+        'bot_bookings',
+        'ДВОРЯНЕ',
+        'ДЕЙСТВИЯ',
+        'КАК ЗАПОЛНЯТЬ',
+        'Как заполнять',
+        'Команда DVOR',
+      ],
     );
   }
 }
