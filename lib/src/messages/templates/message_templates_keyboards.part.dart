@@ -141,22 +141,11 @@ extension MessageTemplatesKeyboards on MessageTemplates {
   }
 
   String chooseBookFriendEvent(List<TrainingInfo> items) {
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final buffer = StringBuffer()
       ..write(RichHtml.heading('Записать друга'))
       ..write(RichHtml.paragraph('Выбери мероприятие.'));
     for (var index = 0; index < items.length; index++) {
-      final item = items[index];
-      buffer.write(
-        RichHtml.table(
-          <(String, String)>[
-            ('${index + 1}', item.title),
-            ('Когда', formatter.format(item.startsAt)),
-            ('Где', item.location),
-            if (item.price != null) ('Цена', _trainingPriceLabel(item.price)),
-          ],
-        ),
-      );
+      buffer.write(_scheduleTemplates.trainingEventCard(items[index], index: index + 1));
     }
     return buffer.toString();
   }

@@ -97,6 +97,13 @@ void main() {
 
       expect(text, contains('🕒'));
       expect(text, contains('пн, 22.06.2026 19:00'));
+      expect(text, contains('<blockquote>'));
+      expect(
+        text,
+        contains(
+            '<p>📍 <a href="https://yandex.ru/maps/?text=%D0%97%D0%B0%D0%BB%20DVOR">Зал DVOR</a></p>'),
+      );
+      expect(text, isNot(contains('<table>')));
     });
 
     test('builds group promo for training day with booking cta', () {
@@ -463,8 +470,7 @@ void main() {
         ),
       );
 
-      expect(text, contains('Событие: 🥾 Поход: ПИК ЗАКАН'));
-      expect(text, contains('📍 Где'));
+      expect(text, contains('📍'));
       expect(text, contains('Вершина хребта Магито в Карачаево-Черкесии'));
       expect(text, isNot(contains('Тренировка:')));
       expect(text, isNot(contains('google.com/maps/search')));
@@ -503,7 +509,7 @@ void main() {
         text,
         contains('<a href="https://yandex.ru/maps/?text=%D0%97%D0%B0%D0%BB%20DVOR">'),
       );
-      expect(text, contains('📍 Где'));
+      expect(text, contains('📍'));
       expect(text, contains('<a href='));
       expect(text, isNot(contains('google.com/maps/search')));
     });
@@ -700,7 +706,7 @@ void main() {
         ),
       ]);
 
-      expect(text, contains('Где'));
+      expect(text, contains('📍'));
       expect(text, contains('Роза Хутор, КПП Лаура'));
     });
 
@@ -720,7 +726,6 @@ void main() {
       expect(text, contains('Поход на Ачишхо'));
       expect(text, contains('Красная Поляна'));
       expect(text, contains('2500 ₽ (1250 ₽ предоплата 50%)'));
-      expect(text, contains('Описание'));
       expect(text, contains('Дневной маршрут'));
       expect(text, contains('с красивыми видами'));
       expect(text, contains('Дневной маршрут<br>с красивыми видами'));
@@ -819,7 +824,7 @@ void main() {
         ),
       ]);
 
-      expect(text, contains('Описание'));
+      expect(text, contains('<blockquote>'));
       expect(text, contains('Готовы к настоящему вызову? Тогда вперед!'));
       expect(
         text,

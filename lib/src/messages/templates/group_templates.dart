@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/html_escaper.dart';
@@ -64,25 +65,35 @@ final class GroupTemplates {
       _ => 'Ближайшие тренировки уже в календаре.',
     };
     final formatter = DateFormat('dd.MM.yyyy HH:mm');
-    final rows = <(String, String)>[];
+    final buffer = StringBuffer()
+      ..write(RichHtml.heading(headline))
+      ..write(RichHtml.paragraph(lead));
     for (final training in trainings) {
       final coach = training.coach?.trim();
       final weekdayShort = _weekdayShort(training.startsAt.weekday);
       final dateLabel = weekdayShort.isEmpty
           ? formatter.format(training.startsAt)
           : '$weekdayShort, ${formatter.format(training.startsAt)}';
-      final bits = <String>[
-        dateLabel,
-        training.location,
-        if (training.price != null) MessageFormatters.trainingPriceLabel(training.price),
-        if (coach != null && coach.isNotEmpty) coach,
-      ];
-      rows.add((training.title, bits.join(' · ')));
+      final isOutdoor = training.category == ActivityCategory.hikes ||
+          training.category == ActivityCategory.trails;
+      buffer.write(
+        RichHtml.card(
+          title: training.title,
+          lines: <String>[
+            '🕒 $dateLabel',
+            '📍 ${RichHtml.locationHtml(
+              location: training.location,
+              locationUrl: training.locationUrl,
+              link: !isOutdoor,
+            )}',
+            if (training.price != null)
+              '💳 ${MessageFormatters.trainingPriceLabel(training.price)}',
+            if (coach != null && coach.isNotEmpty) '🧑‍🏫 ${escapeHtml(coach)}',
+          ],
+        ),
+      );
     }
-    final buffer = StringBuffer()
-      ..write(RichHtml.heading(headline))
-      ..write(RichHtml.paragraph(lead))
-      ..write(RichHtml.table(rows))
+    buffer
       ..write(RichHtml.paragraph('Запись в пару тапов в боте.'))
       ..write(RichHtml.paragraph(_groupBookingCta(), alreadyEscaped: true));
     return buffer.toString();

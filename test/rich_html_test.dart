@@ -75,4 +75,32 @@ void main() {
       expect(html, contains('<p>Первый</p><p>Второй</p>'));
     });
   });
+
+  group('RichHtml.card and locationHtml', () {
+    test('puts location links in a paragraph, not a table', () {
+      final html = RichHtml.card(
+        title: 'CROSSFIT',
+        index: 1,
+        lines: <String>[
+          '🕒 19:30',
+          '📍 ${RichHtml.locationHtml(location: 'Стадион Кубань', locationUrl: 'https://maps.example/kuban')}',
+        ],
+      );
+
+      expect(html, startsWith('<blockquote>'));
+      expect(html, contains('<h3>1. CROSSFIT</h3>'));
+      expect(
+        html,
+        contains('<p>📍 <a href="https://maps.example/kuban">Стадион Кубань</a></p>'),
+      );
+      expect(html, isNot(contains('<table>')));
+    });
+
+    test('falls back to yandex search when map url is missing', () {
+      expect(
+        RichHtml.locationHtml(location: 'Зал DVOR'),
+        '<a href="https://yandex.ru/maps/?text=%D0%97%D0%B0%D0%BB%20DVOR">Зал DVOR</a>',
+      );
+    });
+  });
 }

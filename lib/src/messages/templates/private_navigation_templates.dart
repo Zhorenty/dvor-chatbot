@@ -82,17 +82,30 @@ final class PrivateNavigationTemplates {
     if (citySlots.isEmpty) {
       return '';
     }
-    final rows = <(String, String)>[];
+    final buffer = StringBuffer();
     for (final slot in citySlots) {
       final kind = switch (_citySlotKind(slot.title)) {
         'boxing' => 'Бокс',
         'strength' => 'Силовая',
         'run' => 'Забег',
-        _ => slot.title,
+        _ => '',
       };
-      rows.add((kind, '${slot.title} · ${_slotWhen(slot)} · ${slot.location}'));
+      buffer.write(
+        RichHtml.card(
+          title: slot.title,
+          lines: <String>[
+            if (kind.isNotEmpty) kind,
+            '🕒 ${_slotWhen(slot)}',
+            '📍 ${RichHtml.locationHtml(
+              location: slot.location,
+              locationUrl: slot.locationUrl,
+              link: slot.category == ActivityCategory.trainings,
+            )}',
+          ],
+        ),
+      );
     }
-    return RichHtml.table(rows);
+    return buffer.toString();
   }
 
   String _citySlotKind(String title) {

@@ -16,6 +16,61 @@ final class RichHtml {
     return formatted(text);
   }
 
+  static String anchor(String label, String url) {
+    return '<a href="${escapeHtml(url)}">${escapeHtml(label)}</a>';
+  }
+
+  static String mapsUrl({required String location, String? locationUrl}) {
+    final explicit = locationUrl?.trim();
+    if (explicit != null && explicit.isNotEmpty) {
+      return explicit;
+    }
+    return 'https://yandex.ru/maps/?text=${Uri.encodeComponent(location)}';
+  }
+
+  static String locationHtml({
+    required String location,
+    String? locationUrl,
+    bool link = true,
+  }) {
+    final trimmed = location.trim();
+    if (trimmed.isEmpty) {
+      return '';
+    }
+    if (!link) {
+      return escapeHtml(trimmed);
+    }
+    return anchor(trimmed, mapsUrl(location: trimmed, locationUrl: locationUrl));
+  }
+
+  static String facts(List<String> lines, {bool alreadyEscaped = false}) {
+    final buffer = StringBuffer();
+    for (final line in lines) {
+      if (line.trim().isEmpty) {
+        continue;
+      }
+      buffer.write(paragraph(line, alreadyEscaped: alreadyEscaped));
+    }
+    return buffer.toString();
+  }
+
+  /// Visual card for schedule/booking lists. Links stay in `<p>`, not `<td>`.
+  static String card({
+    required String title,
+    int? index,
+    List<String> lines = const <String>[],
+    String extra = '',
+    bool alreadyEscaped = true,
+  }) {
+    final buffer = StringBuffer('<blockquote>');
+    final headingText = index == null ? title : '$index. $title';
+    buffer.write(heading(headingText, level: 3));
+    buffer.write(facts(lines, alreadyEscaped: alreadyEscaped));
+    buffer.write(extra);
+    buffer.write('</blockquote>');
+    return buffer.toString();
+  }
+
   static final RegExp _bulletPrefix = RegExp(
     r'^\s*(?:[•●▪◦‣·]|[-–—*]|[0-9]{1,2}[.)])\s+',
   );
@@ -162,6 +217,7 @@ final class RichHtml {
     required String title,
     String? lead,
     List<String> paragraphs = const <String>[],
+    List<String>? facts,
     List<String>? bullets,
     List<(String, String)>? rows,
     String? detailsSummary,
@@ -178,6 +234,10 @@ final class RichHtml {
         continue;
       }
       buffer.write(paragraph(paragraphText, alreadyEscaped: alreadyEscaped));
+    }
+    final factLines = facts;
+    if (factLines != null && factLines.isNotEmpty) {
+      buffer.write(RichHtml.facts(factLines, alreadyEscaped: alreadyEscaped));
     }
     final list = bullets;
     if (list != null && list.isNotEmpty) {

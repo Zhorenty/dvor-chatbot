@@ -1058,7 +1058,7 @@ void main() {
       expect(sender.lastContentMessage.text, contains('Тестовая тренировка'));
       expect(
         sender.lastContentMessage.text,
-        contains('<a href="https://maps.example/test-gym">Тестовый зал</a>'),
+        contains('<p>📍 <a href="https://maps.example/test-gym">Тестовый зал</a></p>'),
       );
       expect(sender.lastContentMessage.text, contains('бесплатная'));
       expect(sender.lastContentMessage.text, contains('Выбери мероприятие для записи'));
@@ -3225,7 +3225,7 @@ void main() {
       expect(sender.lastContentMessage.text, contains('записал тебя'));
       expect(sender.lastContentMessage.text, contains('Поход на хребет'));
       expect(sender.lastContentMessage.text, isNot(contains('Тренировка:')));
-      expect(sender.lastContentMessage.text, contains('Где'));
+      expect(sender.lastContentMessage.text, contains('📍'));
       expect(sender.lastContentMessage.text, contains('Лаго-Наки, старт от кордона'));
       final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
       expect(buttons, contains(MessageTemplates.buttonPayFully));
@@ -3726,7 +3726,7 @@ void main() {
       final existingText = templates.bookingAlreadyExists(outdoorBooking);
       final reminderText = templates.pendingPaymentReminder(outdoorBooking);
 
-      expect(createdText, contains('🕒 Когда'));
+      expect(createdText, contains('🕒'));
       expect(createdText, contains('07.06.2026'));
       expect(existingText, contains('🕒 Когда'));
       expect(existingText, contains('07.06.2026'));

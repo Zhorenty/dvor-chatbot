@@ -54,7 +54,7 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
   }
 
   String adminScheduleEventCard(ScheduleCatalogItem item) {
-    final rows = <(String, String)>[];
+    final facts = <String>[];
     String? notes;
     String? description;
     String? equipment;
@@ -62,48 +62,43 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
     final training = item.training;
     final outdoor = item.outdoor;
     if (training != null) {
-      rows.addAll(<(String, String)>[
-        ('🕒', DateFormat('dd.MM.yyyy HH:mm').format(training.startsAt)),
-        ('📍', training.location),
-      ]);
-      final map = training.locationUrl?.trim();
-      if (map != null && map.isNotEmpty) {
-        rows.add(('Карта', map));
-      }
+      facts.add('🕒 ${DateFormat('dd.MM.yyyy HH:mm').format(training.startsAt)}');
+      facts.add(
+        '📍 ${RichHtml.locationHtml(location: training.location, locationUrl: training.locationUrl)}',
+      );
       final coach = training.coach?.trim();
       if (coach != null && coach.isNotEmpty) {
-        rows.add(('Тренер', coach));
+        facts.add('🧑‍🏫 ${_escapeHtml(coach)}');
       }
       if (training.price != null) {
-        rows.add(('Цена', _trainingPriceLabel(training.price)));
+        facts.add('💳 ${_trainingPriceLabel(training.price)}');
       }
       if (training.participantsLimit != null) {
-        rows.add(('Лимит', '${training.participantsLimit}'));
+        facts.add('👥 ${training.participantsLimit}');
       }
       notes = training.notes;
-      rows
-        ..add(('Тренеры в лимите', training.includeTrainersInParticipants ? 'да' : 'нет'))
-        ..add(('Без промокода', training.promoRestricted ? 'да' : 'нет'));
+      facts.add('Тренеры в лимите: ${training.includeTrainersInParticipants ? 'да' : 'нет'}');
+      facts.add('Без промокода: ${training.promoRestricted ? 'да' : 'нет'}');
     } else if (outdoor != null) {
-      rows.add(('🕒', MessageFormatters.outdoorDateLabel(outdoor.dateFrom, outdoor.dateTo)));
+      facts.add('🕒 ${MessageFormatters.outdoorDateLabel(outdoor.dateFrom, outdoor.dateTo)}');
       final location = outdoor.location?.trim();
       if (location != null && location.isNotEmpty) {
-        rows.add(('Место', location));
+        facts.add('📍 ${_escapeHtml(location)}');
       }
       description = outdoor.description;
       if (outdoor.price != null) {
-        rows.add(('Цена', _trainingPriceLabel(outdoor.price)));
+        facts.add('💳 ${_trainingPriceLabel(outdoor.price)}');
       }
       if (outdoor.prepayPercent != 50) {
-        rows.add(('Предоплата', '${outdoor.prepayPercent}%'));
+        facts.add('Предоплата: ${outdoor.prepayPercent}%');
       }
       if (outdoor.participantsLimit != null) {
-        rows.add(('Лимит', '${outdoor.participantsLimit}'));
+        facts.add('👥 ${outdoor.participantsLimit}');
       }
       equipment = outdoor.equipment;
       itinerary = outdoor.itinerary;
     }
-    return '${RichHtml.screen(title: item.title, rows: rows)}'
+    return '${RichHtml.screen(title: item.title, facts: facts, alreadyEscaped: true)}'
         '${RichHtml.formattedDetails(summary: 'Заметки', text: notes)}'
         '${RichHtml.formattedDetails(summary: 'Описание', text: description)}'
         '${RichHtml.formattedDetails(summary: 'Экипировка', text: equipment)}'

@@ -356,20 +356,9 @@ extension MessageTemplatesContent on MessageTemplates {
         lead: 'В выбранной категории нет доступных мероприятий для записи.',
       );
     }
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final buffer = StringBuffer()..write(RichHtml.heading('Выбери мероприятие для новой записи'));
     for (var index = 0; index < items.length; index++) {
-      final item = items[index];
-      buffer.write(
-        RichHtml.table(
-          <(String, String)>[
-            ('${index + 1}', item.title),
-            ('Когда', formatter.format(item.startsAt)),
-            ('Где', item.location),
-            ('Участники', _participantsLimitLabel(item.participantsLimit)),
-          ],
-        ),
-      );
+      buffer.write(_scheduleTemplates.trainingEventCard(items[index], index: index + 1));
     }
     return buffer.toString();
   }
@@ -527,23 +516,15 @@ extension MessageTemplatesContent on MessageTemplates {
   String bookingCreated(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
-    final buffer = StringBuffer()
-      ..write(RichHtml.heading('Запись создана'))
-      ..write(RichHtml.paragraph('Отлично, записал тебя.'))
-      ..write(
-        RichHtml.table(
-          <(String, String)>[
-            ('Статус', _escapeHtml(_statusLabel(booking.status, booking: booking))),
-            ('Номер', '#${booking.id}'),
-            ('Событие', _escapeHtml(_bookingTitleLine(booking))),
-            ('🕒 Когда', _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)),
-            ('📍 Где', _bookingLocationLabel(booking)),
-          ],
-          alreadyEscaped: true,
-        ),
-      )
-      ..write(paymentDetailsSent(booking));
-    return buffer.toString();
+    return '${RichHtml.screen(
+      title: 'Запись создана',
+      lead: 'Отлично, записал тебя.',
+      facts: _bookingLocationFacts(
+        booking,
+        dateLabel: _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter),
+      ),
+      alreadyEscaped: true,
+    )}${paymentDetailsSent(booking)}';
   }
 
   String bookingSlotPrepNotes({required String trainingTitle, required String notes}) {
@@ -556,13 +537,11 @@ extension MessageTemplatesContent on MessageTemplates {
     return RichHtml.screen(
       title: 'Запись создана',
       lead: 'Отлично, записал тебя.',
-      rows: <(String, String)>[
-        ('Статус', _escapeHtml(_statusLabel(booking.status, booking: booking))),
-        ('Номер', '#${booking.id}'),
-        ('Событие', _escapeHtml(booking.trainingTitle)),
-        ('🕒 Когда', _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)),
-        ('📍 Где', _bookingLocationLabel(booking)),
-      ],
+      facts: _bookingLocationFacts(
+        booking,
+        dateLabel: _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter),
+        titleLine: _escapeHtml(booking.trainingTitle),
+      ),
       paragraphs: <String>['Это бесплатная тренировка, чек не нужен.'],
       alreadyEscaped: true,
     );
@@ -574,13 +553,11 @@ extension MessageTemplatesContent on MessageTemplates {
     return RichHtml.screen(
       title: 'Запись создана',
       lead: 'Ты в тренерском штабе DVOR — слот без оплаты.',
-      rows: <(String, String)>[
-        ('Статус', _escapeHtml(_statusLabel(booking.status, booking: booking))),
-        ('Номер', '#${booking.id}'),
-        ('Событие', _escapeHtml(booking.trainingTitle)),
-        ('🕒 Когда', _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)),
-        ('📍 Где', _bookingLocationLabel(booking)),
-      ],
+      facts: _bookingLocationFacts(
+        booking,
+        dateLabel: _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter),
+        titleLine: _escapeHtml(booking.trainingTitle),
+      ),
       alreadyEscaped: true,
     );
   }
@@ -591,13 +568,11 @@ extension MessageTemplatesContent on MessageTemplates {
     return RichHtml.screen(
       title: 'Запись создана',
       lead: 'Ты в команде DVOR — слот без оплаты.',
-      rows: <(String, String)>[
-        ('Статус', _escapeHtml(_statusLabel(booking.status, booking: booking))),
-        ('Номер', '#${booking.id}'),
-        ('Событие', _escapeHtml(booking.trainingTitle)),
-        ('🕒 Когда', _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)),
-        ('📍 Где', _bookingLocationLabel(booking)),
-      ],
+      facts: _bookingLocationFacts(
+        booking,
+        dateLabel: _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter),
+        titleLine: _escapeHtml(booking.trainingTitle),
+      ),
       alreadyEscaped: true,
     );
   }
@@ -1669,12 +1644,12 @@ extension MessageTemplatesContent on MessageTemplates {
     return RichHtml.screen(
       title: 'Запись создана',
       lead: 'Отлично, записал тебя.',
-      rows: <(String, String)>[
-        ('Групповые', 'списано с карты · осталось $remaining/$quota'),
-        ('Номер записи', '${booking.id}'),
-        ('Тренировка', _escapeHtml(booking.trainingTitle)),
-        ('🕒 Когда', _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)),
-        ('📍 Где', _bookingLocationLabel(booking)),
+      facts: <String>[
+        'Групповые: списано с карты · осталось $remaining/$quota',
+        'Номер: #${booking.id}',
+        _escapeHtml(booking.trainingTitle),
+        '🕒 ${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}',
+        '📍 ${_bookingLocationLabel(booking)}',
       ],
       alreadyEscaped: true,
     );
@@ -1967,23 +1942,12 @@ extension MessageTemplatesContent on MessageTemplates {
         lead: 'Сейчас нет ближайших мероприятий для переноса.',
       );
     }
-    final formatter = DateFormat('dd.MM.yyyy HH:mm');
     final buffer = StringBuffer()
       ..write(RichHtml.heading('Куда перенести запись #${booking.id}?'))
       ..write(RichHtml.paragraph('Сейчас: ${booking.trainingTitle}'))
       ..write(RichHtml.paragraph('Выбери новое мероприятие.'));
     for (var index = 0; index < items.length; index++) {
-      final item = items[index];
-      buffer.write(
-        RichHtml.table(
-          <(String, String)>[
-            ('${index + 1}', item.title),
-            ('🕒 Когда', formatter.format(item.startsAt)),
-            ('📍 Где', item.location),
-            ('Участники', _participantsLimitLabel(item.participantsLimit)),
-          ],
-        ),
-      );
+      buffer.write(_scheduleTemplates.trainingEventCard(items[index], index: index + 1));
     }
     return buffer.toString();
   }
@@ -3052,22 +3016,9 @@ extension MessageTemplatesContent on MessageTemplates {
     if (items.isEmpty) {
       return noUpcomingForBooking();
     }
-    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
-    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     final buffer = StringBuffer()..write(bookingSelectionPrompt());
     for (var index = 0; index < items.length; index++) {
-      final item = items[index];
-      buffer.write(
-        RichHtml.table(
-          <(String, String)>[
-            ('${index + 1}', item.title),
-            ('🕒 Когда', _trainingDateLabel(item, dateTimeFormatter, dateOnlyFormatter)),
-            ('📍 Где', item.location),
-            if (item.price != null) ('Взнос', _trainingPriceLabel(item.price)),
-            ('Участники', _participantsLimitLabel(item.participantsLimit)),
-          ],
-        ),
-      );
+      buffer.write(_scheduleTemplates.trainingEventCard(items[index], index: index + 1));
     }
     return buffer.toString();
   }

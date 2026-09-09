@@ -77,25 +77,33 @@ extension MessageTemplatesHelpers on MessageTemplates {
   }
 
   String _trainingLocationLabel(TrainingInfo training) {
-    final location = training.location.trim();
-    if (_isOutdoorCategory(training.category)) {
-      return _escapeHtml(location);
-    }
-    return _locationAnchor(
-      label: location,
-      url: _resolvedMapsUrl(location: location, locationUrl: training.locationUrl),
+    return RichHtml.locationHtml(
+      location: training.location,
+      locationUrl: training.locationUrl,
+      link: !_isOutdoorCategory(training.category),
     );
   }
 
   String _bookingLocationLabel(TrainingBooking booking) {
-    final location = booking.location.trim();
-    if (MessageFormatters.isOutdoorBooking(booking)) {
-      return _escapeHtml(location);
-    }
-    return _locationAnchor(
-      label: location,
-      url: _resolvedMapsUrl(location: location, locationUrl: booking.locationUrl),
+    return RichHtml.locationHtml(
+      location: booking.location,
+      locationUrl: booking.locationUrl,
+      link: !MessageFormatters.isOutdoorBooking(booking),
     );
+  }
+
+  List<String> _bookingLocationFacts(
+    TrainingBooking booking, {
+    required String dateLabel,
+    String? titleLine,
+  }) {
+    return <String>[
+      'Статус: ${_escapeHtml(_statusLabel(booking.status, booking: booking))}',
+      'Номер: #${booking.id}',
+      titleLine ?? _escapeHtml(_bookingTitleLine(booking)),
+      '🕒 $dateLabel',
+      '📍 ${_bookingLocationLabel(booking)}',
+    ];
   }
 
   String _bookingTitleLine(TrainingBooking booking) {
@@ -121,31 +129,6 @@ extension MessageTemplatesHelpers on MessageTemplates {
       return 'после трейла';
     }
     return 'после похода';
-  }
-
-  String _locationAnchor({
-    required String label,
-    required String url,
-  }) {
-    final escapedUrl = _escapeHtml(url);
-    final escapedLabel = _escapeHtml(label);
-    return '<a href="$escapedUrl">$escapedLabel</a>';
-  }
-
-  String _resolvedMapsUrl({
-    required String location,
-    String? locationUrl,
-  }) {
-    final explicit = locationUrl?.trim();
-    if (explicit != null && explicit.isNotEmpty) {
-      return explicit;
-    }
-    return _mapsSearchUrl(location);
-  }
-
-  String _mapsSearchUrl(String location) {
-    final query = Uri.encodeComponent(location);
-    return 'https://yandex.ru/maps/?text=$query';
   }
 
   String _labelWithCount(String label, int count) {
@@ -210,13 +193,6 @@ extension MessageTemplatesHelpers on MessageTemplates {
       ActivityCategory.hikes => 'Походы',
       ActivityCategory.trails => 'Трейлы',
     };
-  }
-
-  String _participantsLimitLabel(int? participantsLimit) {
-    if (participantsLimit == null || participantsLimit <= 0) {
-      return 'без ограничений';
-    }
-    return 'до $participantsLimit';
   }
 
   String _participantsLimitValueLabel(int? participantsLimit) {
