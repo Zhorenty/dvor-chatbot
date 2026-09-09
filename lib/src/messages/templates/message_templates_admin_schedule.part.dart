@@ -55,6 +55,10 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
 
   String adminScheduleEventCard(ScheduleCatalogItem item) {
     final rows = <(String, String)>[];
+    String? notes;
+    String? description;
+    String? equipment;
+    String? itinerary;
     final training = item.training;
     final outdoor = item.outdoor;
     if (training != null) {
@@ -76,10 +80,7 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
       if (training.participantsLimit != null) {
         rows.add(('Лимит', '${training.participantsLimit}'));
       }
-      final notes = training.notes?.trim();
-      if (notes != null && notes.isNotEmpty) {
-        rows.add(('Заметки', notes));
-      }
+      notes = training.notes;
       rows
         ..add(('Тренеры в лимите', training.includeTrainersInParticipants ? 'да' : 'нет'))
         ..add(('Без промокода', training.promoRestricted ? 'да' : 'нет'));
@@ -89,7 +90,7 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
       if (location != null && location.isNotEmpty) {
         rows.add(('Место', location));
       }
-      rows.add(('Описание', outdoor.description));
+      description = outdoor.description;
       if (outdoor.price != null) {
         rows.add(('Цена', _trainingPriceLabel(outdoor.price)));
       }
@@ -99,19 +100,14 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
       if (outdoor.participantsLimit != null) {
         rows.add(('Лимит', '${outdoor.participantsLimit}'));
       }
-      final equipment = outdoor.equipment?.trim();
-      if (equipment != null && equipment.isNotEmpty) {
-        rows.add(('Экипировка', equipment));
-      }
-      final itinerary = outdoor.itinerary?.trim();
-      if (itinerary != null && itinerary.isNotEmpty) {
-        rows.add(('План', itinerary));
-      }
+      equipment = outdoor.equipment;
+      itinerary = outdoor.itinerary;
     }
-    return RichHtml.screen(
-      title: item.title,
-      rows: rows,
-    );
+    return '${RichHtml.screen(title: item.title, rows: rows)}'
+        '${RichHtml.formattedDetails(summary: 'Заметки', text: notes)}'
+        '${RichHtml.formattedDetails(summary: 'Описание', text: description)}'
+        '${RichHtml.formattedDetails(summary: 'Экипировка', text: equipment)}'
+        '${RichHtml.formattedDetails(summary: 'План', text: itinerary)}';
   }
 
   String adminScheduleDeleteConfirm(ScheduleCatalogItem item) {
@@ -165,6 +161,10 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
     }
 
     add('Название', draft.title);
+    String? notes;
+    String? description;
+    String? equipment;
+    String? itinerary;
     if (draft.category == ActivityCategory.trainings) {
       add('Дата', draft.date);
       add('Время', draft.time);
@@ -177,7 +177,7 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
       if (draft.participantsLimit != null) {
         add('Лимит', '${draft.participantsLimit}');
       }
-      add('Заметки', draft.notes);
+      notes = draft.notes;
       if (draft.includeTrainersInParticipants == true) {
         add('Тренеры в лимите', 'да');
       }
@@ -187,7 +187,7 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
     } else {
       add('Дата с', draft.dateFrom);
       add('Дата по', draft.dateTo);
-      add('Описание', draft.description);
+      description = draft.description;
       add('Место', draft.location);
       if (draft.price != null) {
         add('Цена', '${draft.price} ₽');
@@ -198,13 +198,14 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
       if (draft.participantsLimit != null) {
         add('Лимит', '${draft.participantsLimit}');
       }
-      add('Экипировка', draft.equipment);
-      add('План', draft.itinerary);
+      equipment = draft.equipment;
+      itinerary = draft.itinerary;
     }
-    return RichHtml.screen(
-      title: 'Проверь перед записью',
-      rows: rows,
-    );
+    return '${RichHtml.screen(title: 'Проверь перед записью', rows: rows)}'
+        '${RichHtml.formattedDetails(summary: 'Заметки', text: notes)}'
+        '${RichHtml.formattedDetails(summary: 'Описание', text: description)}'
+        '${RichHtml.formattedDetails(summary: 'Экипировка', text: equipment)}'
+        '${RichHtml.formattedDetails(summary: 'План', text: itinerary)}';
   }
 
   String adminScheduleSaved({required bool refreshOk}) {

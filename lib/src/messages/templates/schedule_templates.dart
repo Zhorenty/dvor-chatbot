@@ -56,11 +56,15 @@ final class ScheduleTemplates {
             if (item.price != null) ('💳', MessageFormatters.trainingPriceLabel(item.price)),
             if (coach != null && coach.isNotEmpty)
               (_coachTitle(coach), _coachLabel(coach, trainerUsernamesByName)),
-            if (notes != null && notes.isNotEmpty) ('📝', _escapeHtml(notes)),
           ],
           alreadyEscaped: true,
         ),
       );
+      if (notes != null && notes.isNotEmpty) {
+        buffer.write(
+          RichHtml.formattedDetails(summary: 'Заметки', text: notes),
+        );
+      }
     }
     return buffer.toString();
   }
@@ -127,8 +131,6 @@ final class ScheduleTemplates {
   }
 
   String outdoorPostPaymentRecap(OutdoorActivityInfo item) {
-    final itinerary = _normalizeMultiline(item.itinerary);
-    final equipment = _normalizeMultiline(item.equipment);
     return '${RichHtml.heading('Орг-напоминание перед стартом')}'
         '${RichHtml.table(
       <(String, String)>[
@@ -136,13 +138,15 @@ final class ScheduleTemplates {
         ('🕒 Когда', MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)),
       ],
     )}'
-        '${RichHtml.details(
+        '${RichHtml.formattedDetails(
       summary: 'Расписание похода',
-      body: itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате.',
+      text: item.itinerary,
+      empty: 'Тайминг скоро добавим. Следи за обновлениями в чате.',
     )}'
-        '${RichHtml.details(
+        '${RichHtml.formattedDetails(
       summary: 'Экипировка',
-      body: equipment ?? 'Список экипировки скоро добавим. Следи за обновлениями в чате.',
+      text: item.equipment,
+      empty: 'Список экипировки скоро добавим. Следи за обновлениями в чате.',
     )}';
   }
 
@@ -156,7 +160,6 @@ final class ScheduleTemplates {
 
   String chooseOutdoorDetailType(OutdoorActivityInfo item) {
     final location = item.location?.trim();
-    final description = _normalizeMultiline(item.description);
     final buffer = StringBuffer()
       ..write(RichHtml.heading(item.title))
       ..write(
@@ -171,16 +174,9 @@ final class ScheduleTemplates {
               ),
           ],
         ),
-      );
-    if (description != null) {
-      buffer.write(
-        RichHtml.details(
-          summary: 'Описание',
-          body: description,
-        ),
-      );
-    }
-    buffer.write(RichHtml.paragraph('Выбери действие.'));
+      )
+      ..write(RichHtml.formattedDetails(summary: 'Описание', text: item.description))
+      ..write(RichHtml.paragraph('Выбери действие.'));
     return buffer.toString();
   }
 
@@ -192,22 +188,30 @@ final class ScheduleTemplates {
   }
 
   String outdoorEquipmentDetails(OutdoorActivityInfo item) {
-    final equipment = _normalizeMultiline(item.equipment);
     final buffer = StringBuffer()
       ..write(RichHtml.heading('Экипировка'))
       ..write(RichHtml.paragraph(item.title))
-      ..write(RichHtml.paragraph(MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)))
-      ..write(RichHtml.paragraph(equipment ?? 'Список экипировки ещё не добавлен.'));
+      ..write(RichHtml.paragraph(MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)));
+    final equipment = item.equipment?.trim();
+    if (equipment == null || equipment.isEmpty) {
+      buffer.write(RichHtml.paragraph('Список экипировки ещё не добавлен.'));
+    } else {
+      buffer.write(RichHtml.formatted(item.equipment!));
+    }
     return buffer.toString();
   }
 
   String outdoorItineraryDetails(OutdoorActivityInfo item) {
-    final itinerary = _normalizeMultiline(item.itinerary);
     final buffer = StringBuffer()
       ..write(RichHtml.heading('Расписание похода'))
       ..write(RichHtml.paragraph(item.title))
-      ..write(RichHtml.paragraph(MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)))
-      ..write(RichHtml.paragraph(itinerary ?? 'Тайминг ещё не добавлен.'));
+      ..write(RichHtml.paragraph(MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)));
+    final itinerary = item.itinerary?.trim();
+    if (itinerary == null || itinerary.isEmpty) {
+      buffer.write(RichHtml.paragraph('Тайминг ещё не добавлен.'));
+    } else {
+      buffer.write(RichHtml.formatted(item.itinerary!));
+    }
     return buffer.toString();
   }
 
@@ -263,10 +267,6 @@ final class ScheduleTemplates {
 
   String trainerProfile(TrainerInfo trainer) {
     final role = _normalizeTrainerRole(trainer.role);
-    final hasDescription = trainer.description.trim().isNotEmpty;
-    final description = hasDescription
-        ? _normalizeTrainerDescription(trainer.description).split('\n').map(_escapeHtml).join('\n')
-        : null;
     final buffer = StringBuffer(RichHtml.heading(trainer.name));
     buffer.write(
       RichHtml.table(
@@ -277,15 +277,13 @@ final class ScheduleTemplates {
         alreadyEscaped: true,
       ),
     );
-    if (description != null) {
-      buffer.write(
-        RichHtml.details(
-          summary: trainer.kind == StaffKind.team ? 'О команде' : 'О тренере',
-          body: description,
-          alreadyEscaped: true,
-        ),
-      );
-    }
+    buffer.write(
+      RichHtml.formattedDetails(
+        summary: trainer.kind == StaffKind.team ? 'О команде' : 'О тренере',
+        text: trainer.description,
+        empty: 'Описание скоро добавим.',
+      ),
+    );
     return buffer.toString();
   }
 
@@ -333,7 +331,6 @@ final class ScheduleTemplates {
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
       final location = item.location?.trim();
-      final description = _normalizeMultiline(item.description);
       buffer.write('<h3>${index + 1}. $icon ${_escapeHtml(item.title)}</h3>');
       buffer.write(
         RichHtml.table(
@@ -348,14 +345,7 @@ final class ScheduleTemplates {
           ],
         ),
       );
-      if (description != null) {
-        buffer.write(
-          RichHtml.details(
-            summary: 'Описание',
-            body: description,
-          ),
-        );
-      }
+      buffer.write(RichHtml.formattedDetails(summary: 'Описание', text: item.description));
     }
     return buffer.toString();
   }
@@ -375,7 +365,6 @@ final class ScheduleTemplates {
     final buffer = StringBuffer(RichHtml.heading(title));
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
-      final equipment = _normalizeMultiline(item.equipment);
       buffer.write('<h3>${index + 1}. $icon ${_escapeHtml(item.title)}</h3>');
       buffer.write(
         RichHtml.table(
@@ -385,9 +374,10 @@ final class ScheduleTemplates {
         ),
       );
       buffer.write(
-        RichHtml.details(
+        RichHtml.formattedDetails(
           summary: 'Экипировка',
-          body: equipment ?? 'Список скоро добавим. Следи за обновлениями в чате.',
+          text: item.equipment,
+          empty: 'Список скоро добавим. Следи за обновлениями в чате.',
         ),
       );
     }
@@ -409,7 +399,6 @@ final class ScheduleTemplates {
     final buffer = StringBuffer(RichHtml.heading(title));
     for (var index = 0; index < items.length; index++) {
       final item = items[index];
-      final itinerary = _normalizeMultiline(item.itinerary);
       buffer.write('<h3>${index + 1}. $icon ${_escapeHtml(item.title)}</h3>');
       buffer.write(
         RichHtml.table(
@@ -419,41 +408,14 @@ final class ScheduleTemplates {
         ),
       );
       buffer.write(
-        RichHtml.details(
+        RichHtml.formattedDetails(
           summary: 'Расписание',
-          body: itinerary ?? 'Тайминг скоро добавим. Следи за обновлениями в чате.',
+          text: item.itinerary,
+          empty: 'Тайминг скоро добавим. Следи за обновлениями в чате.',
         ),
       );
     }
     return buffer.toString();
-  }
-
-  String? _normalizeMultiline(String? raw) {
-    if (raw == null) {
-      return null;
-    }
-    final normalized = raw.replaceAll('\r\n', '\n');
-    final rawLines = normalized.split('\n').map((line) => line.trim()).toList(growable: false);
-    final lines = <String>[];
-    var previousWasEmpty = false;
-    for (final line in rawLines) {
-      if (line.isEmpty) {
-        if (!previousWasEmpty && lines.isNotEmpty) {
-          lines.add('');
-        }
-        previousWasEmpty = true;
-        continue;
-      }
-      lines.add(line);
-      previousWasEmpty = false;
-    }
-    while (lines.isNotEmpty && lines.last.isEmpty) {
-      lines.removeLast();
-    }
-    if (lines.isEmpty) {
-      return null;
-    }
-    return lines.join('\n');
   }
 
   String _trainerLinkLabel(String rawLink) {
@@ -650,35 +612,6 @@ final class ScheduleTemplates {
   }
 
   String _escapeHtml(String value) => escapeHtml(value);
-
-  String _normalizeTrainerDescription(String raw) {
-    final normalized = raw.replaceAll('\r\n', '\n');
-    final rawLines = normalized.split('\n').map((line) => line.trim()).toList(growable: false);
-    if (rawLines.every((line) => line.isEmpty)) {
-      return 'Описание скоро добавим.';
-    }
-
-    final lines = <String>[];
-    var previousWasEmpty = false;
-    for (final line in rawLines) {
-      final isEmpty = line.isEmpty;
-      if (isEmpty) {
-        if (!previousWasEmpty && lines.isNotEmpty) {
-          lines.add('');
-        }
-        previousWasEmpty = true;
-        continue;
-      }
-      lines.add(line);
-      previousWasEmpty = false;
-    }
-
-    while (lines.isNotEmpty && lines.last.isEmpty) {
-      lines.removeLast();
-    }
-
-    return lines.join('\n');
-  }
 
   String _normalizeTrainerRole(String raw) {
     return raw.replaceAll('\r\n', '\n').replaceAll('\n', ' ').trim();

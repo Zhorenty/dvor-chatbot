@@ -7,10 +7,11 @@
 - 12.09 (сб) 08:30 [обычный] DVOR MORNING RUN (АНТОН ДЮКАРЕВ) / SURF COFFEE X RIVERSIDE
 
 Фоны — Unsplash License, новые на каждую генерацию:
-01-cover.png — Unsplash, горы
-https://unsplash.com/photos/8bI5fVVtdp8
-02-schedule.png — Unsplash, бег, асфальт
-https://unsplash.com/photos/nCJ_XdqQhIg
+Форматы: stories 1080×1920, posts 1080×1350 (4:5).
+01-cover.png — Moises Alex, грунтовый корт
+https://unsplash.com/photos/WqI-PbYugn4
+02-schedule.png — Bogdan Yukhymchuk, боксёрские перчатки
+https://unsplash.com/photos/XmvuWRDimrg
 
 Логотип DVOR — scripts/assets/week_stories/logo-dvor.png
 Акцент: #ADB838

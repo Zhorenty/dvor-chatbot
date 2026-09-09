@@ -10,8 +10,119 @@ final class RichHtml {
   }
 
   static String paragraph(String text, {bool alreadyEscaped = false}) {
-    final body = alreadyEscaped ? text : escapeHtml(text);
-    return '<p>$body</p>';
+    if (alreadyEscaped) {
+      return '<p>$text</p>';
+    }
+    return formatted(text);
+  }
+
+  static final RegExp _bulletPrefix = RegExp(
+    r'^\s*(?:[•●▪◦‣·]|[-–—*]|[0-9]{1,2}[.)])\s+',
+  );
+
+  /// Turns Google Sheets / plain text (newlines, lists, indent) into rich HTML.
+  static String formatted(String text) {
+    final lines = _plainLines(text);
+    if (lines.isEmpty) {
+      return '';
+    }
+    final buffer = StringBuffer();
+    var index = 0;
+    while (index < lines.length) {
+      if (lines[index].trim().isEmpty) {
+        index++;
+        continue;
+      }
+      if (_isBulletLine(lines[index])) {
+        final items = <String>[];
+        while (index < lines.length && _isBulletLine(lines[index])) {
+          final item = _stripBullet(lines[index]);
+          if (item.isNotEmpty) {
+            items.add(item);
+          }
+          index++;
+        }
+        buffer.write(bullets(items));
+        continue;
+      }
+      final paragraphLines = <String>[];
+      while (
+          index < lines.length && lines[index].trim().isNotEmpty && !_isBulletLine(lines[index])) {
+        paragraphLines.add(lines[index]);
+        index++;
+      }
+      buffer.write('<p>${paragraphLines.map(_indentedLineHtml).join('<br>')}</p>');
+    }
+    return buffer.toString();
+  }
+
+  static String formattedDetails({
+    required String summary,
+    String? text,
+    String? empty,
+  }) {
+    final trimmed = text?.trim();
+    final body = trimmed == null || trimmed.isEmpty
+        ? (empty == null ? '' : paragraph(empty))
+        : formatted(text!);
+    if (body.isEmpty) {
+      return '';
+    }
+    return details(
+      summary: summary,
+      body: body,
+      alreadyEscaped: true,
+    );
+  }
+
+  static List<String> _plainLines(String text) {
+    final normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+    final raw = normalized.split('\n').map((line) {
+      return line.replaceAll('\t', '  ').replaceAll(RegExp(r' +$'), '');
+    }).toList();
+    while (raw.isNotEmpty && raw.first.trim().isEmpty) {
+      raw.removeAt(0);
+    }
+    while (raw.isNotEmpty && raw.last.trim().isEmpty) {
+      raw.removeLast();
+    }
+    final lines = <String>[];
+    var emptyRun = 0;
+    for (final line in raw) {
+      if (line.trim().isEmpty) {
+        emptyRun++;
+        if (emptyRun == 1 && lines.isNotEmpty) {
+          lines.add('');
+        }
+        continue;
+      }
+      emptyRun = 0;
+      lines.add(line);
+    }
+    return lines;
+  }
+
+  static bool _isBulletLine(String line) => _bulletPrefix.hasMatch(line);
+
+  static String _stripBullet(String line) {
+    return line.replaceFirst(_bulletPrefix, '').trim();
+  }
+
+  static String _indentedLineHtml(String line) {
+    final indent = RegExp(r'^ *').firstMatch(line)?.group(0)?.length ?? 0;
+    final escaped = escapeHtml(line.trim());
+    if (indent <= 0) {
+      return escaped;
+    }
+    return '${'&nbsp;' * indent.clamp(1, 16)}$escaped';
+  }
+
+  static String _tableCellHtml(String value) {
+    final lines = value.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
+    if (lines.length == 1) {
+      return escapeHtml(value);
+    }
+    return lines.map(_indentedLineHtml).join('<br>');
   }
 
   static String bullets(List<String> items, {bool alreadyEscaped = false}) {
@@ -31,7 +142,7 @@ final class RichHtml {
     }
     final cells = rows.map((row) {
       final key = alreadyEscaped ? row.$1 : escapeHtml(row.$1);
-      final value = alreadyEscaped ? row.$2 : escapeHtml(row.$2);
+      final value = alreadyEscaped ? row.$2 : _tableCellHtml(row.$2);
       return '<tr><th>$key</th><td>$value</td></tr>';
     }).join();
     return '<table>$cells</table>';
@@ -43,7 +154,7 @@ final class RichHtml {
     bool alreadyEscaped = false,
   }) {
     final summaryHtml = alreadyEscaped ? summary : escapeHtml(summary);
-    final bodyHtml = alreadyEscaped ? body : escapeHtml(body);
+    final bodyHtml = alreadyEscaped ? body : formatted(body);
     return '<details><summary>$summaryHtml</summary>$bodyHtml</details>';
   }
 
@@ -124,6 +235,7 @@ final class RichHtml {
     text = text.replaceAll(RegExp(r'</p>\s*<p>', caseSensitive: false), '\n\n');
     text = text.replaceAll(RegExp(r'</?p[^>]*>', caseSensitive: false), '\n');
     text = text.replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n');
+    text = text.replaceAll('&nbsp;', ' ');
     text = text.replaceAllMapped(
       RegExp(r'<li[^>]*>(.*?)</li>', caseSensitive: false, dotAll: true),
       (match) => '• ${match[1]}\n',

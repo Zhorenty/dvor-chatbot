@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compose DVOR week stories 1080×1920 from the live Google Sheets schedule."""
+"""Compose DVOR week stories (1080×1920) and feed posts (1080×1350) from Google Sheets."""
 
 from __future__ import annotations
 
@@ -31,11 +31,113 @@ MARGIN = 92
 WHITE = (255, 255, 255, 255)
 ACCENT = (173, 184, 56, 255)
 MUTED = (255, 255, 255, 72)
+SHADOW = (6, 8, 4, 150)
+HALO = (8, 10, 6, 110)
 LINE_Y = 1768
 CONTENT_TOP = 208
 CONTENT_BOTTOM = 1748
 SUPER_GAP = 44
 SUPER_PAD = 44
+HEADER_GAP = 52
+LINE_GAP = 52
+LOGO_Y = 1844
+LOGO_W = 268
+COVER_PILL_Y = 210
+COVER_TITLE_SIZE = 186
+COVER_TITLE_Y = (560, 770)
+HEADER_SIZE = 54
+HEADER_Y = (88, 152)
+
+
+@dataclass(frozen=True)
+class OutputFormat:
+    name: str
+    folder: str
+    w: int
+    h: int
+    margin: int
+    line_y: int
+    content_top: int
+    content_bottom: int
+    super_gap: int
+    super_pad: int
+    header_gap: int
+    line_gap: int
+    logo_y: int
+    logo_w: int
+    cover_pill_y: int
+    cover_title_size: int
+    cover_title_y: tuple[int, int]
+    header_size: int
+    header_y: tuple[int, int]
+
+
+STORY = OutputFormat(
+    name="story",
+    folder="stories",
+    w=1080,
+    h=1920,
+    margin=92,
+    line_y=1768,
+    content_top=208,
+    content_bottom=1748,
+    super_gap=44,
+    super_pad=44,
+    header_gap=52,
+    line_gap=52,
+    logo_y=1844,
+    logo_w=268,
+    cover_pill_y=210,
+    cover_title_size=186,
+    cover_title_y=(560, 770),
+    header_size=54,
+    header_y=(88, 152),
+)
+POST = OutputFormat(
+    name="post",
+    folder="posts",
+    w=1080,
+    h=1350,
+    margin=72,
+    line_y=1238,
+    content_top=156,
+    content_bottom=1218,
+    super_gap=28,
+    super_pad=32,
+    header_gap=36,
+    line_gap=36,
+    logo_y=1294,
+    logo_w=220,
+    cover_pill_y=148,
+    cover_title_size=128,
+    cover_title_y=(390, 536),
+    header_size=42,
+    header_y=(52, 104),
+)
+
+
+def apply_format(fmt: OutputFormat) -> None:
+    global W, H, MARGIN, LINE_Y, CONTENT_TOP, CONTENT_BOTTOM
+    global SUPER_GAP, SUPER_PAD, HEADER_GAP, LINE_GAP, LOGO_Y, LOGO_W
+    global COVER_PILL_Y, COVER_TITLE_SIZE, COVER_TITLE_Y, HEADER_SIZE, HEADER_Y
+    W = fmt.w
+    H = fmt.h
+    MARGIN = fmt.margin
+    LINE_Y = fmt.line_y
+    CONTENT_TOP = fmt.content_top
+    CONTENT_BOTTOM = fmt.content_bottom
+    SUPER_GAP = fmt.super_gap
+    SUPER_PAD = fmt.super_pad
+    HEADER_GAP = fmt.header_gap
+    LINE_GAP = fmt.line_gap
+    LOGO_Y = fmt.logo_y
+    LOGO_W = fmt.logo_w
+    COVER_PILL_Y = fmt.cover_pill_y
+    COVER_TITLE_SIZE = fmt.cover_title_size
+    COVER_TITLE_Y = fmt.cover_title_y
+    HEADER_SIZE = fmt.header_size
+    HEADER_Y = fmt.header_y
+
 
 FONT_BLACK = ASSETS / "Montserrat-Black.ttf"
 FONT_EXTRABOLD = ASSETS / "Montserrat-ExtraBold.ttf"
@@ -119,6 +221,39 @@ def tracked_width(text: str, fnt: ImageFont.FreeTypeFont, tracking: int) -> int:
     return int(round(total))
 
 
+def text_stroke(fnt: ImageFont.FreeTypeFont) -> int:
+    size = getattr(fnt, "size", 24)
+    if size >= 120:
+        return 3
+    if size >= 40:
+        return 2
+    return 1
+
+
+def paint_text(
+    draw: ImageDraw.ImageDraw,
+    xy: tuple[float, float],
+    text: str,
+    fnt: ImageFont.FreeTypeFont,
+    fill,
+    tracking: int = 0,
+) -> None:
+    x, y = xy
+    stroke = text_stroke(fnt)
+    offset = 2 if stroke < 3 else 3
+    for i, ch in enumerate(text):
+        draw.text((x + offset, y + offset), ch, font=fnt, fill=SHADOW)
+        draw.text(
+            (x, y),
+            ch,
+            font=fnt,
+            fill=fill,
+            stroke_width=stroke,
+            stroke_fill=HALO,
+        )
+        x += fnt.getlength(ch) + (tracking if i < len(text) - 1 else 0)
+
+
 def draw_tracked(
     draw: ImageDraw.ImageDraw,
     xy: tuple[float, float],
@@ -139,10 +274,7 @@ def draw_tracked(
         y -= height / 2
     elif anchor == "rt":
         x -= width
-    cx = x
-    for i, ch in enumerate(text):
-        draw.text((cx, y), ch, font=fnt, fill=fill)
-        cx += fnt.getlength(ch) + (tracking if i < len(text) - 1 else 0)
+    paint_text(draw, (x, y), text, fnt, fill, tracking=tracking)
     return width, int(fnt.getbbox(text)[3] - fnt.getbbox(text)[1])
 
 
@@ -560,11 +692,7 @@ def draw_pill_outline(
     x1, y1 = x0 + w, y0 + h
     blit_pill_ring(im, (x0, y0, x1, y1), color, stroke)
     d = ImageDraw.Draw(im)
-    cx = x0 + pad_x
-    text_y = y0 + pad_y - bbox[1] - 1
-    for i, ch in enumerate(text):
-        d.text((cx, text_y), ch, font=fnt, fill=WHITE)
-        cx += fnt.getlength(ch) + (tracking if i < len(text) - 1 else 0)
+    paint_text(d, (x0 + pad_x, y0 + pad_y - bbox[1] - 1), text, fnt, WHITE, tracking=tracking)
     return (x0, y0, x1, y1)
 
 
@@ -589,11 +717,7 @@ def draw_left_pill(
     x1, y1 = x0 + w, y0 + h
     blit_pill_ring(im, (x0, y0, x1, y1), color, stroke)
     d = ImageDraw.Draw(im)
-    cx = x0 + pad_x
-    text_y = y0 + pad_y - bbox[1] - 1
-    for i, ch in enumerate(text):
-        d.text((cx, text_y), ch, font=fnt, fill=WHITE)
-        cx += fnt.getlength(ch) + (tracking if i < len(text) - 1 else 0)
+    paint_text(d, (x0 + pad_x, y0 + pad_y - bbox[1] - 1), text, fnt, WHITE, tracking=tracking)
     return (x0, y0, x1, y1)
 
 
@@ -626,29 +750,27 @@ def paste_dvor_logo(im: Image.Image, cx: float, cy: float, width: int) -> None:
 def cover(range_label: str, background: Background) -> Image.Image:
     im = load_bg(background.path, dark=0.30, blur=16, brightness=1.05)
     d = ImageDraw.Draw(im)
-    pill_f = font(FONT_EXTRABOLD, 34)
-    draw_pill_outline(im, range_label, (W // 2, 210), pill_f, ACCENT, tracking=-1, pad_x=34, pad_y=14, stroke=3)
-    title_f = font(FONT_BLACK, 186)
-    draw_tracked(d, (W / 2, 560), "НЕДЕЛЯ", title_f, WHITE, tracking=-10, anchor="mt")
-    draw_tracked(d, (W / 2, 770), "ДВОРА", title_f, WHITE, tracking=-10, anchor="mt")
+    pill_f = font(FONT_EXTRABOLD, 34 if H > 1400 else 28)
+    draw_pill_outline(im, range_label, (W // 2, COVER_PILL_Y), pill_f, ACCENT, tracking=-1, pad_x=34, pad_y=14, stroke=3)
+    title_f = font(FONT_BLACK, COVER_TITLE_SIZE)
+    draw_tracked(d, (W / 2, COVER_TITLE_Y[0]), "НЕДЕЛЯ", title_f, WHITE, tracking=-10, anchor="mt")
+    draw_tracked(d, (W / 2, COVER_TITLE_Y[1]), "ДВОРА", title_f, WHITE, tracking=-10, anchor="mt")
     draw_story_line(d, ACCENT, x0=MARGIN, x1=W, start_dot=True, end_dot=False)
-    paste_dvor_logo(im, W / 2, 1844, width=268)
+    paste_dvor_logo(im, W / 2, LOGO_Y, width=LOGO_W)
     return add_grain(im, 34)
 
 
 def schedule_header(d: ImageDraw.ImageDraw) -> None:
-    f = font(FONT_BLACK, 54)
-    draw_tracked(d, (W / 2, 88), "РАСПИСАНИЕ", f, WHITE, tracking=-3, anchor="mt")
-    draw_tracked(d, (W / 2, 152), "НА НЕДЕЛЮ", f, WHITE, tracking=-3, anchor="mt")
+    f = font(FONT_BLACK, HEADER_SIZE)
+    draw_tracked(d, (W / 2, HEADER_Y[0]), "РАСПИСАНИЕ", f, WHITE, tracking=-3, anchor="mt")
+    draw_tracked(d, (W / 2, HEADER_Y[1]), "НА НЕДЕЛЮ", f, WHITE, tracking=-3, anchor="mt")
 
 
-def regular_block_h(slot: Slot) -> int:
-    title_f = font(FONT_BLACK, 28)
-    notes_f = font(FONT_MEDIUM, 22)
-    block_w = W - MARGIN - 430
-    title_lines = wrap_text(titled(slot), title_f, block_w, tracking=-1)[:2]
-    note_lines = fit_wrapped(accumulate_training(slot.notes), notes_f, block_w, 3)
-    return 16 + 34 * len(title_lines) + 36 + 28 * max(len(note_lines), 1) + 22
+def schedule_column_bounds() -> tuple[int, int]:
+    header_f = font(FONT_BLACK, HEADER_SIZE)
+    bbox = header_f.getbbox("НА НЕДЕЛЮ")
+    header_bottom = HEADER_Y[1] + (bbox[3] - bbox[1])
+    return header_bottom + HEADER_GAP, LINE_Y - LINE_GAP
 
 
 def regular_slot(im: Image.Image, d: ImageDraw.ImageDraw, y0: int, y1: int, slot: Slot, draw_rule: bool) -> None:
@@ -661,18 +783,22 @@ def regular_slot(im: Image.Image, d: ImageDraw.ImageDraw, y0: int, y1: int, slot
     block_w = W - MARGIN - block_x
     title_lines = wrap_text(titled(slot), title_f, block_w, tracking=-1)[:2]
     note_lines = fit_wrapped(accumulate_training(slot.notes), notes_f, block_w, 3)
-    y = y0 + 16
+    stacked = 34 * len(title_lines) + 36 + 28 * max(len(note_lines), 1)
+    extra = max(0, (y1 - y0) - stacked - 36)
+    gaps = 2 + len(title_lines) + max(len(note_lines) - 1, 0)
+    bump = extra / max(gaps, 1)
+    y = y0 + 14 + bump * 0.45
     pill = draw_left_pill(im, date_pill(slot), MARGIN, y + 22, date_f, ACCENT)
-    d.text((pill[2] + 16, y + 6), time_label(slot), font=time_f, fill=WHITE)
+    paint_text(d, (pill[2] + 16, y + 6), time_label(slot), time_f, WHITE)
     ty = y
     for line in title_lines:
         draw_tracked(d, (block_x, ty), line, title_f, WHITE, tracking=-1, anchor="lt")
-        ty += 34
+        ty += 34 + bump
     draw_tracked(d, (block_x, ty + 4), poster_location(slot.location), loc_f, ACCENT, tracking=-1, anchor="lt")
-    ty += 36
-    for line in note_lines:
-        d.text((block_x, ty), line, font=notes_f, fill=WHITE)
-        ty += 28
+    ty += 36 + bump
+    for i, line in enumerate(note_lines):
+        paint_text(d, (block_x, ty), line, notes_f, WHITE)
+        ty += 28 + (bump if i < len(note_lines) - 1 else 0)
     if draw_rule:
         d.line((MARGIN, y1 - 2, W - MARGIN, y1 - 2), fill=MUTED, width=1)
 
@@ -733,7 +859,7 @@ def super_card(im: Image.Image, y0: int, y1: int, slot: Slot) -> None:
         ty += 28
     ty += 18
     for line in note_lines:
-        d.text((rx, ty), line, font=body_f, fill=WHITE)
+        paint_text(d, (rx, ty), line, body_f, WHITE)
         ty += 32
 
 
@@ -743,20 +869,29 @@ def schedule(slots: list[Slot], background: Background) -> Image.Image:
     schedule_header(d)
     regulars = [item for item in slots if not item.is_super]
     supers = [item for item in slots if item.is_super]
-    y = CONTENT_TOP
+    super_h = sum(super_block_h(item) for item in supers)
+    content_top, content_bottom = schedule_column_bounds()
+    if supers:
+        super_h += SUPER_GAP * (len(supers) - 1)
+        train_bottom = content_bottom - super_h - SUPER_GAP
+    else:
+        train_bottom = content_bottom
+    n_regular = max(len(regulars), 1)
+    band = (train_bottom - content_top) / n_regular if regulars else 0
+    y = float(content_top)
     for i, slot in enumerate(regulars):
-        y1 = y + regular_block_h(slot)
-        regular_slot(im, d, y, y1, slot, draw_rule=i < len(regulars) - 1)
+        y1 = train_bottom if i == len(regulars) - 1 else int(round(content_top + band * (i + 1)))
+        regular_slot(im, d, int(y), int(y1), slot, draw_rule=i < len(regulars) - 1)
         y = y1
     if supers:
-        y += SUPER_GAP
+        y = train_bottom + SUPER_GAP
         for i, slot in enumerate(supers):
-            y1 = min(y + super_block_h(slot), CONTENT_BOTTOM)
-            super_card(im, y, y1, slot)
+            y1 = content_bottom if i == len(supers) - 1 else int(y + super_block_h(slot))
+            super_card(im, int(y), int(y1), slot)
             y = y1 + SUPER_GAP
     d = ImageDraw.Draw(im)
     draw_story_line(d, ACCENT, x0=0, x1=W // 2, start_dot=False, end_dot=True)
-    paste_dvor_logo(im, W / 2, 1844, width=268)
+    paste_dvor_logo(im, W / 2, LOGO_Y, width=LOGO_W)
     return add_grain(im, 30)
 
 
@@ -781,6 +916,7 @@ def write_credits(
     lines += [
         "",
         "Фоны — Unsplash License, новые на каждую генерацию:",
+        "Форматы: stories 1080×1920, posts 1080×1350 (4:5).",
         f"01-cover.png — {cover_bg.credit}, {cover_bg.what}",
         cover_bg.url,
         f"02-schedule.png — {schedule_bg.credit}, {schedule_bg.what}",
@@ -793,7 +929,7 @@ def write_credits(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate DVOR week stories from Google Sheets.")
+    parser = argparse.ArgumentParser(description="Generate DVOR week stories and posts from Google Sheets.")
     parser.add_argument("--now", help="Override now, e.g. 2026-09-08T13:48")
     args = parser.parse_args()
     now = (
@@ -811,18 +947,20 @@ def main() -> None:
 
     cover_bg, schedule_bg = pick_backgrounds()
     week_label = week_range_label(now)
-    out_dir = ROOT / "output" / f"stories-{now:%Y-%m-%d}"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    frames = [
-        ("01-cover.png", cover(week_label, cover_bg)),
-        ("02-schedule.png", schedule(slots, schedule_bg)),
-    ]
-    for name, im in frames:
-        path = out_dir / name
-        im.convert("RGB").save(path, "PNG", optimize=True)
-        print("wrote", path)
-    write_credits(out_dir, slots, week_label, cover_bg, schedule_bg)
-    print("wrote", out_dir / "CREDITS.txt")
+    for fmt in (STORY, POST):
+        apply_format(fmt)
+        out_dir = ROOT / "output" / f"{fmt.folder}-{now:%Y-%m-%d}"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        frames = [
+            ("01-cover.png", cover(week_label, cover_bg)),
+            ("02-schedule.png", schedule(slots, schedule_bg)),
+        ]
+        for name, im in frames:
+            path = out_dir / name
+            im.convert("RGB").save(path, "PNG", optimize=True)
+            print("wrote", path)
+        write_credits(out_dir, slots, week_label, cover_bg, schedule_bg)
+        print("wrote", out_dir / "CREDITS.txt")
 
 
 if __name__ == "__main__":

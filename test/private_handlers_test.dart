@@ -975,7 +975,9 @@ void main() {
         sender.lastContentMessage.text,
         contains('<a href="https://t.me/maria_run">@maria_run</a>'),
       );
-      expect(sender.lastContentMessage.text, contains('Беговые тренировки\n\nи восстановление'));
+      expect(sender.lastContentMessage.text, contains('Беговые тренировки'));
+      expect(sender.lastContentMessage.text, contains('и восстановление'));
+      expect(sender.lastContentMessage.text, contains('</p><p>'));
       expect(sender.messages.first.disableWebPagePreview, isTrue);
       expect(sender.lastContentMessage.disableWebPagePreview, isTrue);
       expect(

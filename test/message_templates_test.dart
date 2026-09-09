@@ -143,7 +143,7 @@ void main() {
         ),
       );
 
-      expect(text, contains('📝 Возьми воду и полотенце'));
+      expect(text, contains('Возьми воду и полотенце'));
     });
 
     test('builds schedule broadcast with weekday-aware headline and list', () {
@@ -723,6 +723,7 @@ void main() {
       expect(text, contains('Описание'));
       expect(text, contains('Дневной маршрут'));
       expect(text, contains('с красивыми видами'));
+      expect(text, contains('Дневной маршрут<br>с красивыми видами'));
       expect(text, contains('Выбери действие'));
     });
 
@@ -824,8 +825,12 @@ void main() {
         text,
         contains('Трейл от Яворовой Поляны до Фишта - это уже не прогулка.'),
       );
-      expect(text, contains('• реальные подъемы и участки, где придется включать характер'));
-      expect(text, contains('• живописные тропы, свежий горный воздух'));
+      expect(text, contains('<p>Готовы к настоящему вызову? Тогда вперед!</p>'));
+      expect(
+        text,
+        contains('<li>реальные подъемы и участки, где придется включать характер</li>'),
+      );
+      expect(text, contains('<li>живописные тропы, свежий горный воздух</li>'));
     });
   });
 

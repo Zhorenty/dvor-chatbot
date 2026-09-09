@@ -485,7 +485,7 @@ extension MessageTemplatesContent on MessageTemplates {
     return '${RichHtml.heading('$when: ${training.title}')}'
         '${RichHtml.paragraph('🕒 ${_trainingDateLabel(training, dateTimeFormatter, dateOnlyFormatter)}')}'
         '${RichHtml.paragraph('📍 ${_trainingLocationLabel(training)}', alreadyEscaped: true)}'
-        '${notes == null || notes.isEmpty ? '' : RichHtml.paragraph('📝 ${_escapeHtml(notes)}', alreadyEscaped: true)}'
+        '${notes == null || notes.isEmpty ? '' : RichHtml.formatted(notes)}'
         '${RichHtml.paragraph('Запись в боте, в пару тапов')}'
         '${RichHtml.paragraph(_groupBookingCta(), alreadyEscaped: true)}';
   }
@@ -547,7 +547,7 @@ extension MessageTemplatesContent on MessageTemplates {
   }
 
   String bookingSlotPrepNotes({required String trainingTitle, required String notes}) {
-    return 'Что взять на «${_escapeHtml(trainingTitle)}»:\n${_escapeHtml(notes)}';
+    return '${RichHtml.heading('Что взять на «$trainingTitle»')}${RichHtml.formatted(notes)}';
   }
 
   String bookingCreatedWithoutPayment(TrainingBooking booking) {
