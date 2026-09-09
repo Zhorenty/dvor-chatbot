@@ -19,14 +19,14 @@ abstract final class LoyaltyCreditDm {
     if (text == null || text.isEmpty) {
       return false;
     }
-    final trimmed = text.trim();
+    final trimmed = text.replaceAll(RegExp(r'<[^>]+>'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
     if (trimmed.contains('⛰️ сгорят')) {
       return true;
     }
-    if (trimmed.startsWith('Сгорели ') && trimmed.contains('⛰️')) {
+    if (trimmed.contains('Сгорели ') && trimmed.contains('⛰️')) {
       return true;
     }
-    if (!trimmed.startsWith('+') || !trimmed.contains('⛰️')) {
+    if (!trimmed.contains('+') || !trimmed.contains('⛰️')) {
       return false;
     }
     for (final reason in _creditReasons) {

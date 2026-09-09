@@ -280,9 +280,7 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
           isAdmin: isAdmin,
           category: category,
           fromSchedulePreview: true,
-          messageText: '${_scheduleTextByCategory(category)}\n\n\n'
-              '<b>Что дальше:</b>\n'
-              '${_templates.bookingSelectionPrompt()}',
+          messageText: '${_scheduleTextByCategory(category)}${_templates.bookingSelectionPrompt()}',
           disableWebPagePreview: true,
         );
       }

@@ -157,7 +157,10 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
             await _sendAdminMessage(
               chatId,
               _templates.adminBookingRestoreNotAllowed(selectedBooking),
-              replyMarkup: _adminBookingActionsInlineKeyboard(selectedBooking),
+              buttonRows: _templates.adminBookingActionsRichButtons(
+                selectedBooking.id,
+                canRestore: _canRestoreBooking(selectedBooking),
+              ),
             );
             return true;
           }
@@ -394,7 +397,10 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBookingActions(selectedBooking),
-          replyMarkup: _adminBookingActionsInlineKeyboard(selectedBooking),
+          buttonRows: _templates.adminBookingActionsRichButtons(
+            selectedBooking.id,
+            canRestore: _canRestoreBooking(selectedBooking),
+          ),
         );
         return true;
       }
@@ -439,7 +445,10 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
         await _sendAdminMessage(
           chatId,
           _templates.adminBookingRestoreNotAllowed(selectedBooking),
-          replyMarkup: _adminBookingActionsInlineKeyboard(selectedBooking),
+          buttonRows: _templates.adminBookingActionsRichButtons(
+            selectedBooking.id,
+            canRestore: _canRestoreBooking(selectedBooking),
+          ),
         );
         return true;
       }
@@ -519,7 +528,10 @@ extension PrivateHandlersDispatchAdminBookings on PrivateHandlers {
           await _sendScreen(
             chatId,
             _templates.noUpcomingForBooking(),
-            replyMarkup: _adminBookingActionsInlineKeyboard(selectedBooking),
+            buttonRows: _templates.adminBookingActionsRichButtons(
+              selectedBooking.id,
+              canRestore: _canRestoreBooking(selectedBooking),
+            ),
           );
           return true;
         }

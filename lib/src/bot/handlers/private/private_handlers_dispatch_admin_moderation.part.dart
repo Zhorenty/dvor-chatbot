@@ -154,10 +154,7 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
       if (requestId == null) {
         await _sendAdminMessage(
           chatId,
-          'Используй команды:\n'
-          '<code>/approve_subscription &lt;id&gt;</code>\n'
-          '<code>/reject_subscription &lt;id&gt;</code>\n'
-          '<code>/cancel_subscription &lt;id&gt;</code>',
+          _templates.subscriptionCommandUsage(),
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );
@@ -221,9 +218,7 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
       if (requestId == null) {
         await _sendAdminMessage(
           chatId,
-          'Используй команды:\n'
-          '<code>/approve_individual &lt;id&gt;</code>\n'
-          '<code>/reject_individual &lt;id&gt;</code>',
+          _templates.individualSessionCommandUsage(),
           replyMarkup: _templates.privateMenuKeyboard(
               isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
         );

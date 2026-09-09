@@ -3,7 +3,6 @@ import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
-import 'support/fakes.dart';
 import 'support/private_handlers_harness.dart';
 
 void main() {
@@ -122,7 +121,7 @@ void main() {
       expect(handled, isTrue);
       expect(harness.sender.messages, hasLength(4));
       expect(harness.sender.messages[0].chatId, 1);
-      expect(harness.sender.messages[1].text, FakeSender.navHintText);
+      expect(harness.sender.messages[1].text, contains('Меню внизу'));
       expect(harness.sender.messages[2].chatId, -100556);
       expect(harness.sender.messages[3].chatId, 1950);
       expect(harness.sender.answeredCallbacks, hasLength(1));

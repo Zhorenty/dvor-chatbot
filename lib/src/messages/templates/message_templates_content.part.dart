@@ -2685,6 +2685,34 @@ extension MessageTemplatesContent on MessageTemplates {
     )}';
   }
 
+  String subscriptionCommandUsage() {
+    return '${RichHtml.heading('Команды модерации')}'
+        '${RichHtml.paragraph(
+      '<code>/approve_subscription &lt;id&gt;</code>',
+      alreadyEscaped: true,
+    )}'
+        '${RichHtml.paragraph(
+      '<code>/reject_subscription &lt;id&gt;</code>',
+      alreadyEscaped: true,
+    )}'
+        '${RichHtml.paragraph(
+      '<code>/cancel_subscription &lt;id&gt;</code>',
+      alreadyEscaped: true,
+    )}';
+  }
+
+  String individualSessionCommandUsage() {
+    return '${RichHtml.heading('Команды модерации')}'
+        '${RichHtml.paragraph(
+      '<code>/approve_individual &lt;id&gt;</code>',
+      alreadyEscaped: true,
+    )}'
+        '${RichHtml.paragraph(
+      '<code>/reject_individual &lt;id&gt;</code>',
+      alreadyEscaped: true,
+    )}';
+  }
+
   Map<String, Object?> subscriptionDecisionInlineKeyboard(int requestId) {
     return TelegramKeyboards.subscriptionDecisionInlineKeyboard(requestId);
   }
@@ -3078,6 +3106,26 @@ extension MessageTemplatesContent on MessageTemplates {
         'Выбери тип оплаты: «${MessageCopy.buttonPayFully}» или «${MessageCopy.buttonPayPartially}».',
         'Пришли файл чека (документ/фото) в этот чат 📎',
         'Без файла подтверждения заявка не уйдёт на проверку.',
+      ],
+    )}';
+  }
+
+  String groupPaymentNextSteps({required bool outdoor}) {
+    if (outdoor) {
+      return '${RichHtml.heading('Что дальше', level: 3)}'
+          '${RichHtml.bullets(
+        <String>[
+          'Оплати по реквизитам выше (сумма за всю группу).',
+          'Выбери тип оплаты: «${MessageCopy.buttonPayFully}» или «${MessageCopy.buttonPayPartially}».',
+          'Пришли файл чека в этот чат 📎',
+        ],
+      )}';
+    }
+    return '${RichHtml.heading('Что дальше', level: 3)}'
+        '${RichHtml.bullets(
+      <String>[
+        'Оплати полную сумму за группу.',
+        'Нажми «${MessageCopy.buttonSubmitPayment}» и отправь файл чека в этот чат 📎',
       ],
     )}';
   }

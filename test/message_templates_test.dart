@@ -700,7 +700,8 @@ void main() {
         ),
       ]);
 
-      expect(text, contains('📍 Где: Роза Хутор, КПП Лаура'));
+      expect(text, contains('Где'));
+      expect(text, contains('Роза Хутор, КПП Лаура'));
     });
 
     test('renders selected outdoor detail card with description and price', () {
@@ -717,9 +718,9 @@ void main() {
       );
 
       expect(text, contains('Поход на Ачишхо'));
-      expect(text, contains('📍 Красная Поляна'));
+      expect(text, contains('Красная Поляна'));
       expect(text, contains('2500 ₽ (1250 ₽ предоплата 50%)'));
-      expect(text, contains('📝 <b>Описание:</b>'));
+      expect(text, contains('Описание'));
       expect(text, contains('Дневной маршрут'));
       expect(text, contains('с красивыми видами'));
       expect(text, contains('Выбери действие'));
@@ -797,8 +798,8 @@ void main() {
         ),
       ]);
 
-      expect(text, contains('🕒 от 02.08.2026 до 04.08.2026'));
-      expect(text, contains('🕒 10.08.2026'));
+      expect(text, contains('от 02.08.2026 до 04.08.2026'));
+      expect(text, contains('10.08.2026'));
       expect(text, isNot(contains('от 10.08.2026 до 10.08.2026')));
     });
 
@@ -817,7 +818,7 @@ void main() {
         ),
       ]);
 
-      expect(text, contains('📝 <b>Описание:</b>'));
+      expect(text, contains('Описание'));
       expect(text, contains('Готовы к настоящему вызову? Тогда вперед!'));
       expect(
         text,

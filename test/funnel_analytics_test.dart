@@ -175,7 +175,7 @@ void main() {
       expect(text, contains('Путь новичка'));
       expect(text, contains('Начали квиз'));
       expect(text, contains('Первая тренировка (активация)'));
-      expect(text, contains('из группы: <b>30</b> (25%)'));
+      expect(text, contains('из группы: 30 (25%)'));
       expect(text, contains('через 30 минут: дожать квиз'));
       expect(text, contains('ждут первую запись'));
       expect(text, isNot(contains('TTV')));

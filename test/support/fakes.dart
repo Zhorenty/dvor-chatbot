@@ -1232,10 +1232,14 @@ final class FakeSender implements MessageSender {
       throw StateError('No messages sent');
     }
     final last = messages.last;
-    if (last.text == navHintText && messages.length >= 2) {
+    if (_isPaymentNavHint(last.text) && messages.length >= 2) {
       return messages[messages.length - 2];
     }
     return last;
+  }
+
+  static bool _isPaymentNavHint(String text) {
+    return text == navHintText || text.contains('Меню внизу');
   }
 
   @override

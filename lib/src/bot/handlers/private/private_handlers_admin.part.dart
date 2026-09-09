@@ -433,13 +433,6 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     return (bookings.length - 1) ~/ PrivateHandlers._adminBookingsPageSize;
   }
 
-  Map<String, Object?> _adminBookingActionsInlineKeyboard(TrainingBooking booking) {
-    return _templates.adminBookingActionsInlineKeyboard(
-      booking.id,
-      canRestore: _canRestoreBooking(booking),
-    );
-  }
-
   Future<void> _sendAdminBookingActionsCard({
     required int chatId,
     required TrainingBooking booking,

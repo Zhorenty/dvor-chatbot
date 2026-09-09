@@ -136,15 +136,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     );
 
     final outdoorPaymentChoice = _shouldShowOutdoorPaymentTypeChoice(first);
-    final nextSteps = outdoorPaymentChoice
-        ? '<b>Что дальше:</b>\n'
-            '1) Оплати по реквизитам выше (сумма за всю группу).\n'
-            '2) Выбери тип оплаты: «${MessageTemplates.buttonPayFully}» или '
-            '«${MessageTemplates.buttonPayPartially}».\n'
-            '3) Пришли файл чека в этот чат 📎'
-        : '<b>Что дальше:</b>\n'
-            '1) Оплати полную сумму за группу.\n'
-            '2) Нажми «${MessageTemplates.buttonSubmitPayment}» и отправь файл чека в этот чат 📎';
     await _sendPayableBookingCard(
       chatId: chatId,
       booking: first,
@@ -152,14 +143,14 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
         bookings: group.bookings,
         unitPrice: unitPrice,
         totalPrice: totalPrice,
-      )}\n\n'
+      )}'
           '${_templates.paymentInstructionsForGroup(
         booking: first,
         participantsCount: group.bookings.length,
         unitPrice: unitPrice,
         totalPrice: totalPrice,
-      )}\n\n'
-          '$nextSteps',
+      )}'
+          '${_templates.groupPaymentNextSteps(outdoor: outdoorPaymentChoice)}',
       showStarterBonus: false,
     );
   }
@@ -544,21 +535,6 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
 
   bool _isOutdoorCategory(_ActivityCategory category) {
     return _bookingPolicyService.isOutdoorCategory(category);
-  }
-
-  Map<String, Object?> _bookingActionsInlineKeyboard(TrainingBooking? booking) {
-    if (booking == null) {
-      return _templates.simpleNavigationKeyboard();
-    }
-    final canContinuePayment = _isPayableForProof(booking);
-    return _templates.bookingActionsInlineKeyboard(
-      bookingId: booking.id,
-      canReschedule: _bookingPolicyService.canReschedule(booking),
-      canCancel: _canCancelBookingByPolicy(booking),
-      canRepeat: !canContinuePayment && booking.status != BookingStatus.partialPaid,
-      canCompletePayment: false,
-      canContinuePayment: canContinuePayment,
-    );
   }
 
   List<List<RichMessageButton>> _bookingActionsRichButtons(TrainingBooking? booking) {
