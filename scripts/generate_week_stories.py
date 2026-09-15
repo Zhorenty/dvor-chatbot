@@ -31,8 +31,6 @@ MARGIN = 92
 WHITE = (255, 255, 255, 255)
 ACCENT = (173, 184, 56, 255)
 MUTED = (255, 255, 255, 72)
-SHADOW = (6, 8, 4, 150)
-HALO = (8, 10, 6, 110)
 LINE_Y = 1768
 CONTENT_TOP = 208
 CONTENT_BOTTOM = 1748
@@ -221,15 +219,6 @@ def tracked_width(text: str, fnt: ImageFont.FreeTypeFont, tracking: int) -> int:
     return int(round(total))
 
 
-def text_stroke(fnt: ImageFont.FreeTypeFont) -> int:
-    size = getattr(fnt, "size", 24)
-    if size >= 120:
-        return 3
-    if size >= 40:
-        return 2
-    return 1
-
-
 def paint_text(
     draw: ImageDraw.ImageDraw,
     xy: tuple[float, float],
@@ -239,18 +228,8 @@ def paint_text(
     tracking: int = 0,
 ) -> None:
     x, y = xy
-    stroke = text_stroke(fnt)
-    offset = 2 if stroke < 3 else 3
     for i, ch in enumerate(text):
-        draw.text((x + offset, y + offset), ch, font=fnt, fill=SHADOW)
-        draw.text(
-            (x, y),
-            ch,
-            font=fnt,
-            fill=fill,
-            stroke_width=stroke,
-            stroke_fill=HALO,
-        )
+        draw.text((x, y), ch, font=fnt, fill=fill)
         x += fnt.getlength(ch) + (tracking if i < len(text) - 1 else 0)
 
 
@@ -319,7 +298,22 @@ def fit_wrapped(text: str, fnt: ImageFont.FreeTypeFont, max_width: int, max_line
         words = sentences[0].rstrip(".!?").split()
         while len(words) > 2:
             words = words[:-1]
-            if words[-1].casefold() in {"в", "и", "на", "с", "по", "от", "для", "а"}:
+            if words[-1].casefold() in {
+                "в",
+                "и",
+                "на",
+                "с",
+                "по",
+                "от",
+                "для",
+                "а",
+                "но",
+                "не",
+                "что",
+                "как",
+                "или",
+                "только",
+            }:
                 continue
             lines = lines_of([" ".join(words)])
             if len(lines) <= max_lines:
@@ -328,70 +322,184 @@ def fit_wrapped(text: str, fnt: ImageFont.FreeTypeFont, max_width: int, max_line
     return wrap_text(text, fnt, max_width)[:max_lines]
 
 
-def compact_from_chunks(chunks: list[str], max_chars: int) -> str:
+CLAUSE_SPLIT = re.compile(r"(\s*[—–:;]\s*)")
+FILLER_STARTS = (
+    "приглашаем",
+    "ставь",
+    "не бойся",
+    "виды, ради",
+    "старт:",
+    "финиш:",
+    "календар",
+    "что вас",
+    "что тебя",
+    "что входит",
+    "что брать",
+    "важно",
+)
+HYPE_TAILS = ("всем тем", "не только", "в жизни")
+FILLER_CONTAINS = ("приглашает", "ставь кроссовки")
+LOGISTICS_HEADS = (
+    "трансфер",
+    "ужин",
+    "прожива",
+    "гид",
+    "работа гида",
+    "кровать",
+)
+
+
+def note_sentences(notes: str | None) -> list[str]:
+    if not notes:
+        return []
+    text = strip_emoji(notes)
+    text = re.sub(r"\s*не просто так, а\s*", ", ", text, flags=re.IGNORECASE)
+    text = re.sub(r"Ставь кроссовки и беги с нами!\s*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"ЧТО ВХОДИТ[\s\S]*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"ВАЖНО:[\s\S]*", "", text)
+    text = re.sub(r"ЧТО БРАТЬ[\s\S]*", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"Тренер:[\s\S]*", "", text)
+    sentences: list[str] = []
+    for part in re.split(r"[\n.!?]+", text):
+        chunk = drop_scene_leadin(strip_hype_clause(clean_spaces(part)))
+        if chunk:
+            sentences.append(chunk)
+    return sentences
+
+
+def drop_scene_leadin(text: str) -> str:
+    parts = re.split(r"\s+[—–]\s+", text, maxsplit=1)
+    if len(parts) != 2:
+        return text
+    left, right = parts
+    blob = left.casefold()
+    if any(token in blob for token in ("dvor", "команд", "традицион")) and len(right) >= 24:
+        return right[0].upper() + right[1:] if right[0].islower() else right
+    return text
+
+
+def strip_hype_clause(text: str) -> str:
+    parts = re.split(r"\s+[—–]\s+", text, maxsplit=1)
+    if len(parts) == 2 and any(token in parts[1].casefold() for token in HYPE_TAILS):
+        return parts[0]
+    return text
+
+
+def is_filler_sentence(chunk: str, *, title: str | None = None, coach: str | None = None) -> bool:
+    lowered = chunk.casefold()
+    if any(lowered.startswith(prefix) for prefix in FILLER_STARTS):
+        return True
+    if any(token in lowered for token in FILLER_CONTAINS):
+        return True
+    if "руб" in lowered or "₽" in chunk:
+        return True
+    if re.fullmatch(r"\d{1,2}\s+[а-яё]+|\d{1,2}\.\d{2}(\.\d{4})?", lowered):
+        return True
+    if coach and coach.casefold() in lowered:
+        return True
+    if title:
+        titled_raw = clean_spaces(strip_emoji(title)).casefold()
+        if titled_raw and (lowered == titled_raw or titled_raw in lowered):
+            return True
+    return False
+
+
+def list_place_name(chunk: str) -> str | None:
+    if " — " not in chunk and " – " not in chunk:
+        return None
+    name = clean_spaces(re.split(r"\s+[—–]\s+", chunk, maxsplit=1)[0])
+    lowered = name.casefold()
+    if any(token in lowered for token in LOGISTICS_HEADS):
+        return None
+    words = name.split()
+    if not (1 <= len(words) <= 5) or len(name) > 42:
+        return None
+    return name
+
+
+def shorten_by_comma(text: str, max_chars: int) -> str:
+    parts = [part.strip() for part in text.split(",") if part.strip()]
+    if not parts:
+        return text[:max_chars].rsplit(" ", 1)[0].rstrip(" ,")
+    acc = parts[0]
+    for part in parts[1:]:
+        trial = f"{acc}, {part}"
+        if len(trial) > max_chars:
+            break
+        acc = trial
+    if len(acc) > max_chars:
+        return acc[:max_chars].rsplit(" ", 1)[0].rstrip(" ,")
+    return acc
+
+
+def shorten_to(text: str, max_chars: int) -> str:
+    text = clean_spaces(text).rstrip(" .;:—–-,")
+    if len(text) <= max_chars:
+        return text
+    acc = ""
+    for part in CLAUSE_SPLIT.split(text):
+        if re.fullmatch(r"\s*[—–:;]\s*", part or ""):
+            trial = acc + part
+            if len(trial) > max_chars:
+                break
+            acc = trial
+            continue
+        trial = acc + part
+        if acc and len(trial) > max_chars:
+            break
+        if not acc and len(part) > max_chars:
+            return shorten_by_comma(part, max_chars)
+        acc = trial
+    acc = acc.rstrip(" .;:—–-,")
+    return acc or shorten_by_comma(text, max_chars)
+
+
+def join_summary(parts: list[str], max_chars: int) -> str:
     picked: list[str] = []
-    for chunk in chunks:
-        trial = ". ".join(picked + [chunk])
+    for part in parts:
+        part = clean_spaces(part).rstrip(" .")
+        if not part:
+            continue
+        if not picked and len(part) > max_chars:
+            part = shorten_to(part, max_chars)
+        trial = ". ".join(picked + [part])
         if picked and len(trial) > max_chars:
             break
-        picked.append(chunk)
-        if len(". ".join(picked)) >= max_chars * 0.55:
-            break
+        picked.append(part)
     text = ". ".join(picked)
+    if not text:
+        return ""
     return text if text.endswith(".") else f"{text}."
 
 
-def accumulate_training(notes: str | None) -> str:
-    chunks = note_chunks(notes)
-    if not chunks:
-        return ""
-    blob = " ".join(chunks).casefold()
-    if "кроссфит" in blob or ("гимнастик" in blob and "кардио" in blob):
-        return (
-            "Функциональный кроссфит: тяжёлая атлетика, гимнастика и кардио. "
-            "Сила и координация. Нагрузка под любой уровень."
-        )
-    if "удар" in blob and "защит" in blob:
-        return (
-            "Комплексная нагрузка: техника ударов, защита, работа ног, ОФП и спарринг-имитация. "
-            "Реакция, взрывная сила и выносливость."
-        )
-    if "темп" in blob and ("дыш" in blob or "бег" in blob):
-        return (
-            "Субботний бег: держим темп и дыхание, не сбиваемся. "
-            "После — фильтр от Surf Coffee на веранде."
-        )
-    return compact_from_chunks(chunks, 150)
+def accumulate_training(notes: str | None, coach: str | None = None) -> str:
+    parts = [item for item in note_sentences(notes) if not is_filler_sentence(item, coach=coach)]
+    return join_summary(parts, 175)
 
 
 def accumulate_super(notes: str | None, title: str) -> str:
-    raw = strip_emoji(notes or "")
-    blob = raw.casefold()
-    if not raw:
-        return clean_spaces(strip_emoji(title))
-    height = re.search(r"(\d{3,4}\s*м)", raw, flags=re.IGNORECASE)
-    name = re.sub(r"^восхождение на\s+", "", clean_spaces(strip_emoji(title)), flags=re.IGNORECASE)
-    head = name
-    if height:
-        head = f"{name} ({height.group(1)})"
-    if "outdvor" in blob:
-        head = f"{head} с Outdvor"
-    parts = [head]
-    place: list[str] = []
-    if "хребет" in blob:
-        place.append("Кавказский хребет")
-    if "фишт" in blob:
-        place.append("ледники Фишта")
-    if place:
-        parts.append("Панорама: " + ", ".join(place))
-    if "щел" in blob:
-        parts.append("Путь через Инструкторскую щель — ущелье с буками и родниками")
-    if "не для первого" in blob or "базовая выносливость" in blob:
-        parts.append("Не для первого похода: нужна выносливость")
-    if "первого восхождения" in blob or "для первого восхождения" in blob:
-        parts.append("Первое восхождение — без альпинизма")
-    text = ". ".join(parts)
-    return text if text.endswith(".") else f"{text}."
+    if not notes:
+        return ""
+    hooks: list[str] = []
+    places: list[str] = []
+    for chunk in note_sentences(notes):
+        if is_filler_sentence(chunk, title=title):
+            continue
+        place = list_place_name(chunk)
+        if place:
+            if place not in places:
+                places.append(place)
+            continue
+        hooks.append(chunk)
+    parts: list[str] = []
+    if hooks:
+        parts.append(hooks[0])
+    shorts = [item for item in hooks[1:] if len(item) <= 48]
+    if shorts:
+        parts.append(shorts[0])
+    if places:
+        parts.append(", ".join(places[:3]))
+    return join_summary(parts, 180)
 
 
 def fetch_csv(url: str) -> list[dict[str, str]]:
@@ -441,41 +549,6 @@ def poster_location(location: str) -> str:
         return "SURF COFFEE X RIVERSIDE"
     raw = re.sub(r"\s*\([^)]*\)\s*", " ", raw)
     return clean_spaces(raw).upper()
-
-
-def note_chunks(notes: str | None) -> list[str]:
-    if not notes:
-        return []
-    text = strip_emoji(notes)
-    text = text.replace("не просто так, а ", "")
-    text = re.sub(r"Ставь кроссовки и беги с нами!\s*", "", text)
-    text = re.sub(r"ЧТО ВХОДИТ[\s\S]*", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"ВАЖНО:[\s\S]*", "", text)
-    text = re.sub(r"ЧТО БРАТЬ[\s\S]*", "", text, flags=re.IGNORECASE)
-    text = re.sub(r"Тренер:[\s\S]*", "", text)
-    skip_prefixes = (
-        "приглашаем",
-        "ставь",
-        "не бойся",
-        "виды, ради",
-        "старт:",
-        "финиш:",
-        "календар",
-    )
-    chunks: list[str] = []
-    for part in re.split(r"[\n.!?]+", text):
-        chunk = clean_spaces(part)
-        if not chunk:
-            continue
-        lowered = chunk.casefold()
-        if any(lowered.startswith(prefix) for prefix in skip_prefixes):
-            continue
-        if re.fullmatch(r"\d{1,2}\s+[а-яё]+|\d{1,2}\.\d{2}(\.\d{4})?", lowered):
-            continue
-        if "руб" in lowered or "₽" in chunk:
-            continue
-        chunks.append(chunk)
-    return chunks
 
 
 def first_plan_time(plan: str | None) -> str | None:
@@ -782,7 +855,7 @@ def regular_slot(im: Image.Image, d: ImageDraw.ImageDraw, y0: int, y1: int, slot
     block_x = 430
     block_w = W - MARGIN - block_x
     title_lines = wrap_text(titled(slot), title_f, block_w, tracking=-1)[:2]
-    note_lines = fit_wrapped(accumulate_training(slot.notes), notes_f, block_w, 3)
+    note_lines = fit_wrapped(accumulate_training(slot.notes, slot.coach), notes_f, block_w, 4)
     stacked = 34 * len(title_lines) + 36 + 28 * max(len(note_lines), 1)
     extra = max(0, (y1 - y0) - stacked - 36)
     gaps = 2 + len(title_lines) + max(len(note_lines) - 1, 0)
@@ -810,7 +883,7 @@ def super_block_h(slot: Slot) -> int:
     rw = W - MARGIN + 8 - 360 - 24 - 24
     title_lines = wrap_text(titled(slot), title_f, rw, tracking=-1)[:2]
     tag_lines = wrap_text(slot.super_tag or "ВЫЕЗД", tag_f, rw)
-    note_lines = wrap_text(accumulate_super(slot.notes, slot.title), body_f, rw)
+    note_lines = fit_wrapped(accumulate_super(slot.notes, slot.title), body_f, rw, 4)
     right = SUPER_PAD + 36 * len(title_lines) + 28 * len(tag_lines) + 18 + 32 * len(note_lines) + SUPER_PAD
     left = SUPER_PAD + 220 + SUPER_PAD
     return max(right, left, 360)
@@ -849,7 +922,7 @@ def super_card(im: Image.Image, y0: int, y1: int, slot: Slot) -> None:
     rw = x1 - rx - 24
     title_lines = wrap_text(titled(slot), title_f, rw, tracking=-1)[:2]
     tag_lines = wrap_text(slot.super_tag or "ВЫЕЗД", tag_f, rw)
-    note_lines = wrap_text(accumulate_super(slot.notes, slot.title), body_f, rw)
+    note_lines = fit_wrapped(accumulate_super(slot.notes, slot.title), body_f, rw, 4)
     ty = y0 + SUPER_PAD
     for line in title_lines:
         draw_tracked(d, (rx, ty), line, title_f, WHITE, tracking=-1, anchor="lt")
@@ -909,10 +982,13 @@ def write_credits(
     ]
     for slot in slots:
         kind = "супер" if slot.is_super else "обычный"
+        summary = accumulate_super(slot.notes, slot.title) if slot.is_super else accumulate_training(slot.notes, slot.coach)
         lines.append(
             f"- {date_pill(slot)} {time_label(slot)} [{kind}] "
             f"{titled(slot)} / {poster_location(slot.location)}"
         )
+        if summary:
+            lines.append(f"  {summary}")
     lines += [
         "",
         "Фоны — Unsplash License, новые на каждую генерацию:",

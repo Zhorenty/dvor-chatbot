@@ -404,6 +404,7 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonTrainings)));
       expect(buttons, contains(MessageTemplates.buttonProfile));
       expect(buttons, isNot(contains(MessageTemplates.buttonSubscription)));
+      expect(buttons, isNot(contains(MessageTemplates.buttonAdminMenu)));
     });
 
     test('shows participants button in private menu for coaching staff trainer', () async {
@@ -461,6 +462,90 @@ void main() {
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
       expect(buttons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
       expect(buttons, isNot(contains(MessageTemplates.buttonManageBookings)));
+    });
+
+    test('shows admin menu with group-only broadcast for whitelisted client', () async {
+      final sender = _FakeSender();
+      final onboarding = _FakeOnboardingRepository()
+        ..seedUser(userId: 501)
+        ..seedUser(userId: 502);
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(const <TrainingInfo>[]),
+        bookingRepository: _FakeBookingRepository(),
+        onboardingRepository: onboarding,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        targetChatId: -1009001,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4402, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4402, 'username': 'mathkhart'},
+        'text': '/start',
+      });
+      final startButtons = _keyboardTexts(sender.messages.single.replyMarkup);
+      expect(startButtons, contains(MessageTemplates.buttonAdminMenu));
+      expect(startButtons, contains(MessageTemplates.buttonBookTraining));
+      expect(startButtons, isNot(contains(MessageTemplates.buttonBroadcast)));
+      expect(startButtons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4402, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4402, 'username': 'mathkhart'},
+        'text': MessageTemplates.buttonAdminMenu,
+      });
+      final adminButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
+      expect(adminButtons, contains(MessageTemplates.buttonBroadcast));
+      expect(adminButtons, contains(MessageTemplates.buttonMainMenu));
+      expect(adminButtons, isNot(contains(MessageTemplates.buttonPaymentsQueue)));
+      expect(adminButtons, isNot(contains(MessageTemplates.buttonAdminTools)));
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4402, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4402, 'username': 'mathkhart'},
+        'text': MessageTemplates.buttonBroadcast,
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 4402, 'type': 'private'},
+        'from': <String, dynamic>{'id': 4402, 'username': 'mathkhart'},
+        'text': 'Анонс на площадку',
+      });
+      final targetButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
+      expect(targetButtons, contains(MessageCopy.buttonBroadcastToGroup));
+      expect(targetButtons, contains(MessageCopy.buttonBroadcastCancel));
+      expect(targetButtons, isNot(contains(MessageCopy.buttonBroadcastToUsers)));
+      expect(targetButtons, isNot(contains(MessageCopy.buttonBroadcastToUsersAndGroup)));
+
+      final usersBroadcast = await handlers.handle(
+        privateCallbackUpdate(
+          callbackId: 'cb-broadcast-users',
+          chatId: 4402,
+          userId: 4402,
+          username: 'mathkhart',
+          data: MessageCopy.callbackBroadcastToUsers,
+        ),
+      );
+      expect(usersBroadcast, isTrue);
+      expect(sender.lastContentMessage.text, contains('только отправка в группу'));
+      expect(sender.messages.where((item) => item.chatId == -1009001), isEmpty);
+
+      final groupBroadcast = await handlers.handle(
+        privateCallbackUpdate(
+          callbackId: 'cb-broadcast-group',
+          chatId: 4402,
+          userId: 4402,
+          username: 'mathkhart',
+          data: MessageCopy.callbackBroadcastToGroup,
+        ),
+      );
+      expect(groupBroadcast, isTrue);
+      expect(
+        sender.messages.where((item) => item.chatId == -1009001).map((item) => item.text),
+        contains('Анонс на площадку'),
+      );
+      expect(sender.messages.where((item) => item.chatId == 501), isEmpty);
+      expect(sender.lastContentMessage.text, contains('отправлено в группу'));
     });
 
     test('opens boxing card overview and allows applying', () async {
@@ -5010,7 +5095,7 @@ void main() {
       final sender = _FakeSender();
       final hike = TrainingInfo(
         title: '🥾 Поход: Эльбрус',
-        startsAt: DateTime(2026, 9, 12),
+        startsAt: DateTime(2026, 10, 12),
         location: 'Горный лагерь',
         category: ActivityCategory.hikes,
       );

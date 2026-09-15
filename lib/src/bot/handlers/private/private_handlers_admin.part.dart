@@ -1000,6 +1000,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     required int userId,
     required _PrivateFlowState flowState,
     required ({int fromChatId, int messageId, String? mediaGroupId}) photo,
+    required bool groupOnly,
   }) async {
     final mediaGroupId = photo.mediaGroupId;
     final nextRef = BroadcastMessageRef(
@@ -1017,7 +1018,10 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
       await _sendAdminMessage(
         chatId,
         _templates.adminBroadcastMediaPreview(photoCount: 1),
-        replyMarkup: _templates.broadcastTargetKeyboard(hasGroup: _broadcastService.hasGroup),
+        replyMarkup: _templates.broadcastTargetKeyboard(
+          hasGroup: _broadcastService.hasGroup,
+          groupOnly: groupOnly,
+        ),
       );
       return;
     }
@@ -1043,6 +1047,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
         _finalizeAdminBroadcastMedia(
           chatId: chatId,
           userId: userId,
+          groupOnly: groupOnly,
         ),
       );
     });
@@ -1059,6 +1064,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
   Future<void> _finalizeAdminBroadcastMedia({
     required int chatId,
     required int userId,
+    required bool groupOnly,
   }) async {
     _broadcastMediaFinalizeTimers.remove(userId);
     _broadcastActiveMediaGroupIds.remove(userId);
@@ -1079,7 +1085,10 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     await _sendAdminMessage(
       chatId,
       _templates.adminBroadcastMediaPreview(photoCount: sourceMessages.length),
-      replyMarkup: _templates.broadcastTargetKeyboard(hasGroup: _broadcastService.hasGroup),
+      replyMarkup: _templates.broadcastTargetKeyboard(
+        hasGroup: _broadcastService.hasGroup,
+        groupOnly: groupOnly,
+      ),
     );
   }
 

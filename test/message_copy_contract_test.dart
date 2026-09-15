@@ -133,6 +133,8 @@ void main() {
       final adminDelete = TelegramKeyboards.adminBookingDeleteConfirmInlineKeyboard(91);
       final adminNotify = TelegramKeyboards.adminClientNotificationPreferenceInlineKeyboard();
       final broadcast = TelegramKeyboards.broadcastTargetKeyboard(hasGroup: true);
+      final broadcastGroupOnly =
+          TelegramKeyboards.broadcastTargetKeyboard(hasGroup: true, groupOnly: true);
       final callbacks = <String>{
         ..._inlineCallbacks(decision),
         ..._inlineCallbacks(openQueue),
@@ -146,6 +148,7 @@ void main() {
         ..._inlineCallbacks(adminDelete),
         ..._inlineCallbacks(adminNotify),
         ..._inlineCallbacks(broadcast),
+        ..._inlineCallbacks(broadcastGroupOnly),
       };
 
       expect(
@@ -183,6 +186,11 @@ void main() {
       expect(callbacks, contains(MessageCopy.callbackBroadcastToUsers));
       expect(callbacks, contains(MessageCopy.callbackBroadcastToOutdoorPlus));
       expect(callbacks, contains(MessageCopy.callbackBroadcastToGroup));
+      expect(_inlineCallbacks(broadcastGroupOnly), contains(MessageCopy.callbackBroadcastToGroup));
+      expect(
+        _inlineCallbacks(broadcastGroupOnly),
+        isNot(contains(MessageCopy.callbackBroadcastToUsers)),
+      );
     });
   });
 }

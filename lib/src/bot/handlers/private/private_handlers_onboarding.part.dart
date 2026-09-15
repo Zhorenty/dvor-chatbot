@@ -28,6 +28,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     required bool isAdmin,
     required bool showReturnToAdminMenu,
     required bool canViewParticipantsList,
+    required bool canBroadcastToGroup,
   }) async {
     if (text == MessageTemplates.buttonOnboardingNeedHelp) {
       await _sendScreen(
@@ -37,6 +38,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
           showReturnToAdminMenu: showReturnToAdminMenu,
+          canBroadcastToGroup: canBroadcastToGroup,
         ),
       );
       return true;
@@ -54,6 +56,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
           showReturnToAdminMenu: showReturnToAdminMenu,
+          canBroadcastToGroup: canBroadcastToGroup,
         ),
       );
       return true;

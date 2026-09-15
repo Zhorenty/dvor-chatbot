@@ -41,6 +41,8 @@ extension PrivateHandlersDispatch on PrivateHandlers {
     final isCoachingStaffTrainer = _trainerDirectoryRepository.containsUsername(username);
     final canRunParticipantsAction =
         canRunAdminAction || isWhitelistedTrainer || isCoachingStaffTrainer;
+    final canBroadcastToGroup =
+        canRunAdminAction || isGroupBroadcastWhitelisted(username: username);
     final flowState = userId == null ? null : _flowByUserId[userId];
     final paymentProof = extractPaymentProof(context.message);
     if (_isIgnorableServiceMessage(context.message)) {
@@ -70,6 +72,7 @@ extension PrivateHandlersDispatch on PrivateHandlers {
       sender: _sender,
       templates: _templates,
       canViewParticipantsList: canRunParticipantsAction,
+      canBroadcastToGroup: canBroadcastToGroup,
       onStartCleanup: _handleStartCleanup,
       onStartLoyalty: _handleStartLoyalty,
       onPinWelcomeMessage: _tryPinWelcomeMessage,
@@ -105,6 +108,7 @@ extension PrivateHandlersDispatch on PrivateHandlers {
         isAdmin: isAdmin,
         showReturnToAdminMenu: showReturnToAdminMenu,
         canViewParticipantsList: canRunParticipantsAction,
+        canBroadcastToGroup: canBroadcastToGroup,
       );
       if (handledOnboarding) {
         return true;
@@ -131,6 +135,7 @@ extension PrivateHandlersDispatch on PrivateHandlers {
       canRunAdminAction: canRunAdminAction,
       canRunParticipantsAction: canRunParticipantsAction,
       isWhitelistedTrainer: isWhitelistedTrainer,
+      canBroadcastToGroup: canBroadcastToGroup,
       flowState: flowState,
       paymentProof: paymentProof,
       username: username,
@@ -152,7 +157,11 @@ extension PrivateHandlersDispatch on PrivateHandlers {
       chatId,
       _templates.privateFallback(),
       replyMarkup: _templates.privateMenuKeyboard(
-          isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+        canViewParticipantsList: canRunParticipantsAction,
+        canBroadcastToGroup: canBroadcastToGroup,
+      ),
     );
     return true;
   }

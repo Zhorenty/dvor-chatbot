@@ -13,6 +13,7 @@ final class PrivateRequestContext {
     required this.canRunAdminAction,
     required this.canRunParticipantsAction,
     required this.isWhitelistedTrainer,
+    required this.canBroadcastToGroup,
     required this.flowState,
     required this.paymentProof,
     required this.username,
@@ -29,6 +30,7 @@ final class PrivateRequestContext {
   final bool canRunAdminAction;
   final bool canRunParticipantsAction;
   final bool isWhitelistedTrainer;
+  final bool canBroadcastToGroup;
   final PrivateFlowState? flowState;
   final PaymentProof? paymentProof;
   final String? username;

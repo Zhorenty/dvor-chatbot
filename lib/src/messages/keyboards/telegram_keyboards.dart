@@ -18,6 +18,8 @@ final class TelegramKeyboards {
     required bool isAdmin,
     bool canViewParticipantsList = false,
     bool showReturnToAdminMenu = false,
+    bool canBroadcastToGroup = false,
+    bool groupBroadcastAdminMenu = false,
   }) {
     if (isAdmin) {
       return _replyKeyboard(
@@ -32,6 +34,19 @@ final class TelegramKeyboards {
           ],
           <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonAdminTools},
+          ],
+        ],
+      );
+    }
+
+    if (groupBroadcastAdminMenu && canBroadcastToGroup) {
+      return _replyKeyboard(
+        <List<Map<String, String>>>[
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonBroadcast},
+          ],
+          <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonMainMenu},
           ],
         ],
       );
@@ -57,7 +72,7 @@ final class TelegramKeyboards {
         ],
       );
     }
-    if (showReturnToAdminMenu) {
+    if (showReturnToAdminMenu || canBroadcastToGroup) {
       rows.add(
         <Map<String, String>>[
           <String, String>{'text': MessageCopy.buttonAdminMenu},
@@ -1465,39 +1480,49 @@ final class TelegramKeyboards {
     );
   }
 
-  static Map<String, Object?> broadcastTargetKeyboard({required bool hasGroup}) {
-    final rows = <List<Map<String, String>>>[
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageCopy.buttonBroadcastToUsers,
-          'callback_data': MessageCopy.callbackBroadcastToUsers,
-        },
-      ],
-      <Map<String, String>>[
-        <String, String>{
-          'text': MessageCopy.buttonBroadcastToOutdoorPlus,
-          'callback_data': MessageCopy.callbackBroadcastToOutdoorPlus,
-        },
-      ],
-    ];
-    if (hasGroup) {
+  static Map<String, Object?> broadcastTargetKeyboard({
+    required bool hasGroup,
+    bool groupOnly = false,
+  }) {
+    final rows = <List<Map<String, String>>>[];
+    if (!groupOnly) {
       rows
         ..add(
           <Map<String, String>>[
             <String, String>{
-              'text': MessageCopy.buttonBroadcastToUsersAndGroup,
-              'callback_data': MessageCopy.callbackBroadcastToUsersAndGroup,
+              'text': MessageCopy.buttonBroadcastToUsers,
+              'callback_data': MessageCopy.callbackBroadcastToUsers,
             },
           ],
         )
         ..add(
           <Map<String, String>>[
             <String, String>{
-              'text': MessageCopy.buttonBroadcastToGroup,
-              'callback_data': MessageCopy.callbackBroadcastToGroup,
+              'text': MessageCopy.buttonBroadcastToOutdoorPlus,
+              'callback_data': MessageCopy.callbackBroadcastToOutdoorPlus,
             },
           ],
         );
+    }
+    if (hasGroup) {
+      if (!groupOnly) {
+        rows.add(
+          <Map<String, String>>[
+            <String, String>{
+              'text': MessageCopy.buttonBroadcastToUsersAndGroup,
+              'callback_data': MessageCopy.callbackBroadcastToUsersAndGroup,
+            },
+          ],
+        );
+      }
+      rows.add(
+        <Map<String, String>>[
+          <String, String>{
+            'text': MessageCopy.buttonBroadcastToGroup,
+            'callback_data': MessageCopy.callbackBroadcastToGroup,
+          },
+        ],
+      );
     }
     rows.add(
       <Map<String, String>>[

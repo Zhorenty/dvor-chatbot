@@ -8,6 +8,8 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
     final isAdmin = ctx.isAdmin;
     final showReturnToAdminMenu = ctx.showReturnToAdminMenu;
     final canRunAdminAction = ctx.canRunAdminAction;
+    final canBroadcastToGroup = ctx.canBroadcastToGroup;
+    final groupOnlyBroadcast = canBroadcastToGroup && !canRunAdminAction;
     final flowState = ctx.flowState;
     final message = ctx.message;
 
@@ -31,7 +33,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -41,7 +47,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.loyaltyAdminCommandUsage(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -52,7 +62,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.loyaltyAdminCommandUsage(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -61,7 +75,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.loyaltyAdminAmountInvalid(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -74,7 +92,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.loyaltyUnavailable(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -98,7 +120,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -124,7 +150,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -149,7 +179,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -175,7 +209,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -200,7 +238,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -220,12 +262,16 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
     }
 
     if (text != null && text == MessageTemplates.buttonBroadcast) {
-      if (!canRunAdminAction) {
+      if (!canBroadcastToGroup) {
         await _sendAdminMessage(
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -247,7 +293,7 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
 
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.enteringAdminBroadcastText &&
-        canRunAdminAction) {
+        canBroadcastToGroup) {
       final broadcastPhoto = extractBroadcastPhoto(message);
       if (broadcastPhoto != null) {
         await _handleAdminBroadcastPhoto(
@@ -255,6 +301,7 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           userId: userId,
           flowState: flowState!,
           photo: broadcastPhoto,
+          groupOnly: groupOnlyBroadcast,
         );
         return true;
       }
@@ -262,6 +309,7 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
 
     if (userId != null &&
         flowState?.step == _PrivateFlowStep.enteringAdminBroadcastText &&
+        canBroadcastToGroup &&
         text != null &&
         !text.startsWith('/')) {
       _cancelBroadcastMediaCollection(userId);
@@ -273,7 +321,10 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
       await _sendAdminMessage(
         chatId,
         _templates.adminBroadcastPreview(text),
-        replyMarkup: _templates.broadcastTargetKeyboard(hasGroup: _broadcastService.hasGroup),
+        replyMarkup: _templates.broadcastTargetKeyboard(
+          hasGroup: _broadcastService.hasGroup,
+          groupOnly: groupOnlyBroadcast,
+        ),
       );
       return true;
     }
@@ -285,11 +336,22 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
             text == '/broadcast_group' ||
             text == '/broadcast_users_and_group' ||
             text == '/broadcast_cancel')) {
-      if (!canRunAdminAction) {
+      if (!canBroadcastToGroup) {
         return false;
       }
       if (flowState?.step != _PrivateFlowStep.selectingAdminBroadcastTarget) {
         return false;
+      }
+      if (groupOnlyBroadcast && text != '/broadcast_group' && text != '/broadcast_cancel') {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminBroadcastGroupOnlyDenied(),
+          replyMarkup: _templates.broadcastTargetKeyboard(
+            hasGroup: _broadcastService.hasGroup,
+            groupOnly: true,
+          ),
+        );
+        return true;
       }
       final broadcastContent = _broadcastContentFromFlow(flowState!);
       _cancelBroadcastMediaCollection(userId);
@@ -300,7 +362,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminBroadcastCancelled(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -311,7 +377,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminBroadcastGroupOnly(groupSent: sent),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -334,7 +404,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
             outdoorPlus: audience == BroadcastAudience.outdoorPlus,
           ),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -350,7 +424,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
             groupSent: _broadcastService.hasGroup,
           ),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -362,7 +440,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -387,7 +469,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }
@@ -405,7 +491,11 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
           chatId,
           _templates.adminOnlyAction(),
           replyMarkup: _templates.privateMenuKeyboard(
-              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
         );
         return true;
       }

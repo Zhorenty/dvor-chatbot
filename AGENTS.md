@@ -15,6 +15,7 @@ Project guidance for AI/code agents in this repository.
 - Entry point: `bin/dvor_bot.dart` (shared SQLite handle for booking/onboarding/subscription)
 - App runtime: `lib/src/bot/bot_runner.dart` + `lib/src/jobs/job_scheduler.dart`
 - Config: `lib/src/config/app_config.dart`
+- Group broadcast client whitelist: `lib/src/config/group_broadcast_whitelist.dart`
 - Telegram transport: `lib/src/telegram/telegram_client.dart`
 - Handlers:
  - `lib/src/bot/handlers/private_handlers.dart` (facade + DI, ≪200 LOC)

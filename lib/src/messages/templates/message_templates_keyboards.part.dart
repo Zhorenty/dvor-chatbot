@@ -5,11 +5,15 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     required bool isAdmin,
     bool canViewParticipantsList = false,
     bool showReturnToAdminMenu = false,
+    bool canBroadcastToGroup = false,
+    bool groupBroadcastAdminMenu = false,
   }) {
     return TelegramKeyboards.privateMenuKeyboard(
       isAdmin: isAdmin,
       canViewParticipantsList: canViewParticipantsList,
       showReturnToAdminMenu: showReturnToAdminMenu,
+      canBroadcastToGroup: canBroadcastToGroup,
+      groupBroadcastAdminMenu: groupBroadcastAdminMenu,
     );
   }
 

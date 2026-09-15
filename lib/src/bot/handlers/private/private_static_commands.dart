@@ -44,6 +44,7 @@ final class PrivateStaticCommands {
     required MessageSender sender,
     required MessageTemplates templates,
     required bool canViewParticipantsList,
+    required bool canBroadcastToGroup,
     required StartCleanup onStartCleanup,
     required StartLoyaltyHandler onStartLoyalty,
     required WelcomePinner onPinWelcomeMessage,
@@ -175,6 +176,7 @@ final class PrivateStaticCommands {
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
           showReturnToAdminMenu: showReturnToAdminMenu,
+          canBroadcastToGroup: canBroadcastToGroup,
         ),
       );
       await onPinWelcomeMessage(chatId: chatId, messageId: welcomeMessageId);
@@ -187,6 +189,7 @@ final class PrivateStaticCommands {
             isAdmin: isAdmin,
             canViewParticipantsList: canViewParticipantsList,
             showReturnToAdminMenu: showReturnToAdminMenu,
+            canBroadcastToGroup: canBroadcastToGroup,
           ),
         );
       }
@@ -256,6 +259,7 @@ final class PrivateStaticCommands {
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
           showReturnToAdminMenu: showReturnToAdminMenu,
+          canBroadcastToGroup: canBroadcastToGroup,
         ),
       );
       return true;
@@ -278,6 +282,9 @@ final class PrivateStaticCommands {
           isAdmin: isAdmin,
           canViewParticipantsList: canViewParticipantsList,
           showReturnToAdminMenu: showReturnToAdminMenu,
+          canBroadcastToGroup: canBroadcastToGroup,
+          groupBroadcastAdminMenu:
+              !isAdmin && canBroadcastToGroup && text == MessageTemplates.buttonAdminMenu,
         ),
       );
       return true;

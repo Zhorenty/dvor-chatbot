@@ -3784,6 +3784,13 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
+  String adminBroadcastGroupOnlyDenied() {
+    return RichHtml.screen(
+      title: 'Рассылка',
+      lead: 'Доступна только отправка в группу.',
+    );
+  }
+
   String adminBroadcastCancelled() {
     return RichHtml.screen(
       title: 'Рассылка отменена',
@@ -3797,7 +3804,13 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
-  Map<String, Object?> broadcastTargetKeyboard({required bool hasGroup}) {
-    return TelegramKeyboards.broadcastTargetKeyboard(hasGroup: hasGroup);
+  Map<String, Object?> broadcastTargetKeyboard({
+    required bool hasGroup,
+    bool groupOnly = false,
+  }) {
+    return TelegramKeyboards.broadcastTargetKeyboard(
+      hasGroup: hasGroup,
+      groupOnly: groupOnly,
+    );
   }
 }

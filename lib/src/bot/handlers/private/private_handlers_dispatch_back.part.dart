@@ -7,6 +7,7 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
     final text = ctx.text;
     final isAdmin = ctx.isAdmin;
     final showReturnToAdminMenu = ctx.showReturnToAdminMenu;
+    final canBroadcastToGroup = ctx.canBroadcastToGroup;
     final flowState = ctx.flowState;
 
     if (text == MessageTemplates.buttonBack) {
@@ -341,7 +342,10 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
             chatId,
             _templates.returnedToMainMenu(),
             replyMarkup: _templates.privateMenuKeyboard(
-                isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+              isAdmin: isAdmin,
+              showReturnToAdminMenu: showReturnToAdminMenu,
+              canBroadcastToGroup: canBroadcastToGroup,
+            ),
           );
           return true;
         case _PrivateFlowStep.selectingAdminBookingListSegment:

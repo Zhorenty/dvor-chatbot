@@ -23,6 +23,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private/private_request_context.da
 import 'package:dvor_chatbot/src/bot/handlers/private/private_static_commands.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/private_update_router.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private/schedule_handler.dart';
+import 'package:dvor_chatbot/src/config/group_broadcast_whitelist.dart';
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/conversation_log_repository.dart';
