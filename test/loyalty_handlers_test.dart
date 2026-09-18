@@ -191,6 +191,52 @@ void main() {
     expect((await loyaltyService.account(72)).remaining, 0);
   });
 
+  test('training spend is hidden when peaks cannot cover the slot', () async {
+    await loyaltyService.credit(
+      userId: 79,
+      amount: 400,
+      reason: LoyaltyLedgerReason.adminGrant,
+      idempotencyKey: 'g79',
+      now: now,
+    );
+    final sender = FakeSender();
+    final bot = handlers(
+      sender: sender,
+      schedule: FakeScheduleRepository(
+        <TrainingInfo>[
+          TrainingInfo(
+            title: 'Силовая',
+            startsAt: DateTime(2026, 8, 13, 19),
+            location: 'Hall',
+            category: ActivityCategory.trainings,
+            price: 500,
+          ),
+        ],
+      ),
+    );
+
+    await bot.handle(<String, dynamic>{
+      'chat': <String, dynamic>{'id': 79, 'type': 'private'},
+      'from': <String, dynamic>{'id': 79},
+      'text': '/book',
+    });
+    await bot.handle(<String, dynamic>{
+      'chat': <String, dynamic>{'id': 79, 'type': 'private'},
+      'from': <String, dynamic>{'id': 79},
+      'text': MessageTemplates.buttonCategoryTrainings,
+    });
+    await bot.handle(<String, dynamic>{
+      'chat': <String, dynamic>{'id': 79, 'type': 'private'},
+      'from': <String, dynamic>{'id': 79},
+      'text': '🎯 1. Силовая',
+    });
+    expect(
+      sender.messages.any((message) => message.text.contains('Списать')),
+      isFalse,
+    );
+    expect((await loyaltyService.account(79)).remaining, 400);
+  });
+
   test('outdoor spend is a discount and cannot cover the slot', () async {
     await loyaltyService.credit(
       userId: 73,

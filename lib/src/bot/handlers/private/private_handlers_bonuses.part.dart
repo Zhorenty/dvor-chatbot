@@ -491,6 +491,12 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       await _sendScreen(chatId, _templates.loyaltyUnavailable());
       return true;
     }
+    final category = _catalogService.categoryForBooking(booking);
+    final outdoor = category == ActivityCategory.hikes || category == ActivityCategory.trails;
+    if (!outdoor && !quote.coversFully) {
+      await _sendScreen(chatId, _templates.loyaltyUnavailable());
+      return true;
+    }
     final result = await _loyaltyService.debit(
       userId: userId,
       amount: quote.peaks,
@@ -503,8 +509,6 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       await _sendScreen(chatId, _templates.loyaltyUnavailable());
       return true;
     }
-    final category = _catalogService.categoryForBooking(booking);
-    final outdoor = category == ActivityCategory.hikes || category == ActivityCategory.trails;
     if (!outdoor && quote.coversFully) {
       final paid = await _bookingRepository.updateStatus(
         booking.id,

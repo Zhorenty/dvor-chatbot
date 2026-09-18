@@ -7,6 +7,8 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
+import 'package:dvor_chatbot/src/messages/message_templates.dart';
+import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:l/l.dart';
 
 final class LoyaltyAccrualJob {
@@ -15,18 +17,27 @@ final class LoyaltyAccrualJob {
     required BookingRepository bookingRepository,
     required OnboardingRepository onboardingRepository,
     ActivityCatalogService? catalogService,
+    MessageSender? sender,
+    MessageTemplates? templates,
+    int? adminChatId,
     DateTime Function()? nowProvider,
     this.lookback = const Duration(days: 3),
   })  : _loyaltyService = loyaltyService,
         _bookingRepository = bookingRepository,
         _onboardingRepository = onboardingRepository,
         _catalogService = catalogService,
+        _sender = sender,
+        _templates = templates,
+        _adminChatId = adminChatId,
         _nowProvider = nowProvider ?? DateTime.now;
 
   final LoyaltyService _loyaltyService;
   final BookingRepository _bookingRepository;
   final OnboardingRepository _onboardingRepository;
   final ActivityCatalogService? _catalogService;
+  final MessageSender? _sender;
+  final MessageTemplates? _templates;
+  final int? _adminChatId;
   final DateTime Function() _nowProvider;
   final Duration lookback;
 
@@ -75,7 +86,7 @@ final class LoyaltyAccrualJob {
       if (amount <= 0) {
         return;
       }
-      await _loyaltyService.credit(
+      final result = await _loyaltyService.credit(
         userId: booking.userId,
         amount: amount,
         reason: LoyaltyLedgerReason.training,
@@ -83,6 +94,13 @@ final class LoyaltyAccrualJob {
         now: now,
         bookingId: booking.id,
       );
+      if (result.applied) {
+        await _notifyTrainingAccrual(
+          booking: booking,
+          amount: amount,
+          remaining: result.account.remaining,
+        );
+      }
       return;
     }
     if (category != ActivityCategory.hikes && category != ActivityCategory.trails) {
@@ -116,6 +134,54 @@ final class LoyaltyAccrualJob {
       now: now,
       bookingId: booking.id,
     );
+  }
+
+  Future<void> _notifyTrainingAccrual({
+    required TrainingBooking booking,
+    required int amount,
+    required int remaining,
+  }) async {
+    final sender = _sender;
+    final templates = _templates;
+    if (sender == null || templates == null) {
+      return;
+    }
+    try {
+      await sendBotHtml(
+        sender,
+        booking.userId,
+        templates.loyaltyCredited(
+          amount: amount,
+          remaining: remaining,
+          reason: LoyaltyLedgerReason.training,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w(
+        'Failed to notify user ${booking.userId} about training peaks: $error',
+        stackTrace,
+      );
+    }
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await sendBotHtml(
+        sender,
+        adminChatId,
+        templates.loyaltyTrainingAccrualAdminNotification(
+          booking: booking,
+          amount: amount,
+          remaining: remaining,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w(
+        'Failed to notify admin about training peaks for booking ${booking.id}: $error',
+        stackTrace,
+      );
+    }
   }
 
   Future<void> _accrueReferrals(DateTime now) async {

@@ -395,6 +395,8 @@ def is_filler_sentence(chunk: str, *, title: str | None = None, coach: str | Non
         return True
     if re.fullmatch(r"\d{1,2}\s+[а-яё]+|\d{1,2}\.\d{2}(\.\d{4})?", lowered):
         return True
+    if re.fullmatch(r"\(?\d+[\s\d]*метр[аов]*\.?\s*\)?", lowered):
+        return True
     if coach and coach.casefold() in lowered:
         return True
     if title:
@@ -402,6 +404,25 @@ def is_filler_sentence(chunk: str, *, title: str | None = None, coach: str | Non
         if titled_raw and (lowered == titled_raw or titled_raw in lowered):
             return True
     return False
+
+
+PLACE_SKIP_FIRST = {
+    "с",
+    "на",
+    "в",
+    "к",
+    "от",
+    "для",
+    "это",
+    "вас",
+    "нам",
+    "мы",
+    "подойдёт",
+    "подойдет",
+    "идём",
+    "идем",
+    "едем",
+}
 
 
 def list_place_name(chunk: str) -> str | None:
@@ -413,6 +434,9 @@ def list_place_name(chunk: str) -> str | None:
         return None
     words = name.split()
     if not (1 <= len(words) <= 5) or len(name) > 42:
+        return None
+    first = words[0].casefold()
+    if first in PLACE_SKIP_FIRST or first.startswith("подойд"):
         return None
     return name
 
@@ -477,6 +501,9 @@ def accumulate_training(notes: str | None, coach: str | None = None) -> str:
     return join_summary(parts, 175)
 
 
+SCENIC_TOKENS = ("панорам", "вершин", "озер", "хребет", "восхожд", "скал", "фишт", "оштен")
+
+
 def accumulate_super(notes: str | None, title: str) -> str:
     if not notes:
         return ""
@@ -492,9 +519,12 @@ def accumulate_super(notes: str | None, title: str) -> str:
             continue
         hooks.append(chunk)
     parts: list[str] = []
-    if hooks:
-        parts.append(hooks[0])
-    shorts = [item for item in hooks[1:] if len(item) <= 48]
+    scenic = [item for item in hooks if any(token in item.casefold() for token in SCENIC_TOKENS)]
+    lead = scenic[0] if scenic else (hooks[0] if hooks else "")
+    if lead:
+        parts.append(lead)
+    rest = [item for item in hooks if item != lead]
+    shorts = [item for item in rest if len(item) <= 48]
     if shorts:
         parts.append(shorts[0])
     if places:
@@ -565,7 +595,7 @@ def super_tag_from_text(title: str, description: str) -> str:
     blob = f"{title} {description}".casefold()
     if "outdvor" in blob:
         return "КОЛЛАБОРАЦИЯ DVOR × OUTDVOR"
-    if "восхожд" in blob:
+    if any(token in blob for token in ("восхожд", "вершин", "тхач")):
         return "ВОСХОЖДЕНИЕ"
     return "ВЫЕЗД"
 
@@ -587,51 +617,71 @@ def week_range_label(now: datetime) -> str:
     return f"{short_day_month(monday)} – {short_day_month(sunday)}"
 
 
-def load_week_slots(now: datetime) -> list[Slot]:
+def parse_training_slot(row: dict[str, str]) -> Slot | None:
+    title = (row.get("название") or "").strip()
+    location = (row.get("место") or "").strip()
+    if not title or not location:
+        return None
+    starts = parse_sheet_datetime(row.get("дата") or "", row.get("время") or "")
+    if starts is None:
+        return None
+    coach = clean_spaces(row.get("тренер") or "") or None
+    notes = (row.get("заметки") or "").strip() or None
+    return Slot(
+        starts_at=starts,
+        title=title,
+        location=location,
+        coach=coach,
+        notes=notes,
+        is_super=False,
+    )
+
+
+def parse_hike_slot(row: dict[str, str]) -> Slot | None:
+    title = (row.get("название") or "").strip()
+    location = (row.get("место") or "").strip()
+    if not title:
+        return None
+    starts = parse_sheet_datetime(row.get("дата_с") or "", first_plan_time(row.get("план")) or "00:00")
+    if starts is None:
+        return None
+    description = (row.get("описание") or "").strip() or None
+    return Slot(
+        starts_at=starts,
+        title=title,
+        location=location or "АДЫГЕЯ",
+        coach=None,
+        notes=description,
+        is_super=True,
+        super_tag=super_tag_from_text(title, description or ""),
+    )
+
+
+def load_week_slots(now: datetime, *, remaining_only: bool = True) -> list[Slot]:
     monday, sunday_end = week_bounds(now)
     slots: list[Slot] = []
 
     for row in fetch_csv(TRAININGS_CSV):
-        title = (row.get("название") or "").strip()
-        location = (row.get("место") or "").strip()
-        if not title or not location:
+        slot = parse_training_slot(row)
+        if slot is None or not (monday <= slot.starts_at < sunday_end):
             continue
-        starts = parse_sheet_datetime(row.get("дата") or "", row.get("время") or "")
-        if starts is None or not (monday <= starts < sunday_end) or starts <= now:
+        if remaining_only and slot.starts_at <= now:
             continue
-        coach = clean_spaces(row.get("тренер") or "") or None
-        notes = (row.get("заметки") or "").strip() or None
-        slots.append(
-            Slot(
-                starts_at=starts,
-                title=title,
-                location=location,
-                coach=coach,
-                notes=notes,
-                is_super=False,
-            )
-        )
+        slots.append(slot)
 
-    for row in fetch_csv(HIKES_CSV):
-        title = (row.get("название") or "").strip()
-        location = (row.get("место") or "").strip()
-        if not title:
-            continue
-        starts = parse_sheet_datetime(row.get("дата_с") or "", first_plan_time(row.get("план")) or "00:00")
-        if starts is None or not (monday <= starts < sunday_end) or starts <= now:
-            continue
-        description = (row.get("описание") or "").strip() or None
-        slots.append(
-            Slot(
-                starts_at=starts,
-                title=title,
-                location=location or "АДЫГЕЯ",
-                coach=None,
-                notes=description,
-                is_super=True,
-                super_tag=super_tag_from_text(title, description or ""),
-            )
-        )
+    hikes = [slot for row in fetch_csv(HIKES_CSV) if (slot := parse_hike_slot(row)) is not None]
+    in_week = [
+        slot
+        for slot in hikes
+        if monday <= slot.starts_at < sunday_end and (not remaining_only or slot.starts_at > now)
+    ]
+    if in_week:
+        slots.extend(in_week)
+    else:
+        upcoming = [slot for slot in hikes if slot.starts_at >= sunday_end]
+        upcoming.sort(key=lambda item: item.starts_at)
+        if upcoming:
+            slots.append(upcoming[0])
 
     slots.sort(key=lambda item: item.starts_at)
     return slots
@@ -846,32 +896,46 @@ def schedule_column_bounds() -> tuple[int, int]:
     return header_bottom + HEADER_GAP, LINE_Y - LINE_GAP
 
 
-def regular_slot(im: Image.Image, d: ImageDraw.ImageDraw, y0: int, y1: int, slot: Slot, draw_rule: bool) -> None:
-    date_f = font(FONT_EXTRABOLD, 24)
-    time_f = font(FONT_BLACK, 30)
-    title_f = font(FONT_BLACK, 28)
-    loc_f = font(FONT_EXTRABOLD, 22)
-    notes_f = font(FONT_MEDIUM, 22)
-    block_x = 430
+def regular_slot(
+    im: Image.Image,
+    d: ImageDraw.ImageDraw,
+    y0: int,
+    y1: int,
+    slot: Slot,
+    draw_rule: bool,
+    compact: bool = False,
+) -> None:
+    date_f = font(FONT_EXTRABOLD, 20 if compact else 24)
+    time_f = font(FONT_BLACK, 24 if compact else 30)
+    title_f = font(FONT_BLACK, 22 if compact else 28)
+    loc_f = font(FONT_EXTRABOLD, 18 if compact else 22)
+    notes_f = font(FONT_MEDIUM, 18 if compact else 22)
+    title_lh = 26 if compact else 34
+    loc_lh = 28 if compact else 36
+    note_lh = 22 if compact else 28
+    block_x = 390 if compact else 430
     block_w = W - MARGIN - block_x
     title_lines = wrap_text(titled(slot), title_f, block_w, tracking=-1)[:2]
-    note_lines = fit_wrapped(accumulate_training(slot.notes, slot.coach), notes_f, block_w, 4)
-    stacked = 34 * len(title_lines) + 36 + 28 * max(len(note_lines), 1)
-    extra = max(0, (y1 - y0) - stacked - 36)
+    avail = max(0, y1 - y0 - (18 if compact else 36))
+    min_block = title_lh * len(title_lines) + loc_lh
+    max_notes = max(1, min(3 if compact else 4, (avail - min_block) // note_lh))
+    note_lines = fit_wrapped(accumulate_training(slot.notes, slot.coach), notes_f, block_w, max_notes)
+    stacked = title_lh * len(title_lines) + loc_lh + note_lh * max(len(note_lines), 1)
+    extra = max(0, (y1 - y0) - stacked - (24 if compact else 36))
     gaps = 2 + len(title_lines) + max(len(note_lines) - 1, 0)
     bump = extra / max(gaps, 1)
-    y = y0 + 14 + bump * 0.45
-    pill = draw_left_pill(im, date_pill(slot), MARGIN, y + 22, date_f, ACCENT)
-    paint_text(d, (pill[2] + 16, y + 6), time_label(slot), time_f, WHITE)
+    y = y0 + (8 if compact else 14) + bump * 0.35
+    pill = draw_left_pill(im, date_pill(slot), MARGIN, y + (16 if compact else 22), date_f, ACCENT, pad_x=12, pad_y=6)
+    paint_text(d, (pill[2] + 12, y + (4 if compact else 6)), time_label(slot), time_f, WHITE)
     ty = y
     for line in title_lines:
         draw_tracked(d, (block_x, ty), line, title_f, WHITE, tracking=-1, anchor="lt")
-        ty += 34 + bump
-    draw_tracked(d, (block_x, ty + 4), poster_location(slot.location), loc_f, ACCENT, tracking=-1, anchor="lt")
-    ty += 36 + bump
+        ty += title_lh + bump
+    draw_tracked(d, (block_x, ty + 2), poster_location(slot.location), loc_f, ACCENT, tracking=-1, anchor="lt")
+    ty += loc_lh + bump
     for i, line in enumerate(note_lines):
         paint_text(d, (block_x, ty), line, notes_f, WHITE)
-        ty += 28 + (bump if i < len(note_lines) - 1 else 0)
+        ty += note_lh + (bump if i < len(note_lines) - 1 else 0)
     if draw_rule:
         d.line((MARGIN, y1 - 2, W - MARGIN, y1 - 2), fill=MUTED, width=1)
 
@@ -886,7 +950,8 @@ def super_block_h(slot: Slot) -> int:
     note_lines = fit_wrapped(accumulate_super(slot.notes, slot.title), body_f, rw, 4)
     right = SUPER_PAD + 36 * len(title_lines) + 28 * len(tag_lines) + 18 + 32 * len(note_lines) + SUPER_PAD
     left = SUPER_PAD + 220 + SUPER_PAD
-    return max(right, left, 360)
+    min_h = 360 if H > 1400 else 250
+    return max(right, left, min_h)
 
 
 def super_card(im: Image.Image, y0: int, y1: int, slot: Slot) -> None:
@@ -951,10 +1016,19 @@ def schedule(slots: list[Slot], background: Background) -> Image.Image:
         train_bottom = content_bottom
     n_regular = max(len(regulars), 1)
     band = (train_bottom - content_top) / n_regular if regulars else 0
+    compact = H <= 1400 and len(regulars) >= 4
     y = float(content_top)
     for i, slot in enumerate(regulars):
         y1 = train_bottom if i == len(regulars) - 1 else int(round(content_top + band * (i + 1)))
-        regular_slot(im, d, int(y), int(y1), slot, draw_rule=i < len(regulars) - 1)
+        regular_slot(
+            im,
+            d,
+            int(y),
+            int(y1),
+            slot,
+            draw_rule=i < len(regulars) - 1,
+            compact=compact,
+        )
         y = y1
     if supers:
         y = train_bottom + SUPER_GAP
@@ -1004,22 +1078,35 @@ def write_credits(
     (out_dir / "CREDITS.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
+def parse_week_start(raw: str) -> datetime:
+    value = datetime.fromisoformat(raw)
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=MOSCOW)
+    return value.astimezone(MOSCOW).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate DVOR week stories and posts from Google Sheets.")
     parser.add_argument("--now", help="Override now, e.g. 2026-09-08T13:48")
+    parser.add_argument("--week-start", help="Monday of the target week, e.g. 2026-09-21")
     args = parser.parse_args()
-    now = (
-        datetime.fromisoformat(args.now).replace(tzinfo=MOSCOW)
-        if args.now
-        else datetime.now(MOSCOW)
-    )
+    remaining_only = True
+    if args.week_start:
+        now = parse_week_start(args.week_start)
+        remaining_only = False
+    elif args.now:
+        now = datetime.fromisoformat(args.now)
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=MOSCOW)
+    else:
+        now = datetime.now(MOSCOW)
     for required in (FONT_BLACK, FONT_EXTRABOLD, FONT_MEDIUM, LOGO_MARK):
         if not required.exists():
             raise SystemExit(f"Missing asset: {required}")
 
-    slots = load_week_slots(now)
+    slots = load_week_slots(now, remaining_only=remaining_only)
     if not slots:
-        raise SystemExit("No remaining slots for the current week.")
+        raise SystemExit("No remaining slots for the selected week.")
 
     cover_bg, schedule_bg = pick_backgrounds()
     week_label = week_range_label(now)

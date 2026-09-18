@@ -72,6 +72,25 @@ void main() {
       expect(result.isSpam, isTrue);
     });
 
+    test('flags usdt cash p2p spam even without dm invite', () {
+      final result = detector.evaluate(
+        'Добрый день чат. Кто может помочь с покупкой ustd за наличные ?',
+      );
+
+      expect(result.isSpam, isTrue);
+      expect(result.reasons, contains('crypto_p2p'));
+      expect(result.reasons, contains('crypto_cash'));
+    });
+
+    test('flags nearby crypto cash variants', () {
+      expect(detector.evaluate('Куплю USDT за нал').isSpam, isTrue);
+      expect(
+        detector.evaluate('Продам usdt наличными, встреча в центре').isSpam,
+        isTrue,
+      );
+      expect(detector.evaluate('Обмен USDT p2p').isSpam, isTrue);
+    });
+
     test('keeps normal club chat', () {
       const cleanMessages = <String>[
         'Кто завтра на тренировку? Напишите мне если едете.',
@@ -84,6 +103,9 @@ void main() {
         'Пишите в личные сообщения, если нужна форма',
         'Оплата абонемента завтра, кто ещё не скинул?',
         'Оплата: 1500, напишите мне в лс реквизиты',
+        'Кто может помочь с формой на тренировку?',
+        'Оплата наличными на тренировке',
+        'Кто может помочь, забыл наличные',
       ];
 
       for (final message in cleanMessages) {

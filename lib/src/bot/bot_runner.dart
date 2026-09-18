@@ -187,6 +187,9 @@ final class BotRunner {
                 bookingRepository: bookingRepository,
                 onboardingRepository: onboardingRepository,
                 catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
+                sender: sender,
+                templates: templates,
+                adminChatId: config.adminChatId,
               ),
         _loyaltyCreditDmCleanupJob = LoyaltyCreditDmCleanupJob(
           conversationLogRepository: conversationLogRepository,

@@ -5,14 +5,23 @@
 /// - «Ищу желающих на удаленную занятость … пишите в лс»
 /// - «Оплата 110-190 EUR / день … пишите в личные сообщения»
 /// - «Ищу помощников … от 880 евро/неделя … Напишите мне»
+/// - «Кто может помочь с покупкой ustd за наличные»
 ///
 /// Normal club chat is protected by category rules:
-/// soft phrases («в лс», «обучение», «команда») alone never ban.
+/// soft phrases («в лс», «обучение», «команда», «наличные») alone never ban.
 final class GroupSpamDetector {
   const GroupSpamDetector();
 
   /// Cyrillic-safe "word" chars after [_normalize] (lowercase, ё → е).
   static const String _w = r'[а-яa-z0-9_]*';
+
+  /// USDT and common letter-swaps (`ustd`), plus nearby cash-P2P tickers.
+  static const String _cryptoTicker = r'(?:usdt|ustd|udst|usdc|tether|bitcoin|btc|ethereum|юсдт|'
+      r'trc[\s\-]?20|erc[\s\-]?20|крипт[а-я]*)';
+
+  static const String _cashOrP2p =
+      r'(?:(?:^|[^а-яa-z0-9])нал(?:ичн[а-я]*|ичк[а-я]*)?(?:[^а-яa-z0-9]|$)|'
+      r'cash|p2p)';
 
   static final List<_SpamPattern> _patterns = <_SpamPattern>[
     // --- job / money / recruiting (primary) ---
@@ -122,6 +131,24 @@ final class GroupSpamDetector {
       RegExp('крипт$_w\\s+(сигнал|раздач|airdrop)'),
       score: 45,
       reason: 'crypto_spam',
+      category: _SpamCategory.job,
+    ),
+    _SpamPattern(
+      RegExp(
+        '(?:купл[юи]|купить|покупк$_w|продам|продать|продаж$_w|'
+        'обмен$_w|меня[ею]$_w).{0,40}$_cryptoTicker',
+      ),
+      score: 60,
+      reason: 'crypto_p2p',
+      category: _SpamCategory.job,
+    ),
+    _SpamPattern(
+      RegExp(
+        '(?:$_cryptoTicker.{0,32}$_cashOrP2p|'
+        '$_cashOrP2p.{0,32}$_cryptoTicker)',
+      ),
+      score: 60,
+      reason: 'crypto_cash',
       category: _SpamCategory.job,
     ),
     _SpamPattern(

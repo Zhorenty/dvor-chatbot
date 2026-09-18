@@ -326,6 +326,7 @@ void main() {
       expect(text, contains('слоты, запись и статус'));
       expect(text, contains('Вершинки'));
       expect(text, contains('2 ⛰️ = 1 ₽'));
+      expect(text, contains('тренировку закрывают целиком'));
       expect(text, contains('45 дней'));
       expect(text, contains('@dvor_support'));
       expect(text, isNot(contains('каждая 5-я')));
@@ -358,9 +359,10 @@ void main() {
       expect(text, contains('Вершинки'));
       expect(text, contains('2 ⛰️ = 1 ₽'));
       expect(text, contains('до 15.03'));
-      expect(text, contains('первый /start — 1000'));
-      expect(text, contains('350→200'));
-      expect(text, contains('500→250'));
+      expect(text, contains('Первый /start — 1000'));
+      expect(text, contains('20% от цены'));
+      expect(text, contains('500 ₽ даёт 200 ⛰️'));
+      expect(text, contains('только целиком'));
       expect(text, contains('скидка до 30%'));
       expect(text, contains('Стартовая'));
       expect(text, contains('доступна'));
@@ -400,6 +402,33 @@ void main() {
       expect(text, contains('+200 ⛰️'));
       expect(text, contains('за тренировку'));
       expect(text, isNot(contains('завершил')));
+      expect(text, isNot(contains('баллы')));
+    });
+
+    test('training accrual admin copy is dry and names вершинки', () {
+      final text = templates.loyaltyTrainingAccrualAdminNotification(
+        booking: TrainingBooking(
+          id: 12,
+          userId: 81,
+          userUsername: 'neo',
+          trainingKey: 'trainings|12',
+          trainingTitle: 'Силовая',
+          startsAt: DateTime(2026, 9, 18, 19),
+          location: 'площадка',
+          status: BookingStatus.paid,
+          trainingPrice: 500,
+          createdAt: DateTime(2026, 9, 1),
+          updatedAt: DateTime(2026, 9, 1),
+        ),
+        amount: 200,
+        remaining: 1200,
+      );
+      expect(text, contains('Начисление вершинок'));
+      expect(text, contains('Силовая'));
+      expect(text, contains('200 ⛰️'));
+      expect(text, contains('1200 ⛰️'));
+      expect(text, isNot(contains('дорогие')));
+      expect(text, isNot(contains('администрация')));
       expect(text, isNot(contains('баллы')));
     });
 

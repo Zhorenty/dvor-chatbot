@@ -259,6 +259,28 @@ void main() {
       expect(sender.messages.single.text, contains('@spam_bot_user'));
     });
 
+    test('deletes usdt cash p2p spam', () async {
+      final sender = _FakeSender();
+      final handlers = GroupHandlers(
+        sender: sender,
+        templates: const MessageTemplates(),
+        targetChatId: -100123,
+      );
+
+      final handled = await handlers.handle(
+        <String, dynamic>{
+          'message_id': 59,
+          'chat': <String, dynamic>{'id': -100123, 'type': 'supergroup'},
+          'from': <String, Object?>{'id': 9003, 'is_bot': false},
+          'text': 'Добрый день чат. Кто может помочь с покупкой ustd за наличные ?',
+        },
+      );
+
+      expect(handled, isTrue);
+      expect(sender.deletedMessages.single.messageId, 59);
+      expect(sender.bannedMembers.single.userId, 9003);
+    });
+
     test('deletes remote job spam with dm invite', () async {
       final sender = _FakeSender();
       final handlers = GroupHandlers(

@@ -844,7 +844,7 @@ extension MessageTemplatesContent on MessageTemplates {
     if (coversFully) {
       return RichHtml.screen(
         title: 'Вершинки списаны',
-        lead: 'Списал $peaks ⛰️. Запись оплачена, чек не нужен.',
+        lead: 'Списал $peaks ⛰️. Слот закрыт целиком, чек не нужен.',
         rows: <(String, String)>[('Статус', 'оплачено')],
       );
     }
@@ -875,7 +875,7 @@ extension MessageTemplatesContent on MessageTemplates {
       return RichHtml.paragraph('Списать $peaks ⛰️ — скидка до 30%, остаток $remainderRub ₽.');
     }
     if (remainderRub <= 0) {
-      return RichHtml.paragraph('Списать $peaks ⛰️ — закроет запись целиком, без чека.');
+      return RichHtml.paragraph('Списать $peaks ⛰️ — закроет слот целиком, без чека. Скидки нет.');
     }
     return RichHtml.paragraph('Списать $peaks ⛰️, остаток $remainderRub ₽.');
   }
@@ -903,7 +903,8 @@ extension MessageTemplatesContent on MessageTemplates {
       title: 'Вершинки',
       lead: 'Сейчас списать вершинки нельзя.',
       paragraphs: <String>[
-        'Проверь баланс в профиле или дождись, пока запись будет ждать оплату.',
+        'На тренировку их хватает закрыть слот целиком — или никак. Скидки нет.',
+        'Проверь баланс в профиле. Если не хватает — обычная оплата чеком.',
       ],
     );
   }
@@ -911,7 +912,7 @@ extension MessageTemplatesContent on MessageTemplates {
   String loyaltyAdminCommandUsage() {
     return RichHtml.screen(
       title: 'Формат',
-      lead: '/loyalty_grant userId 50 или /loyalty_debit userId 50',
+      lead: '/loyalty_grant userId 10 или /loyalty_debit userId 10',
     );
   }
 
@@ -959,7 +960,26 @@ extension MessageTemplatesContent on MessageTemplates {
   }
 
   String loyaltyAdminAmountInvalid() {
-    return 'Сумма должна быть кратна 50 ⛰️.';
+    return 'Сумма должна быть кратна 10 ⛰️.';
+  }
+
+  String loyaltyTrainingAccrualAdminNotification({
+    required TrainingBooking booking,
+    required int amount,
+    required int remaining,
+  }) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    return RichHtml.screen(
+      title: 'Начисление вершинок',
+      rows: <(String, String)>[
+        ..._adminBookingIdentityRows(booking),
+        ('Запись', '#${booking.id}'),
+        ('Тренировка', booking.trainingTitle),
+        ('Когда', formatter.format(booking.startsAt)),
+        ('Начислено', '$amount ⛰️'),
+        ('Баланс', '$remaining ⛰️'),
+      ],
+    );
   }
 
   String referralBonusAdminNotification(TrainingBooking booking) {
@@ -1099,11 +1119,13 @@ extension MessageTemplatesContent on MessageTemplates {
       ],
       alreadyEscaped: true,
       detailsSummary: 'Как копить и списать',
-      detailsBody: 'первый /start — 1000.\n'
-          'Платная тренировка — от цены (350→200, 500→250).\n'
-          'Отзыв — 50. Поход/трейл — 10% от оплаты.\n'
+      detailsBody: 'Первый /start — 1000 ⛰️.\n'
+          'После платной тренировки — 20% от цены, округление вверх до 10. '
+          'Слот 500 ₽ даёт 200 ⛰️.\n'
+          'Отзыв — 50. Поход и трейл — 10% от оплаты через бота.\n'
           'Друг прошёл первую платную — 1000. Бокс-карта — 10% от ₽.\n'
-          'Списать: тренировка и карта — хоть целиком; поход/трейл — скидка до 30%.\n'
+          'На тренировку вершинки списываются только целиком. Скидки на слот нет.\n'
+          'Карта — целиком или часть. Поход и трейл — скидка до 30%.\n'
           'Последние операции:\n$ledgerLines',
     );
   }

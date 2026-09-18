@@ -4,26 +4,25 @@ import 'package:test/test.dart';
 
 void main() {
   group('LoyaltyMath rounding', () {
-    test('round_up_50 matches club anchors', () {
-      expect(LoyaltyMath.roundUp50(175), 200);
-      expect(LoyaltyMath.roundUp50(250), 250);
-      expect(LoyaltyMath.roundUp50(1), 50);
-      expect(LoyaltyMath.roundUp50(0), 0);
-      expect(LoyaltyMath.roundUp50FromDouble(840), 850);
-      expect(LoyaltyMath.roundUp50FromDouble(940), 950);
+    test('round up to 10 matches club earn steps', () {
+      expect(LoyaltyMath.roundUp(175), 180);
+      expect(LoyaltyMath.roundUp(200), 200);
+      expect(LoyaltyMath.roundUp(1), 10);
+      expect(LoyaltyMath.roundUp(0), 0);
+      expect(LoyaltyMath.roundUpFromDouble(201.1), 210);
+      expect(LoyaltyMath.roundUpFromDouble(200), 200);
     });
 
-    test('training earn is round_up_50(price / 2)', () {
-      expect(LoyaltyMath.trainingEarnPeaks(350), 200);
-      expect(LoyaltyMath.trainingEarnPeaks(500), 250);
-      expect(LoyaltyMath.trainingEarnPeaks(400), 200);
-      expect(LoyaltyMath.trainingEarnPeaks(1), 50);
+    test('training earn is 20% of price, round_up_10', () {
+      expect(LoyaltyMath.trainingEarnPeaks(350), 140);
+      expect(LoyaltyMath.trainingEarnPeaks(500), 200);
+      expect(LoyaltyMath.trainingEarnPeaks(400), 160);
+      expect(LoyaltyMath.trainingEarnPeaks(1), 10);
       expect(LoyaltyMath.trainingEarnPeaks(0), 0);
     });
 
-    test('four paid trainings accumulate as specified', () {
-      expect(LoyaltyMath.trainingEarnPeaks(500) * 4, 1000);
-      expect(LoyaltyMath.trainingEarnPeaks(350) * 4, 800);
+    test('five paid 500 ₽ trainings accumulate to one free slot', () {
+      expect(LoyaltyMath.trainingEarnPeaks(500) * 5, 1000);
       expect(LoyaltyMath.fullPayPeaks(500), 1000);
       expect(LoyaltyMath.fullPayPeaks(350), 700);
     });
@@ -39,7 +38,7 @@ void main() {
   });
 
   group('LoyaltyMath spend quotes', () {
-    test('training can cover fully or partially in 50-peak steps', () {
+    test('training covers only when peaks pay the slot in full', () {
       final full = LoyaltyMath.quoteSpend(
         target: LoyaltySpendTarget.training,
         priceRub: 500,
@@ -49,14 +48,14 @@ void main() {
       expect(full.remainderRub, 0);
       expect(full.coversFully, isTrue);
 
-      final partial = LoyaltyMath.quoteSpend(
+      final short = LoyaltyMath.quoteSpend(
         target: LoyaltySpendTarget.training,
         priceRub: 500,
         balance: 400,
       );
-      expect(partial.peaks, 400);
-      expect(partial.remainderRub, 300);
-      expect(partial.coversFully, isFalse);
+      expect(short.peaks, 0);
+      expect(short.remainderRub, 500);
+      expect(short.coversFully, isFalse);
     });
 
     test('outdoor discount is capped at 30% and never covers fully', () {

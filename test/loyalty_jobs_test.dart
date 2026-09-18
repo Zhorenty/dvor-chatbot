@@ -146,10 +146,61 @@ void main() {
       nowProvider: () => now,
     );
     await job.run();
-    expect((await service.account(31)).remaining, 250);
+    expect((await service.account(31)).remaining, 200);
     expect((await service.account(32)).remaining, 0);
     expect((await service.account(33)).remaining, 0);
     expect((await service.account(34)).remaining, 0);
+  });
+
+  test('accrual notifies the user and admin after a paid training', () async {
+    final now = DateTime.utc(2026, 5, 10, 13);
+    final repository = InMemoryLoyaltyRepository(nowProvider: () => now);
+    final service = LoyaltyService(repository: repository, nowProvider: () => now);
+    final sender = FakeSender();
+    final bookings = FakeBookingRepository()
+      ..queue = <TrainingBooking>[
+        fakeBooking(
+          id: 80,
+          userId: 81,
+          userUsername: 'neo',
+          title: 'Силовая',
+          trainingKey: 'trainings|80',
+          status: BookingStatus.paid,
+          trainingPrice: 500,
+          startsAt: now.subtract(const Duration(hours: 2)),
+        ),
+      ];
+    final job = LoyaltyAccrualJob(
+      loyaltyService: service,
+      bookingRepository: bookings,
+      onboardingRepository: FakeOnboardingRepository(),
+      sender: sender,
+      templates: const MessageTemplates(),
+      adminChatId: -1001,
+      nowProvider: () => now,
+    );
+    await job.run();
+    expect((await service.account(81)).remaining, 200);
+    expect(
+      sender.messages.any(
+        (message) => message.chatId == 81 && message.text.contains('+200 ⛰️ за тренировку'),
+      ),
+      isTrue,
+    );
+    expect(
+      sender.messages.any(
+        (message) =>
+            message.chatId == -1001 &&
+            message.text.contains('Начисление вершинок') &&
+            message.text.contains('200 ⛰️') &&
+            message.text.contains('Силовая'),
+      ),
+      isTrue,
+    );
+
+    sender.messages.clear();
+    await job.run();
+    expect(sender.messages, isEmpty);
   });
 
   test('accrual ignores visits older than lookback and stays silent', () async {
@@ -185,7 +236,7 @@ void main() {
     );
     await job.run();
     expect((await service.account(51)).remaining, 0);
-    expect((await service.account(52)).remaining, 250);
+    expect((await service.account(52)).remaining, 200);
   });
 
   test('referral accrues 1000 only when invitee paid with cash', () async {
