@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps, ImageStat
 
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = Path(__file__).resolve().parent / "assets" / "week_stories"
@@ -141,7 +141,9 @@ FONT_BLACK = ASSETS / "Montserrat-Black.ttf"
 FONT_EXTRABOLD = ASSETS / "Montserrat-ExtraBold.ttf"
 FONT_MEDIUM = ASSETS / "Montserrat-Medium.ttf"
 LOGO_MARK = ASSETS / "logo-dvor.png"
-USED_PHOTOS = ASSETS / "last_photos.json"
+USED_PHOTOS = ASSETS / "used_photos.json"
+LEGACY_USED_PHOTOS = ASSETS / "last_photos.json"
+SCHEDULE_MAX_LUMINANCE = 80
 
 PHOTO_POOL = (
     {"id": "1549719386-74dfcbf7dbed", "credit": "Bogdan Yukhymchuk", "url": "https://unsplash.com/photos/XmvuWRDimrg", "what": "боксёрские перчатки"},
@@ -155,21 +157,38 @@ PHOTO_POOL = (
     {"id": "1464822759023-fed622ff2c3b", "credit": "Unsplash", "url": "https://unsplash.com/photos/8bI5fVVtdp8", "what": "горы"},
     {"id": "1518611012118-696072aa579a", "credit": "Unsplash", "url": "https://unsplash.com/photos/NTyBbu66_SI", "what": "растяжка / зал"},
     {"id": "1517963879433-6ad2b056d712", "credit": "Unsplash", "url": "https://unsplash.com/photos/oX6d8wONM6Q", "what": "ринг"},
-    {"id": "1502905340366-9d32df4b7a0e", "credit": "Unsplash", "url": "https://unsplash.com/photos/NTyBbu66_SI", "what": "бег по дороге"},
-    {"id": "1483721310020-03333eadbdcc", "credit": "Unsplash", "url": "https://unsplash.com/photos/C1t1jbpHdeI", "what": "вершина, снег"},
     {"id": "1506905925346-21bda4d32df4", "credit": "Unsplash", "url": "https://unsplash.com/photos/y2azHvupCVo", "what": "горный хребет"},
-    {"id": "1513593771513-7b58bdc7b6fd", "credit": "Unsplash", "url": "https://unsplash.com/photos/nCJ_XdqQhIg", "what": "бег в городе"},
-    {"id": "1536924430088-8bc494f2960a", "credit": "Unsplash", "url": "https://unsplash.com/photos/WNoLnJo7tS8", "what": "бокс"},
-    {"id": "1541534747586-6b2c80d8a4c0", "credit": "Unsplash", "url": "https://unsplash.com/photos/oX6d8wONM6Q", "what": "зал, гири"},
-    {"id": "1571902943202-507ec2616e34", "credit": "Unsplash", "url": "https://unsplash.com/photos/sHfo3WOgGTU", "what": "турники"},
-    {"id": "1434596823516-bd3824007d55", "credit": "Unsplash", "url": "https://unsplash.com/photos/TFyi0QOx08c", "what": "тропа в лесу"},
-    {"id": "1474412060476-77db9c3c3a84", "credit": "Unsplash", "url": "https://unsplash.com/photos/1Z2niiBPg5A", "what": "горы в облаках"},
-    {"id": "1522163182402-834f871ac7ae", "credit": "Unsplash", "url": "https://unsplash.com/photos/2Ts5HnA67k8", "what": "скалы"},
     {"id": "1517838277536-f5f99be501cd", "credit": "Unsplash", "url": "https://unsplash.com/photos/p7o8eLQ14aI", "what": "штанга"},
-    {"id": "1599058917212-d750089bc04e", "credit": "Unsplash", "url": "https://unsplash.com/photos/sHfo3WOgGTU", "what": "боксёрский зал"},
     {"id": "1571008887538-b36bb32f4571", "credit": "Unsplash", "url": "https://unsplash.com/photos/nCJ_XdqQhIg", "what": "бег, асфальт"},
-    {"id": "1476480862126-861e0f54db91", "credit": "Unsplash", "url": "https://unsplash.com/photos/nCJ_XdqQhIg", "what": "кроссовки, бег"},
     {"id": "1549060279-7e168fcee0c2", "credit": "Unsplash", "url": "https://unsplash.com/photos/qC0oLKqPPdw", "what": "бег"},
+    {"id": "1708134028754-5ba43093fedf", "credit": "Unsplash", "url": "https://unsplash.com/photos/la3cBBjHImk", "what": "груша, тёмный зал"},
+    {"id": "1517438322307-e67111335449", "credit": "Unsplash", "url": "https://unsplash.com/photos/FH6JcaCrYJ0", "what": "спарринг в зале"},
+    {"id": "1716306886418-f84f6d4c2f3a", "credit": "Unsplash", "url": "https://unsplash.com/photos/x7H8f-gjmDU", "what": "ряд боксёрских груш"},
+    {"id": "1636581563867-1ecab574858f", "credit": "Unsplash", "url": "https://unsplash.com/photos/ynaiLpRBigY", "what": "бокс в зале"},
+    {"id": "1636302925863-6ad504baaf3c", "credit": "Unsplash", "url": "https://unsplash.com/photos/F412aTVczu0", "what": "перчатки, зал"},
+    {"id": "1716307046875-4c4ba2f43cab", "credit": "Unsplash", "url": "https://unsplash.com/photos/P3G0IbOexH8", "what": "ринг с грушей"},
+    {"id": "1716307043003-dbe6a5cc496e", "credit": "Unsplash", "url": "https://unsplash.com/photos/TeL4E6S5BQU", "what": "ринг, перчатки"},
+    {"id": "1737381556257-9307b8ae56e6", "credit": "Unsplash", "url": "https://unsplash.com/photos/6495bM2HwOc", "what": "бокс, ч/б"},
+    {"id": "1495046024427-c8efd65f3d7f", "credit": "Joshua Jordan", "url": "https://unsplash.com/photos/ZfiV8EgglsY", "what": "боксёр, ч/б"},
+    {"id": "1575654402720-0af3480d1fad", "credit": "Unsplash", "url": "https://unsplash.com/photos/h39HBKBclNM", "what": "бой, ч/б"},
+    {"id": "1578762560042-46ad127c95ea", "credit": "Unsplash", "url": "https://unsplash.com/photos/WIPIAJW2-P8", "what": "гиря и груша"},
+    {"id": "1639511205270-2b1ce5b112c6", "credit": "Unsplash", "url": "https://unsplash.com/photos/3oP2qQxhvCQ", "what": "гиря в зале"},
+    {"id": "1434596922112-19c563067271", "credit": "Unsplash", "url": "https://unsplash.com/photos/U5kQvbQWoG0", "what": "канаты"},
+    {"id": "1526407297627-d845b359a55b", "credit": "Victor Freitas", "url": "https://unsplash.com/photos/Ovlel6acNac", "what": "штанга, кроссфит"},
+    {"id": "1533681904393-9ab6eee7e408", "credit": "Unsplash", "url": "https://unsplash.com/photos/AkEr0jc5Lvs", "what": "тренировка в зале"},
+    {"id": "1541534741688-6078c6bfb5c5", "credit": "Unsplash", "url": "https://unsplash.com/photos/h4i9G-de7Po", "what": "тяга, зал"},
+    {"id": "1637055667163-ad033183b329", "credit": "Unsplash", "url": "https://unsplash.com/photos/xH_TvMt3dSU", "what": "стойка на руках"},
+    {"id": "1461897104016-0b3b00cc81ee", "credit": "Unsplash", "url": "https://unsplash.com/photos/ttbCwN_mWic", "what": "марафон, ч/б"},
+    {"id": "1518214598173-1666bc921d66", "credit": "Unsplash", "url": "https://unsplash.com/photos/CVvFVQ_-oUg", "what": "бег по холму"},
+    {"id": "1486218119243-13883505764c", "credit": "Unsplash", "url": "https://unsplash.com/photos/mQVWb7kUoOE", "what": "бег у поля"},
+    {"id": "1581889470536-467bdbe30cd0", "credit": "Unsplash", "url": "https://unsplash.com/photos/7DCZgKyp8vw", "what": "бег по асфальту"},
+    {"id": "1502904550040-7534597429ae", "credit": "Unsplash", "url": "https://unsplash.com/photos/atSaEOeE8Nk", "what": "забег на стадионе"},
+    {"id": "1457470572216-1240fac24b37", "credit": "Unsplash", "url": "https://unsplash.com/photos/TEYrLTKKMSg", "what": "беговая дорожка"},
+    {"id": "1594882645126-14020914d58d", "credit": "Unsplash", "url": "https://unsplash.com/photos/I1EWTM5mFEM", "what": "прыжок на скале, закат"},
+    {"id": "1726711340800-d3709587de53", "credit": "Unsplash", "url": "https://unsplash.com/photos/QTrSmMrmeAs", "what": "подъём с рюкзаком, Казбеги"},
+    {"id": "1755398104445-a6a9b964ad94", "credit": "Emma Swoboda", "url": "https://unsplash.com/photos/G_w2LWtxp-4", "what": "тропа по склону"},
+    {"id": "1753195268432-446b2a5b545b", "credit": "Marek Levák", "url": "https://unsplash.com/photos/8FCAISudZ9Q", "what": "тропа к пикам"},
+    {"id": "1758274534019-5164e277b2d8", "credit": "Unsplash", "url": "https://unsplash.com/photos/U3p7eGpI-68", "what": "йога в парке"},
 )
 
 EMOJI_RE = re.compile(
@@ -563,6 +582,7 @@ def clean_spaces(text: str) -> str:
 
 def poster_title(title: str, coach: str | None) -> str:
     raw = clean_spaces(strip_emoji(title))
+    raw = clean_spaces(re.sub(r"\s*\([^)]*@[^)]*\)", "", raw))
     if coach:
         raw = re.sub(r"\s+[cс]\s+.+$", "", raw, flags=re.IGNORECASE)
     return raw.upper()
@@ -704,18 +724,38 @@ def titled(slot: Slot) -> str:
     return name
 
 
-def load_used_photo_ids() -> list[str]:
-    if not USED_PHOTOS.exists():
-        return []
-    try:
-        data = json.loads(USED_PHOTOS.read_text(encoding="utf-8"))
-        return list(data) if isinstance(data, list) else []
-    except json.JSONDecodeError:
-        return []
+def load_photo_history() -> list[dict[str, str]]:
+    if USED_PHOTOS.exists():
+        try:
+            data = json.loads(USED_PHOTOS.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            data = []
+        return [item for item in data if isinstance(item, dict) and item.get("id")] if isinstance(data, list) else []
+    if LEGACY_USED_PHOTOS.exists():
+        try:
+            data = json.loads(LEGACY_USED_PHOTOS.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            data = []
+        if isinstance(data, list):
+            return [{"id": str(item), "used_at": "", "week": "", "frame": ""} for item in data]
+    return []
 
 
-def save_used_photo_ids(ids: list[str]) -> None:
-    USED_PHOTOS.write_text(json.dumps(ids[-8:], ensure_ascii=False, indent=2), encoding="utf-8")
+def save_photo_history(history: list[dict[str, str]]) -> None:
+    USED_PHOTOS.write_text(json.dumps(history, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if LEGACY_USED_PHOTOS.exists():
+        LEGACY_USED_PHOTOS.unlink()
+
+
+def photo_candidates(history: list[dict[str, str]]) -> list[dict[str, str]]:
+    last_used: dict[str, int] = {}
+    for index, item in enumerate(history):
+        last_used[item["id"]] = index
+    fresh = [photo for photo in PHOTO_POOL if photo["id"] not in last_used]
+    random.shuffle(fresh)
+    stale = [photo for photo in PHOTO_POOL if photo["id"] in last_used]
+    stale.sort(key=lambda photo: last_used[photo["id"]])
+    return fresh + stale
 
 
 def download_photo(photo: dict[str, str], dest: Path) -> None:
@@ -725,33 +765,51 @@ def download_photo(photo: dict[str, str], dest: Path) -> None:
         dest.write_bytes(response.read())
 
 
-def pick_backgrounds() -> tuple[Background, Background]:
+def schedule_background(path: Path) -> Image.Image:
+    return load_bg(path, dark=0.28, blur=12, brightness=1.25)
+
+
+def schedule_luminance(path: Path) -> float:
+    im = schedule_background(path).convert("L")
+    top, bottom = schedule_column_bounds()
+    return ImageStat.Stat(im.crop((0, top, W, bottom))).mean[0]
+
+
+def pick_backgrounds(week_label: str) -> tuple[Background, Background]:
     CACHE.mkdir(parents=True, exist_ok=True)
-    used = load_used_photo_ids()
-    order = [item for item in PHOTO_POOL if item["id"] not in used]
-    random.shuffle(order)
-    fallback = list(PHOTO_POOL)
-    random.shuffle(fallback)
-    candidates = order + [item for item in fallback if item not in order]
+    history = load_photo_history()
     backgrounds: list[Background] = []
     chosen_ids: list[str] = []
-    for photo in candidates:
-        if photo["id"] in chosen_ids:
-            continue
+    too_bright: list[tuple[float, dict[str, str], Path]] = []
+    for photo in photo_candidates(history):
         path = CACHE / f"{len(backgrounds)}-{photo['id']}-{random.randint(1000, 9999)}.jpg"
         try:
             download_photo(photo, path)
         except Exception:
             continue
+        if len(backgrounds) == 1:
+            luminance = schedule_luminance(path)
+            if luminance > SCHEDULE_MAX_LUMINANCE:
+                too_bright.append((luminance, photo, path))
+                continue
         backgrounds.append(
             Background(path=path, credit=photo["credit"], url=photo["url"], what=photo["what"])
         )
         chosen_ids.append(photo["id"])
         if len(backgrounds) == 2:
             break
+    if len(backgrounds) == 1 and too_bright:
+        _, photo, path = min(too_bright, key=lambda item: item[0])
+        backgrounds.append(
+            Background(path=path, credit=photo["credit"], url=photo["url"], what=photo["what"])
+        )
+        chosen_ids.append(photo["id"])
     if len(backgrounds) < 2:
         raise SystemExit("Could not download two fresh background photos.")
-    save_used_photo_ids(used + chosen_ids)
+    used_at = datetime.now(MOSCOW).isoformat(timespec="seconds")
+    for frame, photo_id in zip(("01-cover", "02-schedule"), chosen_ids):
+        history.append({"id": photo_id, "used_at": used_at, "week": week_label, "frame": frame})
+    save_photo_history(history)
     return backgrounds[0], backgrounds[1]
 
 
@@ -1002,7 +1060,7 @@ def super_card(im: Image.Image, y0: int, y1: int, slot: Slot) -> None:
 
 
 def schedule(slots: list[Slot], background: Background) -> Image.Image:
-    im = load_bg(background.path, dark=0.28, blur=12, brightness=1.25)
+    im = schedule_background(background.path)
     d = ImageDraw.Draw(im)
     schedule_header(d)
     regulars = [item for item in slots if not item.is_super]
@@ -1108,8 +1166,8 @@ def main() -> None:
     if not slots:
         raise SystemExit("No remaining slots for the selected week.")
 
-    cover_bg, schedule_bg = pick_backgrounds()
     week_label = week_range_label(now)
+    cover_bg, schedule_bg = pick_backgrounds(week_label)
     for fmt in (STORY, POST):
         apply_format(fmt)
         out_dir = ROOT / "output" / f"{fmt.folder}-{now:%Y-%m-%d}"
