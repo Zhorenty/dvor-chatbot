@@ -91,15 +91,18 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
       l.w('Trainer directory refresh failed before participants list. Using cached usernames.');
     }
     final rosterUserIds = <int>{};
+    final rosterBookingIds = <int>[];
     for (final roster in normalizedByTraining.values) {
       for (final booking in roster) {
         final userId = MessageFormatters.rosterPeaksUserId(booking);
         if (userId != null) {
           rosterUserIds.add(userId);
+          rosterBookingIds.add(booking.id);
         }
       }
     }
     final peaksByUserId = await _loyaltyService.availableBalances(rosterUserIds, now: now);
+    final peaksByBookingId = await _loyaltyService.peaksByBookings(rosterBookingIds);
 
     final copy = _scheduleHandler.participantsCopy(category);
 
@@ -112,6 +115,7 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
         emptyText: copy.emptyText,
         isTrainerBooking: _isStaffTrainerBooking,
         peaksByUserId: peaksByUserId,
+        peaksByBookingId: peaksByBookingId,
         showTrainers: true,
       ),
       replyMarkup: _templates.privateMenuKeyboard(

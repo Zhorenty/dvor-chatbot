@@ -8,13 +8,20 @@ extension MessageTemplatesHelpers on MessageTemplates {
     return MessageFormatters.statusLabel(status);
   }
 
-  String _participantRosterLine(TrainingBooking booking, Map<int, int> peaksByUserId) {
+  String _participantRosterLine(
+    TrainingBooking booking,
+    Map<int, int> peaksByUserId,
+    Map<int, BookingPeaksSnapshot> peaksByBookingId,
+  ) {
     final userId = MessageFormatters.rosterPeaksUserId(booking);
     final peaksBalance =
         userId != null && peaksByUserId.containsKey(userId) ? peaksByUserId[userId] : null;
+    final snapshot = peaksByBookingId[booking.id];
     return MessageFormatters.participantRosterLine(
       booking,
       peaksBalance: peaksBalance,
+      peaksSpent: snapshot?.spent,
+      peaksEarned: snapshot?.earned,
     );
   }
 

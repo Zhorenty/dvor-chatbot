@@ -130,6 +130,47 @@ final class InMemoryLoyaltyRepository implements LoyaltyRepository {
   }
 
   @override
+  Future<Map<int, BookingPeaksSnapshot>> peaksByBookings(Iterable<int> bookingIds) async {
+    final ids = bookingIds.where((id) => id > 0).toSet();
+    if (ids.isEmpty) {
+      return const <int, BookingPeaksSnapshot>{};
+    }
+    final spent = <int, int>{};
+    final earned = <int, int>{};
+    for (final entry in _ledger) {
+      final bookingId = entry.bookingId;
+      if (bookingId == null || !ids.contains(bookingId)) {
+        continue;
+      }
+      if (entry.reason == LoyaltyLedgerReason.spend) {
+        spent[bookingId] = (spent[bookingId] ?? 0) - entry.amount;
+      } else if (entry.reason == LoyaltyLedgerReason.refund) {
+        spent[bookingId] = (spent[bookingId] ?? 0) - entry.amount;
+      } else if (entry.amount > 0 && _isActivityEarn(entry.reason)) {
+        earned[bookingId] = (earned[bookingId] ?? 0) + entry.amount;
+      }
+    }
+    final snapshots = <int, BookingPeaksSnapshot>{};
+    for (final id in ids) {
+      if (!spent.containsKey(id) && !earned.containsKey(id)) {
+        continue;
+      }
+      final netSpent = spent[id] ?? 0;
+      snapshots[id] = BookingPeaksSnapshot(
+        spent: netSpent < 0 ? 0 : netSpent,
+        earned: earned[id] ?? 0,
+      );
+    }
+    return snapshots;
+  }
+
+  bool _isActivityEarn(LoyaltyLedgerReason reason) {
+    return reason == LoyaltyLedgerReason.training ||
+        reason == LoyaltyLedgerReason.hike ||
+        reason == LoyaltyLedgerReason.trail;
+  }
+
+  @override
   Future<int> peaksSpentOnSubscription(int requestId) async {
     var spent = 0;
     for (final entry in _ledger) {

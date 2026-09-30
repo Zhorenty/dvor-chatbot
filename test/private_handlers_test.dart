@@ -4876,11 +4876,13 @@ void main() {
       expect(sender.lastContentMessage.text, contains('Тренеры'));
       expect(
         sender.lastContentMessage.text,
-        contains('@nudden (Бесплатно: стартовая тренировка 🎁, баланс вершинок: 0 ⛰️)'),
+        contains(
+          '@nudden (Бесплатно: стартовая тренировка 🎁, баланс вершинок: 0 ⛰️) — без списания',
+        ),
       );
       expect(
         sender.lastContentMessage.text,
-        contains('@runner_cancelled (Отменено ❌, баланс вершинок: 0 ⛰️)'),
+        contains('@runner_cancelled (Отменено ❌, баланс вершинок: 0 ⛰️) — без списания'),
       );
       expect(
         sender.lastContentMessage.text.indexOf('@runner_cancelled'),
@@ -5297,7 +5299,10 @@ void main() {
       expect(messageText, contains('@hike_user'));
       expect(messageText, contains('Тренеры'));
       expect(messageText, contains('@nudden'));
-      expect(messageText, contains('@nudden (Оплачено ✅, баланс вершинок: 0 ⛰️)'));
+      expect(
+        messageText,
+        contains('@nudden (Оплачено ✅, баланс вершинок: 0 ⛰️) — без списания'),
+      );
     });
 
     test('shows peak balance on hike bookings and hides a cancelled duplicate of the same person',
@@ -5393,9 +5398,99 @@ void main() {
 
       expect(categoryHandled, isTrue);
       final messageText = sender.lastContentMessage.text;
-      expect(messageText, contains('@hike_user (Оплачено ✅, баланс вершинок: 1250 ⛰️)'));
+      expect(
+        messageText,
+        contains('@hike_user (Оплачено ✅, баланс вершинок: 1250 ⛰️) — без списания'),
+      );
       expect(messageText, isNot(contains('Отменено')));
       expect(RegExp('@hike_user').allMatches(messageText).length, 1);
+    });
+
+    test('shows hike prepay and remainder after peaks on the participant list', () async {
+      final sender = _FakeSender();
+      final now = DateTime(2026, 9, 1, 12, 0);
+      final hike = TrainingInfo(
+        title: '🥾 Поход: Эльбрус',
+        startsAt: DateTime(2026, 10, 12),
+        location: 'Горный лагерь',
+        category: ActivityCategory.hikes,
+        price: 18000,
+        prepayPercent: 40,
+      );
+      final loyaltyRepository = InMemoryLoyaltyRepository(nowProvider: () => now);
+      await loyaltyRepository.credit(
+        userId: 9501,
+        amount: 1200,
+        reason: LoyaltyLedgerReason.adminGrant,
+        idempotencyKey: 'peaks-9501',
+        now: now,
+      );
+      await loyaltyRepository.debit(
+        userId: 9501,
+        amount: 1000,
+        reason: LoyaltyLedgerReason.spend,
+        idempotencyKey: LoyaltyKeys.spendBooking(950),
+        now: now,
+        bookingId: 950,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          fakeBooking(
+            id: 950,
+            userId: 9501,
+            userUsername: 'hike_payer',
+            trainingKey: hike.sessionKey,
+            title: hike.title,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.partialPaid,
+            trainingPrice: 18000,
+            trainingPrepayPercent: 40,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Эльбрус',
+              dateFrom: hike.startsAt,
+              dateTo: hike.startsAt,
+              description: hike.location,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        loyaltyService: LoyaltyService(
+          repository: loyaltyRepository,
+          nowProvider: () => now,
+        ),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2005},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2005},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2005},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+
+      expect(categoryHandled, isTrue);
+      expect(
+        sender.lastContentMessage.text,
+        contains(
+          '@hike_payer (Предоплата внесена 🟡, баланс вершинок: 200 ⛰️) — '
+          'предоплата 7 200 ₽, списано 1 000 ⛰️, остаток 10 300 ₽',
+        ),
+      );
     });
 
     test('merges training participants when session date changes', () async {

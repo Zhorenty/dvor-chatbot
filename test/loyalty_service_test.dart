@@ -62,6 +62,53 @@ void main() {
     expect((await service.account(11)).remaining, 0);
   });
 
+  test('peaksByBookings nets spend against refund and keeps activity earn', () async {
+    await service.credit(
+      userId: 20,
+      amount: 1500,
+      reason: LoyaltyLedgerReason.adminGrant,
+      idempotencyKey: 'g20',
+      now: now,
+    );
+    await service.debit(
+      userId: 20,
+      amount: 1000,
+      reason: LoyaltyLedgerReason.spend,
+      idempotencyKey: LoyaltyKeys.spendBooking(7),
+      now: now,
+      bookingId: 7,
+    );
+    await service.credit(
+      userId: 20,
+      amount: 200,
+      reason: LoyaltyLedgerReason.training,
+      idempotencyKey: LoyaltyKeys.training(7),
+      now: now,
+      bookingId: 7,
+    );
+    await service.credit(
+      userId: 20,
+      amount: 50,
+      reason: LoyaltyLedgerReason.feedback,
+      idempotencyKey: 'feedback-7',
+      now: now,
+      bookingId: 7,
+    );
+    await service.refund(
+      userId: 20,
+      amount: 1000,
+      idempotencyKey: LoyaltyKeys.refundBooking(7),
+      now: now,
+      bookingId: 7,
+    );
+
+    final snapshots = await service.peaksByBookings(<int>[7, 8]);
+    expect(snapshots[7]?.spent, 0);
+    expect(snapshots[7]?.earned, 200);
+    expect(snapshots[8]?.spent, 0);
+    expect(snapshots[8]?.earned, 0);
+  });
+
   test('refund increases balance and is activity', () async {
     await service.credit(
       userId: 12,

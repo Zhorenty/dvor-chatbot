@@ -78,6 +78,18 @@ final class LoyaltyService {
     return _repository.peaksSpentOnBooking(bookingId);
   }
 
+  /// One snapshot per id. Bookings with no ledger rows are spent 0, earned 0.
+  Future<Map<int, BookingPeaksSnapshot>> peaksByBookings(Iterable<int> bookingIds) async {
+    final ids = bookingIds.where((id) => id > 0).toSet();
+    if (ids.isEmpty) {
+      return const <int, BookingPeaksSnapshot>{};
+    }
+    final listed = await _repository.peaksByBookings(ids);
+    return <int, BookingPeaksSnapshot>{
+      for (final id in ids) id: listed[id] ?? const BookingPeaksSnapshot(),
+    };
+  }
+
   Future<int> peaksSpentOnSubscription(int requestId) {
     return _repository.peaksSpentOnSubscription(requestId);
   }

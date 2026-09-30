@@ -2318,6 +2318,7 @@ extension MessageTemplatesContent on MessageTemplates {
     String emptyText = 'Ближайших тренировок пока нет, показывать список не для чего.',
     bool Function(TrainingBooking booking)? isTrainerBooking,
     Map<int, int> peaksByUserId = const <int, int>{},
+    Map<int, BookingPeaksSnapshot> peaksByBookingId = const <int, BookingPeaksSnapshot>{},
     bool showTrainers = true,
   }) {
     if (trainings.isEmpty) {
@@ -2367,7 +2368,13 @@ extension MessageTemplatesContent on MessageTemplates {
               summary: 'Участники',
               body: RichHtml.bullets(
                 activeParticipantTags
-                    .map((booking) => _participantRosterLine(booking, peaksByUserId))
+                    .map(
+                      (booking) => _participantRosterLine(
+                        booking,
+                        peaksByUserId,
+                        peaksByBookingId,
+                      ),
+                    )
                     .toList(growable: false),
               ),
               alreadyEscaped: true,
@@ -2380,7 +2387,13 @@ extension MessageTemplatesContent on MessageTemplates {
               summary: 'Тренеры',
               body: RichHtml.bullets(
                 activeTrainerTags
-                    .map((booking) => _participantRosterLine(booking, peaksByUserId))
+                    .map(
+                      (booking) => _participantRosterLine(
+                        booking,
+                        peaksByUserId,
+                        peaksByBookingId,
+                      ),
+                    )
                     .toList(growable: false),
               ),
               alreadyEscaped: true,
@@ -2397,7 +2410,13 @@ extension MessageTemplatesContent on MessageTemplates {
               summary: 'Отменённые',
               body: RichHtml.bullets(
                 cancelled
-                    .map((booking) => _participantRosterLine(booking, peaksByUserId))
+                    .map(
+                      (booking) => _participantRosterLine(
+                        booking,
+                        peaksByUserId,
+                        peaksByBookingId,
+                      ),
+                    )
                     .toList(growable: false),
               ),
               alreadyEscaped: true,

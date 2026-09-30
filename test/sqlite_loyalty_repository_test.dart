@@ -197,4 +197,41 @@ void main() {
     expect(await service.hasEntry(LoyaltyKeys.training(99)), isFalse);
     expect(await onboarding.hasStarterBonusAvailable(10), isFalse);
   });
+
+  test('peaksByBookings reads net spend and activity earn', () async {
+    final now = DateTime.utc(2026, 6, 1, 12);
+    final loyalty = SqliteLoyaltyRepository(
+      databaseHandle: handle,
+      nowProvider: () => now,
+    );
+    await loyalty.init();
+    final service = LoyaltyService(repository: loyalty, nowProvider: () => now);
+    await service.credit(
+      userId: 21,
+      amount: 1200,
+      reason: LoyaltyLedgerReason.adminGrant,
+      idempotencyKey: 'g21',
+      now: now,
+    );
+    await service.debit(
+      userId: 21,
+      amount: 1000,
+      reason: LoyaltyLedgerReason.spend,
+      idempotencyKey: LoyaltyKeys.spendBooking(31),
+      now: now,
+      bookingId: 31,
+    );
+    await service.credit(
+      userId: 21,
+      amount: 200,
+      reason: LoyaltyLedgerReason.training,
+      idempotencyKey: LoyaltyKeys.training(31),
+      now: now,
+      bookingId: 31,
+    );
+
+    final snapshots = await service.peaksByBookings(<int>[31]);
+    expect(snapshots[31]?.spent, 1000);
+    expect(snapshots[31]?.earned, 200);
+  });
 }

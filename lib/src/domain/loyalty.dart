@@ -112,6 +112,14 @@ final class LoyaltySpendQuote {
   final bool coversFully;
 }
 
+/// Net peaks spent and earned on one booking. Spend is already net of refunds.
+final class BookingPeaksSnapshot {
+  const BookingPeaksSnapshot({this.spent = 0, this.earned = 0});
+
+  final int spent;
+  final int earned;
+}
+
 final class LoyaltyPeaksAnalytics {
   const LoyaltyPeaksAnalytics({
     required this.earnedTotal,

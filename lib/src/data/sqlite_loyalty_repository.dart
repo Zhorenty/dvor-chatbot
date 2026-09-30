@@ -619,6 +619,52 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
   }
 
   @override
+  Future<Map<int, BookingPeaksSnapshot>> peaksByBookings(Iterable<int> bookingIds) async {
+    final ids = bookingIds.where((id) => id > 0).toSet().toList(growable: false);
+    if (ids.isEmpty) {
+      return const <int, BookingPeaksSnapshot>{};
+    }
+    final snapshots = <int, BookingPeaksSnapshot>{};
+    const chunkSize = 200;
+    for (var offset = 0; offset < ids.length; offset += chunkSize) {
+      final end = offset + chunkSize > ids.length ? ids.length : offset + chunkSize;
+      final chunk = ids.sublist(offset, end);
+      final placeholders = List<String>.filled(chunk.length, '?').join(', ');
+      final rows = _db.select(
+        '''
+        SELECT booking_id,
+          COALESCE(SUM(CASE
+            WHEN reason = 'spend' THEN -amount
+            WHEN reason = 'refund' THEN -amount
+            ELSE 0
+          END), 0) AS spent,
+          COALESCE(SUM(CASE
+            WHEN reason IN ('training', 'hike', 'trail') AND amount > 0 THEN amount
+            ELSE 0
+          END), 0) AS earned
+        FROM loyalty_ledger
+        WHERE booking_id IN ($placeholders)
+        GROUP BY booking_id;
+        ''',
+        chunk,
+      );
+      for (final row in rows) {
+        final bookingId = row['booking_id'];
+        if (bookingId is! int) {
+          continue;
+        }
+        final spent = (row['spent'] as int?) ?? 0;
+        final earned = (row['earned'] as int?) ?? 0;
+        snapshots[bookingId] = BookingPeaksSnapshot(
+          spent: spent < 0 ? 0 : spent,
+          earned: earned < 0 ? 0 : earned,
+        );
+      }
+    }
+    return snapshots;
+  }
+
+  @override
   Future<int> peaksSpentOnSubscription(int requestId) async {
     return _netSpend(
       '''

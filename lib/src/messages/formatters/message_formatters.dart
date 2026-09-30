@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/application/loyalty_math.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
@@ -110,13 +111,107 @@ final class MessageFormatters {
   static String participantRosterLine(
     TrainingBooking booking, {
     int? peaksBalance,
+    int? peaksSpent,
+    int? peaksEarned,
   }) {
     final tag = userTag(booking);
     final status = participantStatusLabel(booking);
-    if (peaksBalance == null) {
+    final earned = peaksEarned != null && peaksEarned > 0 ? peaksEarned : 0;
+    final showCash = _rosterShowsOutdoorRemainder(booking);
+    if (peaksBalance == null && peaksSpent == null && earned == 0 && !showCash) {
       return '$tag ($status)';
     }
-    return '$tag ($status, баланс вершинок: $peaksBalance ⛰️)';
+
+    final head = peaksBalance == null
+        ? '$tag ($status)'
+        : '$tag ($status, баланс вершинок: $peaksBalance ⛰️)';
+    final facts = <String>[];
+    if (showCash) {
+      final split = outdoorCashAfterPeaks(
+        priceRub: booking.trainingPrice ?? 0,
+        prepayPercent: booking.trainingPrepayPercent,
+        peaksSpent: peaksSpent ?? 0,
+      );
+      facts.add('предоплата ${_groupedAmount(split.prepayRub)} ₽');
+      final spendFact = _rosterSpendFact(peaksSpent);
+      if (spendFact != null) {
+        facts.add(spendFact);
+      }
+      facts.add('остаток ${_groupedAmount(split.remainderRub)} ₽');
+    } else {
+      final spendFact = _rosterSpendFact(peaksSpent);
+      if (spendFact != null) {
+        facts.add(spendFact);
+      }
+    }
+    if (earned > 0) {
+      facts.add('начислено ${_groupedAmount(earned)} ⛰️');
+    }
+    if (facts.isEmpty) {
+      return head;
+    }
+    return '$head — ${facts.join(', ')}';
+  }
+
+  /// Prepayment stays the transfer. Peaks come off the offline remainder only.
+  static ({int prepayRub, int remainderRub}) outdoorCashAfterPeaks({
+    required int priceRub,
+    required int? prepayPercent,
+    required int peaksSpent,
+  }) {
+    if (priceRub <= 0) {
+      return (prepayRub: 0, remainderRub: 0);
+    }
+    final prepay = outdoorPrepaymentAmount(priceRub, prepayPercent: prepayPercent);
+    final grossRemainder = priceRub - prepay;
+    final fromPeaks = peaksSpent <= 0 ? 0 : peaksSpent ~/ LoyaltyMath.peaksPerRub;
+    final remainder = grossRemainder - fromPeaks;
+    return (
+      prepayRub: prepay,
+      remainderRub: remainder < 0 ? 0 : remainder,
+    );
+  }
+
+  static bool _rosterShowsOutdoorRemainder(TrainingBooking booking) {
+    final price = booking.trainingPrice;
+    if (price == null || price <= 0 || !isOutdoorBooking(booking)) {
+      return false;
+    }
+    return switch (booking.status) {
+      BookingStatus.pendingPayment ||
+      BookingStatus.paymentSubmitted ||
+      BookingStatus.partialPaid ||
+      BookingStatus.paymentRejected =>
+        true,
+      BookingStatus.paid || BookingStatus.freeTraining || BookingStatus.cancelled => false,
+    };
+  }
+
+  static String? _rosterSpendFact(int? peaksSpent) {
+    if (peaksSpent == null) {
+      return null;
+    }
+    if (peaksSpent > 0) {
+      return 'списано ${_groupedAmount(peaksSpent)} ⛰️';
+    }
+    return 'без списания';
+  }
+
+  static String _groupedAmount(int amount) {
+    final negative = amount < 0;
+    final digits = (negative ? -amount : amount).toString();
+    final buffer = StringBuffer();
+    for (var index = 0; index < digits.length; index++) {
+      final remaining = digits.length - index;
+      if (index > 0 && remaining % 3 == 0) {
+        buffer.write(' ');
+      }
+      buffer.write(digits[index]);
+    }
+    if (negative) {
+      return '-$buffer';
+    }
+    return buffer.toString();
   }
 
   static String userTag(TrainingBooking booking) {

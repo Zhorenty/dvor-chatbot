@@ -70,6 +70,62 @@ void main() {
         MessageFormatters.participantRosterLine(coachingStaffFree, peaksBalance: 1250),
         '@coach (Бесплатно: тренерский штаб, баланс вершинок: 1250 ⛰️)',
       );
+      expect(
+        MessageFormatters.participantRosterLine(
+          coachingStaffFree,
+          peaksBalance: 1250,
+          peaksSpent: 0,
+        ),
+        '@coach (Бесплатно: тренерский штаб, баланс вершинок: 1250 ⛰️) — без списания',
+      );
+    });
+
+    test('shows outdoor prepay and remainder after peaks on the roster', () {
+      final hike = fakeBooking(
+        userUsername: 'hiker',
+        trainingKey: 'hikes|elbrus',
+        title: '🥾 Поход: Эльбрус',
+        status: BookingStatus.partialPaid,
+        trainingPrice: 18000,
+        trainingPrepayPercent: 40,
+      );
+
+      expect(
+        MessageFormatters.outdoorCashAfterPeaks(
+          priceRub: 18000,
+          prepayPercent: 40,
+          peaksSpent: 1000,
+        ),
+        (prepayRub: 7200, remainderRub: 10300),
+      );
+      expect(
+        MessageFormatters.participantRosterLine(
+          hike,
+          peaksBalance: 200,
+          peaksSpent: 1000,
+        ),
+        '@hiker (Предоплата внесена 🟡, баланс вершинок: 200 ⛰️) — '
+        'предоплата 7 200 ₽, списано 1 000 ⛰️, остаток 10 300 ₽',
+      );
+    });
+
+    test('separates a boxing accrual from a spend on the roster', () {
+      final boxing = fakeBooking(
+        userUsername: 'boxer',
+        title: 'Бокс',
+        status: BookingStatus.paid,
+        trainingPrice: 500,
+      );
+
+      expect(
+        MessageFormatters.participantRosterLine(
+          boxing,
+          peaksBalance: 200,
+          peaksSpent: 0,
+          peaksEarned: 200,
+        ),
+        '@boxer (Оплачено ✅, баланс вершинок: 200 ⛰️) — без списания, начислено 200 ⛰️',
+      );
     });
 
     test('maps promo code full discount booking to promo label', () {
