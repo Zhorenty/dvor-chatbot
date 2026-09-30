@@ -86,6 +86,20 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     for (final entry in byTraining.entries) {
       normalizedByTraining[entry.key] = _deduplicateParticipantBookings(entry.value);
     }
+    final refreshOk = await _trainerDirectoryRepository.refresh();
+    if (!refreshOk) {
+      l.w('Trainer directory refresh failed before participants list. Using cached usernames.');
+    }
+    final rosterUserIds = <int>{};
+    for (final roster in normalizedByTraining.values) {
+      for (final booking in roster) {
+        final userId = MessageFormatters.rosterPeaksUserId(booking);
+        if (userId != null) {
+          rosterUserIds.add(userId);
+        }
+      }
+    }
+    final peaksByUserId = await _loyaltyService.availableBalances(rosterUserIds, now: now);
 
     final copy = _scheduleHandler.participantsCopy(category);
 
@@ -96,7 +110,8 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
         bookingsByTrainingKey: normalizedByTraining,
         title: copy.title,
         emptyText: copy.emptyText,
-        isTrainerBooking: _isWhitelistedTrainerBookingByBooking,
+        isTrainerBooking: _isStaffTrainerBooking,
+        peaksByUserId: peaksByUserId,
         showTrainers: true,
       ),
       replyMarkup: _templates.privateMenuKeyboard(
@@ -189,19 +204,19 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
   String _participantIdentity(TrainingBooking booking) {
     // Party/"book a friend" rows share manager user_id. Identity must be keyed by
     // the actual participant, otherwise the whole group collapses to one line.
+    // Same person can also have a cancelled ghost row (self vs telegram). Collapse
+    // those by username and keep the active seat in _shouldReplaceParticipant.
     switch (booking.participantType) {
       case BookingParticipantType.self:
-        return 'self:${booking.managerUserId}';
       case BookingParticipantType.telegram:
-        final participantUserId = booking.participantUserId;
-        if (participantUserId != null) {
-          return 'tg-id:$participantUserId';
+        final username = normalizeTelegramUsername(
+          booking.participantUsername ?? booking.userUsername,
+        );
+        if (username != null) {
+          return 'user:$username';
         }
-        final username = booking.participantUsername?.trim().toLowerCase();
-        if (username != null && username.isNotEmpty) {
-          return 'tg:${username.startsWith('@') ? username.substring(1) : username}';
-        }
-        return 'tg-row:${booking.id}';
+        final userId = booking.participantUserId ?? booking.managerUserId;
+        return 'user-id:$userId';
       case BookingParticipantType.guest:
         final name = booking.participantName?.trim().toLowerCase();
         if (name != null && name.isNotEmpty) {

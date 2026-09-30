@@ -13,6 +13,29 @@ void main() {
       expect(LoyaltyMath.roundUpFromDouble(200), 200);
     });
 
+    test('feedback reward is a share of the max and only a detailed note pays 50', () {
+      expect(LoyaltyMath.feedbackRewardPeaks(null), 0);
+      expect(LoyaltyMath.feedbackRewardPeaks(''), 0);
+      expect(LoyaltyMath.feedbackRewardPeaks('ок'), 0);
+      expect(LoyaltyMath.feedbackRewardPeaks('супер!!!'), 0);
+      expect(LoyaltyMath.feedbackRewardPeaks('было жарко'), 0);
+      expect(LoyaltyMath.feedbackRewardPeaks('темп был очень комфортный'), 10);
+      expect(
+        LoyaltyMath.feedbackRewardPeaks(
+          'Группа небольшая, темп ровный, разминка зашла. Хотелось бы чуть больше работы в парах.',
+        ),
+        30,
+      );
+      expect(
+        LoyaltyMath.feedbackRewardPeaks(
+          'Тренировка зашла. Разминка была спокойная, основная часть плотная, но без хаоса. '
+          'Тренер поправил стойку и темп. В конце хватило времени на заминку. '
+          'В следующий раз хочу больше работы в парах и чуть меньше пауз между раундами.',
+        ),
+        LoyaltyMath.feedbackPeaks,
+      );
+    });
+
     test('training earn is 20% of price, round_up_10', () {
       expect(LoyaltyMath.trainingEarnPeaks(350), 140);
       expect(LoyaltyMath.trainingEarnPeaks(500), 200);

@@ -508,6 +508,27 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
   }
 
   @override
+  Future<List<LoyaltyAccount>> listAccounts(Iterable<int> userIds) async {
+    final ids = userIds.where((id) => id > 0).toSet().toList(growable: false);
+    if (ids.isEmpty) {
+      return const <LoyaltyAccount>[];
+    }
+    final accounts = <LoyaltyAccount>[];
+    const chunkSize = 200;
+    for (var offset = 0; offset < ids.length; offset += chunkSize) {
+      final end = offset + chunkSize > ids.length ? ids.length : offset + chunkSize;
+      final chunk = ids.sublist(offset, end);
+      final placeholders = List<String>.filled(chunk.length, '?').join(', ');
+      final rows = _db.select(
+        'SELECT * FROM loyalty_accounts WHERE user_id IN ($placeholders);',
+        chunk,
+      );
+      accounts.addAll(rows.map(_rowToAccount));
+    }
+    return accounts;
+  }
+
+  @override
   Future<List<LoyaltyAccount>> listExpired({
     required DateTime now,
     int limit = 200,

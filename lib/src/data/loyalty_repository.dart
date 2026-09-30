@@ -9,6 +9,8 @@ abstract interface class LoyaltyRepository {
 
   Future<LoyaltyAccount> getAccount(int userId);
 
+  Future<List<LoyaltyAccount>> listAccounts(Iterable<int> userIds);
+
   Future<List<LoyaltyAccount>> listExpired({
     required DateTime now,
     int limit = 200,
@@ -81,6 +83,11 @@ final class NoopLoyaltyRepository implements LoyaltyRepository {
   @override
   Future<LoyaltyAccount> getAccount(int userId) async {
     return LoyaltyAccount(userId: userId, remaining: 0);
+  }
+
+  @override
+  Future<List<LoyaltyAccount>> listAccounts(Iterable<int> userIds) async {
+    return const <LoyaltyAccount>[];
   }
 
   @override

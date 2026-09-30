@@ -391,13 +391,20 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
         submittedAt: _nowProvider(),
         comment: comment,
       );
-      if (rating != TrainingFeedbackRating.skipped) {
-        await _creditFeedbackLoyalty(userId: userId, bookingId: bookingId, chatId: chatId);
+      final feedbackPeaks =
+          rating == TrainingFeedbackRating.skipped ? 0 : LoyaltyMath.feedbackRewardPeaks(comment);
+      if (feedbackPeaks > 0) {
+        await _creditFeedbackLoyalty(
+          userId: userId,
+          bookingId: bookingId,
+          chatId: chatId,
+          amount: feedbackPeaks,
+        );
       }
       _flowByUserId.remove(userId);
       await _sendScreen(
         chatId,
-        _templates.trainingFeedbackThanks(),
+        _templates.trainingFeedbackThanks(shortReview: feedbackPeaks <= 0),
         replyMarkup: _templates.privateMenuKeyboard(
           isAdmin: isAdmin,
           showReturnToAdminMenu: showReturnToAdminMenu,

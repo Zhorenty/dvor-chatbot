@@ -16,6 +16,7 @@ abstract final class LoyaltyRules {
     MessageFormatters.boxingCardIncludedPaymentNoteMarker,
     MessageFormatters.boxingCardLateCancelPaymentNoteMarker,
     MessageFormatters.dvorTeamFreePaymentNoteMarker,
+    MessageFormatters.coachingStaffFreePaymentNoteMarker,
     MessageFormatters.loyaltyPeaksPaymentNoteMarker,
   ];
 

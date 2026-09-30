@@ -33,6 +33,12 @@ void main() {
         paymentNote: MessageFormatters.referralBonusPaymentNoteMarker,
         trainingPrice: 700,
       );
+      final coachingStaffFree = fakeBooking(
+        userUsername: 'coach',
+        status: BookingStatus.paid,
+        paymentNote: MessageFormatters.coachingStaffFreePaymentNoteMarker,
+        trainingPrice: 700,
+      );
       final dvorTeamFree = fakeBooking(
         status: BookingStatus.paid,
         paymentNote: MessageFormatters.dvorTeamFreePaymentNoteMarker,
@@ -55,6 +61,14 @@ void main() {
       expect(
         MessageFormatters.bookingStatusLabel(dvorTeamFree),
         'Бесплатно: команда DVOR 🖤',
+      );
+      expect(
+        MessageFormatters.bookingStatusLabel(coachingStaffFree),
+        'Бесплатно: тренерский штаб',
+      );
+      expect(
+        MessageFormatters.participantRosterLine(coachingStaffFree, peaksBalance: 1250),
+        '@coach (Бесплатно: тренерский штаб, баланс вершинок: 1250 ⛰️)',
       );
     });
 

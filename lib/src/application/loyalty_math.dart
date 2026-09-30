@@ -11,6 +11,8 @@ abstract final class LoyaltyMath {
   static const int startBonusPeaks = 1000;
   static const int referralPeaks = 1000;
   static const int feedbackPeaks = 50;
+  static const int feedbackPeaksMedium = 30;
+  static const int feedbackPeaksShort = 10;
   static const int missingTrainingPriceEarnPeaks = 200;
   static const int missingEveryFifthDebitPeaks = 1000;
   static const int unusedEveryFifthVoucherPeaks = 1000;
@@ -96,6 +98,37 @@ abstract final class LoyaltyMath {
     }
     final cash = priceRub - (peaksSpent ~/ peaksPerRub);
     return cash < 0 ? 0 : cash;
+  }
+
+  /// Share of [feedbackPeaks]. Empty, filler, and one-word notes pay nothing.
+  /// A short real note pays [feedbackPeaksShort], a useful one [feedbackPeaksMedium],
+  /// and only a detailed comment pays the full [feedbackPeaks].
+  static int feedbackRewardPeaks(String? comment) {
+    final raw = comment?.trim() ?? '';
+    if (raw.isEmpty) {
+      return 0;
+    }
+    final normalized = raw
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\p{L}\p{N}\s]+', unicode: true), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+    if (normalized.isEmpty || _feedbackFillers.contains(normalized)) {
+      return 0;
+    }
+    final words = normalized.split(' ').where((word) => word.runes.length >= 2).toList();
+    if (words.length < 4 || words.toSet().length < 3) {
+      return 0;
+    }
+    final letters = normalized.replaceAll(' ', '').length;
+    final detailed = words.length >= 18 || letters >= 120;
+    if (detailed) {
+      return feedbackPeaks;
+    }
+    if (words.length >= 8 || letters >= 40) {
+      return feedbackPeaksMedium;
+    }
+    return feedbackPeaksShort;
   }
 
   /// After a paid training: round_up_10(price_rub × 2 × 0.20). 500 ₽ → 200 ⛰️.
@@ -202,3 +235,41 @@ abstract final class LoyaltyMath {
     return spend;
   }
 }
+
+const Set<String> _feedbackFillers = <String>{
+  'ок',
+  'окей',
+  'okay',
+  'ok',
+  'норм',
+  'нормально',
+  'хорошо',
+  'супер',
+  'класс',
+  'круто',
+  'топ',
+  'спасибо',
+  'thanks',
+  'thank you',
+  'гуд',
+  'good',
+  'nice',
+  'fine',
+  'отлично',
+  'плохо',
+  'слабо',
+  'ничего',
+  'все ок',
+  'всё ок',
+  'сойдет',
+  'сойдёт',
+  'пойдет',
+  'пойдёт',
+  'нормас',
+  'зачет',
+  'зачёт',
+  'ужас',
+  'отстой',
+  'огонь',
+  'кайф',
+};

@@ -230,6 +230,32 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       );
       return;
     }
+    if (await _isDirectoryCoach(username: username)) {
+      final paidBooking = await _bookingRepository.updateStatus(
+        result.booking.id,
+        BookingStatus.paid,
+        paymentNote: MessageFormatters.coachingStaffFreePaymentNoteMarker,
+      );
+      final bookingForResponse =
+          _bookingWithStatus(result.booking, BookingStatus.paid, paidBooking);
+      _flowByUserId.remove(userId);
+      if (result.created) {
+        await _maybeNotifyGroupAboutCapacity(
+          selectedTraining,
+          bookingStatus: bookingForResponse.status,
+        );
+        await _sendOutdoorPrepDetails(chatId, bookingForResponse);
+      }
+      await _notifyAdminAboutTrainerBookingCreated(bookingForResponse);
+      await _sendScreen(
+        chatId,
+        result.created
+            ? _templates.bookingCreatedForWhitelistedTrainer(bookingForResponse)
+            : _templates.bookingAlreadyExists(bookingForResponse),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: isAdmin, showReturnToAdminMenu: false),
+      );
+      return;
+    }
     if (await _isDvorTeamMember(username: username)) {
       final paidBooking = await _bookingRepository.updateStatus(
         result.booking.id,
@@ -686,6 +712,25 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required String? username,
   }) {
     return isTrainerBookingWhitelisted(userId: userId, username: username);
+  }
+
+  Future<bool> _isDirectoryCoach({required String? username}) async {
+    final refreshOk = await _trainerDirectoryRepository.refresh();
+    if (!refreshOk) {
+      l.w('Trainer directory refresh failed before free-booking check. Using cached usernames.');
+    }
+    return _trainerDirectoryRepository.containsUsername(username);
+  }
+
+  bool _isStaffTrainerBooking(TrainingBooking booking) {
+    if (_isWhitelistedTrainerBookingByBooking(booking)) {
+      return true;
+    }
+    if (booking.participantType == BookingParticipantType.guest) {
+      return false;
+    }
+    final username = booking.participantUsername ?? booking.userUsername;
+    return _trainerDirectoryRepository.containsUsername(username);
   }
 
   Future<bool> _isDvorTeamMember({required String? username}) async {

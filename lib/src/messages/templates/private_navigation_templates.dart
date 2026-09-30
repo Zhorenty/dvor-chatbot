@@ -252,12 +252,22 @@ final class PrivateNavigationTemplates {
   String trainingFeedbackCommentAsk() {
     return RichHtml.screen(
       title: 'Комментарий',
-      lead: 'Если хочешь — одним сообщением, что зашло или что улучшить.',
+      lead: 'Одним сообщением: что зашло или что улучшить.',
+      paragraphs: <String>[
+        'Развёрнутый отзыв — до 50 ⛰️. Короткий — меньше.',
+      ],
     );
   }
 
-  String trainingFeedbackThanks() {
-    return 'Спасибо.';
+  String trainingFeedbackThanks({bool shortReview = false}) {
+    if (!shortReview) {
+      return 'Спасибо.';
+    }
+    return RichHtml.screen(
+      title: 'Спасибо',
+      lead: 'Отзыв принял. Вершинок за него нет.',
+      paragraphs: <String>['Развёрнутый комментарий — до 50 ⛰️.'],
+    );
   }
 
   String trainingFeedbackAdminNotification({

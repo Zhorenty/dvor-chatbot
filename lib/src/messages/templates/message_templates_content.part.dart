@@ -1122,7 +1122,7 @@ extension MessageTemplatesContent on MessageTemplates {
       detailsBody: 'Первый /start — 1000 ⛰️.\n'
           'После платной тренировки — 20% от цены, округление вверх до 10. '
           'Слот 500 ₽ даёт 200 ⛰️.\n'
-          'Отзыв — 50. Поход и трейл — 10% от оплаты через бота.\n'
+          'Отзыв — до 50 ⛰️ за развёрнутый текст.\n'
           'Друг прошёл первую платную — 1000. Бокс-карта — 10% от ₽.\n'
           'На тренировку вершинки списываются только целиком. Скидки на слот нет.\n'
           'Карта — целиком или часть. Поход и трейл — скидка до 30%.\n'
@@ -2317,6 +2317,7 @@ extension MessageTemplatesContent on MessageTemplates {
     String title = 'Список записавшихся по тренировкам 👥',
     String emptyText = 'Ближайших тренировок пока нет, показывать список не для чего.',
     bool Function(TrainingBooking booking)? isTrainerBooking,
+    Map<int, int> peaksByUserId = const <int, int>{},
     bool showTrainers = true,
   }) {
     if (trainings.isEmpty) {
@@ -2366,9 +2367,7 @@ extension MessageTemplatesContent on MessageTemplates {
               summary: 'Участники',
               body: RichHtml.bullets(
                 activeParticipantTags
-                    .map(
-                      (booking) => '${_userTag(booking)} (${_participantStatusLabel(booking)})',
-                    )
+                    .map((booking) => _participantRosterLine(booking, peaksByUserId))
                     .toList(growable: false),
               ),
               alreadyEscaped: true,
@@ -2381,9 +2380,7 @@ extension MessageTemplatesContent on MessageTemplates {
               summary: 'Тренеры',
               body: RichHtml.bullets(
                 activeTrainerTags
-                    .map(
-                      (booking) => '${_userTag(booking)} (${_participantStatusLabel(booking)})',
-                    )
+                    .map((booking) => _participantRosterLine(booking, peaksByUserId))
                     .toList(growable: false),
               ),
               alreadyEscaped: true,
@@ -2400,9 +2397,7 @@ extension MessageTemplatesContent on MessageTemplates {
               summary: 'Отменённые',
               body: RichHtml.bullets(
                 cancelled
-                    .map(
-                      (booking) => '${_userTag(booking)} (${_participantStatusLabel(booking)})',
-                    )
+                    .map((booking) => _participantRosterLine(booking, peaksByUserId))
                     .toList(growable: false),
               ),
               alreadyEscaped: true,

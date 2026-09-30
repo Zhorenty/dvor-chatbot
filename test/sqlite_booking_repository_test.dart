@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite_onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
@@ -274,6 +275,57 @@ void main() {
       expect(second.booking.status, BookingStatus.pendingPayment);
 
       await repository.close();
+    });
+
+    test('repeat booking keeps the active seat when a cancelled duplicate exists', () async {
+      final handle = SqliteDatabaseHandle.open('${tmpDir.path}/bookings.sqlite');
+      final repository = SqliteBookingRepository(
+        databaseHandle: handle,
+        nowProvider: () => DateTime.utc(2030, 6, 1, 12),
+      );
+      await repository.init();
+
+      final training = TrainingInfo(
+        title: 'Бокс',
+        startsAt: DateTime(2030, 7, 12, 19),
+        location: 'Ринг',
+        price: 1200,
+      );
+      final cancelled = await repository.createPendingBooking(
+        userId: 8801,
+        userUsername: 'benjaminnnnnm',
+        training: training,
+      );
+      await repository.updateStatus(cancelled.booking.id, BookingStatus.cancelled);
+      handle.database.execute(
+        '''
+        INSERT INTO bookings (
+          user_id, user_username, training_key, training_title, starts_at, location,
+          training_price, status, payment_note, manager_user_id, participant_type,
+          participant_user_id, participant_username, created_at, updated_at
+        )
+        SELECT
+          user_id, user_username, training_key, training_title, starts_at, location,
+          training_price, ?, NULL, manager_user_id, participant_type,
+          participant_user_id, participant_username, created_at, updated_at
+        FROM bookings
+        WHERE id = ?;
+        ''',
+        <Object?>[BookingStatus.paid.dbValue, cancelled.booking.id],
+      );
+
+      final repeat = await repository.createPendingBooking(
+        userId: 8801,
+        userUsername: 'benjaminnnnnm',
+        training: training,
+      );
+
+      expect(repeat.created, isFalse);
+      expect(repeat.booking.status, BookingStatus.paid);
+      expect(repeat.booking.id, isNot(cancelled.booking.id));
+
+      await repository.close();
+      handle.close();
     });
 
     test('prioritizes active bookings over archived records in user list', () async {

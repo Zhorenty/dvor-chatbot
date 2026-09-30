@@ -27,6 +27,29 @@ final class LoyaltyService {
     return current.remaining;
   }
 
+  /// Spendable balance for each id. Missing and expired accounts are 0.
+  Future<Map<int, int>> availableBalances(Iterable<int> userIds, {DateTime? now}) async {
+    final at = now ?? _nowProvider();
+    final ids = userIds.where((id) => id > 0).toSet();
+    if (ids.isEmpty) {
+      return const <int, int>{};
+    }
+    final listed = await _repository.listAccounts(ids);
+    final byId = <int, LoyaltyAccount>{
+      for (final account in listed) account.userId: account,
+    };
+    final balances = <int, int>{};
+    for (final id in ids) {
+      final account = byId[id];
+      if (account == null || account.isExpired(at, lifetime: LoyaltyMath.lifetime)) {
+        balances[id] = 0;
+        continue;
+      }
+      balances[id] = account.remaining;
+    }
+    return balances;
+  }
+
   LoyaltySpendQuote quoteSpend({
     required LoyaltySpendTarget target,
     required int priceRub,

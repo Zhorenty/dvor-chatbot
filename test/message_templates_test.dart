@@ -362,6 +362,7 @@ void main() {
       expect(text, contains('Первый /start — 1000'));
       expect(text, contains('20% от цены'));
       expect(text, contains('500 ₽ даёт 200 ⛰️'));
+      expect(text, contains('до 50 ⛰️'));
       expect(text, contains('только целиком'));
       expect(text, contains('скидка до 30%'));
       expect(text, contains('Стартовая'));

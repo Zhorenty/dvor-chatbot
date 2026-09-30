@@ -236,7 +236,9 @@ final class MessageTemplates {
 
   String trainingFeedbackCommentAsk() => _privateNavigationTemplates.trainingFeedbackCommentAsk();
 
-  String trainingFeedbackThanks() => _privateNavigationTemplates.trainingFeedbackThanks();
+  String trainingFeedbackThanks({bool shortReview = false}) {
+    return _privateNavigationTemplates.trainingFeedbackThanks(shortReview: shortReview);
+  }
 
   String trainingFeedbackAdminNotification({
     required String trainingTitle,

@@ -21,6 +21,7 @@ final class SqliteBookingRepository implements BookingRepository {
   static const String _boxingCardIncludedPaymentNoteMarker = '__boxing_card_included__';
   static const String _boxingCardLateCancelPaymentNoteMarker = '__boxing_card_late_cancel__';
   static const String _dvorTeamFreePaymentNoteMarker = '__dvor_team_free__';
+  static const String _coachingStaffFreePaymentNoteMarker = '__coaching_staff_free__';
 
   SqliteBookingRepository({
     String? dbPath,
@@ -1891,7 +1892,7 @@ final class SqliteBookingRepository implements BookingRepository {
         AND starts_at < ?
         AND ($trainingsCondition)
         AND (training_price IS NULL OR training_price > 0)
-        AND (payment_note IS NULL OR payment_note NOT IN (?, ?, ?, ?, ?, ?, ?));
+        AND (payment_note IS NULL OR payment_note NOT IN (?, ?, ?, ?, ?, ?, ?, ?));
       ''',
       <Object?>[
         userId,
@@ -1905,6 +1906,7 @@ final class SqliteBookingRepository implements BookingRepository {
         _boxingCardIncludedPaymentNoteMarker,
         _boxingCardLateCancelPaymentNoteMarker,
         _dvorTeamFreePaymentNoteMarker,
+        _coachingStaffFreePaymentNoteMarker,
       ],
     );
     final usedResult = db.select(
@@ -1956,7 +1958,7 @@ final class SqliteBookingRepository implements BookingRepository {
             AND b.starts_at < ?
             AND b.training_price > 0
             AND ($trainingsCondition)
-            AND (b.payment_note IS NULL OR b.payment_note NOT IN (?, ?, ?, ?, ?, ?, ?))
+            AND (b.payment_note IS NULL OR b.payment_note NOT IN (?, ?, ?, ?, ?, ?, ?, ?))
         );
       ''',
       <Object?>[
@@ -1970,6 +1972,7 @@ final class SqliteBookingRepository implements BookingRepository {
         _boxingCardIncludedPaymentNoteMarker,
         _boxingCardLateCancelPaymentNoteMarker,
         _dvorTeamFreePaymentNoteMarker,
+        _coachingStaffFreePaymentNoteMarker,
       ],
     );
     final usedResult = db.select(
@@ -2039,6 +2042,10 @@ final class SqliteBookingRepository implements BookingRepository {
           participant_user_id = ?
           OR (participant_user_id IS NULL AND user_id = ?)
         )
+      ORDER BY
+        CASE WHEN status IN (?, ?) THEN 1 ELSE 0 END ASC,
+        updated_at DESC,
+        id DESC
       LIMIT 1;
       ''',
       <Object?>[
@@ -2046,6 +2053,8 @@ final class SqliteBookingRepository implements BookingRepository {
         BookingParticipantType.self.dbValue,
         userId,
         userId,
+        BookingStatus.cancelled.dbValue,
+        BookingStatus.paymentRejected.dbValue,
       ],
     );
     if (selfResult.isEmpty) {

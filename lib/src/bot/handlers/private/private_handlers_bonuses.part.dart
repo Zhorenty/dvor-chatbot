@@ -572,10 +572,14 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     required int userId,
     required int bookingId,
     required int chatId,
+    required int amount,
   }) async {
+    if (amount <= 0) {
+      return;
+    }
     final result = await _loyaltyService.credit(
       userId: userId,
-      amount: LoyaltyMath.feedbackPeaks,
+      amount: amount,
       reason: LoyaltyLedgerReason.feedback,
       idempotencyKey: LoyaltyKeys.feedback(bookingId),
       now: _nowProvider(),
@@ -587,7 +591,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     await _sendScreen(
       chatId,
       _templates.loyaltyCredited(
-        amount: LoyaltyMath.feedbackPeaks,
+        amount: amount,
         remaining: result.account.remaining,
         reason: LoyaltyLedgerReason.feedback,
       ),

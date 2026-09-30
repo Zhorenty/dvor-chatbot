@@ -33,6 +33,18 @@ final class InMemoryLoyaltyRepository implements LoyaltyRepository {
   }
 
   @override
+  Future<List<LoyaltyAccount>> listAccounts(Iterable<int> userIds) async {
+    final accounts = <LoyaltyAccount>[];
+    for (final userId in userIds) {
+      final account = _accounts[userId];
+      if (account != null) {
+        accounts.add(account);
+      }
+    }
+    return accounts;
+  }
+
+  @override
   Future<List<LoyaltyAccount>> listExpired({
     required DateTime now,
     int limit = 200,

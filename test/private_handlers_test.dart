@@ -1,12 +1,15 @@
 import 'package:dvor_chatbot/src/application/group_announcement_service.dart';
+import 'package:dvor_chatbot/src/application/loyalty_service.dart';
 import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
+import 'package:dvor_chatbot/src/data/memory_loyalty_repository.dart';
 import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
+import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/promo_code.dart';
 import 'package:dvor_chatbot/src/domain/subscription.dart';
@@ -2253,6 +2256,128 @@ void main() {
       final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100111).text;
       expect(adminMessage, contains('тренер записался'));
       expect(adminMessage, contains('tg://user?id=1'));
+    });
+
+    test('confirms boxing booking for coaching-staff trainer instead of leaving it pending',
+        () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      expect(
+        isTrainerBookingWhitelisted(userId: 424242, username: '@benjaminnnnnm'),
+        isTrue,
+      );
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Бокс',
+              startsAt: DateTime(2026, 7, 12, 20, 0),
+              location: 'Ринг',
+              price: 1200,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        adminChatId: -100424,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 424242, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 424242,
+          'username': 'benjaminnnnnm',
+        },
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 424242, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 424242,
+          'username': 'benjaminnnnnm',
+        },
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 424242, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 424242,
+          'username': 'benjaminnnnnm',
+        },
+        'text': '🎯 1. Бокс',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.lastUpdatedStatus, BookingStatus.paid);
+      expect(sender.lastContentMessage.text, contains('Ты в тренерском штабе DVOR'));
+      expect(sender.lastContentMessage.text, isNot(contains('Реквизиты для оплаты')));
+      expect(sender.lastContentMessage.text, isNot(contains('Отменено')));
+    });
+
+    test('confirms a directory coach booking without charging a boxing card', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          <TrainingInfo>[
+            TrainingInfo(
+              title: 'Бокс',
+              startsAt: DateTime(2026, 7, 12, 20, 0),
+              location: 'Ринг',
+              price: 1200,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        trainerDirectoryRepository: _FakeTrainerDirectoryRepository(
+          const <TrainerInfo>[
+            TrainerInfo(
+              name: 'Бенджамин',
+              link: '@coach_box',
+              description: 'Бокс',
+            ),
+          ],
+        ),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 5151, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 5151,
+          'username': 'coach_box',
+        },
+        'text': '/book',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 5151, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 5151,
+          'username': 'coach_box',
+        },
+        'text': MessageTemplates.buttonCategoryTrainings,
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 5151, 'type': 'private'},
+        'from': <String, dynamic>{
+          'id': 5151,
+          'username': 'coach_box',
+        },
+        'text': '🎯 1. Бокс',
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.lastUpdatedStatus, BookingStatus.paid);
+      expect(
+        bookingRepository.lastUpdatedPaymentNote,
+        MessageFormatters.coachingStaffFreePaymentNoteMarker,
+      );
+      expect(sender.lastContentMessage.text, contains('Ты в тренерском штабе DVOR'));
+      expect(sender.lastContentMessage.text, isNot(contains('бокс-карт')));
     });
 
     test('skips payment confirmation flow for dvor team member booking', () async {
@@ -4751,15 +4876,18 @@ void main() {
       expect(sender.lastContentMessage.text, contains('Тренеры'));
       expect(
         sender.lastContentMessage.text,
-        contains('@nudden (Бесплатно: стартовая тренировка 🎁)'),
+        contains('@nudden (Бесплатно: стартовая тренировка 🎁, баланс вершинок: 0 ⛰️)'),
       );
-      expect(sender.lastContentMessage.text, contains('@runner_cancelled (Отменено ❌)'));
+      expect(
+        sender.lastContentMessage.text,
+        contains('@runner_cancelled (Отменено ❌, баланс вершинок: 0 ⛰️)'),
+      );
       expect(
         sender.lastContentMessage.text.indexOf('@runner_cancelled'),
         greaterThan(sender.lastContentMessage.text.indexOf('@nudden')),
       );
       expect(sender.lastContentMessage.text, isNot(contains('Old Run')));
-      expect(sender.lastContentMessage.text, isNot(contains('@runner_archived (Оплачено ✅)')));
+      expect(sender.lastContentMessage.text, isNot(contains('@runner_archived')));
       expect(sender.lastContentMessage.text, isNot(contains('@runner_rejected')));
     });
 
@@ -4990,7 +5118,7 @@ void main() {
       expect(messageText, contains('03.07.2030'));
       expect(messageText, isNot(contains('🕒 02.07.2030')));
       expect(RegExp('@mi_harkevich').allMatches(messageText).length, 1);
-      expect(messageText, isNot(contains('@hike_cancelled (Отменено ❌)')));
+      expect(messageText, isNot(contains('@hike_cancelled')));
     });
 
     test('merges trail participants when activity date changes', () async {
@@ -5088,7 +5216,7 @@ void main() {
       expect(messageText, contains('12.08.2030'));
       expect(messageText, isNot(contains('🕒 10.08.2030')));
       expect(RegExp('@trail_runner').allMatches(messageText).length, 1);
-      expect(messageText, isNot(contains('@trail_cancelled (Отменено ❌)')));
+      expect(messageText, isNot(contains('@trail_cancelled')));
     });
 
     test('displays trainers in hikes participants list', () async {
@@ -5169,6 +5297,105 @@ void main() {
       expect(messageText, contains('@hike_user'));
       expect(messageText, contains('Тренеры'));
       expect(messageText, contains('@nudden'));
+      expect(messageText, contains('@nudden (Оплачено ✅, баланс вершинок: 0 ⛰️)'));
+    });
+
+    test('shows peak balance on hike bookings and hides a cancelled duplicate of the same person',
+        () async {
+      final sender = _FakeSender();
+      final now = DateTime(2026, 9, 1, 12, 0);
+      final hike = TrainingInfo(
+        title: '🥾 Поход: Эльбрус',
+        startsAt: DateTime(2026, 10, 12),
+        location: 'Горный лагерь',
+        category: ActivityCategory.hikes,
+      );
+      final loyaltyRepository = InMemoryLoyaltyRepository(nowProvider: () => now);
+      await loyaltyRepository.credit(
+        userId: 9301,
+        amount: 1250,
+        reason: LoyaltyLedgerReason.adminGrant,
+        idempotencyKey: 'peaks-9301',
+        now: now,
+      );
+      final bookingRepository = _FakeBookingRepository()
+        ..bookingsByTrainingKey = <TrainingBooking>[
+          fakeBooking(
+            id: 940,
+            userId: 9301,
+            userUsername: 'hike_user',
+            trainingKey: hike.sessionKey,
+            title: hike.title,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.paid,
+          ),
+          fakeBooking(
+            id: 941,
+            userId: 9401,
+            userUsername: 'someone',
+            participantType: BookingParticipantType.telegram,
+            participantUsername: 'hike_user',
+            trainingKey: hike.sessionKey,
+            title: hike.title,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.cancelled,
+            updatedAt: DateTime(2026, 10, 1),
+          ),
+        ]
+        ..adminBookings = <TrainingBooking>[
+          fakeBooking(
+            id: 940,
+            userId: 9301,
+            userUsername: 'hike_user',
+            trainingKey: hike.sessionKey,
+            title: hike.title,
+            startsAt: hike.startsAt,
+            location: hike.location,
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Эльбрус',
+              dateFrom: hike.startsAt,
+              dateTo: hike.startsAt,
+              description: hike.location,
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        loyaltyService: LoyaltyService(
+          repository: loyaltyRepository,
+          nowProvider: () => now,
+        ),
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{2004},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2004},
+        'text': MessageTemplates.buttonParticipantsList,
+      });
+      final categoryHandled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 20, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2004},
+        'text': MessageTemplates.buttonCategoryHikes,
+      });
+
+      expect(categoryHandled, isTrue);
+      final messageText = sender.lastContentMessage.text;
+      expect(messageText, contains('@hike_user (Оплачено ✅, баланс вершинок: 1250 ⛰️)'));
+      expect(messageText, isNot(contains('Отменено')));
+      expect(RegExp('@hike_user').allMatches(messageText).length, 1);
     });
 
     test('merges training participants when session date changes', () async {
@@ -5254,7 +5481,7 @@ void main() {
       expect(messageText, contains('02.09.2026 19:00'));
       expect(messageText, isNot(contains('🕒 01.09.2026 19:00')));
       expect(RegExp('@fit_user').allMatches(messageText).length, 1);
-      expect(messageText, isNot(contains('@fit_cancelled (Отменено ❌)')));
+      expect(messageText, isNot(contains('@fit_cancelled')));
     });
 
     test('shows nobles list for admin with training counts', () async {

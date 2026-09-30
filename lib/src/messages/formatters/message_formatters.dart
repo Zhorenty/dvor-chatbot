@@ -14,6 +14,7 @@ final class MessageFormatters {
   static const String boxingCardIncludedPaymentNoteMarker = '__boxing_card_included__';
   static const String boxingCardLateCancelPaymentNoteMarker = '__boxing_card_late_cancel__';
   static const String dvorTeamFreePaymentNoteMarker = '__dvor_team_free__';
+  static const String coachingStaffFreePaymentNoteMarker = '__coaching_staff_free__';
   static const String loyaltyPeaksPaymentNoteMarker = '__loyalty_peaks__';
 
   static bool isBoxingCardIncludedPaymentNote(String? paymentNote) {
@@ -72,6 +73,9 @@ final class MessageFormatters {
     if (booking.paymentNote == dvorTeamFreePaymentNoteMarker) {
       return 'Бесплатно: команда DVOR 🖤';
     }
+    if (booking.paymentNote == coachingStaffFreePaymentNoteMarker) {
+      return 'Бесплатно: тренерский штаб';
+    }
     if (booking.paymentNote == loyaltyPeaksPaymentNoteMarker) {
       return 'Оплачено вершинками ⛰️';
     }
@@ -90,6 +94,29 @@ final class MessageFormatters {
     return paymentNote == starterBonusPaymentNoteMarker ||
         paymentNote == everyFifthBonusPaymentNoteMarker ||
         paymentNote == referralBonusPaymentNoteMarker;
+  }
+
+  static int? rosterPeaksUserId(TrainingBooking booking) {
+    if (booking.participantType == BookingParticipantType.guest) {
+      return null;
+    }
+    final userId = booking.participantUserId ?? booking.userId;
+    if (userId <= 0) {
+      return null;
+    }
+    return userId;
+  }
+
+  static String participantRosterLine(
+    TrainingBooking booking, {
+    int? peaksBalance,
+  }) {
+    final tag = userTag(booking);
+    final status = participantStatusLabel(booking);
+    if (peaksBalance == null) {
+      return '$tag ($status)';
+    }
+    return '$tag ($status, баланс вершинок: $peaksBalance ⛰️)';
   }
 
   static String userTag(TrainingBooking booking) {
