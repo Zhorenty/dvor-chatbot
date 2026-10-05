@@ -212,7 +212,10 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     }
   }
 
-  Future<void> _notifyAdminAboutBookingCancelled(TrainingBooking booking) async {
+  Future<void> _notifyAdminAboutBookingCancelled(
+    TrainingBooking booking, {
+    int refundPeaks = 0,
+  }) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
       return;
@@ -220,7 +223,10 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     try {
       await _sendAdminMessage(
         adminChatId,
-        _templates.bookingCancelledAdminNotification(booking),
+        _templates.bookingCancelledAdminNotification(
+          booking,
+          refundPeaks: refundPeaks,
+        ),
       );
     } on Object catch (error, stackTrace) {
       l.w('Failed to notify admin chat about booking cancellation: $error', stackTrace);
@@ -465,18 +471,41 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     );
   }
 
-  Future<void> _refundLoyaltyForBooking(TrainingBooking booking) async {
+  Future<({int peaks, int remaining})> _refundLoyaltyForBooking(TrainingBooking booking) async {
+    var peaks = 0;
+    var remaining = (await _loyaltyService.account(booking.userId)).remaining;
     final spent = await _loyaltyService.peaksSpentOnBooking(booking.id);
-    if (spent <= 0) {
-      return;
+    if (spent > 0) {
+      final result = await _loyaltyService.refund(
+        userId: booking.userId,
+        amount: spent,
+        idempotencyKey: LoyaltyKeys.refundBooking(booking.id),
+        now: _nowProvider(),
+        bookingId: booking.id,
+      );
+      if (result.applied) {
+        peaks += result.amount;
+      }
+      remaining = result.account.remaining;
     }
-    await _loyaltyService.refund(
-      userId: booking.userId,
-      amount: spent,
-      idempotencyKey: LoyaltyKeys.refundBooking(booking.id),
-      now: _nowProvider(),
-      bookingId: booking.id,
+    final cashPeaks = _bookingPolicyService.cashCancelRefundPeaks(
+      booking,
+      peaksSpent: spent,
     );
+    if (cashPeaks > 0) {
+      final result = await _loyaltyService.refund(
+        userId: booking.userId,
+        amount: cashPeaks,
+        idempotencyKey: LoyaltyKeys.cancelCashRefund(booking.id),
+        now: _nowProvider(),
+        bookingId: booking.id,
+      );
+      if (result.applied) {
+        peaks += result.amount;
+      }
+      remaining = result.account.remaining;
+    }
+    return (peaks: peaks, remaining: remaining);
   }
 
   Future<bool> _applyLoyaltySpendToBooking({

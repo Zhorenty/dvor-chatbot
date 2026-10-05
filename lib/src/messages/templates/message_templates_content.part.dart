@@ -1904,9 +1904,10 @@ extension MessageTemplatesContent on MessageTemplates {
     if (booking == null) {
       return 'Не нашел запись для отмены. Выбери запись заново.';
     }
-    return 'Самостоятельно отменить платную тренировку нельзя.\n'
-        'Для записи #${booking.id} напиши в поддержку: @dvor_support.\n'
-        'Отмена доступна самостоятельно для бесплатных тренировок, походов и трейлов.';
+    return 'Отменить запись #${booking.id} самостоятельно нельзя.\n'
+        'Платную тренировку можно отменить не позднее чем за 24 часа до старта. '
+        'Оплата вернётся вершинками.\n'
+        'Если срок прошёл или запись ещё не оплачена — напиши @dvor_support.';
   }
 
   String bookingCancelConfirm(TrainingBooking booking) {
@@ -1922,8 +1923,33 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
+  String paidTrainingCancelConfirm(
+    TrainingBooking booking, {
+    required int refundPeaks,
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return RichHtml.screen(
+      title: 'Отменить запись #${booking.id}?',
+      rows: <(String, String)>[
+        ('Событие', booking.trainingTitle),
+        ('🕒 Когда', _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)),
+        ('Вернём', '$refundPeaks ⛰️'),
+      ],
+      paragraphs: <String>[
+        'До старта не меньше 24 часов. Оплата вернётся вершинками.',
+      ],
+    );
+  }
+
   String freeTrainingCancellationTooLate(TrainingBooking booking) {
     return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
+        'Если проблема остаётся — напиши @dvor_support.';
+  }
+
+  String paidTrainingCancellationTooLate(TrainingBooking booking) {
+    return 'Отменить запись #${booking.id} уже нельзя.\n'
+        'До старта меньше 24 часов, оплата не возвращается.\n'
         'Если проблема остаётся — напиши @dvor_support.';
   }
 
@@ -2013,9 +2039,18 @@ extension MessageTemplatesContent on MessageTemplates {
         'Перенос доступен только между тренировками с одинаковой ценой.';
   }
 
-  String bookingCancelled(TrainingBooking booking) {
+  String bookingCancelled(
+    TrainingBooking booking, {
+    int refundPeaks = 0,
+    int? loyaltyRemaining,
+  }) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final paragraphs = <String>[];
+    if (refundPeaks > 0) {
+      final balance = loyaltyRemaining == null ? '' : ' Баланс: $loyaltyRemaining ⛰️.';
+      paragraphs.add('Вернули $refundPeaks ⛰️.$balance');
+    }
     return RichHtml.screen(
       title: 'Запись отменена',
       rows: <(String, String)>[
@@ -2024,6 +2059,7 @@ extension MessageTemplatesContent on MessageTemplates {
         ('🕒 Когда', _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)),
         ('Статус', _statusLabel(booking.status, booking: booking)),
       ],
+      paragraphs: paragraphs,
     );
   }
 
@@ -2886,9 +2922,15 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
-  String bookingCancelledAdminNotification(TrainingBooking booking) {
+  String bookingCancelledAdminNotification(
+    TrainingBooking booking, {
+    int refundPeaks = 0,
+  }) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    final paragraphs = refundPeaks > 0
+        ? <String>['Вернули $refundPeaks ⛰️.']
+        : <String>['Дальше: при необходимости свяжись с участником по перезаписи.'];
     return RichHtml.screen(
       title: 'Операционное событие: отмена записи',
       rows: <(String, String)>[
@@ -2897,9 +2939,139 @@ extension MessageTemplatesContent on MessageTemplates {
         ('Событие', booking.trainingTitle),
         ('Дата', _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)),
       ],
-      paragraphs: <String>[
-        'Дальше: при необходимости свяжись с участником по возврату/перезаписи.',
+      paragraphs: paragraphs,
+    );
+  }
+
+  String attendanceSessionList({
+    required List<TrainingInfo> sessions,
+    required Map<String, int> unmarkedByKey,
+  }) {
+    if (sessions.isEmpty) {
+      return RichHtml.screen(
+        title: 'Явка',
+        lead: 'За последние 7 дней нет тренировок, по которым можно отметить явку.',
+      );
+    }
+    final formatter = DateFormat('dd.MM HH:mm');
+    final lines = <String>[];
+    for (var index = 0; index < sessions.length; index++) {
+      final session = sessions[index];
+      final unmarked = unmarkedByKey[session.notes ?? ''] ?? 0;
+      final pending = unmarked > 0 ? ' · не отмечено $unmarked' : '';
+      lines.add('${index + 1}. ${session.title} · ${formatter.format(session.startsAt)}$pending');
+    }
+    return RichHtml.screen(
+      title: 'Явка',
+      lead: 'Тренировки за 7 дней. Открой слот и отметь, кто был.',
+      paragraphs: lines,
+    );
+  }
+
+  String attendanceRoster(TrainingInfo session, List<TrainingBooking> bookings) {
+    final formatter = DateFormat('dd.MM.yyyy HH:mm');
+    if (bookings.isEmpty) {
+      return RichHtml.screen(
+        title: 'Явка',
+        lead: session.title,
+        paragraphs: <String>['Активных записей нет.'],
+      );
+    }
+    final lines = <String>[];
+    for (final booking in bookings) {
+      final mark = switch (booking.attendance) {
+        BookingAttendance.attended => 'был',
+        BookingAttendance.absent => 'не был',
+        null => 'не отмечен',
+      };
+      lines.add('#${booking.id} ${booking.participantDisplayLabel} — $mark');
+    }
+    return RichHtml.screen(
+      title: 'Явка',
+      lead: session.title,
+      rows: <(String, String)>[
+        ('🕒 Когда', formatter.format(session.startsAt)),
       ],
+      paragraphs: <String>[
+        ...lines,
+        '«Был» начисляет вершинки, если тренировка их даёт. «Не был» снимает начисление за эту запись.',
+      ],
+    );
+  }
+
+  List<List<RichMessageButton>> attendanceRosterButtons(List<TrainingBooking> bookings) {
+    return bookings
+        .map(
+          (booking) => <RichMessageButton>[
+            RichMessageButton.callback(
+              text: 'Был #${booking.id}',
+              callbackData: '${MessageCopy.callbackAttendanceAttendedPrefix}${booking.id}',
+              style: RichButtonStyle.success,
+            ),
+            RichMessageButton.callback(
+              text: 'Не был #${booking.id}',
+              callbackData: '${MessageCopy.callbackAttendanceAbsentPrefix}${booking.id}',
+              style: RichButtonStyle.danger,
+            ),
+          ],
+        )
+        .toList(growable: false);
+  }
+
+  String attendanceMarkedAdmin({
+    required TrainingBooking booking,
+    required BookingAttendance attendance,
+    required bool peaksSyncFailed,
+    required int peaksDelta,
+  }) {
+    final mark = attendance == BookingAttendance.attended ? 'был' : 'не был';
+    final paragraphs = <String>[];
+    if (peaksSyncFailed) {
+      paragraphs.add('Вершинки списать не удалось: на балансе меньше, чем начислено за запись.');
+    } else if (peaksDelta > 0) {
+      paragraphs.add('Начислили $peaksDelta ⛰️.');
+    } else if (peaksDelta < 0) {
+      paragraphs.add('Списали ${-peaksDelta} ⛰️.');
+    }
+    return RichHtml.screen(
+      title: 'Явка #${booking.id}',
+      lead: '${booking.participantDisplayLabel}: $mark.',
+      paragraphs: paragraphs,
+    );
+  }
+
+  String attendanceNotAllowed(String reason) {
+    return RichHtml.screen(
+      title: 'Явка',
+      lead: reason,
+    );
+  }
+
+  String attendanceMarkedForUser({
+    required TrainingBooking booking,
+    required BookingAttendance attendance,
+    required int peaksDelta,
+    required int loyaltyRemaining,
+  }) {
+    final who = booking.isManagedForOther ? '${booking.participantDisplayLabel}: ' : '';
+    if (attendance == BookingAttendance.absent) {
+      final debit =
+          peaksDelta < 0 ? ' Списали ${-peaksDelta} ⛰️. Баланс: $loyaltyRemaining ⛰️.' : '';
+      return RichHtml.screen(
+        title: 'Явка',
+        lead: '$whoпо «${booking.trainingTitle}» явку не засчитали.$debit',
+      );
+    }
+    if (peaksDelta > 0) {
+      return RichHtml.screen(
+        title: 'Явка',
+        lead: '$whoпо «${booking.trainingTitle}» засчитали. +$peaksDelta ⛰️. '
+            'Баланс: $loyaltyRemaining ⛰️.',
+      );
+    }
+    return RichHtml.screen(
+      title: 'Явка',
+      lead: '$whoпо «${booking.trainingTitle}» засчитали.',
     );
   }
 

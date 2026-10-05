@@ -162,6 +162,20 @@ abstract final class LoyaltyKeys {
 
   static String refundBooking(int bookingId) => '$bookingId+refund';
 
+  /// Cash paid for a training, returned as peaks on a timely cancel.
+  static String cancelCashRefund(int bookingId) => '$bookingId+cancel_cash';
+
+  static String attendanceAdjustment(
+    int bookingId,
+    DateTime at, {
+    required bool credit,
+  }) {
+    final direction = credit ? 'up' : 'down';
+    return 'attendance:$bookingId:$direction:${at.toUtc().microsecondsSinceEpoch}';
+  }
+
+  static String attendanceAdjustmentPrefix(int bookingId) => 'attendance:$bookingId:';
+
   static String referral(int inviteeUserId) => 'referral:$inviteeUserId';
 
   static String boxingCard(int requestId) => '$requestId+boxing_card';

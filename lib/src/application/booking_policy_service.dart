@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
+import 'package:dvor_chatbot/src/application/loyalty_math.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -27,6 +28,8 @@ final class BookingPolicyService {
     required ActivityCatalogService catalogService,
   }) : _catalogService = catalogService;
 
+  static const Duration paidTrainingCancelLead = Duration(hours: 24);
+
   final ActivityCatalogService _catalogService;
 
   ActivityCategory categoryForBooking(TrainingBooking booking) {
@@ -50,7 +53,8 @@ final class BookingPolicyService {
       return false;
     }
     return _isCancellableFreeTraining(booking) ||
-        MessageFormatters.isBoxingCardPaymentNote(booking.paymentNote);
+        MessageFormatters.isBoxingCardPaymentNote(booking.paymentNote) ||
+        isPeaksRefundTraining(booking);
   }
 
   bool canReschedule(TrainingBooking booking) {
@@ -88,6 +92,9 @@ final class BookingPolicyService {
       return false;
     }
     final category = categoryForBooking(booking);
+    if (isPeaksRefundTraining(booking)) {
+      return booking.startsAt.difference(now) >= paidTrainingCancelLead;
+    }
     // Free trainings (incl. bonus/promo) can be cancelled at any time.
     if (category == ActivityCategory.trainings && _isCancellableFreeTraining(booking)) {
       return true;
@@ -100,6 +107,32 @@ final class BookingPolicyService {
       return booking.startsAt.difference(now) >= const Duration(days: 7);
     }
     return false;
+  }
+
+  /// Paid training (cash or peaks), not a free slot and not a boxing-card burn.
+  bool isPeaksRefundTraining(TrainingBooking booking) {
+    if (categoryForBooking(booking) != ActivityCategory.trainings) {
+      return false;
+    }
+    if (MessageFormatters.isBoxingCardPaymentNote(booking.paymentNote)) {
+      return false;
+    }
+    if (_isCancellableFreeTraining(booking)) {
+      return false;
+    }
+    return booking.status == BookingStatus.paid && (booking.trainingPrice ?? 0) > 0;
+  }
+
+  /// Cash portion of a paid training, converted at 2 ⛰️ = 1 ₽ and rounded up to 10.
+  int cashCancelRefundPeaks(TrainingBooking booking, {required int peaksSpent}) {
+    if (!isPeaksRefundTraining(booking)) {
+      return 0;
+    }
+    final remainder = LoyaltyMath.remainderRub(
+      priceRub: booking.trainingPrice ?? 0,
+      peaksSpent: peaksSpent,
+    );
+    return LoyaltyMath.roundUp(LoyaltyMath.fullPayPeaks(remainder));
   }
 
   bool shouldShowOutdoorPaymentTypeChoice(TrainingBooking booking) {

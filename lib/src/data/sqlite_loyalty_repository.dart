@@ -701,6 +701,31 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
   }
 
   @override
+  Future<int> netTrainingPeaks(int bookingId) async {
+    final rows = _db.select(
+      '''
+      SELECT COALESCE(SUM(amount), 0) AS total
+      FROM loyalty_ledger
+      WHERE booking_id = ?
+        AND (
+          reason = ?
+          OR (reason = ? AND idempotency_key LIKE ?)
+        );
+      ''',
+      <Object?>[
+        bookingId,
+        LoyaltyLedgerReason.training.dbValue,
+        LoyaltyLedgerReason.adminDebit.dbValue,
+        '${LoyaltyKeys.attendanceAdjustmentPrefix(bookingId)}%',
+      ],
+    );
+    if (rows.isEmpty) {
+      return 0;
+    }
+    return (rows.first['total'] as int?) ?? 0;
+  }
+
+  @override
   Future<LoyaltyMutationResult> credit({
     required int userId,
     required int amount,

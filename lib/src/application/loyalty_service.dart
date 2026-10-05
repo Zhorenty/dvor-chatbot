@@ -1,6 +1,9 @@
 import 'package:dvor_chatbot/src/application/loyalty_math.dart';
+import 'package:dvor_chatbot/src/application/loyalty_rules.dart';
 import 'package:dvor_chatbot/src/data/loyalty_repository.dart';
+import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
+import 'package:dvor_chatbot/src/domain/training_booking.dart';
 
 final class LoyaltyService {
   LoyaltyService({
@@ -76,6 +79,75 @@ final class LoyaltyService {
 
   Future<int> peaksSpentOnBooking(int bookingId) {
     return _repository.peaksSpentOnBooking(bookingId);
+  }
+
+  Future<int> netTrainingPeaks(int bookingId) {
+    return _repository.netTrainingPeaks(bookingId);
+  }
+
+  /// Brings training-earn peaks in line with admin attendance.
+  ///
+  /// Unmarked bookings are left alone so older auto-credits stay put.
+  /// Absent bookings are pulled back to zero. Attended bookings are topped up
+  /// to the earn quote. A failed debit (balance too small) reports
+  /// [TrainingPeaksSync.applied] false while [TrainingPeaksSync.requested] keeps
+  /// the intended delta.
+  Future<TrainingPeaksSync> syncTrainingPeaks({
+    required TrainingBooking booking,
+    required DateTime now,
+    required bool isTraining,
+  }) async {
+    final account = await _repository.getAccount(booking.userId);
+    if (!isTraining) {
+      return TrainingPeaksSync(requested: 0, applied: true, remaining: account.remaining);
+    }
+    final peaksSpent = await _repository.peaksSpentOnBooking(booking.id);
+    final attended = booking.attendance == BookingAttendance.attended;
+    final absent = booking.attendance == BookingAttendance.absent;
+    final eligible = LoyaltyRules.canEarnTraining(
+      booking: booking,
+      now: now,
+      peaksSpent: peaksSpent,
+    );
+    if (!attended && !absent) {
+      return TrainingPeaksSync(requested: 0, applied: true, remaining: account.remaining);
+    }
+    final target = eligible
+        ? quoteTrainingEarn(
+            LoyaltyMath.remainderRub(
+              priceRub: booking.trainingPrice ?? 0,
+              peaksSpent: peaksSpent,
+            ),
+          )
+        : 0;
+    final net = await _repository.netTrainingPeaks(booking.id);
+    final delta = target - net;
+    if (delta == 0) {
+      return TrainingPeaksSync(requested: 0, applied: true, remaining: account.remaining);
+    }
+    final credit = delta > 0;
+    final result = credit
+        ? await this.credit(
+            userId: booking.userId,
+            amount: delta,
+            reason: LoyaltyLedgerReason.training,
+            idempotencyKey: LoyaltyKeys.attendanceAdjustment(booking.id, now, credit: true),
+            now: now,
+            bookingId: booking.id,
+          )
+        : await debit(
+            userId: booking.userId,
+            amount: -delta,
+            reason: LoyaltyLedgerReason.adminDebit,
+            idempotencyKey: LoyaltyKeys.attendanceAdjustment(booking.id, now, credit: false),
+            now: now,
+            bookingId: booking.id,
+          );
+    return TrainingPeaksSync(
+      requested: delta,
+      applied: result.applied,
+      remaining: result.account.remaining,
+    );
   }
 
   /// One snapshot per id. Bookings with no ledger rows are spent 0, earned 0.
@@ -245,4 +317,21 @@ final class LoyaltyService {
       now: at,
     );
   }
+}
+
+final class TrainingPeaksSync {
+  const TrainingPeaksSync({
+    required this.requested,
+    required this.applied,
+    required this.remaining,
+  });
+
+  /// Signed peaks the attendance mark asked to move. Zero when nothing changed.
+  final int requested;
+
+  /// False when the ledger write did not land (for example the balance is too small).
+  final bool applied;
+  final int remaining;
+
+  int get appliedDelta => applied ? requested : 0;
 }

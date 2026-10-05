@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
+import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
@@ -118,6 +119,7 @@ final class MessageTemplates {
   static const String buttonReasonWrongAmount = MessageCopy.buttonReasonWrongAmount;
   static const String buttonReasonDuplicate = MessageCopy.buttonReasonDuplicate;
   static const String buttonParticipantsList = MessageCopy.buttonParticipantsList;
+  static const String buttonAttendance = MessageCopy.buttonAttendance;
   static const String buttonNoblesList = MessageCopy.buttonNoblesList;
   static const String buttonBroadcast = MessageCopy.buttonBroadcast;
   static const String buttonAdminTools = MessageCopy.buttonAdminTools;

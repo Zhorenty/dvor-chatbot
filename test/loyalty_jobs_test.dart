@@ -6,6 +6,7 @@ import 'package:dvor_chatbot/src/application/loyalty_service.dart';
 import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/data/memory_loyalty_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
+import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
@@ -107,6 +108,16 @@ void main() {
           status: BookingStatus.paid,
           trainingPrice: 500,
           startsAt: now.subtract(const Duration(hours: 2)),
+          attendance: BookingAttendance.attended,
+        ),
+        fakeBooking(
+          id: 5,
+          userId: 35,
+          title: 'Силовая',
+          trainingKey: 'trainings|5',
+          status: BookingStatus.paid,
+          trainingPrice: 500,
+          startsAt: now.subtract(const Duration(hours: 2)),
         ),
         fakeBooking(
           id: 2,
@@ -147,6 +158,7 @@ void main() {
     );
     await job.run();
     expect((await service.account(31)).remaining, 200);
+    expect((await service.account(35)).remaining, 0);
     expect((await service.account(32)).remaining, 0);
     expect((await service.account(33)).remaining, 0);
     expect((await service.account(34)).remaining, 0);
@@ -168,6 +180,7 @@ void main() {
           status: BookingStatus.paid,
           trainingPrice: 500,
           startsAt: now.subtract(const Duration(hours: 2)),
+          attendance: BookingAttendance.attended,
         ),
       ];
     final job = LoyaltyAccrualJob(
@@ -226,6 +239,7 @@ void main() {
           status: BookingStatus.paid,
           trainingPrice: 500,
           startsAt: now.subtract(const Duration(hours: 2)),
+          attendance: BookingAttendance.attended,
         ),
       ];
     final job = LoyaltyAccrualJob(
@@ -256,6 +270,7 @@ void main() {
           status: BookingStatus.paid,
           trainingPrice: 500,
           startsAt: now.subtract(const Duration(hours: 1)),
+          attendance: BookingAttendance.attended,
         ),
         fakeBooking(
           id: 11,
@@ -266,6 +281,7 @@ void main() {
           trainingPrice: 500,
           startsAt: now.subtract(const Duration(hours: 1)),
           paymentNote: MessageFormatters.loyaltyPeaksPaymentNoteMarker,
+          attendance: BookingAttendance.attended,
         ),
       ];
     final job = LoyaltyAccrualJob(

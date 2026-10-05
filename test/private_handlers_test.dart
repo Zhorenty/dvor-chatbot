@@ -215,6 +215,7 @@ void main() {
         <String>[
           MessageTemplates.buttonParticipantsList,
           MessageTemplates.buttonPaymentsQueue,
+          MessageTemplates.buttonAttendance,
           MessageTemplates.buttonAdminSchedule,
           MessageTemplates.buttonBroadcast,
           MessageTemplates.buttonAdminTools,
@@ -5760,7 +5761,7 @@ void main() {
             id: 601 + index,
             userId: 9601 + index,
             title: 'Morning Run ${index + 1}',
-            startsAt: DateTime(2026, 10, 1 + index, 10, 0),
+            startsAt: DateTime(2026, 11, 1 + index, 10, 0),
           ),
         );
       final handlers = PrivateHandlers(
@@ -7085,7 +7086,7 @@ void main() {
             userId: 3932,
             title: '🥾 Поход: Архыз',
             trainingKey: 'hikes|2026-10-02T10:00:00.000Z|🥾 Поход: Архыз|Маршрут',
-            startsAt: DateTime(2026, 10, 2, 10, 0),
+            startsAt: DateTime(2026, 11, 2, 10, 0),
             location: 'Маршрут',
             status: BookingStatus.partialPaid,
           ),
@@ -7123,7 +7124,7 @@ void main() {
             userId: 3901,
             title: '🥾 Поход: Архыз',
             trainingKey: 'hikes|2026-10-01T10:00:00.000Z|🥾 Поход: Архыз|Маршрут',
-            startsAt: DateTime(2026, 10, 1, 10, 0),
+            startsAt: DateTime(2026, 10, 20, 10, 0),
             location: 'Маршрут',
             status: BookingStatus.paid,
           ),

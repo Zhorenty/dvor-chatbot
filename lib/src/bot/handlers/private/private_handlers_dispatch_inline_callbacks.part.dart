@@ -51,13 +51,20 @@ extension PrivateHandlersDispatchInlineCallbacks on PrivateHandlers {
       _flowByUserId.remove(userId);
       if (cancelResult.outcome == BookingActionOutcome.success && cancelResult.booking != null) {
         final cancelled = await _finalizeBoxingCardCancel(selectedBooking);
-        await _refundLoyaltyForBooking(selectedBooking);
+        final refund = await _refundLoyaltyForBooking(selectedBooking);
         if (_shouldNotifyAdminAboutBookingCancellation(selectedBooking)) {
-          await _notifyAdminAboutBookingCancelled(selectedBooking);
+          await _notifyAdminAboutBookingCancelled(
+            selectedBooking,
+            refundPeaks: refund.peaks,
+          );
         }
         await _sendScreen(
           chatId,
-          _templates.bookingCancelled(cancelled ?? cancelResult.booking!),
+          _templates.bookingCancelled(
+            cancelled ?? cancelResult.booking!,
+            refundPeaks: refund.peaks,
+            loyaltyRemaining: refund.remaining,
+          ),
           replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin,
             showReturnToAdminMenu: showReturnToAdminMenu,

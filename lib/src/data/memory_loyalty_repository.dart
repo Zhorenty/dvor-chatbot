@@ -130,6 +130,26 @@ final class InMemoryLoyaltyRepository implements LoyaltyRepository {
   }
 
   @override
+  Future<int> netTrainingPeaks(int bookingId) async {
+    final prefix = LoyaltyKeys.attendanceAdjustmentPrefix(bookingId);
+    var net = 0;
+    for (final entry in _ledger) {
+      if (entry.bookingId != bookingId) {
+        continue;
+      }
+      if (entry.reason == LoyaltyLedgerReason.training) {
+        net += entry.amount;
+        continue;
+      }
+      if (entry.reason == LoyaltyLedgerReason.adminDebit &&
+          entry.idempotencyKey.startsWith(prefix)) {
+        net += entry.amount;
+      }
+    }
+    return net;
+  }
+
+  @override
   Future<Map<int, BookingPeaksSnapshot>> peaksByBookings(Iterable<int> bookingIds) async {
     final ids = bookingIds.where((id) => id > 0).toSet();
     if (ids.isEmpty) {

@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
+import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -106,6 +107,20 @@ abstract interface class BookingRepository {
   Future<List<TrainingBooking>> listBookingsByPaymentGroup(String paymentGroupId);
 
   Future<List<TrainingBooking>> listUserBookings(int userId, {int limit = 10});
+
+  Future<TrainingBooking?> findBookingById(int bookingId);
+
+  Future<TrainingBooking?> markAttendance({
+    required int bookingId,
+    required BookingAttendance attendance,
+  });
+
+  /// Paid-like bookings whose start is inside the window, any participant type.
+  Future<List<TrainingBooking>> listBookingsStartedBetween({
+    required DateTime startsFromInclusive,
+    required DateTime startsToInclusive,
+    int limit = 500,
+  });
 
   Future<BookingActionResult> cancelBooking({
     required int userId,

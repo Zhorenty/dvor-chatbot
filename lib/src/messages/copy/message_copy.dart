@@ -75,6 +75,7 @@ final class MessageCopy {
   static const String buttonReasonWrongAmount = 'Сумма не совпадает';
   static const String buttonReasonDuplicate = 'Дубликат заявки';
   static const String buttonParticipantsList = '👥 Список записавшихся';
+  static const String buttonAttendance = '✅ Явка';
   static const String buttonNoblesList = '🏰 Список дворян';
   static const String buttonManageBookings = '🛠 Управление записями';
   static const String buttonAdminSchedule = '📅 Управление расписанием';
@@ -176,6 +177,8 @@ final class MessageCopy {
   static const String callbackAdminBookingRestorePrefix = 'admin:booking:restore:';
   static const String callbackAdminBookingDeleteConfirmPrefix = 'admin:booking:del_ok:';
   static const String callbackAdminBookingDeleteAbortPrefix = 'admin:booking:del_no:';
+  static const String callbackAttendanceAttendedPrefix = 'att:y:';
+  static const String callbackAttendanceAbsentPrefix = 'att:n:';
   static const String callbackAdminNotifyYes = 'admin:notify:yes';
   static const String callbackAdminNotifyNo = 'admin:notify:no';
   static const String callbackAdminSchedRoot = 'admin:sched:root';

@@ -328,6 +328,16 @@ String? callbackToCommandText(String? callbackData) {
   if (callbackData == MessageCopy.callbackCtaBook) {
     return MessageCopy.buttonBookTraining;
   }
+  if (callbackData.startsWith(MessageCopy.callbackAttendanceAttendedPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackAttendanceAttendedPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/attend $bookingId';
+  }
+  if (callbackData.startsWith(MessageCopy.callbackAttendanceAbsentPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackAttendanceAbsentPrefix.length);
+    final bookingId = int.tryParse(rawId);
+    return bookingId == null ? null : '/absent $bookingId';
+  }
   if (callbackData.startsWith(MessageCopy.callbackAdminBookingEditPrefix)) {
     final rawId = callbackData.substring(MessageCopy.callbackAdminBookingEditPrefix.length);
     final bookingId = int.tryParse(rawId);

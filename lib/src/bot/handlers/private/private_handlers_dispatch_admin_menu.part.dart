@@ -11,6 +11,9 @@ extension PrivateHandlersDispatchAdminMenu on PrivateHandlers {
     if (await _dispatchAdminBookingCommands(ctx)) {
       return true;
     }
+    if (await _dispatchAdminAttendanceCommands(ctx)) {
+      return true;
+    }
     return false;
   }
 }

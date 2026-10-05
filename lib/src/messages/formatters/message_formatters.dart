@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/application/loyalty_math.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -118,7 +119,12 @@ final class MessageFormatters {
     final status = participantStatusLabel(booking);
     final earned = peaksEarned != null && peaksEarned > 0 ? peaksEarned : 0;
     final showCash = _rosterShowsOutdoorRemainder(booking);
-    if (peaksBalance == null && peaksSpent == null && earned == 0 && !showCash) {
+    final attendanceFact = _attendanceFact(booking.attendance);
+    if (peaksBalance == null &&
+        peaksSpent == null &&
+        earned == 0 &&
+        !showCash &&
+        attendanceFact == null) {
       return '$tag ($status)';
     }
 
@@ -146,6 +152,9 @@ final class MessageFormatters {
     }
     if (earned > 0) {
       facts.add('начислено ${_groupedAmount(earned)} ⛰️');
+    }
+    if (attendanceFact != null) {
+      facts.add(attendanceFact);
     }
     if (facts.isEmpty) {
       return head;
@@ -184,6 +193,14 @@ final class MessageFormatters {
       BookingStatus.paymentRejected =>
         true,
       BookingStatus.paid || BookingStatus.freeTraining || BookingStatus.cancelled => false,
+    };
+  }
+
+  static String? _attendanceFact(BookingAttendance? attendance) {
+    return switch (attendance) {
+      BookingAttendance.attended => 'явка: был',
+      BookingAttendance.absent => 'явка: не был',
+      null => null,
     };
   }
 

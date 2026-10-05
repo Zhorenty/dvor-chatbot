@@ -516,6 +516,20 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
                 isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
           );
           return true;
+        case _PrivateFlowStep.selectingAttendanceSession:
+          _flowByUserId.remove(userId);
+          await _sendScreen(
+            chatId,
+            _templates.returnedToMainMenu(),
+            replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin,
+              showReturnToAdminMenu: showReturnToAdminMenu,
+            ),
+          );
+          return true;
+        case _PrivateFlowStep.viewingAttendanceRoster:
+          await _openAttendanceSessionList(chatId: chatId, userId: userId);
+          return true;
         case _PrivateFlowStep.selectingAdminScheduleRoot:
           _flowByUserId.remove(userId);
           await _sendScreen(

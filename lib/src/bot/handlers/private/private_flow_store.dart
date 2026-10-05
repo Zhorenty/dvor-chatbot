@@ -61,6 +61,8 @@ enum PrivateFlowStep {
   selectingAdminBookingListCategory,
   selectingAdminBookingFromList,
   selectingAdminBookingAction,
+  selectingAttendanceSession,
+  viewingAttendanceRoster,
   selectingAdminBookingEditField,
   selectingAdminBookingEditStatus,
   enteringAdminBookingUsername,

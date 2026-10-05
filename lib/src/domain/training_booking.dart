@@ -1,3 +1,4 @@
+import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 
@@ -27,6 +28,7 @@ final class TrainingBooking {
     this.participantUsername,
     this.participantName,
     this.paymentGroupId,
+    this.attendance,
   })  : managerUserId = managerUserId ?? userId,
         participantUserId =
             participantUserId ?? (participantType == BookingParticipantType.guest ? null : userId);
@@ -63,6 +65,9 @@ final class TrainingBooking {
   final String? participantUsername;
   final String? participantName;
   final String? paymentGroupId;
+
+  /// Admin check-in. Null until the session is marked.
+  final BookingAttendance? attendance;
 
   bool get isManagedForOther =>
       participantType != BookingParticipantType.self ||

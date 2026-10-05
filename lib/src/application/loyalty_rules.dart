@@ -1,6 +1,7 @@
 import 'package:dvor_chatbot/src/application/loyalty_math.dart';
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -52,6 +53,9 @@ abstract final class LoyaltyRules {
       return false;
     }
     if (booking.status != BookingStatus.paid) {
+      return false;
+    }
+    if (booking.attendance != BookingAttendance.attended) {
       return false;
     }
     if (!booking.startsAt.isBefore(now)) {

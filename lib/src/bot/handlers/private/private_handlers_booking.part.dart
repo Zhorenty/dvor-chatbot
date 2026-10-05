@@ -603,7 +603,12 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
             booking,
             burnsSlot: BoxingCardLedger.burnsSlotOnCancel(booking, now: _nowProvider()),
           )
-        : _templates.bookingCancelConfirm(booking);
+        : _bookingPolicyService.isPeaksRefundTraining(booking)
+            ? _templates.paidTrainingCancelConfirm(
+                booking,
+                refundPeaks: await _peaksRefundPreview(booking),
+              )
+            : _templates.bookingCancelConfirm(booking);
     await _sendScreen(
       chatId,
       confirmText,
@@ -779,6 +784,15 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     return _bookingPolicyService.canCancel(booking, now: _nowProvider());
   }
 
+  Future<int> _peaksRefundPreview(TrainingBooking booking) async {
+    final spent = await _loyaltyService.peaksSpentOnBooking(booking.id);
+    return spent +
+        _bookingPolicyService.cashCancelRefundPeaks(
+          booking,
+          peaksSpent: spent,
+        );
+  }
+
   Future<TrainingBooking?> _finalizeBoxingCardCancel(TrainingBooking booking) async {
     if (!MessageFormatters.isBoxingCardIncludedPaymentNote(booking.paymentNote)) {
       return null;
@@ -798,6 +812,9 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required _ActivityCategory category,
   }) {
     if (category == _ActivityCategory.trainings) {
+      if (_bookingPolicyService.isPeaksRefundTraining(booking)) {
+        return _templates.paidTrainingCancellationTooLate(booking);
+      }
       return _templates.freeTrainingCancellationTooLate(booking);
     }
     return _templates.outdoorCancellationTooLate(booking);

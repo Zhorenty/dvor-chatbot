@@ -71,34 +71,16 @@ final class LoyaltyAccrualJob {
     final category = _catalogService?.categoryForBooking(booking) ?? ActivityCategory.trainings;
     final peaksSpent = await _loyaltyService.peaksSpentOnBooking(booking.id);
     if (category == ActivityCategory.trainings) {
-      if (!LoyaltyRules.canEarnTraining(
+      final sync = await _loyaltyService.syncTrainingPeaks(
         booking: booking,
         now: now,
-        peaksSpent: peaksSpent,
-      )) {
-        return;
-      }
-      final remainder = LoyaltyMath.remainderRub(
-        priceRub: booking.trainingPrice ?? 0,
-        peaksSpent: peaksSpent,
+        isTraining: true,
       );
-      final amount = _loyaltyService.quoteTrainingEarn(remainder);
-      if (amount <= 0) {
-        return;
-      }
-      final result = await _loyaltyService.credit(
-        userId: booking.userId,
-        amount: amount,
-        reason: LoyaltyLedgerReason.training,
-        idempotencyKey: LoyaltyKeys.training(booking.id),
-        now: now,
-        bookingId: booking.id,
-      );
-      if (result.applied) {
+      if (sync.appliedDelta > 0) {
         await _notifyTrainingAccrual(
           booking: booking,
-          amount: amount,
-          remaining: result.account.remaining,
+          amount: sync.appliedDelta,
+          remaining: sync.remaining,
         );
       }
       return;

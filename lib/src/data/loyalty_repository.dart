@@ -32,6 +32,9 @@ abstract interface class LoyaltyRepository {
 
   Future<int> peaksSpentOnBooking(int bookingId);
 
+  /// Signed training credits plus attendance reversals for one booking.
+  Future<int> netTrainingPeaks(int bookingId);
+
   /// Net spend and training/hike/trail earn for each booking that has ledger rows.
   Future<Map<int, BookingPeaksSnapshot>> peaksByBookings(Iterable<int> bookingIds);
 
@@ -124,6 +127,9 @@ final class NoopLoyaltyRepository implements LoyaltyRepository {
 
   @override
   Future<int> peaksSpentOnBooking(int bookingId) async => 0;
+
+  @override
+  Future<int> netTrainingPeaks(int bookingId) async => 0;
 
   @override
   Future<Map<int, BookingPeaksSnapshot>> peaksByBookings(Iterable<int> bookingIds) async {

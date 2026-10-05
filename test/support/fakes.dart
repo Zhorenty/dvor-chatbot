@@ -10,6 +10,7 @@ import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
+import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
@@ -387,6 +388,99 @@ final class FakeBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<TrainingBooking?> findBookingById(int bookingId) async {
+    for (final booking in <TrainingBooking>[
+      ...queue,
+      ...userBookings,
+      ...adminBookings,
+      ...bookingsByTrainingKey,
+    ]) {
+      if (booking.id == bookingId) {
+        return booking;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Future<TrainingBooking?> markAttendance({
+    required int bookingId,
+    required BookingAttendance attendance,
+  }) async {
+    final existing = await findBookingById(bookingId);
+    if (existing == null) {
+      return null;
+    }
+    final updated = fakeBooking(
+      id: existing.id,
+      userId: existing.userId,
+      userUsername: existing.userUsername,
+      paymentProofChatId: existing.paymentProofChatId,
+      paymentProofMessageId: existing.paymentProofMessageId,
+      trainingKey: existing.trainingKey,
+      title: existing.trainingTitle,
+      startsAt: existing.startsAt,
+      location: existing.location,
+      locationUrl: existing.locationUrl,
+      status: existing.status,
+      trainingPrice: existing.trainingPrice,
+      trainingPrepayPercent: existing.trainingPrepayPercent,
+      paymentNote: existing.paymentNote,
+      promoCode: existing.promoCode,
+      promoDiscountPercent: existing.promoDiscountPercent,
+      createdAt: existing.createdAt,
+      updatedAt: existing.updatedAt,
+      participantType: existing.participantType,
+      managerUserId: existing.managerUserId,
+      participantUserId: existing.participantUserId,
+      participantUsername: existing.participantUsername,
+      participantName: existing.participantName,
+      paymentGroupId: existing.paymentGroupId,
+      attendance: attendance,
+    );
+    List<TrainingBooking> replace(List<TrainingBooking> items) {
+      return items.map((item) => item.id == bookingId ? updated : item).toList(growable: false);
+    }
+
+    queue = replace(queue);
+    userBookings = replace(userBookings);
+    adminBookings = replace(adminBookings);
+    bookingsByTrainingKey = replace(bookingsByTrainingKey);
+    return updated;
+  }
+
+  @override
+  Future<List<TrainingBooking>> listBookingsStartedBetween({
+    required DateTime startsFromInclusive,
+    required DateTime startsToInclusive,
+    int limit = 500,
+  }) async {
+    final seen = <int>{};
+    final matched = <TrainingBooking>[];
+    for (final booking in <TrainingBooking>[
+      ...queue,
+      ...userBookings,
+      ...adminBookings,
+      ...bookingsByTrainingKey,
+    ]) {
+      if (!seen.add(booking.id)) {
+        continue;
+      }
+      final active = booking.status == BookingStatus.paid ||
+          booking.status == BookingStatus.freeTraining ||
+          booking.status == BookingStatus.partialPaid;
+      if (!active ||
+          booking.startsAt.isBefore(startsFromInclusive) ||
+          booking.startsAt.isAfter(startsToInclusive)) {
+        continue;
+      }
+      matched.add(booking);
+    }
+    matched.sort((left, right) => right.startsAt.compareTo(left.startsAt));
+    return matched.take(limit).toList(growable: false);
+  }
+
+  @override
   Future<BookingActionResult> cancelBooking({
     required int userId,
     required int bookingId,
@@ -686,6 +780,7 @@ final class FakeBookingRepository implements BookingRepository {
       locationUrl: training?.locationUrl ?? current.locationUrl,
       status: status ?? current.status,
       paymentNote: current.paymentNote,
+      attendance: current.attendance,
     );
     final items = adminBookings.toList(growable: true);
     items[index] = updated;
@@ -1175,6 +1270,7 @@ TrainingBooking fakeBooking({
   String? participantUsername,
   String? participantName,
   String? paymentGroupId,
+  BookingAttendance? attendance,
 }) {
   final now = DateTime(2026, 1, 1, 10);
   final resolvedManagerUserId = managerUserId ?? userId;
@@ -1205,6 +1301,7 @@ TrainingBooking fakeBooking({
     participantUsername: participantUsername ?? userUsername,
     participantName: participantName,
     paymentGroupId: paymentGroupId,
+    attendance: attendance,
   );
 }
 

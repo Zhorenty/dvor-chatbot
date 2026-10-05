@@ -29,6 +29,9 @@ final class TelegramKeyboards {
             <String, String>{'text': MessageCopy.buttonPaymentsQueue},
           ],
           <Map<String, String>>[
+            <String, String>{'text': MessageCopy.buttonAttendance},
+          ],
+          <Map<String, String>>[
             <String, String>{'text': MessageCopy.buttonAdminSchedule},
             <String, String>{'text': MessageCopy.buttonBroadcast},
           ],

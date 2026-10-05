@@ -7,6 +7,7 @@ import 'package:dvor_chatbot/src/data/sqlite/pending_payment_expiry_policy.dart'
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/admin_analytics.dart';
+import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -102,6 +103,7 @@ final class SqliteBookingRepository implements BookingRepository {
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN promo_discount_percent INTEGER;');
     _migrateBookingsParticipantModel(db);
     _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN location_url TEXT;');
+    _addColumnIfMissing(db, 'ALTER TABLE bookings ADD COLUMN attendance TEXT;');
     db.execute('''
       CREATE TABLE IF NOT EXISTS economic_report_dispatches (
         report_type TEXT NOT NULL,
@@ -597,6 +599,61 @@ final class SqliteBookingRepository implements BookingRepository {
         nowIso,
         BookingStatus.cancelled.dbValue,
         nowIso,
+        limit,
+      ],
+    );
+    return result.map(_rowToBooking).toList(growable: false);
+  }
+
+  @override
+  Future<TrainingBooking?> findBookingById(int bookingId) async {
+    _expireOverduePendingBookings();
+    return _findBookingById(bookingId);
+  }
+
+  @override
+  Future<TrainingBooking?> markAttendance({
+    required int bookingId,
+    required BookingAttendance attendance,
+  }) async {
+    final existing = _findBookingById(bookingId);
+    if (existing == null) {
+      return null;
+    }
+    final nowIso = _nowProvider().toUtc().toIso8601String();
+    _database.execute(
+      '''
+      UPDATE bookings
+      SET attendance = ?, updated_at = ?
+      WHERE id = ?;
+      ''',
+      <Object?>[attendance.dbValue, nowIso, bookingId],
+    );
+    return _findBookingById(bookingId);
+  }
+
+  @override
+  Future<List<TrainingBooking>> listBookingsStartedBetween({
+    required DateTime startsFromInclusive,
+    required DateTime startsToInclusive,
+    int limit = 500,
+  }) async {
+    _expireOverduePendingBookings();
+    final result = _database.select(
+      '''
+      SELECT * FROM bookings
+      WHERE status IN (?, ?, ?)
+        AND starts_at >= ?
+        AND starts_at <= ?
+      ORDER BY starts_at DESC
+      LIMIT ?;
+      ''',
+      <Object?>[
+        BookingStatus.paid.dbValue,
+        BookingStatus.freeTraining.dbValue,
+        BookingStatus.partialPaid.dbValue,
+        startsFromInclusive.toUtc().toIso8601String(),
+        startsToInclusive.toUtc().toIso8601String(),
         limit,
       ],
     );
@@ -2332,6 +2389,7 @@ final class SqliteBookingRepository implements BookingRepository {
       participantUsername: _optionalStringColumn(row, 'participant_username'),
       participantName: _optionalStringColumn(row, 'participant_name'),
       paymentGroupId: _optionalStringColumn(row, 'payment_group_id'),
+      attendance: BookingAttendance.fromDbValue(_optionalStringColumn(row, 'attendance')),
     );
   }
 
