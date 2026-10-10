@@ -86,7 +86,7 @@ extension MessageTemplatesContent on MessageTemplates {
   String unknownCategory() {
     return RichHtml.screen(
       title: 'Не понял категорию',
-      lead: 'Тренировки, походы или трейлы — кнопками внизу.',
+      lead: 'Тренировки, походы или кэмпы — кнопками внизу.',
     );
   }
 
@@ -780,7 +780,7 @@ extension MessageTemplatesContent on MessageTemplates {
       LoyaltyLedgerReason.training => 'за тренировку',
       LoyaltyLedgerReason.feedback => 'за отзыв',
       LoyaltyLedgerReason.hike => 'за поход',
-      LoyaltyLedgerReason.trail => 'за трейл',
+      LoyaltyLedgerReason.trail => 'за кэмп',
       LoyaltyLedgerReason.referral => 'за приглашение',
       LoyaltyLedgerReason.boxingCard => 'за бокс-карту',
       LoyaltyLedgerReason.refund => 'возврат',
@@ -797,6 +797,18 @@ extension MessageTemplatesContent on MessageTemplates {
       lead: '+$amount ⛰️$reasonSuffix. Баланс: $remaining.',
       paragraphs: <String>[
         'Живут 45 дней, срок обновляется, когда ты записываешься или стартуешь бота.',
+      ],
+    );
+  }
+
+  String frankRunBroadcast() {
+    return RichHtml.screen(
+      title: '🏃 DVOR x FRANK',
+      paragraphs: <String>[
+        '17 октября в 8:30 — забег 5 км от Моста поцелуев. Сет Ильи Пз.',
+        'После — короткая силовая, кофе и завтраки Frank by Basta.',
+        'Вода на дистанции и кофе после — для участников.',
+        'Запись бесплатная: «Записаться» → тренировки.',
       ],
     );
   }
@@ -1120,12 +1132,11 @@ extension MessageTemplatesContent on MessageTemplates {
       alreadyEscaped: true,
       detailsSummary: 'Как копить и списать',
       detailsBody: 'Первый /start — 1000 ⛰️.\n'
-          'После платной тренировки — 20% от цены, округление вверх до 10. '
-          'Слот 500 ₽ даёт 200 ⛰️.\n'
+          'После платной тренировки, если отметили «Был» — 100 ⛰️.\n'
           'Отзыв — до 50 ⛰️ за развёрнутый текст.\n'
           'Друг прошёл первую платную — 1000. Бокс-карта — 10% от ₽.\n'
           'На тренировку вершинки списываются только целиком. Скидки на слот нет.\n'
-          'Карта — целиком или часть. Поход и трейл — скидка до 30%.\n'
+          'Карта — целиком или часть. Поход и кэмп — скидка до 30%.\n'
           'Последние операции:\n$ledgerLines',
     );
   }
@@ -1138,7 +1149,7 @@ extension MessageTemplatesContent on MessageTemplates {
       LoyaltyLedgerReason.training => 'за тренировку',
       LoyaltyLedgerReason.feedback => 'за отзыв',
       LoyaltyLedgerReason.hike => 'за поход',
-      LoyaltyLedgerReason.trail => 'за трейл',
+      LoyaltyLedgerReason.trail => 'за кэмп',
       LoyaltyLedgerReason.referral => 'за приглашение',
       LoyaltyLedgerReason.boxingCard => 'за бокс-карту',
       LoyaltyLedgerReason.expire => 'сгорание',
@@ -1209,7 +1220,7 @@ extension MessageTemplatesContent on MessageTemplates {
         ('УДАР', '4 700 ₽ · 8 групповых + 1 индивидуальная'),
       ],
       detailsSummary: 'Что не покрывает',
-      detailsBody: 'Сила, забег, походы и трейлы — обычная оплата. Пропуск не переносится. '
+      detailsBody: 'Сила, забег, походы и кэмпы — обычная оплата. Пропуск не переносится. '
           'Перенос — за сутки и только на другой бокс.',
     );
   }
@@ -3075,6 +3086,25 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
+  String peaksBookingPaidAdminNotification(
+    TrainingBooking booking, {
+    required int peaks,
+  }) {
+    final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
+    final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
+    return RichHtml.screen(
+      title: 'Операционное событие: запись оплачена вершинками',
+      rows: <(String, String)>[
+        ..._adminBookingIdentityRows(booking),
+        ('Запись', '#${booking.id}'),
+        ('Событие', booking.trainingTitle),
+        ('Дата', _bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)),
+        ('Списано', '$peaks ⛰️'),
+        ('Статус', _statusLabel(booking.status, booking: booking)),
+      ],
+    );
+  }
+
   String freeBookingCreatedAdminNotification(TrainingBooking booking) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
@@ -3161,7 +3191,7 @@ extension MessageTemplatesContent on MessageTemplates {
     required String? username,
     required OutdoorActivityInfo activity,
   }) {
-    final typeLabel = activity.type == OutdoorActivityType.hike ? 'походом' : 'трейлом';
+    final typeLabel = activity.type == OutdoorActivityType.hike ? 'походом' : 'кэмпом';
     final location = activity.location?.trim();
     return RichHtml.screen(
       title: 'Кто-то заинтересовался $typeLabel',
@@ -3907,7 +3937,7 @@ extension MessageTemplatesContent on MessageTemplates {
     return switch (raw) {
       'trainings' => 'тренировки',
       'hikes' => 'походы',
-      'trails' => 'трейлы',
+      'trails' => 'кэмпы',
       _ => raw,
     };
   }

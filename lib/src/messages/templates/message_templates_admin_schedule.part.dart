@@ -33,7 +33,7 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
     final title = switch (category) {
       ActivityCategory.trainings => 'Тренировки',
       ActivityCategory.hikes => 'Походы',
-      ActivityCategory.trails => 'Трейлы',
+      ActivityCategory.trails => 'Кэмпы',
     };
     if (total == 0) {
       return RichHtml.screen(

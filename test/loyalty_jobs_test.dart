@@ -157,7 +157,7 @@ void main() {
       nowProvider: () => now,
     );
     await job.run();
-    expect((await service.account(31)).remaining, 200);
+    expect((await service.account(31)).remaining, 100);
     expect((await service.account(35)).remaining, 0);
     expect((await service.account(32)).remaining, 0);
     expect((await service.account(33)).remaining, 0);
@@ -193,10 +193,10 @@ void main() {
       nowProvider: () => now,
     );
     await job.run();
-    expect((await service.account(81)).remaining, 200);
+    expect((await service.account(81)).remaining, 100);
     expect(
       sender.messages.any(
-        (message) => message.chatId == 81 && message.text.contains('+200 ⛰️ за тренировку'),
+        (message) => message.chatId == 81 && message.text.contains('+100 ⛰️ за тренировку'),
       ),
       isTrue,
     );
@@ -205,7 +205,7 @@ void main() {
         (message) =>
             message.chatId == -1001 &&
             message.text.contains('Начисление вершинок') &&
-            message.text.contains('200 ⛰️') &&
+            message.text.contains('100 ⛰️') &&
             message.text.contains('Силовая'),
       ),
       isTrue,
@@ -250,7 +250,7 @@ void main() {
     );
     await job.run();
     expect((await service.account(51)).remaining, 0);
-    expect((await service.account(52)).remaining, 200);
+    expect((await service.account(52)).remaining, 100);
   });
 
   test('referral accrues 1000 only when invitee paid with cash', () async {

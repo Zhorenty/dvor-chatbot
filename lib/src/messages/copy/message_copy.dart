@@ -45,7 +45,7 @@ final class MessageCopy {
   static const String buttonFeedbackSkip = 'Пропустить';
   static const String buttonCategoryTrainings = '🏋️ Тренировки';
   static const String buttonCategoryHikes = '🥾 Походы';
-  static const String buttonCategoryTrails = '🏃 Трейлы';
+  static const String buttonCategoryTrails = '🎯 Кэмпы';
   static const String buttonOutdoorEquipment = '🎒 Экипировка';
   static const String buttonOutdoorItinerary = '🗺 Расписание похода';
   static const String buttonRefreshSchedule = '🔄 Обновить Google Sheets';

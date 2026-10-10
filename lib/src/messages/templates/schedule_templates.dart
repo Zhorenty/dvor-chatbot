@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/camp_title.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
@@ -93,16 +94,16 @@ final class ScheduleTemplates {
       title: 'Ближайшие походы OUTDVOR 🥾',
       finalPaymentAfter: 'после похода',
       items: items,
-      emptyText: 'Пока походов в расписании нет. Другой формат — в тренировках или трейлах.',
+      emptyText: 'Пока походов в расписании нет. Другой формат — в тренировках или кэмпах.',
     );
   }
 
   String trails(List<OutdoorActivityInfo> items) {
     return _outdoorActivitiesList(
-      title: 'Ближайшие трейлы OUTDVOR 🏃',
-      finalPaymentAfter: 'после трейла',
+      title: 'Ближайшие кэмпы 🎯',
+      finalPaymentAfter: 'после кэмпа',
       items: items,
-      emptyText: 'Пока трейлов в расписании нет. Другой формат — в тренировках или походах.',
+      emptyText: 'Пока кэмпов в расписании нет. Другой формат — в тренировках или походах.',
     );
   }
 
@@ -121,9 +122,9 @@ final class ScheduleTemplates {
 
   String trailsEquipment(List<OutdoorActivityInfo> items) {
     return _outdoorEquipmentList(
-      title: '🎒 Экипировка для ближайших трейлов OUTDVOR',
+      title: '🎒 Экипировка для ближайших кэмпов',
       items: items,
-      emptyText: 'Для ближайших трейлов список экипировки пока не добавлен.',
+      emptyText: 'Для ближайших кэмпов список экипировки пока не добавлен.',
     );
   }
 
@@ -137,9 +138,9 @@ final class ScheduleTemplates {
 
   String trailsItinerary(List<OutdoorActivityInfo> items) {
     return _outdoorItineraryList(
-      title: '🗺 Расписание ближайших трейлов OUTDVOR',
+      title: '🗺 Расписание ближайших кэмпов',
       items: items,
-      emptyText: 'Для ближайших трейлов расписание пока не добавлено.',
+      emptyText: 'Для ближайших кэмпов расписание пока не добавлено.',
     );
   }
 
@@ -148,7 +149,7 @@ final class ScheduleTemplates {
         '${RichHtml.card(
       title: item.title,
       lines: <String>[
-        '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+        '🕒 ${_outdoorWhen(item)}',
       ],
       extra: '${RichHtml.formattedDetails(
         summary: 'Расписание похода',
@@ -163,7 +164,7 @@ final class ScheduleTemplates {
   }
 
   String chooseOutdoorEventForDetails(ActivityCategory category) {
-    final categoryLabel = category == ActivityCategory.hikes ? 'поход' : 'трейл';
+    final categoryLabel = category == ActivityCategory.hikes ? 'поход' : 'кэмп';
     return RichHtml.screen(
       title: 'Событие',
       lead: 'Выбери $categoryLabel.',
@@ -177,7 +178,7 @@ final class ScheduleTemplates {
         RichHtml.card(
           title: item.title,
           lines: <String>[
-            '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+            '🕒 ${_outdoorWhen(item)}',
             if (location != null && location.isNotEmpty) '📍 ${_escapeHtml(location)}',
             if (item.price != null)
               '💳 ${_outdoorPriceWithPrepayment(item.price!, prepayPercent: item.prepayPercent)}',
@@ -201,7 +202,7 @@ final class ScheduleTemplates {
     return '${RichHtml.heading('Экипировка')}${RichHtml.card(
       title: item.title,
       lines: <String>[
-        '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+        '🕒 ${_outdoorWhen(item)}',
       ],
       extra: equipment == null || equipment.isEmpty
           ? RichHtml.paragraph('Список экипировки ещё не добавлен.')
@@ -214,7 +215,7 @@ final class ScheduleTemplates {
     return '${RichHtml.heading('Расписание похода')}${RichHtml.card(
       title: item.title,
       lines: <String>[
-        '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+        '🕒 ${_outdoorWhen(item)}',
       ],
       extra: itinerary == null || itinerary.isEmpty
           ? RichHtml.paragraph('Тайминг ещё не добавлен.')
@@ -314,6 +315,14 @@ final class ScheduleTemplates {
   String scheduleDocumentLink() =>
       'Актуальный Google Sheets:\nhttps://docs.google.com/spreadsheets/d/1pA6XEjrAAgJT7rFVe86JdfHSl8NCPMJ4Wp7i9JN6a5Q/edit?gid=0#gid=0';
 
+  String _outdoorWhen(OutdoorActivityInfo item) {
+    final hasClock = item.dateFrom.hour != 0 || item.dateFrom.minute != 0;
+    if (isCampActivityTitle(item.title) && hasClock) {
+      return DateFormat('dd.MM.yyyy HH:mm').format(item.dateFrom);
+    }
+    return MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo);
+  }
+
   String _outdoorActivitiesList({
     required String title,
     required String finalPaymentAfter,
@@ -336,7 +345,7 @@ final class ScheduleTemplates {
           title: item.title,
           index: index + 1,
           lines: <String>[
-            '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+            '🕒 ${_outdoorWhen(item)}',
             if (location != null && location.isNotEmpty) '📍 ${_escapeHtml(location)}',
             if (item.price != null)
               '💳 ${_outdoorPriceWithPrepayment(item.price!, prepayPercent: item.prepayPercent)}',
@@ -368,7 +377,7 @@ final class ScheduleTemplates {
           title: item.title,
           index: index + 1,
           lines: <String>[
-            '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+            '🕒 ${_outdoorWhen(item)}',
           ],
           extra: equipment == null || equipment.isEmpty
               ? RichHtml.paragraph('Список скоро добавим. Следи за обновлениями в чате.')
@@ -399,7 +408,7 @@ final class ScheduleTemplates {
           title: item.title,
           index: index + 1,
           lines: <String>[
-            '🕒 ${MessageFormatters.outdoorDateLabel(item.dateFrom, item.dateTo)}',
+            '🕒 ${_outdoorWhen(item)}',
           ],
           extra: itinerary == null || itinerary.isEmpty
               ? RichHtml.paragraph('Тайминг скоро добавим. Следи за обновлениями в чате.')

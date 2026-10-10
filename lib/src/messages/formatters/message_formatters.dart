@@ -3,6 +3,7 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/camp_title.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:intl/intl.dart';
@@ -298,6 +299,9 @@ final class MessageFormatters {
     DateFormat dateOnlyFormatter,
   ) {
     if (isOutdoorBooking(booking)) {
+      if (_campHasClock(booking.trainingTitle, booking.startsAt)) {
+        return dateTimeFormatter.format(booking.startsAt);
+      }
       return dateOnlyFormatter.format(booking.startsAt);
     }
     return dateTimeFormatter.format(booking.startsAt);
@@ -309,6 +313,9 @@ final class MessageFormatters {
     DateFormat dateOnlyFormatter,
   ) {
     if (_isOutdoorCategory(training.category)) {
+      if (_campHasClock(training.title, training.startsAt)) {
+        return dateTimeFormatter.format(training.startsAt);
+      }
       final endsAt = training.endsAt;
       if (endsAt != null) {
         return outdoorDateLabel(training.startsAt, endsAt);
@@ -318,12 +325,29 @@ final class MessageFormatters {
     return dateTimeFormatter.format(training.startsAt);
   }
 
+  static String normalizedActivityTitle(String value) {
+    var normalized = value.trim().toLowerCase();
+    normalized = normalized.replaceFirst(RegExp(r'^🥾\s*поход:\s*'), '');
+    normalized = normalized.replaceFirst(RegExp(r'^🏃\s*трейл:\s*'), '');
+    normalized = normalized.replaceFirst(RegExp(r'^🎯\s*кэмп:\s*'), '');
+    return normalized.replaceAll(RegExp(r'\s+'), ' ');
+  }
+
   static bool isOutdoorBooking(TrainingBooking booking) {
     final trainingKey = booking.trainingKey.toLowerCase();
     if (trainingKey.startsWith('hikes|') || trainingKey.startsWith('trails|')) {
       return true;
     }
-    return _isOutdoorBookingTitle(booking.trainingTitle);
+    return _isOutdoorBookingTitle(booking.trainingTitle) ||
+        isCampActivityTitle(booking.trainingTitle);
+  }
+
+  static bool _campHasClock(String title, DateTime startsAt) {
+    final camp = title.startsWith('🎯 Кэмп:') || isCampActivityTitle(title);
+    if (!camp) {
+      return false;
+    }
+    return startsAt.hour != 0 || startsAt.minute != 0;
   }
 
   static bool _isOutdoorCategory(ActivityCategory category) {
@@ -331,6 +355,8 @@ final class MessageFormatters {
   }
 
   static bool _isOutdoorBookingTitle(String title) {
-    return title.startsWith('🥾 Поход:') || title.startsWith('🏃 Трейл:');
+    return title.startsWith('🥾 Поход:') ||
+        title.startsWith('🏃 Трейл:') ||
+        title.startsWith('🎯 Кэмп:');
   }
 }

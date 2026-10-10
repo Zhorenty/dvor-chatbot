@@ -20,6 +20,7 @@ import 'package:dvor_chatbot/src/data/schedule_catalog_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
+import 'package:dvor_chatbot/src/jobs/frank_run_broadcast_job.dart';
 import 'package:dvor_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
 import 'package:dvor_chatbot/src/jobs/group_invite_nudge_job.dart';
 import 'package:dvor_chatbot/src/jobs/job_scheduler.dart';
@@ -120,6 +121,13 @@ final class BotRunner {
           targetChatId: config.targetChatId,
           timezoneOffsetHours: config.timezoneOffsetHours,
           jobDedupeRepository: jobDedupeRepository,
+        ),
+        _frankRunBroadcastJob = FrankRunBroadcastJob(
+          sender: sender,
+          onboardingRepository: onboardingRepository,
+          templates: templates,
+          jobDedupeRepository: jobDedupeRepository,
+          groupChatId: config.targetChatId,
         ),
         _economicSummaryJob = EconomicSummaryJob(
           bookingRepository: bookingRepository,
@@ -237,6 +245,7 @@ final class BotRunner {
   final TrainingDayPromoJob _trainingDayPromoJob;
   final ScheduleBroadcastJob _scheduleBroadcastJob;
   final ReferralBroadcastJob _referralBroadcastJob;
+  final FrankRunBroadcastJob _frankRunBroadcastJob;
   final EconomicSummaryJob _economicSummaryJob;
   final OnboardingNudgeJob _onboardingNudgeJob;
   final GroupInviteNudgeJob _groupInviteNudgeJob;
@@ -293,6 +302,11 @@ final class BotRunner {
     _schedulePeriodic(const Duration(minutes: 1), 'training day promo', _trainingDayPromoJob.run);
     _schedulePeriodic(const Duration(minutes: 1), 'schedule broadcast', _scheduleBroadcastJob.run);
     _schedulePeriodic(const Duration(minutes: 1), 'referral broadcast', _referralBroadcastJob.run);
+    _schedulePeriodic(
+      const Duration(minutes: 10),
+      'frank run broadcast',
+      _frankRunBroadcastJob.run,
+    );
     _schedulePeriodic(const Duration(minutes: 10), 'onboarding nudge', _onboardingNudgeJob.run);
     _schedulePeriodic(const Duration(hours: 1), 'group invite nudge', _groupInviteNudgeJob.run);
     _schedulePeriodic(const Duration(minutes: 10), 'training feedback', _trainingFeedbackJob.run);
@@ -326,6 +340,7 @@ final class BotRunner {
     _jobScheduler.launch('training day promo', _trainingDayPromoJob.run);
     _jobScheduler.launch('schedule broadcast', _scheduleBroadcastJob.run);
     _jobScheduler.launch('referral broadcast', _referralBroadcastJob.run);
+    _jobScheduler.launch('frank run broadcast', _frankRunBroadcastJob.run);
 
     while (!_stopping) {
       try {

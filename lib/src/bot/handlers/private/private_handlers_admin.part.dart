@@ -231,15 +231,15 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
   }
 
   String _trainingSignature(TrainingInfo training) {
-    final normalizedTitle = training.title.trim().toLowerCase();
-    if (_isOutdoorCategory(training.category)) {
+    final normalizedTitle = MessageFormatters.normalizedActivityTitle(training.title);
+    if (_isOutdoorCategory(training.category) || isCampActivityTitle(training.title)) {
       return normalizedTitle;
     }
     return '$normalizedTitle|${training.location.trim().toLowerCase()}';
   }
 
   String _bookingSignature(TrainingBooking booking) {
-    final normalizedTitle = booking.trainingTitle.trim().toLowerCase();
+    final normalizedTitle = MessageFormatters.normalizedActivityTitle(booking.trainingTitle);
     if (MessageFormatters.isOutdoorBooking(booking)) {
       return normalizedTitle;
     }

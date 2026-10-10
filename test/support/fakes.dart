@@ -681,7 +681,10 @@ final class FakeBookingRepository implements BookingRepository {
       'trails' => ActivityCategory.trails,
       'trainings' => ActivityCategory.trainings,
       _ when booking.trainingTitle.startsWith('🥾 Поход:') => ActivityCategory.hikes,
-      _ when booking.trainingTitle.startsWith('🏃 Трейл:') => ActivityCategory.trails,
+      _
+          when booking.trainingTitle.startsWith('🏃 Трейл:') ||
+              booking.trainingTitle.startsWith('🎯 Кэмп:') =>
+        ActivityCategory.trails,
       _ => ActivityCategory.trainings,
     };
     return categories.contains(category);

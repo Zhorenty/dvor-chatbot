@@ -93,6 +93,7 @@ void main() {
         'все',
         'Тренировки',
         'Походы',
+        'Кэмпы',
         'Трейлы',
       ]);
       expect(GoogleSheetsInputUi.staffRoleDropdownValues, <String>[

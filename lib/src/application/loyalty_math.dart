@@ -38,8 +38,8 @@ abstract final class LoyaltyMath {
   static const double outdoorDiscountShare = 0.30;
   static const double cashbackRate = 0.20;
 
-  /// 20% of the training price in ₽, in peaks at [peaksPerRub]. 500 ₽ → 200 ⛰️.
-  static const double trainingCashbackRate = 0.20;
+  /// Fixed earn for one attended paid training. Less than the old 20% cashback.
+  static const int trainingEarnPeaksAmount = 100;
 
   static int roundUp(int x) {
     if (x <= 0) {
@@ -131,12 +131,12 @@ abstract final class LoyaltyMath {
     return feedbackPeaksShort;
   }
 
-  /// After a paid training: round_up_10(price_rub × 2 × 0.20). 500 ₽ → 200 ⛰️.
+  /// After a paid training: fixed [trainingEarnPeaksAmount], independent of price.
   static int trainingEarnPeaks(int priceRub) {
     if (priceRub <= 0) {
       return 0;
     }
-    return roundUpFromDouble(priceRub * peaksPerRub * trainingCashbackRate);
+    return trainingEarnPeaksAmount;
   }
 
   /// 10% of cash paid through the bot, in peaks: round_up_50(paid_rub × 0.2).

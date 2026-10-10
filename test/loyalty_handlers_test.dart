@@ -189,6 +189,12 @@ void main() {
     expect(bookings.lastUpdatedStatus, BookingStatus.paid);
     expect(bookings.lastUpdatedPaymentNote, MessageFormatters.loyaltyPeaksPaymentNoteMarker);
     expect((await loyaltyService.account(72)).remaining, 0);
+    expect(
+      sender.messages.any(
+        (message) => message.chatId == -1001 && message.text.contains('оплачена вершинками'),
+      ),
+      isTrue,
+    );
   });
 
   test('training spend is hidden when peaks cannot cover the slot', () async {

@@ -611,6 +611,26 @@ def first_plan_time(plan: str | None) -> str | None:
     return f"{int(hours):02d}:{minutes}"
 
 
+def featured_frank_slot() -> Slot:
+    return Slot(
+        starts_at=datetime(2026, 10, 17, 8, 30, tzinfo=MOSCOW),
+        title="DVOR × FRANK",
+        location="Мост поцелуев",
+        coach=None,
+        notes=(
+            "Бесплатный забег 5 км. "
+            "Сет Ильи Пз, силовая и завтраки Frank by Basta."
+        ),
+        is_super=True,
+        super_tag="КОЛЛАБОРАЦИЯ DVOR × FRANK",
+    )
+
+
+def is_frank_slot(slot: Slot) -> bool:
+    blob = f"{slot.title} {slot.notes or ''}".casefold()
+    return "frank" in blob or "френк" in blob
+
+
 def super_tag_from_text(title: str, description: str) -> str:
     blob = f"{title} {description}".casefold()
     if "outdvor" in blob:
@@ -687,6 +707,8 @@ def load_week_slots(now: datetime, *, remaining_only: bool = True) -> list[Slot]
             continue
         if remaining_only and slot.starts_at <= now:
             continue
+        if is_frank_slot(slot):
+            continue
         slots.append(slot)
 
     hikes = [slot for row in fetch_csv(HIKES_CSV) if (slot := parse_hike_slot(row)) is not None]
@@ -702,6 +724,16 @@ def load_week_slots(now: datetime, *, remaining_only: bool = True) -> list[Slot]
         upcoming.sort(key=lambda item: item.starts_at)
         if upcoming:
             slots.append(upcoming[0])
+
+    frank = featured_frank_slot()
+    in_window = monday <= frank.starts_at < sunday_end
+    still_ahead = not remaining_only or frank.starts_at > now
+    if in_window and still_ahead:
+        for slot in slots:
+            if slot.is_super:
+                slot.is_super = False
+                slot.super_tag = None
+        slots.append(frank)
 
     slots.sort(key=lambda item: item.starts_at)
     return slots

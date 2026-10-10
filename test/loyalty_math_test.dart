@@ -37,15 +37,15 @@ void main() {
     });
 
     test('training earn is 20% of price, round_up_10', () {
-      expect(LoyaltyMath.trainingEarnPeaks(350), 140);
-      expect(LoyaltyMath.trainingEarnPeaks(500), 200);
-      expect(LoyaltyMath.trainingEarnPeaks(400), 160);
-      expect(LoyaltyMath.trainingEarnPeaks(1), 10);
+      expect(LoyaltyMath.trainingEarnPeaks(350), 100);
+      expect(LoyaltyMath.trainingEarnPeaks(500), 100);
+      expect(LoyaltyMath.trainingEarnPeaks(400), 100);
+      expect(LoyaltyMath.trainingEarnPeaks(1), 100);
       expect(LoyaltyMath.trainingEarnPeaks(0), 0);
     });
 
-    test('five paid 500 ₽ trainings accumulate to one free slot', () {
-      expect(LoyaltyMath.trainingEarnPeaks(500) * 5, 1000);
+    test('ten paid trainings accumulate to one free 500 ₽ slot', () {
+      expect(LoyaltyMath.trainingEarnPeaks(500) * 10, 1000);
       expect(LoyaltyMath.fullPayPeaks(500), 1000);
       expect(LoyaltyMath.fullPayPeaks(350), 700);
     });

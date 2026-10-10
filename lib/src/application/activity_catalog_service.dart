@@ -1,9 +1,11 @@
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/boxing_title.dart';
+import 'package:dvor_chatbot/src/domain/camp_title.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
+import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 
 final class ActivityCatalogService {
   const ActivityCatalogService({
@@ -20,7 +22,9 @@ final class ActivityCatalogService {
     if (normalized.contains('поход')) {
       return ActivityCategory.hikes;
     }
-    if (normalized.contains('трейл')) {
+    if (normalized.contains('трейл') ||
+        normalized.contains('кэмп') ||
+        isCampActivityTitle(normalized)) {
       return ActivityCategory.trails;
     }
     return null;
@@ -28,48 +32,82 @@ final class ActivityCatalogService {
 
   List<TrainingInfo> bookableItems(ActivityCategory category, {int limit = 8}) {
     return switch (category) {
-      ActivityCategory.trainings => _scheduleRepository.upcoming(limit: limit),
-      ActivityCategory.hikes => _scheduleRepository
-          .upcomingOutdoorActivities(limit: 20)
-          .where((item) => item.type == OutdoorActivityType.hike)
-          .take(limit)
-          .map((item) => toBookableInfo(item))
+      ActivityCategory.trainings => _scheduleRepository
+          .upcoming(limit: limit)
+          .where((item) => !isCampActivityTitle(item.title))
           .toList(growable: false),
-      ActivityCategory.trails => _scheduleRepository
-          .upcomingOutdoorActivities(limit: 20)
-          .where((item) => item.type == OutdoorActivityType.trail)
-          .take(limit)
-          .map((item) => toBookableInfo(item))
+      ActivityCategory.hikes => _outdoorOf(category, fetchLimit: 20, limit: limit)
+          .map(toBookableInfo)
+          .toList(growable: false),
+      ActivityCategory.trails => _outdoorOf(category, fetchLimit: 20, limit: limit)
+          .map(toBookableInfo)
           .toList(growable: false),
     };
   }
 
   List<TrainingInfo> participantItems(ActivityCategory category, {int limit = 12}) {
     return switch (category) {
-      ActivityCategory.trainings => _scheduleRepository.upcoming(limit: limit),
-      ActivityCategory.hikes => _scheduleRepository
-          .upcomingOutdoorActivities(limit: 24)
-          .where((item) => item.type == OutdoorActivityType.hike)
-          .take(limit)
-          .map((item) => toBookableInfo(item))
+      ActivityCategory.trainings => _scheduleRepository
+          .upcoming(limit: limit)
+          .where((item) => !isCampActivityTitle(item.title))
           .toList(growable: false),
-      ActivityCategory.trails => _scheduleRepository
-          .upcomingOutdoorActivities(limit: 24)
-          .where((item) => item.type == OutdoorActivityType.trail)
-          .take(limit)
-          .map((item) => toBookableInfo(item))
+      ActivityCategory.hikes => _outdoorOf(category, fetchLimit: 24, limit: limit)
+          .map(toBookableInfo)
+          .toList(growable: false),
+      ActivityCategory.trails => _outdoorOf(category, fetchLimit: 24, limit: limit)
+          .map(toBookableInfo)
           .toList(growable: false),
     };
   }
 
   List<OutdoorActivityInfo> outdoorItems(ActivityCategory category) {
-    return _scheduleRepository.upcomingOutdoorActivities().where((item) {
+    return _outdoorOf(category, fetchLimit: 24, limit: 24);
+  }
+
+  List<OutdoorActivityInfo> _outdoorOf(
+    ActivityCategory category, {
+    required int fetchLimit,
+    required int limit,
+    DateTime? now,
+  }) {
+    final typed = _scheduleRepository.upcomingOutdoorActivities(now: now, limit: fetchLimit).where((
+      item,
+    ) {
       return switch (category) {
         ActivityCategory.trainings => false,
         ActivityCategory.hikes => item.type == OutdoorActivityType.hike,
         ActivityCategory.trails => item.type == OutdoorActivityType.trail,
       };
-    }).toList(growable: false);
+    }).take(limit);
+    if (category != ActivityCategory.trails) {
+      return typed.toList(growable: false);
+    }
+    return <OutdoorActivityInfo>[
+      ...typed,
+      ..._campsFromTrainings(now: now),
+    ];
+  }
+
+  List<OutdoorActivityInfo> _campsFromTrainings({DateTime? now}) {
+    return _scheduleRepository
+        .upcoming(now: now, limit: 80)
+        .where((item) => isCampActivityTitle(item.title))
+        .map(_trainingToCamp)
+        .toList(growable: false);
+  }
+
+  OutdoorActivityInfo _trainingToCamp(TrainingInfo item) {
+    final notes = item.notes?.trim();
+    return OutdoorActivityInfo(
+      type: OutdoorActivityType.trail,
+      title: item.title,
+      dateFrom: item.startsAt,
+      dateTo: item.endsAt ?? item.startsAt,
+      description: (notes == null || notes.isEmpty) ? item.title : notes,
+      location: item.location,
+      price: item.price,
+      participantsLimit: item.participantsLimit,
+    );
   }
 
   OutdoorActivityInfo? outdoorByBooking(TrainingBooking booking) {
@@ -81,13 +119,16 @@ final class ActivityCatalogService {
         category == ActivityCategory.hikes ? OutdoorActivityType.hike : OutdoorActivityType.trail;
     // Look back from the booking start so recently finished multi-day events
     // are still resolvable for post-trip feedback timing.
-    final items = _scheduleRepository
-        .upcomingOutdoorActivities(
-          now: booking.startsAt.subtract(const Duration(days: 1)),
-          limit: 100,
-        )
-        .where((item) => item.type == type)
-        .toList(growable: false);
+    final lookupNow = booking.startsAt.subtract(const Duration(days: 1));
+    final items = <OutdoorActivityInfo>[
+      ..._scheduleRepository
+          .upcomingOutdoorActivities(
+            now: lookupNow,
+            limit: 100,
+          )
+          .where((item) => item.type == type),
+      if (type == OutdoorActivityType.trail) ..._campsFromTrainings(now: lookupNow),
+    ];
     if (items.isEmpty) {
       return null;
     }
@@ -129,6 +170,15 @@ final class ActivityCatalogService {
     required String trainingKey,
     required String trainingTitle,
   }) {
+    if (trainingTitle.startsWith('🥾 Поход:')) {
+      return ActivityCategory.hikes;
+    }
+    if (trainingTitle.startsWith('🏃 Трейл:') ||
+        trainingTitle.startsWith('🎯 Кэмп:') ||
+        isCampActivityTitle(trainingTitle)) {
+      return ActivityCategory.trails;
+    }
+
     final keyPrefix = trainingKey.split('|').firstOrNull;
     if (keyPrefix != null) {
       for (final category in ActivityCategory.values) {
@@ -137,22 +187,13 @@ final class ActivityCatalogService {
         }
       }
     }
-
-    // Backward-compatible fallback for older rows that were created before
-    // category was embedded into the session key.
-    if (trainingTitle.startsWith('🥾 Поход:')) {
-      return ActivityCategory.hikes;
-    }
-    if (trainingTitle.startsWith('🏃 Трейл:')) {
-      return ActivityCategory.trails;
-    }
     return ActivityCategory.trainings;
   }
 
   TrainingInfo toBookableInfo(OutdoorActivityInfo item) {
     final category =
         item.type == OutdoorActivityType.hike ? ActivityCategory.hikes : ActivityCategory.trails;
-    final prefix = item.type == OutdoorActivityType.hike ? '🥾 Поход' : '🏃 Трейл';
+    final prefix = item.type == OutdoorActivityType.hike ? '🥾 Поход' : '🎯 Кэмп';
     final location = item.location?.trim();
     return TrainingInfo(
       title: '$prefix: ${item.title}',
@@ -226,11 +267,7 @@ final class ActivityCatalogService {
   }
 
   String _normalizeOutdoorTitle(String value) {
-    var normalized = value.trim().toLowerCase();
-    normalized = normalized.replaceFirst(RegExp(r'^🥾\s*поход:\s*'), '');
-    normalized = normalized.replaceFirst(RegExp(r'^🏃\s*трейл:\s*'), '');
-    normalized = normalized.replaceAll(RegExp(r'\s+'), ' ');
-    return normalized;
+    return MessageFormatters.normalizedActivityTitle(value);
   }
 }
 

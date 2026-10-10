@@ -108,16 +108,16 @@ void main() {
     );
 
     final first = await service.syncTrainingPeaks(booking: booking, now: now, isTraining: true);
-    expect(first.appliedDelta, 200);
-    expect(first.remaining, 200);
+    expect(first.appliedDelta, 100);
+    expect(first.remaining, 100);
 
     final repeat = await service.syncTrainingPeaks(booking: booking, now: now, isTraining: true);
     expect(repeat.appliedDelta, 0);
-    expect((await service.account(9)).remaining, 200);
+    expect((await service.account(9)).remaining, 100);
 
     final absent = _withAttendance(booking, BookingAttendance.absent);
     final pulled = await service.syncTrainingPeaks(booking: absent, now: now, isTraining: true);
-    expect(pulled.appliedDelta, -200);
+    expect(pulled.appliedDelta, -100);
     expect((await service.account(9)).remaining, 0);
 
     final back = _withAttendance(booking, BookingAttendance.attended);
@@ -126,8 +126,8 @@ void main() {
       now: now.add(const Duration(seconds: 1)),
       isTraining: true,
     );
-    expect(restored.appliedDelta, 200);
-    expect((await service.account(9)).remaining, 200);
+    expect(restored.appliedDelta, 100);
+    expect((await service.account(9)).remaining, 100);
   });
 
   test('unmarked training does not earn or reverse an older credit', () async {

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
+import 'package:dvor_chatbot/src/data/booking_category_sql.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/pending_payment_expiry_policy.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
@@ -2931,15 +2932,7 @@ final class SqliteBookingRepository implements BookingRepository {
   }
 
   String _categoryConditionSql(ActivityCategory category) {
-    return switch (category) {
-      ActivityCategory.trainings => "(training_key LIKE 'trainings|%' OR "
-          "(training_key NOT LIKE 'hikes|%' "
-          "AND training_key NOT LIKE 'trails|%' "
-          "AND training_title NOT LIKE '🥾 Поход:%' AND training_title NOT LIKE '🏃 Трейл:%'))",
-      ActivityCategory.hikes => "(training_key LIKE 'hikes|%' OR training_title LIKE '🥾 Поход:%')",
-      ActivityCategory.trails =>
-        "(training_key LIKE 'trails|%' OR training_title LIKE '🏃 Трейл:%')",
-    };
+    return BookingCategorySql.forCategory(category);
   }
 
   int _syntheticUserIdForUsername(String username) {

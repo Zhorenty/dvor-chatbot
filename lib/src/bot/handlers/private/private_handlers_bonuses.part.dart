@@ -233,6 +233,24 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     }
   }
 
+  Future<void> _notifyAdminAboutPeaksBookingPaid(
+    TrainingBooking booking, {
+    required int peaks,
+  }) async {
+    final adminChatId = _adminChatId;
+    if (adminChatId == null) {
+      return;
+    }
+    try {
+      await _sendAdminMessage(
+        adminChatId,
+        _templates.peaksBookingPaidAdminNotification(booking, peaks: peaks),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify admin chat about peaks booking: $error', stackTrace);
+    }
+  }
+
   Future<void> _notifyAdminAboutFreeBookingCreated(TrainingBooking booking) async {
     final adminChatId = _adminChatId;
     if (adminChatId == null) {
@@ -545,6 +563,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
         paymentNote: MessageFormatters.loyaltyPeaksPaymentNoteMarker,
       );
       _flowByUserId.remove(userId);
+      await _notifyAdminAboutPeaksBookingPaid(paid ?? booking, peaks: quote.peaks);
       await _maybeNotifyGroupAboutCapacity(
         _trainingInfoFromBooking(paid ?? booking),
         bookingStatus: BookingStatus.paid,

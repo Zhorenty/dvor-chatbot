@@ -522,7 +522,7 @@ abstract final class GoogleSheetsAnalyticsDashboard {
   static String _activityCategoryLabel(String raw) => switch (raw) {
         'trainings' => 'тренировки',
         'hikes' => 'походы',
-        'trails' => 'трейлы',
+        'trails' => 'кэмпы',
         _ => raw,
       };
 }

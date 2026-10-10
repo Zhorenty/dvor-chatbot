@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dvor_chatbot/src/data/google_sheets_value_parser.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/featured_trainings.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:http/http.dart' as http;
@@ -43,7 +44,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
     final current = now ?? _nowProvider();
     final items = _cached.where((item) => item.startsAt.isAfter(current)).toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
-    return items.take(limit).toList(growable: false);
+    return mergeFeaturedTrainings(items.take(limit).toList(), current);
   }
 
   @override

@@ -42,7 +42,7 @@ void main() {
         participantsLimit: 20,
       );
 
-      expect(text, contains('На трейле не осталось мест'));
+      expect(text, contains('На кэмпе не осталось мест'));
     });
 
     test('uses hike wording when spots are almost over', () {
@@ -360,8 +360,8 @@ void main() {
       expect(text, contains('2 ⛰️ = 1 ₽'));
       expect(text, contains('до 15.03'));
       expect(text, contains('Первый /start — 1000'));
-      expect(text, contains('20% от цены'));
-      expect(text, contains('500 ₽ даёт 200 ⛰️'));
+      expect(text, contains('100 ⛰️'));
+      expect(text, isNot(contains('20% от цены')));
       expect(text, contains('до 50 ⛰️'));
       expect(text, contains('только целиком'));
       expect(text, contains('скидка до 30%'));
@@ -601,7 +601,7 @@ void main() {
         ),
       );
 
-      expect(text, contains('Остальные 50% — после трейла.'));
+      expect(text, contains('Остальные 50% — после кэмпа.'));
     });
   });
 
@@ -719,7 +719,7 @@ void main() {
         ),
       ]);
 
-      expect(text, contains('Расписание ближайших трейлов'));
+      expect(text, contains('Расписание ближайших кэмпов'));
       expect(text, contains('Трейл Фишт'));
       expect(text, contains('Сбор 05:00, выезд 05:30, старт 08:00'));
     });

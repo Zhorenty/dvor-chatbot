@@ -138,8 +138,11 @@ extension MessageTemplatesHelpers on MessageTemplates {
 
   String _outdoorFinalPaymentAfterLabel(TrainingBooking booking) {
     final key = booking.trainingKey.toLowerCase();
-    if (key.startsWith('trails|')) {
-      return 'после трейла';
+    if (key.startsWith('trails|') ||
+        booking.trainingTitle.startsWith('🏃 Трейл:') ||
+        booking.trainingTitle.startsWith('🎯 Кэмп:') ||
+        isCampActivityTitle(booking.trainingTitle)) {
+      return 'после кэмпа';
     }
     return 'после похода';
   }
@@ -160,7 +163,7 @@ extension MessageTemplatesHelpers on MessageTemplates {
     return switch (category) {
       ActivityCategory.trainings => 'На тренировке почти не осталось мест',
       ActivityCategory.hikes => 'В походе почти не осталось мест',
-      ActivityCategory.trails => 'На трейле почти не осталось мест',
+      ActivityCategory.trails => 'На кэмпе почти не осталось мест',
     };
   }
 
@@ -168,7 +171,7 @@ extension MessageTemplatesHelpers on MessageTemplates {
     return switch (category) {
       ActivityCategory.trainings => 'Места на эту тренировку закончились',
       ActivityCategory.hikes => 'В походе не осталось мест',
-      ActivityCategory.trails => 'На трейле не осталось мест',
+      ActivityCategory.trails => 'На кэмпе не осталось мест',
     };
   }
 
@@ -204,7 +207,7 @@ extension MessageTemplatesHelpers on MessageTemplates {
     return switch (category) {
       ActivityCategory.trainings => 'Тренировки',
       ActivityCategory.hikes => 'Походы',
-      ActivityCategory.trails => 'Трейлы',
+      ActivityCategory.trails => 'Кэмпы',
     };
   }
 

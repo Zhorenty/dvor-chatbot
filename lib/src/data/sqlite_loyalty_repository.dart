@@ -1,9 +1,12 @@
 import 'package:dvor_chatbot/src/application/loyalty_math.dart';
 import 'package:dvor_chatbot/src/application/loyalty_rules.dart';
 import 'package:dvor_chatbot/src/config/trainer_booking_whitelist.dart';
+import 'package:dvor_chatbot/src/data/booking_category_sql.dart';
 import 'package:dvor_chatbot/src/data/loyalty_repository.dart';
 import 'package:dvor_chatbot/src/data/sqlite/sqlite_database_handle.dart';
+import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/camp_title.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
@@ -225,7 +228,10 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
       final key = row['training_key'] as String? ?? '';
       final title = row['training_title'] as String? ?? '';
       final isHike = key.startsWith('hikes|') || title.startsWith('🥾 Поход:');
-      final isTrail = key.startsWith('trails|') || title.startsWith('🏃 Трейл:');
+      final isTrail = key.startsWith('trails|') ||
+          title.startsWith('🏃 Трейл:') ||
+          title.startsWith('🎯 Кэмп:') ||
+          isCampActivityTitle(title);
       if (isHike) {
         _insertSilentMarker(
           db,
@@ -421,10 +427,7 @@ final class SqliteLoyaltyRepository implements LoyaltyRepository {
     return !nowUtc.isAfter(expiresAt);
   }
 
-  String get _trainingsCategorySql => "(training_key LIKE 'trainings|%' OR "
-      "(training_key NOT LIKE 'hikes|%' "
-      "AND training_key NOT LIKE 'trails|%' "
-      "AND training_title NOT LIKE '🥾 Поход:%' AND training_title NOT LIKE '🏃 Трейл:%'))";
+  String get _trainingsCategorySql => BookingCategorySql.forCategory(ActivityCategory.trainings);
 
   List<String> get _excludedTrainingNotesForMigration => LoyaltyRules.excludedTrainingPaymentNotes
       .where((note) => note != MessageFormatters.loyaltyPeaksPaymentNoteMarker)

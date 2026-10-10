@@ -239,7 +239,7 @@ final class PrivateNavigationTemplates {
   }) {
     final question = switch (category) {
       ActivityCategory.hikes => 'Как прошел поход «$trainingTitle»?',
-      ActivityCategory.trails => 'Как прошел трейл «$trainingTitle»?',
+      ActivityCategory.trails => 'Как прошел кэмп «$trainingTitle»?',
       ActivityCategory.trainings => 'Как прошла тренировка «$trainingTitle»?',
     };
     return RichHtml.screen(
@@ -278,7 +278,7 @@ final class PrivateNavigationTemplates {
   }) {
     final subject = switch (category) {
       ActivityCategory.hikes => 'походе',
-      ActivityCategory.trails => 'трейле',
+      ActivityCategory.trails => 'кэмпе',
       ActivityCategory.trainings => 'тренировке',
     };
     final rows = <(String, String)>[
@@ -317,7 +317,7 @@ final class PrivateNavigationTemplates {
         'Человек на связи — @dvor_support',
       ],
       detailsSummary: 'Правила отмен',
-      detailsBody: 'Походы и трейлы — не позже чем за 7 дней до старта.\n'
+      detailsBody: 'Походы и кэмпы — не позже чем за 7 дней до старта.\n'
           'Бесплатные тренировки — в любой момент.\n'
           'Бокс-карта: перенос и возврат слота — за 24 часа, только на бокс.\n'
           'Платные тренировки — через @dvor_support.\n'

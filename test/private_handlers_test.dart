@@ -1346,12 +1346,12 @@ void main() {
 
       expect(handled, isTrue);
       expect(sender.messages, hasLength(3));
-      expect(sender.messages[1].text, contains('Ближайшие трейлы OUTDVOR'));
+      expect(sender.messages[1].text, contains('Ближайшие кэмпы'));
       expect(sender.messages[1].text, contains('50% предоплата при записи'));
       expect(sender.messages[1].text, contains('Трейл перевал'));
       expect(sender.lastContentMessage.text, contains('Выбери мероприятие для записи'));
       final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
-      expect(buttons, contains('🎯 1. 🏃 Трейл: Трейл перевал'));
+      expect(buttons, contains('🎯 1. 🎯 Кэмп: Трейл перевал'));
     });
 
     test('help button shows client-facing bot capabilities', () async {
@@ -1655,7 +1655,7 @@ void main() {
       await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
         'from': <String, dynamic>{'id': 1611},
-        'text': '🎯 1. 🏃 Трейл: Трейл Фишт',
+        'text': '🎯 1. 🎯 Кэмп: Трейл Фишт',
       });
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
@@ -1666,7 +1666,7 @@ void main() {
       expect(handled, isTrue);
       expect(sender.lastContentMessage.text, contains('Выбери мероприятие для записи'));
       final buttons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
-      expect(buttons, contains('🎯 1. 🏃 Трейл: Трейл Фишт'));
+      expect(buttons, contains('🎯 1. 🎯 Кэмп: Трейл Фишт'));
       expect(buttons, contains(MessageTemplates.buttonBack));
     });
 
@@ -5215,7 +5215,7 @@ void main() {
 
       expect(categoryHandled, isTrue);
       final messageText = sender.lastContentMessage.text;
-      expect(RegExp('🏃 Трейл: Лаго-Наки').allMatches(messageText).length, 1);
+      expect(RegExp('🎯 Кэмп: Лаго-Наки').allMatches(messageText).length, 1);
       expect(messageText, contains('12.08.2030'));
       expect(messageText, isNot(contains('🕒 10.08.2030')));
       expect(RegExp('@trail_runner').allMatches(messageText).length, 1);

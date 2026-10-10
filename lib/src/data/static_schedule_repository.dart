@@ -1,4 +1,5 @@
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/domain/featured_trainings.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 
@@ -10,7 +11,7 @@ final class StaticScheduleRepository implements TrainingScheduleRepository {
     final current = now ?? DateTime.now();
     final upcomingItems = _items.where((item) => item.startsAt.isAfter(current)).toList()
       ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
-    return upcomingItems.take(limit).toList(growable: false);
+    return mergeFeaturedTrainings(upcomingItems.take(limit).toList(), current);
   }
 
   @override

@@ -332,7 +332,8 @@ abstract final class GoogleSheetsInputUi {
         ],
         widthPx: 220,
         kind: GoogleSheetsInputColumnKind.categories,
-        note: 'все / Тренировки / Походы / Трейлы. Можно через запятую. Пусто = все.',
+        note:
+            'все / Тренировки / Походы / Кэмпы. Можно через запятую. Пусто = все. «Трейлы» тоже принимается.',
       ),
       GoogleSheetsInputColumn(
         header: 'одноразовый',
@@ -357,6 +358,7 @@ abstract final class GoogleSheetsInputUi {
     'все',
     'Тренировки',
     'Походы',
+    'Кэмпы',
     'Трейлы',
   ];
 

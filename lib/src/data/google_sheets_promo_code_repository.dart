@@ -165,7 +165,13 @@ final class GoogleSheetsPromoCodeRepository implements PromoCodeRepository {
         categories.add(ActivityCategory.trainings);
       } else if (token.contains('поход') || token == 'hikes' || token == 'hike') {
         categories.add(ActivityCategory.hikes);
-      } else if (token.contains('трейл') || token == 'trails' || token == 'trail') {
+      } else if (token.contains('трейл') ||
+          token.contains('кэмп') ||
+          token.contains('кемп') ||
+          token == 'trails' ||
+          token == 'trail' ||
+          token == 'camps' ||
+          token == 'camp') {
         categories.add(ActivityCategory.trails);
       }
     }

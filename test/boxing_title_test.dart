@@ -21,6 +21,9 @@ void main() {
       expect(isBoxingTrainingTitle('CrossFit'), isFalse);
       expect(isBoxingTrainingTitle('Поход'), isFalse);
       expect(isBoxingTrainingTitle('Трейл'), isFalse);
+      expect(isBoxingTrainingTitle('Боксерский кэмп'), isFalse);
+      expect(isBoxingTrainingTitle('BOXING CAMP'), isFalse);
+      expect(isBoxingTrainingTitle('Bootcamp'), isFalse);
     });
   });
 }
