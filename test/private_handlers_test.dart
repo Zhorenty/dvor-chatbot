@@ -401,7 +401,10 @@ void main() {
 
       expect(handled, isTrue);
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
-      expect(buttons.first, MessageTemplates.buttonBookTraining);
+      expect(
+        buttons.first,
+        anyOf(MessageTemplates.buttonFrankRun, MessageTemplates.buttonBookTraining),
+      );
       expect(buttons, contains(MessageTemplates.buttonCoachingStaff));
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
       expect(buttons, contains(MessageTemplates.buttonBookFriend));

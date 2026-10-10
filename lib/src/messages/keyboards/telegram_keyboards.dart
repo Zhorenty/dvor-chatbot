@@ -20,6 +20,7 @@ final class TelegramKeyboards {
     bool showReturnToAdminMenu = false,
     bool canBroadcastToGroup = false,
     bool groupBroadcastAdminMenu = false,
+    String? featuredEventLabel,
   }) {
     if (isAdmin) {
       return _replyKeyboard(
@@ -55,7 +56,12 @@ final class TelegramKeyboards {
       );
     }
 
+    final featured = featuredEventLabel?.trim();
     final rows = <List<Map<String, String>>>[
+      if (featured != null && featured.isNotEmpty)
+        <Map<String, String>>[
+          <String, String>{'text': featured},
+        ],
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonBookTraining},
         <String, String>{'text': MessageCopy.buttonBookFriend},

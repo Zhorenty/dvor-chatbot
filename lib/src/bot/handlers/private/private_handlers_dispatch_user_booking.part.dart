@@ -11,6 +11,41 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
     final flowState = ctx.flowState;
     final username = ctx.username;
 
+    if (text == MessageTemplates.buttonFrankRun) {
+      if (userId == null) {
+        return false;
+      }
+      final menu = _templates.privateMenuKeyboard(
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+        canViewParticipantsList: canRunParticipantsAction,
+        now: _nowProvider(),
+      );
+      final upcoming = FeaturedTrainings.upcoming(_nowProvider());
+      if (upcoming.isEmpty) {
+        await _sendScreen(
+          chatId,
+          _templates.privateMenuHint(),
+          replyMarkup: menu,
+        );
+        return true;
+      }
+      await _createOrContinueBooking(
+        chatId: chatId,
+        userId: userId,
+        isAdmin: isAdmin,
+        flowState: flowState ??
+            const _PrivateFlowState(
+              step: _PrivateFlowStep.selectingBookingCategory,
+              availableTrainings: <TrainingInfo>[],
+            ),
+        selectedTraining: upcoming.first,
+        username: username,
+        onParticipantsLimitReplyMarkup: menu,
+      );
+      return true;
+    }
+
     if (text != null && (text == MessageTemplates.buttonBookTraining || text.startsWith('/book'))) {
       if (userId == null) {
         return false;

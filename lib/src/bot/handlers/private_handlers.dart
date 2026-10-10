@@ -42,6 +42,7 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/boxing_title.dart';
 import 'package:dvor_chatbot/src/domain/camp_title.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
+import 'package:dvor_chatbot/src/domain/featured_trainings.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';

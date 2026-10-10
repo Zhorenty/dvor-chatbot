@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/camp_title.dart';
 import 'package:dvor_chatbot/src/domain/conversation_log.dart';
 import 'package:dvor_chatbot/src/domain/economic_summary.dart';
+import 'package:dvor_chatbot/src/domain/featured_trainings.dart';
 import 'package:dvor_chatbot/src/domain/funnel_analytics.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
 import 'package:dvor_chatbot/src/domain/onboarding.dart';
@@ -48,6 +49,7 @@ final class MessageTemplates {
   static const String buttonCoachDetails = MessageCopy.buttonCoachDetails;
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
   static const String buttonBookFriend = MessageCopy.buttonBookFriend;
+  static const String buttonFrankRun = MessageCopy.buttonFrankRun;
   static const String buttonSubscription = MessageCopy.buttonSubscription;
   static const String buttonProfile = MessageCopy.buttonProfile;
   static const String buttonProfileBookings = MessageCopy.buttonProfileBookings;

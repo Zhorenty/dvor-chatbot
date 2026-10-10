@@ -6,6 +6,7 @@ final class MessageCopy {
   static const String buttonCoachDetails = '📖 Подробнее о тренере';
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonBookFriend = '👥 Записать друга';
+  static const String buttonFrankRun = '🏃 Забег с FRANK';
   static const String buttonSubscription = '🥊 Бокс-карта';
   static const String buttonProfile = '👤 Профиль';
   static const String buttonProfileBookings = '🗂 Мои записи';

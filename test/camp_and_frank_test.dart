@@ -1,9 +1,12 @@
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
+import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/boxing_title.dart';
 import 'package:dvor_chatbot/src/domain/featured_trainings.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/jobs/frank_run_broadcast_job.dart';
+import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
 
@@ -58,6 +61,50 @@ void main() {
     expect(text, contains('бесплатн'));
     expect(text, isNot(contains('500')));
     expect(text, isNot(contains('8:00')));
+  });
+
+  test('client menu puts the FRANK run on the top button until it starts', () {
+    final before = const MessageTemplates().privateMenuKeyboard(
+      isAdmin: false,
+      now: DateTime(2026, 10, 10, 12),
+    );
+    final after = const MessageTemplates().privateMenuKeyboard(
+      isAdmin: false,
+      now: DateTime(2026, 10, 17, 8, 30),
+    );
+    final admin = const MessageTemplates().privateMenuKeyboard(
+      isAdmin: true,
+      now: DateTime(2026, 10, 10, 12),
+    );
+
+    expect(keyboardTexts(before).first, MessageCopy.buttonFrankRun);
+    expect(keyboardTexts(after), isNot(contains(MessageCopy.buttonFrankRun)));
+    expect(keyboardTexts(admin), isNot(contains(MessageCopy.buttonFrankRun)));
+  });
+
+  test('FRANK menu button books the free run', () async {
+    final bookings = FakeBookingRepository();
+    final sender = FakeSender();
+    final handlers = PrivateHandlers(
+      sender: sender,
+      scheduleRepository: FakeScheduleRepository(const <TrainingInfo>[]),
+      bookingRepository: bookings,
+      templates: const MessageTemplates(),
+      adminUserIds: const <int>{},
+      nowProvider: () => DateTime(2026, 10, 10, 12),
+    );
+
+    final handled = await handlers.handle(<String, dynamic>{
+      'chat': <String, dynamic>{'id': 11, 'type': 'private'},
+      'from': <String, dynamic>{'id': 11},
+      'text': MessageCopy.buttonFrankRun,
+    });
+
+    expect(handled, isTrue);
+    expect(bookings.lastCreatedTraining?.title, 'DVOR x FRANK — RUN & RAVE');
+    expect(bookings.lastCreatedTraining?.price, 0);
+    expect(bookings.lastUpdatedStatus, BookingStatus.paid);
+    expect(sender.messages.last.text, contains('бесплатн'));
   });
 
   test('FRANK broadcast goes to started users once', () async {

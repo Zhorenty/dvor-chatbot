@@ -7,13 +7,16 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     bool showReturnToAdminMenu = false,
     bool canBroadcastToGroup = false,
     bool groupBroadcastAdminMenu = false,
+    DateTime? now,
   }) {
+    final featured = FeaturedTrainings.upcoming(now ?? DateTime.now());
     return TelegramKeyboards.privateMenuKeyboard(
       isAdmin: isAdmin,
       canViewParticipantsList: canViewParticipantsList,
       showReturnToAdminMenu: showReturnToAdminMenu,
       canBroadcastToGroup: canBroadcastToGroup,
       groupBroadcastAdminMenu: groupBroadcastAdminMenu,
+      featuredEventLabel: !isAdmin && featured.isNotEmpty ? MessageCopy.buttonFrankRun : null,
     );
   }
 
