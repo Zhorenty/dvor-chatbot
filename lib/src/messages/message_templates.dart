@@ -133,6 +133,7 @@ final class MessageTemplates {
   static const String buttonClientMenu = MessageCopy.buttonClientMenu;
   static const String buttonAdminMenu = MessageCopy.buttonAdminMenu;
   static const String buttonAdminUserSearch = MessageCopy.buttonAdminUserSearch;
+  static const String buttonAdminLoyaltyGrant = MessageCopy.buttonAdminLoyaltyGrant;
   static const String buttonAdminRecentActions = MessageCopy.buttonAdminRecentActions;
   static const String buttonAdminUserDialog = MessageCopy.buttonAdminUserDialog;
   static const String buttonManageBookings = MessageCopy.buttonManageBookings;

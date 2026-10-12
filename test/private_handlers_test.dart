@@ -215,9 +215,9 @@ void main() {
         <String>[
           MessageTemplates.buttonParticipantsList,
           MessageTemplates.buttonPaymentsQueue,
-          MessageTemplates.buttonAttendance,
           MessageTemplates.buttonAdminSchedule,
           MessageTemplates.buttonBroadcast,
+          MessageTemplates.buttonAttendance,
           MessageTemplates.buttonAdminTools,
         ],
       );
@@ -250,6 +250,7 @@ void main() {
       expect(toolsButtons, contains(MessageTemplates.buttonAdminUserSearch));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonAdminRecentActions)));
       expect(toolsButtons, contains(MessageTemplates.buttonAdminUserDialog));
+      expect(toolsButtons, contains(MessageTemplates.buttonAdminLoyaltyGrant));
       expect(toolsButtons, contains(MessageTemplates.buttonClientMenu));
       expect(toolsButtons, isNot(contains(MessageTemplates.buttonParticipantsList)));
 
@@ -5227,6 +5228,7 @@ void main() {
 
     test('displays trainers in hikes participants list', () async {
       final sender = _FakeSender();
+      final now = DateTime(2026, 10, 1, 12);
       final hike = TrainingInfo(
         title: '🥾 Поход: Эльбрус',
         startsAt: DateTime(2026, 10, 12),
@@ -5285,6 +5287,7 @@ void main() {
         bookingRepository: bookingRepository,
         templates: const MessageTemplates(),
         adminUserIds: const <int>{2003},
+        nowProvider: () => now,
       );
 
       await handlers.handle(<String, dynamic>{

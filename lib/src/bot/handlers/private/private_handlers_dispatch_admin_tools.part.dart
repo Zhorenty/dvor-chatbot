@@ -434,6 +434,35 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
       }
     }
 
+    if (text != null && text == MessageTemplates.buttonAdminLoyaltyGrant) {
+      if (!canRunAdminAction) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+            isAdmin: isAdmin,
+            showReturnToAdminMenu: showReturnToAdminMenu,
+            canViewParticipantsList: ctx.canRunParticipantsAction,
+            canBroadcastToGroup: canBroadcastToGroup,
+          ),
+        );
+        return true;
+      }
+      if (userId == null) {
+        return false;
+      }
+      _flowByUserId[userId] = const _PrivateFlowState(
+        step: _PrivateFlowStep.enteringAdminLoyaltyGrantUser,
+        availableTrainings: <TrainingInfo>[],
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.loyaltyAdminGrantUserPrompt(),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return true;
+    }
+
     if (text != null && text == MessageTemplates.buttonAdminUserSearch) {
       if (!canRunAdminAction) {
         await _sendAdminMessage(
@@ -686,7 +715,104 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
       return true;
     }
 
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringAdminLoyaltyGrantUser &&
+        text != null &&
+        !text.startsWith('/')) {
+      final targetUserId = await _resolveLoyaltyGrantUserId(text);
+      if (targetUserId == null) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.loyaltyAdminGrantUserNotFound(),
+          replyMarkup: _templates.simpleNavigationKeyboard(),
+        );
+        return true;
+      }
+      _flowByUserId[userId] = _PrivateFlowState(
+        step: _PrivateFlowStep.enteringAdminLoyaltyGrantAmount,
+        availableTrainings: <TrainingInfo>[],
+        adminLoyaltyUserId: targetUserId,
+      );
+      await _sendAdminMessage(
+        chatId,
+        _templates.loyaltyAdminGrantAmountPrompt(userId: targetUserId),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return true;
+    }
+
+    if (userId != null &&
+        flowState?.step == _PrivateFlowStep.enteringAdminLoyaltyGrantAmount &&
+        text != null &&
+        !text.startsWith('/')) {
+      final targetUserId = flowState?.adminLoyaltyUserId;
+      if (targetUserId == null) {
+        _flowByUserId[userId] = const _PrivateFlowState(
+          step: _PrivateFlowStep.enteringAdminLoyaltyGrantUser,
+          availableTrainings: <TrainingInfo>[],
+        );
+        await _sendAdminMessage(
+          chatId,
+          _templates.loyaltyAdminGrantUserPrompt(),
+          replyMarkup: _templates.simpleNavigationKeyboard(),
+        );
+        return true;
+      }
+      final amount = int.tryParse(text.trim().split(RegExp(r'\s+')).first);
+      if (amount == null || amount <= 0 || amount % LoyaltyMath.unit != 0) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.loyaltyAdminAmountInvalid(),
+          replyMarkup: _templates.simpleNavigationKeyboard(),
+        );
+        return true;
+      }
+      final result = await _loyaltyService.adminGrant(userId: targetUserId, amount: amount);
+      _flowByUserId.remove(userId);
+      if (!result.applied) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.loyaltyUnavailable(),
+          replyMarkup: _templates.adminToolsKeyboard(),
+        );
+        return true;
+      }
+      await _sendAdminMessage(
+        chatId,
+        _templates.loyaltyAdminMutationResult(
+          userId: targetUserId,
+          amount: amount,
+          remaining: result.account.remaining,
+          granted: true,
+        ),
+        replyMarkup: _templates.adminToolsKeyboard(),
+      );
+      try {
+        await sendBotHtml(
+          _sender,
+          targetUserId,
+          _templates.loyaltyCredited(
+            amount: amount,
+            remaining: result.account.remaining,
+            reason: LoyaltyLedgerReason.adminGrant,
+          ),
+        );
+      } on Object catch (error, stackTrace) {
+        l.w('Failed to notify $targetUserId about admin grant: $error', stackTrace);
+      }
+      return true;
+    }
+
     return false;
+  }
+
+  Future<int?> _resolveLoyaltyGrantUserId(String raw) async {
+    final trimmed = raw.trim();
+    final asId = int.tryParse(trimmed);
+    if (asId != null && asId > 0) {
+      return asId;
+    }
+    return _resolveDialogPeerUserId(trimmed);
   }
 
   Future<bool> _handleAdminOnboardingMediaCommands({

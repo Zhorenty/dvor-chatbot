@@ -77,6 +77,8 @@ enum PrivateFlowStep {
   enteringAdminBroadcastText,
   selectingAdminBroadcastTarget,
   enteringAdminUserSearchQuery,
+  enteringAdminLoyaltyGrantUser,
+  enteringAdminLoyaltyGrantAmount,
   enteringAdminDialogUsernameQuery,
   selectingAdminScheduleRoot,
   selectingAdminScheduleList,
@@ -213,6 +215,7 @@ final class PrivateFlowState {
     this.feedbackRating,
     this.adminSchedule = const AdminScheduleFlow(),
     this.onboardingMediaSlot,
+    this.adminLoyaltyUserId,
   });
 
   final PrivateFlowStep step;
@@ -255,6 +258,7 @@ final class PrivateFlowState {
   final TrainingFeedbackRating? feedbackRating;
   final AdminScheduleFlow adminSchedule;
   final OnboardingMediaSlot? onboardingMediaSlot;
+  final int? adminLoyaltyUserId;
 
   PrivateFlowState copyWith({
     PrivateFlowStep? step,
@@ -297,6 +301,7 @@ final class PrivateFlowState {
     Object? feedbackRating = _privateFlowUnset,
     AdminScheduleFlow? adminSchedule,
     Object? onboardingMediaSlot = _privateFlowUnset,
+    Object? adminLoyaltyUserId = _privateFlowUnset,
   }) {
     return PrivateFlowState(
       step: step ?? this.step,
@@ -394,6 +399,9 @@ final class PrivateFlowState {
       onboardingMediaSlot: identical(onboardingMediaSlot, _privateFlowUnset)
           ? this.onboardingMediaSlot
           : onboardingMediaSlot as OnboardingMediaSlot?,
+      adminLoyaltyUserId: identical(adminLoyaltyUserId, _privateFlowUnset)
+          ? this.adminLoyaltyUserId
+          : adminLoyaltyUserId as int?,
     );
   }
 }

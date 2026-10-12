@@ -1311,7 +1311,31 @@ extension MessageTemplatesContent on MessageTemplates {
   String chooseAdminToolsAction() {
     return RichHtml.screen(
       title: 'Инструменты',
-      lead: 'Записи, синхронизация, абонементы, онбординг-видео и клиентское меню.',
+      lead: 'Записи, синхронизация, абонементы, вершинки, онбординг-видео и клиентское меню.',
+    );
+  }
+
+  String loyaltyAdminGrantUserPrompt() {
+    return RichHtml.screen(
+      title: 'Вершинки',
+      lead: 'Кому начислить?',
+      paragraphs: <String>['Напиши id или @username.'],
+    );
+  }
+
+  String loyaltyAdminGrantUserNotFound() {
+    return RichHtml.screen(
+      title: 'Вершинки',
+      lead: 'Не нашёл такого пользователя.',
+      paragraphs: <String>['Напиши id или @username.'],
+    );
+  }
+
+  String loyaltyAdminGrantAmountPrompt({required int userId}) {
+    return RichHtml.screen(
+      title: 'Вершинки',
+      lead: 'Сколько начислить пользователю $userId?',
+      paragraphs: <String>['Сумма кратна 10.'],
     );
   }
 
@@ -3048,6 +3072,26 @@ extension MessageTemplatesContent on MessageTemplates {
       title: 'Явка #${booking.id}',
       lead: '${booking.participantDisplayLabel}: $mark.',
       paragraphs: paragraphs,
+    );
+  }
+
+  String attendanceReminderAdmin({
+    required String trainingTitle,
+    required DateTime startsAt,
+    required int unmarked,
+    required bool followUp,
+  }) {
+    final when = DateFormat('dd.MM HH:mm').format(startsAt);
+    final lead = followUp ? 'Явка ещё не закрыта.' : 'Проверь явку.';
+    return RichHtml.screen(
+      title: 'Явка',
+      lead: lead,
+      rows: <(String, String)>[
+        ('Тренировка', trainingTitle),
+        ('🕒 Когда', when),
+        ('Не отмечено', '$unmarked'),
+      ],
+      paragraphs: <String>['Дальше: кнопка «Явка».'],
     );
   }
 

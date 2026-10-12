@@ -315,6 +315,18 @@ extension PrivateHandlersDispatchBack on PrivateHandlers {
         case _PrivateFlowStep.awaitingOnboardingMediaFile:
           await _openOnboardingMediaHub(chatId: chatId, userId: userId);
           return true;
+        case _PrivateFlowStep.enteringAdminLoyaltyGrantUser:
+        case _PrivateFlowStep.enteringAdminLoyaltyGrantAmount:
+          _flowByUserId[userId] = const _PrivateFlowState(
+            step: _PrivateFlowStep.selectingAdminToolsAction,
+            availableTrainings: <TrainingInfo>[],
+          );
+          await _sendScreen(
+            chatId,
+            _templates.chooseAdminToolsAction(),
+            replyMarkup: _templates.adminToolsKeyboard(),
+          );
+          return true;
         case _PrivateFlowStep.selectingAdminBookingManagementAction:
           _flowByUserId[userId] = const _PrivateFlowState(
             step: _PrivateFlowStep.selectingAdminToolsAction,

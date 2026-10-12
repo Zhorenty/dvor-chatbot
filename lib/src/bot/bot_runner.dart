@@ -19,6 +19,7 @@ import 'package:dvor_chatbot/src/data/onboarding_repository.dart';
 import 'package:dvor_chatbot/src/data/schedule_catalog_repository.dart';
 import 'package:dvor_chatbot/src/data/subscription_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
+import 'package:dvor_chatbot/src/jobs/attendance_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/economic_summary_job.dart';
 import 'package:dvor_chatbot/src/jobs/frank_run_broadcast_job.dart';
 import 'package:dvor_chatbot/src/jobs/google_sheets_funnel_export_job.dart';
@@ -128,6 +129,14 @@ final class BotRunner {
           templates: templates,
           jobDedupeRepository: jobDedupeRepository,
           groupChatId: config.targetChatId,
+        ),
+        _attendanceReminderJob = AttendanceReminderJob(
+          bookingRepository: bookingRepository,
+          sender: sender,
+          templates: templates,
+          adminChatId: config.adminChatId,
+          jobDedupeRepository: jobDedupeRepository,
+          catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
         ),
         _economicSummaryJob = EconomicSummaryJob(
           bookingRepository: bookingRepository,
@@ -246,6 +255,7 @@ final class BotRunner {
   final ScheduleBroadcastJob _scheduleBroadcastJob;
   final ReferralBroadcastJob _referralBroadcastJob;
   final FrankRunBroadcastJob _frankRunBroadcastJob;
+  final AttendanceReminderJob _attendanceReminderJob;
   final EconomicSummaryJob _economicSummaryJob;
   final OnboardingNudgeJob _onboardingNudgeJob;
   final GroupInviteNudgeJob _groupInviteNudgeJob;
@@ -287,6 +297,11 @@ final class BotRunner {
       _scheduleRetentionJob.run,
     );
     _schedulePeriodic(const Duration(minutes: 5), 'payment reminder', _paymentReminderJob.run);
+    _schedulePeriodic(
+      const Duration(minutes: 30),
+      'attendance reminder',
+      _attendanceReminderJob.run,
+    );
     _schedulePeriodic(
       const Duration(minutes: 30),
       'starter bonus reminder',
@@ -335,6 +350,7 @@ final class BotRunner {
       );
       _jobScheduler.launch('google sheets funnel export', googleSheetsExportJob.run);
     }
+    _jobScheduler.launch('attendance reminder', _attendanceReminderJob.run);
     _jobScheduler.launch('economic summary', _economicSummaryJob.run);
     _jobScheduler.launch('subscription renewal', _subscriptionRenewalJob.run);
     _jobScheduler.launch('training day promo', _trainingDayPromoJob.run);
