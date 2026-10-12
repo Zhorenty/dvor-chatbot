@@ -8,7 +8,7 @@ abstract final class FeaturedTrainings {
       startsAt: DateTime(2026, 10, 17, 8, 30),
       location: 'Мост поцелуев',
       price: 0,
-      notes: '5 км под сет Ильи Пз. После — короткая силовая, кофе и завтраки '
+      notes: '5 км под сет Ильи PZ. После — короткая силовая от Black Croc, кофе и завтраки '
           'Frank by Basta. Вода на дистанции и кофе после — для участников.',
     ),
   ];
