@@ -410,7 +410,7 @@ void main() {
     expect((await loyaltyService.account(77)).remaining, 500);
   });
 
-  test('boxing card 100% peaks activates immediately; partial leftover stays in ₽', () async {
+  test('boxing card cannot be paid with peaks', () async {
     await loyaltyService.credit(
       userId: 75,
       amount: 7000,
@@ -432,47 +432,21 @@ void main() {
       'from': <String, dynamic>{'id': 75},
       'text': MessageTemplates.buttonPlanBaza,
     });
+    expect(subscriptions.activateFromLoyaltyCalls, 0);
+    expect((await loyaltyService.account(75)).remaining, 7000);
+    expect(sender.lastContentMessage.text, contains('3 500'));
+    expect(
+      keyboardTexts(sender.lastContentMessage.replyMarkup),
+      isNot(contains(MessageTemplates.buttonSpendLoyaltyPeaks)),
+    );
+
     await bot.handle(<String, dynamic>{
       'chat': <String, dynamic>{'id': 75, 'type': 'private'},
       'from': <String, dynamic>{'id': 75},
       'text': MessageTemplates.buttonSpendLoyaltyPeaks,
     });
-    expect(subscriptions.activateFromLoyaltyCalls, 1);
-    expect((await loyaltyService.account(75)).remaining, 0);
-    expect(sender.lastContentMessage.text, contains('Карта активна'));
-  });
-
-  test('partial boxing card spend leaves a ₽ remainder', () async {
-    await loyaltyService.credit(
-      userId: 78,
-      amount: 2000,
-      reason: LoyaltyLedgerReason.adminGrant,
-      idempotencyKey: 'g78',
-      now: now,
-    );
-    final subscriptions = FakeSubscriptionRepository();
-    final sender = FakeSender();
-    final bot = handlers(sender: sender, subscriptions: subscriptions);
-
-    await bot.handle(<String, dynamic>{
-      'chat': <String, dynamic>{'id': 78, 'type': 'private'},
-      'from': <String, dynamic>{'id': 78},
-      'text': MessageTemplates.buttonSubscribeApply,
-    });
-    await bot.handle(<String, dynamic>{
-      'chat': <String, dynamic>{'id': 78, 'type': 'private'},
-      'from': <String, dynamic>{'id': 78},
-      'text': MessageTemplates.buttonPlanBaza,
-    });
-    await bot.handle(<String, dynamic>{
-      'chat': <String, dynamic>{'id': 78, 'type': 'private'},
-      'from': <String, dynamic>{'id': 78},
-      'text': MessageTemplates.buttonSpendLoyaltyPeaks,
-    });
     expect(subscriptions.activateFromLoyaltyCalls, 0);
-    expect((await loyaltyService.account(78)).remaining, 0);
-    expect(sender.lastContentMessage.text, contains('К оплате'));
-    expect(sender.lastContentMessage.text, contains('2500'));
+    expect((await loyaltyService.account(75)).remaining, 7000);
   });
 
   test('cancel with refund restores peaks and touches activity', () async {

@@ -364,6 +364,7 @@ void main() {
       expect(text, isNot(contains('20% от цены')));
       expect(text, contains('до 50 ⛰️'));
       expect(text, contains('только целиком'));
+      expect(text, contains('На бокс-карту вершинки не списываются'));
       expect(text, contains('скидка до 30%'));
       expect(text, contains('Стартовая'));
       expect(text, contains('доступна'));

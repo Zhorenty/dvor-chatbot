@@ -137,22 +137,24 @@ void main() {
       );
     });
 
-    test('boxing card full pay matches tariff', () {
+    test('boxing card cannot be paid with peaks', () {
       final baza = LoyaltyMath.quoteSpend(
         target: LoyaltySpendTarget.boxingCard,
         priceRub: 3500,
         balance: 7000,
       );
-      expect(baza.peaks, 7000);
-      expect(baza.coversFully, isTrue);
+      expect(baza.peaks, 0);
+      expect(baza.remainderRub, 3500);
+      expect(baza.coversFully, isFalse);
 
-      final udar = LoyaltyMath.quoteSpend(
+      final partial = LoyaltyMath.quoteSpend(
         target: LoyaltySpendTarget.boxingCard,
         priceRub: 4700,
-        balance: 9400,
+        balance: 2000,
       );
-      expect(udar.peaks, 9400);
-      expect(udar.coversFully, isTrue);
+      expect(partial.peaks, 0);
+      expect(partial.remainderRub, 4700);
+      expect(partial.coversFully, isFalse);
     });
   });
 }

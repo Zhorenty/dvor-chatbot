@@ -178,10 +178,8 @@ abstract final class LoyaltyMath {
           balance: balance,
           remainderRub: currentRemainder,
         ),
-      LoyaltySpendTarget.boxingCard => _quoteFullOrPartial(
-          available: available,
-          remainderRub: currentRemainder,
-        ),
+      // Boxing-card subscriptions are cash only.
+      LoyaltySpendTarget.boxingCard => 0,
       LoyaltySpendTarget.outdoor => _quoteOutdoor(
           available: available,
           priceRub: priceRub,
@@ -206,15 +204,6 @@ abstract final class LoyaltyMath {
       return 0;
     }
     return cap;
-  }
-
-  static int _quoteFullOrPartial({
-    required int available,
-    required int remainderRub,
-  }) {
-    final cap = fullPayPeaks(remainderRub);
-    final spend = available < cap ? available : cap;
-    return roundDown(spend);
   }
 
   static int _quoteOutdoor({
