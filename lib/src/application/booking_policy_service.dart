@@ -29,6 +29,8 @@ final class BookingPolicyService {
   }) : _catalogService = catalogService;
 
   static const Duration paidTrainingCancelLead = Duration(hours: 24);
+  static const Duration oneDayOutdoorCancelLead = Duration(days: 7);
+  static const Duration multiDayOutdoorCancelLead = Duration(days: 10);
 
   final ActivityCatalogService _catalogService;
 
@@ -104,9 +106,24 @@ final class BookingPolicyService {
       return !booking.startsAt.isBefore(now);
     }
     if (isOutdoorCategory(category)) {
-      return booking.startsAt.difference(now) >= const Duration(days: 7);
+      return booking.startsAt.difference(now) >= outdoorCancelLead(booking);
     }
     return false;
+  }
+
+  /// One-day hike or camp: 7 days. Multi-day: 10 days. Unknown schedule: 7.
+  Duration outdoorCancelLead(TrainingBooking booking) {
+    return isMultiDayOutdoor(booking) ? multiDayOutdoorCancelLead : oneDayOutdoorCancelLead;
+  }
+
+  bool isMultiDayOutdoor(TrainingBooking booking) {
+    final outdoor = _catalogService.outdoorByBooking(booking);
+    if (outdoor == null) {
+      return false;
+    }
+    final from = outdoor.dateFrom;
+    final to = outdoor.dateTo;
+    return from.year != to.year || from.month != to.month || from.day != to.day;
   }
 
   /// Paid training (cash or peaks), not a free slot and not a boxing-card burn.

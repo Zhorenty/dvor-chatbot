@@ -335,7 +335,10 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     if (result.created && MessageFormatters.isOutdoorBooking(result.booking)) {
       await _sendScreen(
         chatId,
-        _templates.outdoorBookingRule(result.booking),
+        _templates.outdoorBookingRule(
+          result.booking,
+          leadDays: _bookingPolicyService.outdoorCancelLead(result.booking).inDays,
+        ),
       );
     }
     await _sendPayableBookingCard(
@@ -817,7 +820,10 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
       }
       return _templates.freeTrainingCancellationTooLate(booking);
     }
-    return _templates.outdoorCancellationTooLate(booking);
+    return _templates.outdoorCancellationTooLate(
+      booking,
+      leadDays: _bookingPolicyService.outdoorCancelLead(booking).inDays,
+    );
   }
 
   _EconomicSummaryRange? _parseEconomicSummaryRangeCommand(String text) {

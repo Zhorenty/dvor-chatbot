@@ -2099,12 +2099,15 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
-  String outdoorCancellationTooLate(TrainingBooking booking) {
+  String outdoorCancellationTooLate(
+    TrainingBooking booking, {
+    required int leadDays,
+  }) {
     final dateTimeFormatter = DateFormat('dd.MM.yyyy HH:mm');
     final dateOnlyFormatter = DateFormat('dd.MM.yyyy');
     return 'Отменить запись #${booking.id} уже нельзя ⛔️\n'
         'До начала (${_bookingDateLabel(booking, dateTimeFormatter, dateOnlyFormatter)}) '
-        'осталось меньше 7 дней.';
+        'осталось меньше $leadDays дней.';
   }
 
   String paymentsQueueEmpty() => 'Очередь подтверждения оплат пока пустая ✨';
@@ -2858,7 +2861,10 @@ extension MessageTemplatesContent on MessageTemplates {
         '${RichHtml.paragraph('На перевод 30 минут. Если не оплатить, запись отменится автоматически. После отмены нужно записаться заново.')}';
   }
 
-  String outdoorBookingRule(TrainingBooking booking) {
+  String outdoorBookingRule(
+    TrainingBooking booking, {
+    required int leadDays,
+  }) {
     final outdoorFinalPaymentAfter = _outdoorFinalPaymentAfterLabel(booking);
     final prepayPercent =
         MessageFormatters.resolveOutdoorPrepayPercent(booking.trainingPrepayPercent);
@@ -2866,7 +2872,7 @@ extension MessageTemplatesContent on MessageTemplates {
     return RichHtml.screen(
       title: 'Правило OUTDVOR',
       bullets: <String>[
-        'Предоплата невозвратна при отмене за 7 дней и менее до старта.',
+        'Предоплата невозвратна при отмене за $leadDays дней и менее до старта.',
         'Сначала вносится $prepayPercent% предоплаты, оставшиеся $remainderPercent% — '
             'офлайн $outdoorFinalPaymentAfter.',
       ],

@@ -328,6 +328,8 @@ void main() {
       expect(text, contains('2 ⛰️ = 1 ₽'));
       expect(text, contains('тренировку закрывают целиком'));
       expect(text, contains('45 дней'));
+      expect(text, contains('Однодневные походы и кэмпы — не позже чем за 7 дней'));
+      expect(text, contains('Многодневные — не позже чем за 10 дней'));
       expect(text, contains('@dvor_support'));
       expect(text, isNot(contains('каждая 5-я')));
       expect(text, isNot(contains('комьюнити')));

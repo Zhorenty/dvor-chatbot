@@ -9,6 +9,7 @@ import 'package:dvor_chatbot/src/data/sqlite_booking_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/loyalty.dart';
+import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
@@ -90,6 +91,79 @@ void main() {
     expect(policy.isPeaksRefundTraining(hike), isFalse);
     expect(policy.canCancel(hike, now: startsAt.subtract(const Duration(days: 7))), isTrue);
     expect(policy.canCancel(hike, now: startsAt.subtract(const Duration(days: 6))), isFalse);
+  });
+
+  test('multi-day hike and camp prepayment closes 10 days before start', () {
+    final startsAt = DateTime.utc(2026, 10, 8, 18);
+    final catalog = ActivityCatalogService(
+      scheduleRepository: FakeScheduleRepository(
+        <TrainingInfo>[
+          TrainingInfo(
+            title: '🎯 Кэмп: Архыз',
+            startsAt: startsAt,
+            endsAt: DateTime.utc(2026, 10, 11, 12),
+            location: 'Архыз',
+            price: 8000,
+          ),
+        ],
+        outdoorItems: <OutdoorActivityInfo>[
+          OutdoorActivityInfo(
+            type: OutdoorActivityType.hike,
+            title: 'Карелия',
+            dateFrom: startsAt,
+            dateTo: DateTime.utc(2026, 10, 10, 18),
+            description: 'Два дня',
+            price: 2500,
+          ),
+          OutdoorActivityInfo(
+            type: OutdoorActivityType.hike,
+            title: 'Один день',
+            dateFrom: startsAt,
+            dateTo: DateTime.utc(2026, 10, 8, 21),
+            description: 'День',
+            price: 1500,
+          ),
+        ],
+      ),
+    );
+    final policy = BookingPolicyService(catalogService: catalog);
+    final hike = fakeBooking(
+      id: 4,
+      trainingKey: 'hikes|karelia',
+      title: '🥾 Поход: Карелия',
+      status: BookingStatus.paid,
+      trainingPrice: 2500,
+      startsAt: startsAt,
+    );
+    final dayHike = fakeBooking(
+      id: 5,
+      trainingKey: 'hikes|day',
+      title: '🥾 Поход: Один день',
+      status: BookingStatus.paid,
+      trainingPrice: 1500,
+      startsAt: startsAt,
+    );
+    final camp = fakeBooking(
+      id: 6,
+      trainingKey: 'trails|camp',
+      title: '🎯 Кэмп: Архыз',
+      status: BookingStatus.paid,
+      trainingPrice: 8000,
+      startsAt: startsAt,
+    );
+
+    expect(policy.isMultiDayOutdoor(hike), isTrue);
+    expect(policy.outdoorCancelLead(hike), BookingPolicyService.multiDayOutdoorCancelLead);
+    expect(policy.canCancel(hike, now: startsAt.subtract(const Duration(days: 10))), isTrue);
+    expect(policy.canCancel(hike, now: startsAt.subtract(const Duration(days: 9))), isFalse);
+
+    expect(policy.isMultiDayOutdoor(dayHike), isFalse);
+    expect(policy.canCancel(dayHike, now: startsAt.subtract(const Duration(days: 7))), isTrue);
+    expect(policy.canCancel(dayHike, now: startsAt.subtract(const Duration(days: 6))), isFalse);
+
+    expect(policy.isMultiDayOutdoor(camp), isTrue);
+    expect(policy.canCancel(camp, now: startsAt.subtract(const Duration(days: 10))), isTrue);
+    expect(policy.canCancel(camp, now: startsAt.subtract(const Duration(days: 9))), isFalse);
   });
 
   test('attendance tops up peaks, absence takes them back, a second mark does not double',

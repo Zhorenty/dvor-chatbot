@@ -3428,6 +3428,7 @@ void main() {
       final requisitesIndex =
           sender.messages.indexWhere((message) => message.text.contains('Реквизиты OUTDVOR'));
       expect(ruleIndex, greaterThanOrEqualTo(0));
+      expect(sender.messages[ruleIndex].text, contains('за 10 дней и менее'));
       expect(requisitesIndex, greaterThan(ruleIndex));
       expect(
         sender.messages.any((message) => message.text.contains('Расписание похода')),
@@ -4633,6 +4634,63 @@ void main() {
       expect(handled, isTrue);
       expect(bookingRepository.cancelCalls, 0);
       expect(sender.lastContentMessage.text, contains('меньше 7 дней'));
+    });
+
+    test('does not cancel a multi-day hike when less than 10 days left', () async {
+      final now = DateTime(2026, 6, 1, 12, 0);
+      final startsAt = now.add(const Duration(days: 9));
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository()
+        ..userBookings = <TrainingBooking>[
+          _booking(
+            id: 403,
+            userId: 2403,
+            trainingKey: 'hikes|2026-06-10T12:00:00.000|Карелия|Лес',
+            title: '🥾 Поход: Карелия',
+            startsAt: startsAt,
+            location: 'Лес',
+            status: BookingStatus.paid,
+          ),
+        ];
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Карелия',
+              dateFrom: startsAt,
+              dateTo: startsAt.add(const Duration(days: 2)),
+              description: 'Три дня',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+        nowProvider: () => now,
+      );
+
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2403, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2403},
+        'text': '/my_bookings',
+      });
+      await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2403, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2403},
+        'text': '🧾 #403 🥾 Поход: Карелия',
+      });
+      final handled = await handlers.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 2403, 'type': 'private'},
+        'from': <String, dynamic>{'id': 2403},
+        'text': MessageTemplates.buttonCancelBooking,
+      });
+
+      expect(handled, isTrue);
+      expect(bookingRepository.cancelCalls, 0);
+      expect(sender.lastContentMessage.text, contains('меньше 10 дней'));
     });
 
     test('cancels free training even when less than 24 hours left', () async {
