@@ -255,6 +255,75 @@ final class MessageFormatters {
     return 'tg://user?id=$userId';
   }
 
+  /// Telegram `copy_text` accepts 1–256 characters.
+  static const int copyTextLimit = 256;
+
+  /// `@username` handles for active roster rows, in list order.
+  /// Guests, cancelled rows, and accounts without a username are skipped.
+  static List<String> rosterCopyHandles(Iterable<TrainingBooking> bookings) {
+    final seen = <String>{};
+    final handles = <String>[];
+    for (final booking in bookings) {
+      if (booking.status == BookingStatus.cancelled) {
+        continue;
+      }
+      final handle = _rosterCopyHandle(booking);
+      if (handle == null) {
+        continue;
+      }
+      if (!seen.add(handle.toLowerCase())) {
+        continue;
+      }
+      handles.add(handle);
+    }
+    return handles;
+  }
+
+  /// Joins [parts] with `, ` and splits so each piece fits [maxLength].
+  static List<String> commaSeparatedChunks(
+    List<String> parts, {
+    int maxLength = copyTextLimit,
+  }) {
+    if (parts.isEmpty || maxLength < 1) {
+      return const <String>[];
+    }
+    final chunks = <String>[];
+    final buffer = StringBuffer();
+    for (final part in parts) {
+      if (part.isEmpty || part.length > maxLength) {
+        continue;
+      }
+      final nextLength = buffer.isEmpty ? part.length : buffer.length + 2 + part.length;
+      if (buffer.isNotEmpty && nextLength > maxLength) {
+        chunks.add(buffer.toString());
+        buffer.clear();
+      }
+      if (buffer.isNotEmpty) {
+        buffer.write(', ');
+      }
+      buffer.write(part);
+    }
+    if (buffer.isNotEmpty) {
+      chunks.add(buffer.toString());
+    }
+    return chunks;
+  }
+
+  static String? _rosterCopyHandle(TrainingBooking booking) {
+    if (booking.participantType == BookingParticipantType.guest) {
+      return null;
+    }
+    final raw = (booking.participantUsername ?? booking.userUsername)?.trim();
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    final name = raw.startsWith('@') ? raw.substring(1) : raw;
+    if (name.isEmpty) {
+      return null;
+    }
+    return '@$name';
+  }
+
   static String trainingPriceLabel(int? price) {
     if (price == null || price <= 0) {
       return 'бесплатная';

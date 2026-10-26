@@ -211,5 +211,6 @@ final class MessageCopy {
   static const String buttonPaySbp = 'Оплатить СБП';
   static const String buttonCopySbp = 'Скопировать СБП';
   static const String buttonCopyReferral = 'Скопировать ссылку';
+  static const String buttonCopyParticipantUsernames = 'Скопировать юзернеймы';
   static const String buttonOpenBot = 'Открыть бота';
 }

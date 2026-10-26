@@ -8,6 +8,61 @@ extension MessageTemplatesHelpers on MessageTemplates {
     return MessageFormatters.statusLabel(status);
   }
 
+  String _participantUsernameCopyButtons({
+    required String title,
+    required List<TrainingBooking> bookings,
+    required bool named,
+  }) {
+    final chunks = MessageFormatters.commaSeparatedChunks(
+      MessageFormatters.rosterCopyHandles(bookings),
+    );
+    if (chunks.isEmpty) {
+      return '';
+    }
+    final buffer = StringBuffer();
+    for (var index = 0; index < chunks.length; index++) {
+      final label = _copyUsernamesButtonLabel(
+        title,
+        part: index,
+        parts: chunks.length,
+        named: named,
+      );
+      buffer.write(
+        '<tg-button-row>${RichMessageButton.copy(text: label, copyText: chunks[index]).toHtml()}</tg-button-row>',
+      );
+    }
+    return buffer.toString();
+  }
+
+  String _copyUsernamesButtonLabel(
+    String title, {
+    required int part,
+    required int parts,
+    required bool named,
+  }) {
+    final suffix = parts > 1 ? ' ${part + 1}/$parts' : '';
+    if (!named) {
+      return '${MessageCopy.buttonCopyParticipantUsernames}$suffix';
+    }
+    const prefix = 'Скопировать · ';
+    final budget = 64 - prefix.length - suffix.length;
+    return '$prefix${_truncateButtonLabel(title.trim(), budget)}$suffix';
+  }
+
+  String _truncateButtonLabel(String text, int maxChars) {
+    if (maxChars <= 0 || text.isEmpty) {
+      return '';
+    }
+    final runes = text.runes.toList(growable: false);
+    if (runes.length <= maxChars) {
+      return text;
+    }
+    if (maxChars == 1) {
+      return '…';
+    }
+    return '${String.fromCharCodes(runes.take(maxChars - 1))}…';
+  }
+
   String _participantRosterLine(
     TrainingBooking booking,
     Map<int, int> peaksByUserId,

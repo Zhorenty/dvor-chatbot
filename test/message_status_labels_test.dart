@@ -1,5 +1,8 @@
+import 'package:dvor_chatbot/src/domain/booking_participant.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
+import 'package:dvor_chatbot/src/domain/training_info.dart';
+import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:test/test.dart';
@@ -191,5 +194,98 @@ void main() {
     expect(text, contains('Бесплатно: стартовая тренировка 🎁'));
     expect(text, contains('Бесплатно: каждая 5-я тренировка 🎁'));
     expect(text, contains('Бесплатно 🎁'));
+  });
+
+  group('participant username copy', () {
+    test('keeps active telegram handles and skips guests, cancelled, and blanks', () {
+      final handles = MessageFormatters.rosterCopyHandles(<TrainingBooking>[
+        fakeBooking(id: 1, userId: 1, userUsername: 'Anna'),
+        fakeBooking(id: 2, userId: 2, userUsername: '@anna'),
+        fakeBooking(
+          id: 3,
+          userId: 3,
+          userUsername: 'manager',
+          participantType: BookingParticipantType.telegram,
+          participantUserId: 30,
+          participantUsername: 'friend',
+        ),
+        fakeBooking(
+          id: 4,
+          userId: 4,
+          participantType: BookingParticipantType.guest,
+          participantName: 'Иван',
+        ),
+        fakeBooking(id: 5, userId: 5, userUsername: 'gone', status: BookingStatus.cancelled),
+        fakeBooking(id: 6, userId: 6),
+      ]);
+
+      expect(handles, <String>['@Anna', '@friend']);
+    });
+
+    test('splits a comma-separated list on the copy_text limit', () {
+      final handles =
+          List<String>.generate(40, (index) => '@user${index.toString().padLeft(2, '0')}');
+      final chunks = MessageFormatters.commaSeparatedChunks(handles);
+
+      expect(chunks.length, greaterThan(1));
+      expect(chunks.every((chunk) => chunk.length <= MessageFormatters.copyTextLimit), isTrue);
+      expect(chunks.join(', '), handles.join(', '));
+    });
+
+    test('puts a copy button with active usernames under the training', () {
+      const templates = MessageTemplates();
+      final training = TrainingInfo(
+        title: 'Силовая',
+        startsAt: DateTime(2026, 8, 1, 18),
+        location: 'Зал',
+      );
+      final other = TrainingInfo(
+        title: 'Бокс',
+        startsAt: DateTime(2026, 8, 2, 19),
+        location: 'Зал',
+      );
+      final text = templates.trainingParticipants(
+        trainings: <TrainingInfo>[training, other],
+        bookingsByTrainingKey: <String, List<TrainingBooking>>{
+          training.sessionKey: <TrainingBooking>[
+            fakeBooking(
+              id: 1,
+              userId: 1,
+              userUsername: 'anna',
+              trainingKey: training.sessionKey,
+              title: training.title,
+              startsAt: training.startsAt,
+              location: training.location,
+              status: BookingStatus.paid,
+            ),
+            fakeBooking(
+              id: 2,
+              userId: 2,
+              userUsername: 'boris',
+              trainingKey: training.sessionKey,
+              title: training.title,
+              startsAt: training.startsAt,
+              location: training.location,
+              status: BookingStatus.paid,
+            ),
+            fakeBooking(
+              id: 3,
+              userId: 3,
+              userUsername: 'ghost',
+              trainingKey: training.sessionKey,
+              title: training.title,
+              startsAt: training.startsAt,
+              location: training.location,
+              status: BookingStatus.cancelled,
+            ),
+          ],
+        },
+      );
+
+      expect(text, contains('data-copy-text="@anna, @boris"'));
+      expect(text, contains('Скопировать · Силовая'));
+      expect(text, isNot(contains('data-copy-text="@ghost"')));
+      expect(text, isNot(contains(MessageCopy.buttonCopyParticipantUsernames)));
+    });
   });
 }

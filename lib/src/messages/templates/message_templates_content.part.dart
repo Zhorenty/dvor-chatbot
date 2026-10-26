@@ -2506,6 +2506,16 @@ extension MessageTemplatesContent on MessageTemplates {
           alreadyEscaped: true,
         ),
       );
+      buffer.write(
+        _participantUsernameCopyButtons(
+          title: training.title,
+          bookings: <TrainingBooking>[
+            ...activeParticipantTags,
+            if (showTrainers) ...activeTrainerTags,
+          ],
+          named: trainings.length > 1,
+        ),
+      );
     }
     return buffer.toString();
   }
