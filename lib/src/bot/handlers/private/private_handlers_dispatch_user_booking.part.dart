@@ -358,13 +358,22 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
         );
         return true;
       }
-      _flowByUserId.remove(userId);
-      await _sendParticipantsByCategory(
-        chatId: chatId,
-        category: category,
-        isAdmin: isAdmin,
-        canViewParticipantsList: canRunParticipantsAction,
-      );
+      try {
+        await _sendParticipantsByCategory(
+          chatId: chatId,
+          category: category,
+          isAdmin: isAdmin,
+          canViewParticipantsList: canRunParticipantsAction,
+        );
+        _flowByUserId.remove(userId);
+      } on Object catch (error, stackTrace) {
+        l.e('Failed to send participants list: $error', stackTrace);
+        await _sendAdminMessage(
+          chatId,
+          _templates.participantsListUnavailable(),
+          replyMarkup: _templates.categorySelectionKeyboard(),
+        );
+      }
       return true;
     }
 

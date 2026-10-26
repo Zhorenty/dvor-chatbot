@@ -4938,7 +4938,7 @@ void main() {
       expect(sender.lastContentMessage.text, contains('@runner_one'));
       expect(
         sender.lastContentMessage.text,
-        contains('data-copy-text="@runner_one, @nudden"'),
+        contains('text="@runner_one, @nudden"'),
       );
       expect(sender.lastContentMessage.text, contains(MessageCopy.buttonCopyParticipantUsernames));
       expect(sender.lastContentMessage.text, contains('Тренеры'));
@@ -5188,7 +5188,7 @@ void main() {
       expect(messageText, contains('03.07.2030'));
       expect(messageText, isNot(contains('🕒 02.07.2030')));
       expect(RegExp('<li>@mi_harkevich').allMatches(messageText).length, 1);
-      expect(messageText, contains('data-copy-text="@mi_harkevich"'));
+      expect(messageText, contains('text="@mi_harkevich"'));
       expect(messageText, isNot(contains('@hike_cancelled')));
     });
 
@@ -5287,7 +5287,7 @@ void main() {
       expect(messageText, contains('12.08.2030'));
       expect(messageText, isNot(contains('🕒 10.08.2030')));
       expect(RegExp('<li>@trail_runner').allMatches(messageText).length, 1);
-      expect(messageText, contains('data-copy-text="@trail_runner"'));
+      expect(messageText, contains('text="@trail_runner"'));
       expect(messageText, isNot(contains('@trail_cancelled')));
     });
 
@@ -5476,7 +5476,7 @@ void main() {
       );
       expect(messageText, isNot(contains('Отменено')));
       expect(RegExp('<li>@hike_user').allMatches(messageText).length, 1);
-      expect(messageText, contains('data-copy-text="@hike_user"'));
+      expect(messageText, contains('text="@hike_user"'));
     });
 
     test('shows hike prepay and remainder after peaks on the participant list', () async {
@@ -5649,7 +5649,7 @@ void main() {
       expect(messageText, contains('02.09.2026 19:00'));
       expect(messageText, isNot(contains('🕒 01.09.2026 19:00')));
       expect(RegExp('<li>@fit_user').allMatches(messageText).length, 1);
-      expect(messageText, contains('data-copy-text="@fit_user"'));
+      expect(messageText, contains('text="@fit_user"'));
       expect(messageText, isNot(contains('@fit_cancelled')));
     });
 

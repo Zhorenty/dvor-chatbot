@@ -282,9 +282,10 @@ void main() {
         },
       );
 
-      expect(text, contains('data-copy-text="@anna, @boris"'));
+      expect(text, contains('type="copy_text"'));
+      expect(text, contains('text="@anna, @boris"'));
       expect(text, contains('Скопировать · Силовая'));
-      expect(text, isNot(contains('data-copy-text="@ghost"')));
+      expect(text, isNot(contains('text="@ghost"')));
       expect(text, isNot(contains(MessageCopy.buttonCopyParticipantUsernames)));
     });
   });

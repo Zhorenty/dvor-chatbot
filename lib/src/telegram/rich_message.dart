@@ -44,25 +44,37 @@ final class RichMessageButton {
   final String? copyText;
 
   String toHtml() {
-    final attributes = <String>[];
+    final attributes = <String>['type="${_htmlType()}"'];
     final styleName = style?.name;
     if (styleName != null) {
-      attributes.add('data-style="${escapeHtml(styleName)}"');
+      attributes.add('style="${escapeHtml(styleName)}"');
     }
     final callback = callbackData;
     if (callback != null) {
-      attributes.add('data-callback-data="${escapeHtml(callback)}"');
+      attributes.add('data="${escapeHtml(callback)}"');
     }
     final href = url;
     if (href != null) {
-      attributes.add('data-url="${escapeHtml(href)}"');
+      attributes.add('url="${escapeHtml(href)}"');
     }
     final copy = copyText;
     if (copy != null) {
-      attributes.add('data-copy-text="${escapeHtml(copy)}"');
+      attributes.add('text="${escapeHtml(copy)}"');
     }
-    final attr = attributes.isEmpty ? '' : ' ${attributes.join(' ')}';
-    return '<tg-button$attr>${escapeHtml(text)}</tg-button>';
+    return '<tg-button ${attributes.join(' ')}>${escapeHtml(text)}</tg-button>';
+  }
+
+  String _htmlType() {
+    if (url != null) {
+      return 'url';
+    }
+    if (callbackData != null) {
+      return 'callback_data';
+    }
+    if (copyText != null) {
+      return 'copy_text';
+    }
+    return 'disabled';
   }
 
   Map<String, Object?> toApiJson() {

@@ -97,6 +97,13 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
+  String participantsListUnavailable() {
+    return RichHtml.screen(
+      title: 'Список записавшихся',
+      lead: 'Список не открылся. Нажми категорию ещё раз.',
+    );
+  }
+
   String choosePaymentsQueueCategory() {
     return RichHtml.screen(
       title: 'Очередь заявок на оплату',
