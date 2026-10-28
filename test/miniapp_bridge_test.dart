@@ -144,6 +144,8 @@ void main() {
       final events = schedule['events']! as List<Map<String, Object?>>;
       final box = events.firstWhere((event) => event['title'] == 'Бокс');
       expect(box['key'], training.sessionKey);
+      // 16:00 club time (UTC+3) is 13:00 UTC.
+      expect(box['startsAt'], '2026-10-21T13:00:00.000Z');
       expect(box['category'], 'trainings');
       expect(box['limit'], 1);
       expect(box['taken'], 0);

@@ -17,7 +17,7 @@ extension PrivateHandlersMiniApp on PrivateHandlers {
         events.add(
           _miniAppEventJson(training)
             ..addAll(<String, Object?>{
-              'endsAt': outdoor.dateTo.toUtc().toIso8601String(),
+              'endsAt': _miniAppInstant(outdoor.dateTo),
               'description': _miniAppText(outdoor.description),
               'equipment': _miniAppText(outdoor.equipment),
               'itinerary': _miniAppText(outdoor.itinerary),
@@ -199,8 +199,8 @@ extension PrivateHandlersMiniApp on PrivateHandlers {
       'key': training.sessionKey,
       'category': training.category.name,
       'title': training.title,
-      'startsAt': training.startsAt.toUtc().toIso8601String(),
-      'endsAt': training.endsAt?.toUtc().toIso8601String(),
+      'startsAt': _miniAppInstant(training.startsAt),
+      'endsAt': training.endsAt == null ? null : _miniAppInstant(training.endsAt!),
       'location': training.location,
       'locationUrl': training.locationUrl,
       'price': training.price,
@@ -218,7 +218,7 @@ extension PrivateHandlersMiniApp on PrivateHandlers {
       'key': booking.trainingKey,
       'category': _catalogService.categoryForBooking(booking).name,
       'title': booking.trainingTitle,
-      'startsAt': booking.startsAt.toUtc().toIso8601String(),
+      'startsAt': _miniAppInstant(booking.startsAt),
       'location': booking.location,
       'locationUrl': booking.locationUrl,
       'status': booking.status.dbValue,
@@ -229,6 +229,19 @@ extension PrivateHandlersMiniApp on PrivateHandlers {
       'boxingCard': MessageFormatters.isBoxingCardPaymentNote(booking.paymentNote),
       'attendance': booking.attendance?.name,
     };
+  }
+
+  /// Schedule times are club wall-clock values (Sheets, no zone). The API
+  /// speaks real UTC instants, so shift by the club offset.
+  String _miniAppInstant(DateTime wallClock) {
+    return DateTime.utc(
+      wallClock.year,
+      wallClock.month,
+      wallClock.day,
+      wallClock.hour,
+      wallClock.minute,
+      wallClock.second,
+    ).subtract(Duration(hours: _timezoneOffsetHours)).toIso8601String();
   }
 
   String? _miniAppText(String? html) {
