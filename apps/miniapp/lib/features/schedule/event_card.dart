@@ -127,12 +127,12 @@ class _OutdoorCard extends StatelessWidget {
           child: Stack(
             children: [
               Positioned(
-                right: -18,
-                top: -10,
+                right: -24,
+                bottom: -18,
                 child: Icon(
                   categoryIcon(event.category),
-                  size: 120,
-                  color: tone.withValues(alpha: 0.10),
+                  size: 110,
+                  color: tone.withValues(alpha: 0.06),
                 ),
               ),
               Padding(

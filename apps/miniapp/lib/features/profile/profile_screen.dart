@@ -78,23 +78,26 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       const SizedBox(height: Space.xl),
-      Row(
-        children: [
-          Expanded(
-            child: _Stat(value: '${me.peaks}', label: 'Вершинки', highlight: true),
-          ),
-          const SizedBox(width: Space.s),
-          Expanded(
-            child: _Stat(
-              value: '${me.visits}',
-              label: Fmt.plural(me.visits, 'Тренировка', 'Тренировки', 'Тренировок'),
+      IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _Stat(value: '${me.peaks}', label: 'Вершинки', highlight: true),
             ),
-          ),
-          const SizedBox(width: Space.s),
-          Expanded(
-            child: _Stat(value: '${me.invited}', label: 'Друзей позвал'),
-          ),
-        ],
+            const SizedBox(width: Space.s),
+            Expanded(
+              child: _Stat(
+                value: '${me.visits}',
+                label: Fmt.plural(me.visits, 'Тренировка', 'Тренировки', 'Тренировок'),
+              ),
+            ),
+            const SizedBox(width: Space.s),
+            Expanded(
+              child: _Stat(value: '${me.invited}', label: 'Друзей позвал'),
+            ),
+          ],
+        ),
       ),
       if (me.referralLink != null) ...[
         const SizedBox(height: Space.m),
