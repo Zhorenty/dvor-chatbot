@@ -10,3 +10,46 @@ services:
     volumes:
       - ./data:/app/data
       - ./secrets:/app/secrets:ro
+
+  # Mini App backend. Talks to the bot over the internal bridge (port 8081,
+  # never published) and reads profile aggregates from the shared SQLite.
+  dvor-api:
+    container_name: dvor-api
+    profiles: ["miniapp"]
+    build:
+      context: services/api
+    env_file:
+      - .env
+    environment:
+      API_ADDR: ":8080"
+      BOOKINGS_DB_PATH: /app/data/bookings.sqlite
+      MINIAPP_BRIDGE_URL: http://dvor-chatbot:8081
+    restart: unless-stopped
+    depends_on:
+      - dvor-chatbot
+    volumes:
+      - ./data:/app/data
+
+  # TLS + static Flutter build + /api reverse proxy.
+  caddy:
+    container_name: dvor-caddy
+    profiles: ["miniapp"]
+    image: caddy:2.8-alpine
+    env_file:
+      - .env
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    depends_on:
+      - dvor-api
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./miniapp-dist:/srv/miniapp:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

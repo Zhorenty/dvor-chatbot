@@ -1,0 +1,11 @@
+.git
+.dart_tool
+build
+apps
+services
+deploy
+output
+promo
+data
+secrets
+scripts/assets/week_stories/cache

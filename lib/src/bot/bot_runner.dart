@@ -280,6 +280,9 @@ final class BotRunner {
 
   int get exitCode => _exitCode;
 
+  /// Tracks external work (Mini App bridge) so shutdown waits for it.
+  Future<T> runTracked<T>(Future<T> Function() action) => _jobScheduler.runTracked(action);
+
   Future<void> start() async {
     await _initializeLongPolling();
     final initialRefreshOk = await _scheduleRepository.refresh(force: true);

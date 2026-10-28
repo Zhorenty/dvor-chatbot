@@ -3,6 +3,20 @@ import 'package:test/test.dart';
 
 void main() {
   group('AppConfig.fromArgs', () {
+    test('parses Mini App bridge options', () {
+      final config = AppConfig.fromArgs(<String>[
+        '--token',
+        'cli-token',
+        '--miniapp-bridge-port',
+        '8081',
+        '--miniapp-bridge-token',
+        'bridge-secret-0123456789',
+      ]);
+
+      expect(config.miniAppBridgePort, 8081);
+      expect(config.miniAppBridgeToken, 'bridge-secret-0123456789');
+    });
+
     test('parses explicit CLI options', () {
       final config = AppConfig.fromArgs(<String>[
         '--token',

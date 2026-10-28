@@ -30,6 +30,8 @@ final class AppConfig {
     this.googleSheetsSpreadsheetId,
     this.googleSheetsWriteSheetTitle = 'FUNNEL',
     this.googleSheetsWriteIntervalSeconds = 300,
+    this.miniAppBridgePort,
+    this.miniAppBridgeToken,
   });
 
   final String botToken;
@@ -56,9 +58,15 @@ final class AppConfig {
   final String googleSheetsWriteSheetTitle;
   final int googleSheetsWriteIntervalSeconds;
 
+  /// Internal HTTP bridge for the Mini App API. Disabled when null.
+  final int? miniAppBridgePort;
+  final String? miniAppBridgeToken;
+
   static AppConfig fromArgs(List<String> args) {
     final parser = ArgParser()
       ..addFlag('help', abbr: 'h', negatable: false)
+      ..addOption('miniapp-bridge-port', help: 'Internal Mini App bridge port (disabled if empty)')
+      ..addOption('miniapp-bridge-token', help: 'Shared secret for the Mini App bridge')
       ..addOption('token', abbr: 't', help: 'Telegram bot token')
       ..addOption('target-chat-id', help: 'Group chat id, e.g. -1001234567890')
       ..addOption('send-group-fallback', help: 'Send fallback in group if DM failed')
@@ -224,6 +232,15 @@ final class AppConfig {
       'google-sheets-write-interval-seconds',
     );
 
+    final miniAppBridgePortRaw = resolve('MINIAPP_BRIDGE_PORT', 'miniapp-bridge-port');
+    final miniAppBridgeTokenRaw = resolve('MINIAPP_BRIDGE_TOKEN', 'miniapp-bridge-token')?.trim();
+    final miniAppBridgePort = int.tryParse(miniAppBridgePortRaw ?? '');
+    if (miniAppBridgePort != null &&
+        (miniAppBridgeTokenRaw == null || miniAppBridgeTokenRaw.length < 16)) {
+      stderr.writeln('MINIAPP_BRIDGE_PORT requires MINIAPP_BRIDGE_TOKEN (16+ chars).');
+      exit(2);
+    }
+
     final scheduleSource = _parseScheduleSource(scheduleSourceRaw);
     if (scheduleSource == ScheduleSource.googleSheets &&
         (googleSheetsCsvUrl == null || googleSheetsCsvUrl.isEmpty)) {
@@ -287,6 +304,8 @@ final class AppConfig {
       googleSheetsWriteSheetTitle: googleSheetsWriteSheetTitle,
       googleSheetsWriteIntervalSeconds:
           int.tryParse(googleSheetsWriteIntervalRaw ?? '')?.clamp(30, 86400) ?? 300,
+      miniAppBridgePort: miniAppBridgePort,
+      miniAppBridgeToken: miniAppBridgePort == null ? null : miniAppBridgeTokenRaw,
     );
   }
 }

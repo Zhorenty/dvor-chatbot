@@ -41,6 +41,17 @@ bash scripts/full_deploy.sh
 
 Первый запуск нового скрипта: сначала push, на сервере один раз `git pull`, дальше можно вызывать с Mac.
 
+## Mini App
+
+Прод: `dvor-chatbot` (бот + мост :8081 внутри сети), `dvor-api` (Go), `dvor-caddy` (TLS, статика, `/api`).
+Сервисы Mini App включены через `COMPOSE_PROFILES=miniapp` в `.env`, поэтому обычные скрипты деплоя поднимают все три.
+
+- Обновить фронт (Flutter собирается на Mac): `scripts/deploy_miniapp.sh`
+- Статика лежит в `/opt/dvor-chatbot-project/miniapp-dist` (не в git)
+- Логи: `docker logs --tail=200 dvor-api`, `docker logs --tail=200 dvor-caddy`
+- Проверка: `curl -s https://$MINIAPP_DOMAIN/api/v1/me` → 401 (нужен initData) значит API живо
+- Отключить Mini App, не трогая бота: убрать `miniapp` из `COMPOSE_PROFILES`, затем `docker compose stop dvor-api caddy`
+
 ## Google Sheets (срезы)
 
 На сервере в `.env`:

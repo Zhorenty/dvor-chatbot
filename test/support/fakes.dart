@@ -346,6 +346,18 @@ final class FakeBookingRepository implements BookingRepository {
   }
 
   @override
+  Future<int> countActiveParticipants(TrainingInfo training) async {
+    return bookingsByTrainingKey
+        .where(
+          (booking) =>
+              booking.trainingKey == training.sessionKey &&
+              booking.status != BookingStatus.cancelled &&
+              booking.status != BookingStatus.paymentRejected,
+        )
+        .length;
+  }
+
+  @override
   Future<List<TrainingBooking>> listUserBookings(int userId, {int limit = 10}) async {
     if (userBookings.isEmpty) {
       return <TrainingBooking>[

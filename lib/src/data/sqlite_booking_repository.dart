@@ -2724,6 +2724,14 @@ final class SqliteBookingRepository implements BookingRepository {
     }
   }
 
+  @override
+  Future<int> countActiveParticipants(TrainingInfo training) async {
+    return _countActiveParticipantsForTraining(
+      training,
+      excludeTrainerParticipants: !training.includeTrainersInParticipants,
+    );
+  }
+
   int _countActiveParticipantsForTraining(
     TrainingInfo training, {
     required bool excludeTrainerParticipants,

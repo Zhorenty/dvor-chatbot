@@ -4,6 +4,10 @@ formatter:
   page_width: 100
 
 analyzer:
+  exclude:
+    - apps/**
+    - services/**
+    - build/**
   language:
     strict-casts: true
     strict-inference: true

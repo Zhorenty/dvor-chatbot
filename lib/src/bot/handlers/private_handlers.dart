@@ -84,6 +84,7 @@ part 'private/private_handlers_dispatch_admin_moderation.part.dart';
 part 'private/private_handlers_dispatch_user_profile.part.dart';
 part 'private/private_handlers_dispatch_inline_callbacks.part.dart';
 part 'private/private_handlers_dispatch_user_actions.part.dart';
+part 'private/private_handlers_miniapp.part.dart';
 
 final class PrivateHandlers {
   static const String _paymentChoiceFullMarker = '__payment_choice_full__';

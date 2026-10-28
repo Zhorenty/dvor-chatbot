@@ -32,6 +32,7 @@ import 'package:dvor_chatbot/src/data/trainer_directory_repository.dart';
 import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
+import 'package:dvor_chatbot/src/miniapp/miniapp_bridge_server.dart';
 import 'package:dvor_chatbot/src/telegram/logging_message_sender.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_client.dart';
 import 'package:l/l.dart';
@@ -108,6 +109,26 @@ void main(List<String> args) {
         conversationLog: conversationLogRepository,
       );
       final groupAnnouncements = GroupAnnouncementService(sender: sender);
+      final privateHandlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: scheduleRepository,
+        bookingRepository: bookingRepository,
+        subscriptionRepository: subscriptionRepository,
+        onboardingRepository: onboardingRepository,
+        conversationLogRepository: conversationLogRepository,
+        trainerDirectoryRepository: trainerDirectoryRepository,
+        dvorTeamRepository: dvorTeamRepository,
+        promoCodeRepository: promoCodeRepository,
+        templates: templates,
+        adminUserIds: config.adminUserIds,
+        adminChatId: config.adminChatId,
+        targetChatId: config.targetChatId,
+        groupAnnouncements: groupAnnouncements,
+        onboardingDripEnabled: config.onboardingDripEnabled,
+        scheduleCatalogService: scheduleCatalogService,
+        timezoneOffsetHours: config.timezoneOffsetHours,
+        loyaltyService: loyaltyService,
+      );
       final runner = BotRunner(
         config: config,
         client: client,
@@ -119,26 +140,7 @@ void main(List<String> args) {
         templates: templates,
         groupAnnouncements: groupAnnouncements,
         jobDedupeRepository: jobDedupeRepository,
-        privateHandlers: PrivateHandlers(
-          sender: sender,
-          scheduleRepository: scheduleRepository,
-          bookingRepository: bookingRepository,
-          subscriptionRepository: subscriptionRepository,
-          onboardingRepository: onboardingRepository,
-          conversationLogRepository: conversationLogRepository,
-          trainerDirectoryRepository: trainerDirectoryRepository,
-          dvorTeamRepository: dvorTeamRepository,
-          promoCodeRepository: promoCodeRepository,
-          templates: templates,
-          adminUserIds: config.adminUserIds,
-          adminChatId: config.adminChatId,
-          targetChatId: config.targetChatId,
-          groupAnnouncements: groupAnnouncements,
-          onboardingDripEnabled: config.onboardingDripEnabled,
-          scheduleCatalogService: scheduleCatalogService,
-          timezoneOffsetHours: config.timezoneOffsetHours,
-          loyaltyService: loyaltyService,
-        ),
+        privateHandlers: privateHandlers,
         groupHandlers: GroupHandlers(
           sender: sender,
           onboardingRepository: onboardingRepository,
@@ -155,6 +157,17 @@ void main(List<String> args) {
       );
 
       _registerShutdown(runner);
+      MiniAppBridgeServer? miniAppBridge;
+      final miniAppBridgePort = config.miniAppBridgePort;
+      final miniAppBridgeToken = config.miniAppBridgeToken;
+      if (miniAppBridgePort != null && miniAppBridgeToken != null) {
+        miniAppBridge = MiniAppBridgeServer(
+          backend: PrivateHandlersMiniAppBackend(privateHandlers),
+          token: miniAppBridgeToken,
+          runTracked: runner.runTracked,
+        );
+        await miniAppBridge.start(port: miniAppBridgePort);
+      }
       l.i(
         'DVOR bot is starting... '
         'scheduleSource=${config.scheduleSource.name}, '
@@ -167,6 +180,7 @@ void main(List<String> args) {
       try {
         await runner.start();
       } finally {
+        await miniAppBridge?.close();
         await runner.stop();
         await bookingRepository.close();
         await subscriptionRepository.close();

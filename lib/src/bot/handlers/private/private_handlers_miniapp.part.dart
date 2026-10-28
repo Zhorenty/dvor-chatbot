@@ -1,0 +1,247 @@
+part of '../private_handlers.dart';
+
+/// Mini App bridge: the Go API calls these through the internal HTTP bridge so
+/// booking and cancellation run through the same bot flows (payment card,
+/// admin notifications, BOXING CARD, team and trainer rules) as chat buttons.
+extension PrivateHandlersMiniApp on PrivateHandlers {
+  static final RegExp _htmlTag = RegExp('<[^>]+>');
+
+  Map<String, Object?> miniAppSchedule() {
+    final events = <Map<String, Object?>>[];
+    for (final training in _catalogService.bookableItems(_ActivityCategory.trainings, limit: 40)) {
+      events.add(_miniAppEventJson(training));
+    }
+    for (final category in const [_ActivityCategory.hikes, _ActivityCategory.trails]) {
+      for (final outdoor in _catalogService.outdoorItems(category)) {
+        final training = _catalogService.toBookableInfo(outdoor);
+        events.add(
+          _miniAppEventJson(training)
+            ..addAll(<String, Object?>{
+              'endsAt': outdoor.dateTo.toUtc().toIso8601String(),
+              'description': _miniAppText(outdoor.description),
+              'equipment': _miniAppText(outdoor.equipment),
+              'itinerary': _miniAppText(outdoor.itinerary),
+            }),
+        );
+      }
+    }
+    return <String, Object?>{
+      'events': events,
+      'generatedAt': _nowProvider().toUtc().toIso8601String(),
+    };
+  }
+
+  Future<Map<String, Object?>> miniAppScheduleWithSeats() async {
+    final schedule = miniAppSchedule();
+    final events = schedule['events']! as List<Map<String, Object?>>;
+    for (final event in events) {
+      final training = _miniAppFindTraining(event['key']! as String);
+      if (training == null || (training.participantsLimit ?? 0) <= 0) {
+        continue;
+      }
+      event['taken'] = await _bookingRepository.countActiveParticipants(training);
+    }
+    return schedule;
+  }
+
+  Future<Map<String, Object?>> miniAppBookings(int userId) async {
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 40);
+    return <String, Object?>{
+      'bookings': bookings.map(_miniAppBookingJson).toList(growable: false),
+    };
+  }
+
+  Future<Map<String, Object?>> miniAppBook({
+    required int userId,
+    required String? username,
+    required String sessionKey,
+  }) async {
+    final training = _miniAppFindTraining(sessionKey);
+    if (training == null) {
+      return const <String, Object?>{'outcome': 'not_found'};
+    }
+    final before = await _miniAppFindOwnBooking(userId, sessionKey);
+    final wasActive = before != null && _miniAppIsActive(before);
+    if (!wasActive && await _miniAppIsFull(training, userId: userId, username: username)) {
+      return const <String, Object?>{'outcome': 'full'};
+    }
+    final isAdmin = _adminUserIds.contains(userId) && !_adminsInClientMode.contains(userId);
+    try {
+      await _createOrContinueBooking(
+        chatId: userId,
+        userId: userId,
+        isAdmin: isAdmin,
+        flowState: const _PrivateFlowState(
+          step: _PrivateFlowStep.selectingBookingCategory,
+          availableTrainings: <TrainingInfo>[],
+        ),
+        selectedTraining: training,
+        username: username,
+        onParticipantsLimitReplyMarkup: _templates.privateMenuKeyboard(
+          isAdmin: isAdmin,
+          showReturnToAdminMenu: false,
+        ),
+      );
+    } on TelegramApiException catch (error, stackTrace) {
+      // The booking row is already written; the chat card is best effort.
+      l.w('Mini App booking: failed to message user $userId: $error', stackTrace);
+    }
+    final after = await _miniAppFindOwnBooking(userId, sessionKey);
+    if (after == null || !_miniAppIsActive(after)) {
+      return const <String, Object?>{'outcome': 'full'};
+    }
+    return <String, Object?>{
+      'outcome': wasActive ? 'exists' : 'created',
+      'booking': _miniAppBookingJson(after),
+    };
+  }
+
+  Future<Map<String, Object?>> miniAppCancel({
+    required int userId,
+    required int bookingId,
+  }) async {
+    final booking = await _findUserBooking(userId, bookingId);
+    if (booking == null || !_miniAppIsActive(booking)) {
+      return const <String, Object?>{'outcome': 'not_found'};
+    }
+    if (!_canCancelBookingByPolicy(booking)) {
+      final category = _catalogService.categoryForBooking(booking);
+      return <String, Object?>{
+        'outcome': 'too_late',
+        'message': _miniAppText(_cancellationTooLateText(booking, category: category)),
+      };
+    }
+    final cancelResult = await _bookingRepository.cancelBooking(
+      userId: userId,
+      bookingId: booking.id,
+    );
+    _flowByUserId.remove(userId);
+    final cancelledBooking = cancelResult.booking;
+    if (cancelResult.outcome != BookingActionOutcome.success || cancelledBooking == null) {
+      return const <String, Object?>{'outcome': 'not_found'};
+    }
+    final cancelled = await _finalizeBoxingCardCancel(booking);
+    final refund = await _refundLoyaltyForBooking(booking);
+    try {
+      if (_shouldNotifyAdminAboutBookingCancellation(booking)) {
+        await _notifyAdminAboutBookingCancelled(booking, refundPeaks: refund.peaks);
+      }
+      await _sendScreen(
+        userId,
+        _templates.bookingCancelled(
+          cancelled ?? cancelledBooking,
+          refundPeaks: refund.peaks,
+          loyaltyRemaining: refund.remaining,
+        ),
+        replyMarkup: _templates.privateMenuKeyboard(isAdmin: false, showReturnToAdminMenu: false),
+      );
+    } on TelegramApiException catch (error, stackTrace) {
+      l.w('Mini App cancel: failed to message user $userId: $error', stackTrace);
+    }
+    return <String, Object?>{
+      'outcome': 'cancelled',
+      'refundPeaks': refund.peaks,
+      'booking': _miniAppBookingJson(cancelled ?? cancelledBooking),
+    };
+  }
+
+  TrainingInfo? _miniAppFindTraining(String sessionKey) {
+    for (final training in _catalogService.bookableItems(_ActivityCategory.trainings, limit: 40)) {
+      if (training.sessionKey == sessionKey) {
+        return training;
+      }
+    }
+    for (final category in const [_ActivityCategory.hikes, _ActivityCategory.trails]) {
+      for (final outdoor in _catalogService.outdoorItems(category)) {
+        final training = _catalogService.toBookableInfo(outdoor);
+        if (training.sessionKey == sessionKey) {
+          return training;
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<TrainingBooking?> _miniAppFindOwnBooking(int userId, String sessionKey) async {
+    final bookings = await _bookingRepository.listUserBookings(userId, limit: 100);
+    for (final booking in bookings) {
+      if (booking.trainingKey == sessionKey &&
+          booking.participantType == BookingParticipantType.self) {
+        return booking;
+      }
+    }
+    return null;
+  }
+
+  Future<bool> _miniAppIsFull(
+    TrainingInfo training, {
+    required int userId,
+    required String? username,
+  }) async {
+    final limit = training.participantsLimit;
+    if (limit == null || limit <= 0) {
+      return false;
+    }
+    if (!training.includeTrainersInParticipants &&
+        isTrainerBookingWhitelisted(userId: userId, username: username)) {
+      return false;
+    }
+    return await _bookingRepository.countActiveParticipants(training) >= limit;
+  }
+
+  bool _miniAppIsActive(TrainingBooking booking) {
+    return booking.status != BookingStatus.cancelled &&
+        booking.status != BookingStatus.paymentRejected;
+  }
+
+  Map<String, Object?> _miniAppEventJson(TrainingInfo training) {
+    return <String, Object?>{
+      'key': training.sessionKey,
+      'category': training.category.name,
+      'title': training.title,
+      'startsAt': training.startsAt.toUtc().toIso8601String(),
+      'endsAt': training.endsAt?.toUtc().toIso8601String(),
+      'location': training.location,
+      'locationUrl': training.locationUrl,
+      'price': training.price,
+      'prepayPercent': training.prepayPercent,
+      'limit': training.participantsLimit,
+      'coach': training.coach,
+      'notes': _miniAppText(training.notes),
+      'promoRestricted': training.promoRestricted,
+    };
+  }
+
+  Map<String, Object?> _miniAppBookingJson(TrainingBooking booking) {
+    return <String, Object?>{
+      'id': booking.id,
+      'key': booking.trainingKey,
+      'category': _catalogService.categoryForBooking(booking).name,
+      'title': booking.trainingTitle,
+      'startsAt': booking.startsAt.toUtc().toIso8601String(),
+      'location': booking.location,
+      'locationUrl': booking.locationUrl,
+      'status': booking.status.dbValue,
+      'price': booking.trainingPrice,
+      'prepayPercent': booking.trainingPrepayPercent,
+      'participant': booking.isManagedForOther ? booking.participantDisplayLabel : null,
+      'canCancel': _miniAppIsActive(booking) && _canCancelBookingByPolicy(booking),
+      'boxingCard': MessageFormatters.isBoxingCardPaymentNote(booking.paymentNote),
+      'attendance': booking.attendance?.name,
+    };
+  }
+
+  String? _miniAppText(String? html) {
+    final trimmed = html?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    return trimmed
+        .replaceAll(_htmlTag, '')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&amp;', '&');
+  }
+}

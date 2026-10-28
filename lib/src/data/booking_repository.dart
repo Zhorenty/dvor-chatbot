@@ -146,6 +146,9 @@ abstract interface class BookingRepository {
     int limit = 20,
   });
 
+  /// Seats taken on [training], using the same rules as the capacity check.
+  Future<int> countActiveParticipants(TrainingInfo training);
+
   Future<List<TrainingBooking>> listByTrainingKeys(
     Set<String> trainingKeys, {
     int limit = 200,

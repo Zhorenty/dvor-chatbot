@@ -41,6 +41,10 @@ Project guidance for AI/code agents in this repository.
 - Message text/templates: `lib/src/messages/message_templates.dart` (+ `templates/*.part.dart`)
 - HTML escaping: `lib/src/messages/html_escaper.dart`
 - Club voice / copy: `docs/VOICE.md` (read before generating or editing user-facing text)
+- Telegram Mini App: `docs/MINIAPP_ARCHITECTURE.md`
+  - Flutter app: `apps/miniapp` (`flutter analyze && flutter test`)
+  - Go API: `services/api` (`go vet ./... && go test ./...`)
+  - Bot bridge: `lib/src/miniapp/miniapp_bridge_server.dart` + `private/private_handlers_miniapp.part.dart` (booking/cancel reuse chat flows)
 
 ## Architecture and Coding Rules
 
@@ -100,6 +104,7 @@ Avoid: «дорогие друзья», «от лица команды», «ад
   - `GROUP_INVITE_NUDGE_ENABLED`
   - `GOOGLE_SHEETS_WRITE_ENABLED` / `GOOGLE_SHEETS_CREDENTIALS_PATH` / `GOOGLE_SHEETS_SPREADSHEET_ID`
   - `LOG_LEVEL`
+  - `MINIAPP_BRIDGE_PORT` / `MINIAPP_BRIDGE_TOKEN` / `MINIAPP_URL` / `MINIAPP_DOMAIN` / `COMPOSE_PROFILES`
 
 ## Reliability Baseline
 
