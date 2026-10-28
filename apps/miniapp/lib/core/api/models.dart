@@ -14,13 +14,13 @@ enum EventCategory {
   String get label => switch (this) {
     EventCategory.trainings => 'Тренировки',
     EventCategory.hikes => 'Походы',
-    EventCategory.trails => 'Трейлы и кэмпы',
+    EventCategory.trails => 'Кэмпы',
   };
 
   String get shortLabel => switch (this) {
     EventCategory.trainings => 'Тренировка',
     EventCategory.hikes => 'Поход',
-    EventCategory.trails => 'Трейл',
+    EventCategory.trails => 'Кэмп',
   };
 
   bool get isOutdoor => this != EventCategory.trainings;
@@ -222,6 +222,8 @@ class Me {
     this.bookings = 0,
     this.botUsername,
     this.referralLink,
+    this.peaksExpireAt,
+    this.peaksHistory = const [],
   });
 
   factory Me.fromJson(Map<String, Object?> json) {
@@ -240,6 +242,11 @@ class Me {
       bookings: _int(profile['bookings']) ?? 0,
       botUsername: _str(json['botUsername']),
       referralLink: _str(json['referralLink']),
+      peaksExpireAt: _dateOrNull(profile['peaksExpireAt']),
+      peaksHistory: ((profile['peaksHistory'] as List<Object?>?) ?? const [])
+          .whereType<Map<String, Object?>>()
+          .map(PeaksChange.fromJson)
+          .toList(growable: false),
     );
   }
 
@@ -256,12 +263,49 @@ class Me {
   final String? botUsername;
   final String? referralLink;
 
+  /// When the ⛰️ balance burns without new activity (bot rule: 45 days).
+  final DateTime? peaksExpireAt;
+  final List<PeaksChange> peaksHistory;
+
   String get initials {
     final first = firstName.isEmpty ? '' : firstName.characters.first;
     final last = (lastName == null || lastName!.isEmpty) ? '' : lastName!.characters.first;
     final value = '$first$last'.toUpperCase();
     return value.isEmpty ? 'D' : value;
   }
+}
+
+/// One loyalty ledger row; [reason] is the bot's db value.
+@immutable
+class PeaksChange {
+  const PeaksChange({required this.amount, required this.reason, required this.createdAt});
+
+  factory PeaksChange.fromJson(Map<String, Object?> json) => PeaksChange(
+    amount: _int(json['amount']) ?? 0,
+    reason: (json['reason'] as String?) ?? '',
+    createdAt: _dateOrNull(json['createdAt']) ?? DateTime.utc(1970),
+  );
+
+  final int amount;
+  final String reason;
+  final DateTime createdAt;
+
+  String get label => switch (reason) {
+    'start' => 'Стартовые',
+    'training' => 'Тренировка',
+    'feedback' => 'Отзыв',
+    'hike' => 'Поход',
+    'trail' => 'Кэмп',
+    'referral' => 'Друг пришёл',
+    'boxing_card' => 'BOXING CARD',
+    'expire' => 'Сгорели',
+    'spend' => 'Списание',
+    'refund' => 'Возврат за отмену',
+    'admin_grant' => 'Начисление от клуба',
+    'admin_debit' => 'Списание клубом',
+    'migration' => 'Перенос баланса',
+    _ => 'Вершинки',
+  };
 }
 
 enum ActionOutcome { created, exists, cancelled }

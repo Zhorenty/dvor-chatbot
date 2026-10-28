@@ -4,7 +4,8 @@ import 'package:dvor_miniapp/core/theme/app_theme.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 
-/// Schedule row: big time on the left, facts on the right.
+/// Schedule row: glyph, time and title, price or "booked" on the right.
+/// Single layout pass, no clips or opacity layers.
 class EventCard extends StatelessWidget {
   const EventCard({super.key, required this.event, required this.booked, required this.onTap});
 
@@ -14,193 +15,89 @@ class EventCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return event.category.isOutdoor
-        ? _OutdoorCard(event: event, booked: booked, onTap: onTap)
-        : _TrainingCard(event: event, booked: booked, onTap: onTap);
-  }
-}
-
-class _TrainingCard extends StatelessWidget {
-  const _TrainingCard({required this.event, required this.booked, required this.onTap});
-
-  final ClubEvent event;
-  final Booking? booked;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
     final c = context.colors;
-    final tone = categoryColor(context, event.category);
+    final title = splitTitleEmoji(event.title);
+    final place = [event.location, ?event.coach].where((s) => s.isNotEmpty).join(' · ');
+    final booking = booked;
     return Pressable(
       onTap: onTap,
-      semanticLabel: '${event.title}, ${Fmt.time(event.startsAt)}',
-      child: DvorCard(
-        padding: const EdgeInsets.fromLTRB(Space.l, Space.l, Space.m, Space.l),
-        borderColor: booked != null ? tone.withValues(alpha: 0.55) : null,
-        child: IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: 62,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        Fmt.time(event.startsAt),
-                        maxLines: 1,
-                        softWrap: false,
-                        style: context.text.headlineMedium?.copyWith(fontSize: 20),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                width: 3,
-                margin: const EdgeInsets.only(right: Space.m),
-                decoration: BoxDecoration(
-                  color: tone.withValues(alpha: 0.8),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      event.title.toUpperCase(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.text.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    _Meta(icon: Icons.place_outlined, text: event.location),
-                    if (event.coach != null) ...[
-                      const SizedBox(height: 2),
-                      _Meta(icon: Icons.sports_outlined, text: event.coach!),
-                    ],
-                    const SizedBox(height: Space.s),
-                    _Badges(event: event, booked: booked),
-                  ],
-                ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: c.inkFaint),
-            ],
-          ),
+      semanticLabel: '${title.text}, ${Fmt.time(event.startsAt)}',
+      child: Container(
+        padding: const EdgeInsets.all(Space.m),
+        decoration: BoxDecoration(
+          color: c.surface,
+          borderRadius: BorderRadius.circular(Radii.tile),
+          border: Border.all(color: booking != null ? c.accent.withValues(alpha: 0.6) : c.stroke),
         ),
-      ),
-    );
-  }
-}
-
-class _OutdoorCard extends StatelessWidget {
-  const _OutdoorCard({required this.event, required this.booked, required this.onTap});
-
-  final ClubEvent event;
-  final Booking? booked;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    final tone = categoryColor(context, event.category);
-    return Pressable(
-      onTap: onTap,
-      semanticLabel: '${event.category.shortLabel} ${event.title}',
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(Radii.card),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [tone.withValues(alpha: 0.28), c.surface, c.surface],
-              stops: const [0, 0.55, 1],
+        child: Row(
+          children: [
+            EventGlyph(emoji: title.emoji, category: event.category),
+            const SizedBox(width: Space.m),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    Fmt.time(event.startsAt),
+                    style: context.text.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 16,
+                      height: 1.1,
+                    ),
+                  ),
+                  Text(
+                    title.text.toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.text.titleMedium?.copyWith(fontSize: 13.5),
+                  ),
+                  if (place.isNotEmpty)
+                    Text(
+                      place,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodyMedium?.copyWith(color: c.inkFaint, fontSize: 12),
+                    ),
+                ],
+              ),
             ),
-            borderRadius: BorderRadius.circular(Radii.card),
-            border: Border.all(color: booked != null ? tone.withValues(alpha: 0.6) : c.stroke),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                right: -24,
-                bottom: -18,
-                child: Icon(
-                  categoryIcon(event.category),
-                  size: 110,
-                  color: tone.withValues(alpha: 0.06),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(Space.l + 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Pill(
-                          label: event.category.shortLabel.toUpperCase(),
-                          color: tone,
-                          filled: true,
-                          dense: true,
-                        ),
-                        const SizedBox(width: Space.s),
-                        Expanded(
-                          child: Text(
-                            Fmt.dateRange(event.startsAt, event.endsAt).toUpperCase(),
-                            overflow: TextOverflow.ellipsis,
-                            style: context.text.labelMedium?.copyWith(color: c.inkMuted),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: Space.m),
-                    Text(
-                      event.title.toUpperCase(),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.text.headlineMedium,
-                    ),
-                    if (event.location.isNotEmpty) ...[
-                      const SizedBox(height: Space.s),
-                      _Meta(icon: Icons.place_outlined, text: event.location),
-                    ],
-                    const SizedBox(height: Space.m),
-                    _Badges(event: event, booked: booked),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            const SizedBox(width: Space.s),
+            booking != null ? _BookedMark(booking: booking) : _PriceAndSeats(event: event),
+          ],
         ),
       ),
     );
   }
 }
 
-class _Meta extends StatelessWidget {
-  const _Meta({required this.icon, required this.text});
+class _BookedMark extends StatelessWidget {
+  const _BookedMark({required this.booking});
 
-  final IconData icon;
-  final String text;
+  final Booking booking;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return Row(
+    final waiting = booking.status.needsPayment;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Icon(icon, size: 14, color: c.inkFaint),
-        const SizedBox(width: 4),
-        Expanded(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: context.text.bodyMedium?.copyWith(color: c.inkMuted, fontSize: 13),
+        Container(
+          width: 22,
+          height: 22,
+          decoration: BoxDecoration(color: waiting ? c.warning : c.accent, shape: BoxShape.circle),
+          child: Icon(
+            waiting ? Icons.schedule_rounded : Icons.check_rounded,
+            size: 14,
+            color: c.onAccent,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          waiting ? 'Оплатить' : 'Ты идёшь',
+          style: context.text.labelSmall?.copyWith(
+            color: waiting ? c.warning : c.accent,
+            letterSpacing: 0.2,
           ),
         ),
       ],
@@ -208,36 +105,144 @@ class _Meta extends StatelessWidget {
   }
 }
 
-class _Badges extends StatelessWidget {
-  const _Badges({required this.event, required this.booked});
+class _PriceAndSeats extends StatelessWidget {
+  const _PriceAndSeats({required this.event});
 
   final ClubEvent event;
-  final Booking? booked;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
     final seats = event.seatsLeft;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
+    final limit = event.limit;
+    final tone = seats == 0 ? c.danger : (seats != null && seats <= 3 ? c.warning : c.accent);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        if (booked != null)
-          Pill(
-            label: booked!.status.needsPayment ? 'Ждёт оплаты' : 'Ты записан',
-            icon: booked!.status.needsPayment ? Icons.schedule_rounded : Icons.check_rounded,
-            color: booked!.status.needsPayment ? c.warning : c.accent,
-            filled: !booked!.status.needsPayment,
-            dense: true,
+        Text(
+          Fmt.price(event.price),
+          style: context.text.labelLarge?.copyWith(color: event.isFree ? c.accent : c.ink),
+        ),
+        if (seats != null && limit != null) ...[
+          const SizedBox(height: 6),
+          _SeatsBar(ratio: 1 - seats / limit, color: tone),
+          const SizedBox(height: 3),
+          Text(
+            seats == 0 ? 'Мест нет' : Fmt.seats(seats),
+            style: context.text.labelSmall?.copyWith(
+              color: seats <= 3 ? tone : c.inkFaint,
+              letterSpacing: 0.2,
+            ),
           ),
-        Pill(label: Fmt.price(event.price), dense: true, color: event.isFree ? c.success : null),
-        if (seats != null && booked == null)
-          Pill(
-            label: seats == 0 ? 'Мест нет' : 'Осталось ${Fmt.seats(seats)}',
-            dense: true,
-            color: seats == 0 ? c.danger : (seats <= 3 ? c.warning : null),
-          ),
+        ],
       ],
+    );
+  }
+}
+
+class _SeatsBar extends StatelessWidget {
+  const _SeatsBar({required this.ratio, required this.color});
+
+  final double ratio;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 48,
+      height: 4,
+      alignment: Alignment.centerLeft,
+      decoration: BoxDecoration(
+        color: context.colors.surfaceRaised,
+        borderRadius: BorderRadius.circular(2),
+      ),
+      child: FractionallySizedBox(
+        widthFactor: ratio.clamp(0.04, 1),
+        child: DecoratedBox(
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+  }
+}
+
+/// Hike or camp cover for the "Выезды" strip and the outdoor filter.
+class OutdoorCard extends StatelessWidget {
+  const OutdoorCard({
+    super.key,
+    required this.event,
+    required this.booked,
+    required this.onTap,
+    this.width,
+  });
+
+  final ClubEvent event;
+  final Booking? booked;
+  final VoidCallback onTap;
+  final double? width;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final tone = categoryColor(context, event.category);
+    final title = splitTitleEmoji(event.title);
+    final seats = event.seatsLeft;
+    final facts = [
+      Fmt.price(event.price),
+      if (event.prepayPercent != null && !event.isFree) 'предоплата ${event.prepayPercent}%',
+      if (seats != null) seats == 0 ? 'мест нет' : Fmt.seats(seats),
+    ].join(' · ');
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: '${event.category.shortLabel} ${title.text}',
+      child: Container(
+        width: width,
+        constraints: const BoxConstraints(minHeight: 150),
+        padding: const EdgeInsets.all(Space.l),
+        decoration: coverDecoration(
+          context,
+          tone,
+        ).copyWith(border: Border.all(color: booked != null ? tone : c.stroke)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Row(
+              children: [
+                Pill(
+                  label: event.category.shortLabel.toUpperCase(),
+                  color: tone,
+                  filled: true,
+                  dense: true,
+                ),
+                const Spacer(),
+                if (booked != null)
+                  Pill(label: 'Ты едешь', icon: Icons.check_rounded, color: tone, dense: true),
+              ],
+            ),
+            const SizedBox(height: Space.l),
+            Text(
+              Fmt.dateRange(event.startsAt, event.endsAt).toUpperCase(),
+              style: context.text.labelMedium?.copyWith(color: c.inkMuted),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              title.text.toUpperCase(),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.titleLarge?.copyWith(fontWeight: FontWeight.w900, height: 1.05),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              facts,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.bodyMedium?.copyWith(color: c.inkMuted, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -248,29 +253,25 @@ class EventCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const DvorCard(
+      padding: EdgeInsets.all(Space.m),
+      radius: Radii.tile,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Skeleton(width: 52, height: 24),
-          SizedBox(width: Space.l),
+          Skeleton(width: 40, height: 40),
+          SizedBox(width: Space.m),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Skeleton(height: 16, width: 160),
-                SizedBox(height: Space.s),
-                Skeleton(height: 12, width: 120),
-                SizedBox(height: Space.m),
-                Row(
-                  children: [
-                    Skeleton(height: 22, width: 64),
-                    SizedBox(width: 6),
-                    Skeleton(height: 22, width: 90),
-                  ],
-                ),
+                Skeleton(height: 14, width: 48),
+                SizedBox(height: 6),
+                Skeleton(height: 14, width: 150),
+                SizedBox(height: 6),
+                Skeleton(height: 10, width: 110),
               ],
             ),
           ),
+          Skeleton(height: 14, width: 44),
         ],
       ),
     );

@@ -19,24 +19,30 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final me = ref.watch(meProvider);
-    final inset = ref.watch(telegramProvider).safeArea;
+    final inset = ref.watch(safeAreaProvider);
     return RefreshIndicator(
       color: context.colors.accent,
       backgroundColor: context.colors.surface,
+      edgeOffset: inset.top,
       onRefresh: () async {
         ref.invalidate(meProvider);
         await ref.read(meProvider.future);
       },
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        padding: EdgeInsets.fromLTRB(Space.gutter, inset.top + Space.xl, Space.gutter, 120),
+        padding: EdgeInsets.fromLTRB(
+          Space.gutter,
+          inset.top + Space.l,
+          Space.gutter,
+          120 + inset.bottom,
+        ),
         children: switch (me) {
           AsyncValue(:final value?) => _content(context, ref, value),
           AsyncValue(:final error?) => [
             ErrorState(error: error, onRetry: () => ref.invalidate(meProvider)),
           ],
           _ => const [
-            Skeleton(height: 72, width: 72, radius: 36),
+            Skeleton(height: 56, width: 56, radius: 28),
             SizedBox(height: Space.l),
             Skeleton(height: 28, width: 180),
             SizedBox(height: Space.xl),
@@ -65,40 +71,25 @@ class ProfileScreen extends ConsumerWidget {
                   [me.firstName, me.lastName].whereType<String>().join(' ').toUpperCase(),
                   style: context.text.headlineMedium,
                 ),
-                if (me.username != null) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    '@${me.username}',
-                    style: context.text.bodyMedium?.copyWith(color: c.inkMuted),
-                  ),
-                ],
+                const SizedBox(height: 2),
+                Text(
+                  [
+                    if (me.username != null) '@${me.username}',
+                    '${me.visits} ${Fmt.plural(me.visits, 'тренировка', 'тренировки', 'тренировок')}',
+                  ].join(' · '),
+                  style: context.text.bodyMedium?.copyWith(color: c.inkMuted),
+                ),
               ],
             ),
           ),
         ],
       ),
       const SizedBox(height: Space.xl),
-      IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: _Stat(value: '${me.peaks}', label: 'Вершинки', highlight: true),
-            ),
-            const SizedBox(width: Space.s),
-            Expanded(
-              child: _Stat(
-                value: '${me.visits}',
-                label: Fmt.plural(me.visits, 'Тренировка', 'Тренировки', 'Тренировок'),
-              ),
-            ),
-            const SizedBox(width: Space.s),
-            Expanded(
-              child: _Stat(value: '${me.invited}', label: 'Друзей позвал'),
-            ),
-          ],
-        ),
-      ),
+      _PeaksCard(me: me),
+      if (me.peaksHistory.isNotEmpty) ...[
+        const SizedBox(height: Space.s),
+        _PeaksHistory(history: me.peaksHistory),
+      ],
       if (me.referralLink != null) ...[
         const SizedBox(height: Space.m),
         _ReferralCard(link: me.referralLink!),
@@ -150,8 +141,8 @@ class _Avatar extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final fallback = Container(
-      width: 72,
-      height: 72,
+      width: 56,
+      height: 56,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
@@ -166,8 +157,9 @@ class _Avatar extends StatelessWidget {
     return ClipOval(
       child: Image.network(
         url,
-        width: 72,
-        height: 72,
+        width: 56,
+        height: 56,
+        cacheWidth: 168,
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => fallback,
       ),
@@ -175,44 +167,118 @@ class _Avatar extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label, this.highlight = false});
+/// Balance with its ruble value (2 ⛰️ = 1 ₽) and when it burns.
+class _PeaksCard extends StatelessWidget {
+  const _PeaksCard({required this.me});
 
-  final String value;
-  final String label;
-  final bool highlight;
+  final Me me;
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return DvorCard(
-      padding: const EdgeInsets.all(Space.m + 2),
-      radius: Radii.tile,
-      color: highlight ? c.accent : null,
-      borderColor: highlight ? c.accent : null,
+    final expires = me.peaksExpireAt;
+    final rub = me.peaks ~/ 2;
+    return Container(
+      padding: const EdgeInsets.all(Space.l),
+      decoration: coverDecoration(context, c.accent).copyWith(
+        color: c.accent,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color.lerp(c.accent, Colors.white, 0.18)!, c.accent],
+        ),
+        border: Border.all(color: c.accent),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Text(
+            'ВЕРШИНКИ',
+            style: context.text.labelSmall?.copyWith(color: c.onAccent.withValues(alpha: 0.7)),
+          ),
+          const SizedBox(height: 4),
           TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: double.tryParse(value) ?? 0),
+            tween: Tween(begin: 0, end: me.peaks.toDouble()),
             duration: Motion.slow * 2,
             curve: Motion.curve,
             builder: (context, v, _) => Text(
-              v.round().toString(),
-              style: context.text.headlineMedium?.copyWith(color: highlight ? c.onAccent : c.ink),
+              '${Fmt.number(v.round())} ⛰️',
+              style: context.text.displayMedium?.copyWith(color: c.onAccent),
             ),
           ),
-          const SizedBox(height: 2),
           Text(
-            label,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: context.text.labelMedium?.copyWith(
-              fontSize: 11,
-              height: 1.2,
-              color: highlight ? c.onAccent.withValues(alpha: 0.75) : c.inkMuted,
-            ),
+            me.peaks > 0
+                ? '≈ ${Fmt.money(rub)} · 2 ⛰️ = 1 ₽'
+                : 'Копятся за тренировки, отзывы и друзей',
+            style: context.text.labelLarge?.copyWith(color: c.onAccent.withValues(alpha: 0.75)),
           ),
+          if (expires != null && me.peaks > 0) ...[
+            const SizedBox(height: Space.m),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: c.onAccent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                'Сгорят ${Fmt.dayMonth(expires)}, если не будет активности',
+                style: context.text.labelMedium?.copyWith(color: c.onAccent),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _PeaksHistory extends StatelessWidget {
+  const _PeaksHistory({required this.history});
+
+  final List<PeaksChange> history;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final rows = history.take(5).toList();
+    return DvorCard(
+      padding: const EdgeInsets.symmetric(horizontal: Space.l, vertical: Space.xs),
+      radius: Radii.tile,
+      child: Column(
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) Divider(height: 1, color: c.stroke),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      rows[i].label,
+                      style: context.text.labelLarge?.copyWith(color: c.inkMuted),
+                    ),
+                  ),
+                  Text(
+                    Fmt.dayMonthShort(rows[i].createdAt),
+                    style: context.text.labelMedium?.copyWith(color: c.inkFaint),
+                  ),
+                  const SizedBox(width: Space.m),
+                  SizedBox(
+                    width: 64,
+                    child: Text(
+                      '${rows[i].amount > 0 ? '+' : '−'}${Fmt.number(rows[i].amount.abs())}',
+                      textAlign: TextAlign.right,
+                      style: context.text.labelLarge?.copyWith(
+                        color: rows[i].amount > 0 ? c.accent : c.ink,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

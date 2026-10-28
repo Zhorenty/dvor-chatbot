@@ -70,7 +70,17 @@ Telegram ─┬─ чат ───────────── dvor-chatbot (
 
 ### Deep links
 
-`https://t.me/<bot>?startapp=bookings | profile | admin | hikes | trails | trainings`.
+`https://t.me/<bot>?startapp=bookings | profile | admin | hikes | trails | trainings | fps` (работает после настройки Main Mini App в @BotFather).
+
+## Производительность
+
+- Сборка `flutter build web --wasm` (skwasm), старые WebView без WasmGC получают JS-версию автоматически.
+- Без `BackdropFilter`: навбар и фильтры афиши на плотной подложке. Без `Opacity`, `ClipRRect` и `IntrinsicHeight` в списках.
+- Тема перестраивается только при смене темы Telegram (`brightnessListenable`), отступы безопасной зоны — через `safeAreaProvider`. События `viewportChanged` приложение не перестраивают.
+- Заглушки загрузки делят один тикер, он работает только пока заглушки на экране.
+- Шрифты Montserrat урезаны до латиницы и кириллицы (`fontTools.subset`, ~52 КБ на начертание). Оригиналы — в `scripts/assets/week_stories`.
+- Админка — отдельный отложенный чанк (`features/admin/admin.dart`, `deferred as admin`).
+- Замер в Telegram: `https://t.me/<bot>?startapp=fps` показывает fps, самый долгий кадр и число кадров дольше 25 мс.
 
 ## Конфиг
 

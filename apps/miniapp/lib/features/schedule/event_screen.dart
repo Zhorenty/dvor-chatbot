@@ -64,7 +64,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
     final booked = ref.watch(bookedKeysProvider)[event.key];
     final c = context.colors;
     final tone = categoryColor(context, event.category);
-    final inset = ref.watch(telegramProvider).safeArea;
+    final inset = ref.watch(safeAreaProvider);
     final tg = ref.watch(telegramProvider);
 
     final MainButtonState? buttonState;
@@ -104,15 +104,13 @@ class _EventScreenState extends ConsumerState<EventScreen> {
                   Space.gutter,
                   Space.xl,
                 ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [tone.withValues(alpha: 0.22), c.background],
-                  ),
+                constraints: BoxConstraints(minHeight: 230 + inset.top),
+                decoration: coverDecoration(context, tone, radius: 0).copyWith(
+                  border: Border(bottom: BorderSide(color: c.stroke)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     if (!tg.isAvailable)
                       Padding(
@@ -145,7 +143,21 @@ class _EventScreenState extends ConsumerState<EventScreen> {
                       ],
                     ),
                     const SizedBox(height: Space.l),
-                    Text(event.title.toUpperCase(), style: context.text.displayMedium),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            splitTitleEmoji(event.title).text.toUpperCase(),
+                            style: context.text.displayMedium,
+                          ),
+                        ),
+                        if (splitTitleEmoji(event.title).emoji case final emoji?) ...[
+                          const SizedBox(width: Space.m),
+                          Text(emoji, style: const TextStyle(fontSize: 34, height: 1)),
+                        ],
+                      ],
+                    ),
                     const SizedBox(height: Space.m),
                     Text(
                       event.category.isOutdoor
@@ -161,6 +173,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
               padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
               sliver: SliverList.list(
                 children: [
+                  const SizedBox(height: Space.l),
                   _FactsCard(event: event),
                   if (event.seatsLeft != null) ...[
                     const SizedBox(height: Space.m),
@@ -327,17 +340,23 @@ class _SeatsCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: Space.m),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: ratio.clamp(0, 1)),
-              duration: Motion.slow,
-              curve: Motion.curve,
-              builder: (context, value, _) => LinearProgressIndicator(
-                value: value,
-                minHeight: 8,
-                color: tone,
-                backgroundColor: c.surfaceRaised,
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: ratio.clamp(0, 1)),
+            duration: Motion.slow,
+            curve: Motion.curve,
+            builder: (context, value, _) => Container(
+              height: 8,
+              alignment: Alignment.centerLeft,
+              decoration: BoxDecoration(
+                color: c.surfaceRaised,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: FractionallySizedBox(
+                widthFactor: value,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(4)),
+                  child: const SizedBox.expand(),
+                ),
               ),
             ),
           ),

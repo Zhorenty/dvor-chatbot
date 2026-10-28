@@ -2,9 +2,9 @@ import 'package:dvor_miniapp/core/api/models.dart';
 import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
+import 'package:dvor_miniapp/core/widgets/fps_meter.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
-import 'package:dvor_miniapp/features/admin/admin_screen.dart';
-import 'package:dvor_miniapp/features/admin/roster_screen.dart';
+import 'package:dvor_miniapp/features/admin/admin.dart' deferred as admin;
 import 'package:dvor_miniapp/features/bookings/bookings_screen.dart';
 import 'package:dvor_miniapp/features/profile/profile_screen.dart';
 import 'package:dvor_miniapp/features/schedule/event_screen.dart';
@@ -33,15 +33,25 @@ GoRouter buildRouter({String initialLocation = '/'}) {
           ),
           // Tab is shown only to admins; the API enforces access.
           StatefulShellBranch(
-            routes: [GoRoute(path: '/admin', builder: (_, _) => const AdminScreen())],
+            routes: [
+              GoRoute(
+                path: '/admin',
+                builder: (_, _) =>
+                    DeferredScreen(load: admin.loadLibrary, builder: () => admin.AdminScreen()),
+              ),
+            ],
           ),
         ],
       ),
       GoRoute(
         path: '/admin/session',
         redirect: (_, state) => state.extra is AdminSession ? null : '/admin',
-        pageBuilder: (context, state) =>
-            MaterialPage(child: RosterScreen(initial: state.extra! as AdminSession)),
+        pageBuilder: (context, state) => MaterialPage(
+          child: DeferredScreen(
+            load: admin.loadLibrary,
+            builder: () => admin.RosterScreen(initial: state.extra! as AdminSession),
+          ),
+        ),
       ),
       GoRoute(
         path: '/event',
@@ -54,9 +64,12 @@ GoRouter buildRouter({String initialLocation = '/'}) {
 }
 
 class DvorApp extends ConsumerStatefulWidget {
-  const DvorApp({super.key, required this.router});
+  const DvorApp({super.key, required this.router, this.showFps = false});
 
   final GoRouter router;
+
+  /// Frame-rate overlay for measuring inside Telegram (`?startapp=fps`).
+  final bool showFps;
 
   @override
   ConsumerState<DvorApp> createState() => _DvorAppState();
@@ -68,34 +81,84 @@ class _DvorAppState extends ConsumerState<DvorApp> {
   @override
   void initState() {
     super.initState();
-    _tg.changes.addListener(_onTelegramChanged);
+    _tg.brightnessListenable.addListener(_syncTelegramColors);
+    _syncTelegramColors();
   }
 
   @override
   void dispose() {
-    _tg.changes.removeListener(_onTelegramChanged);
+    _tg.brightnessListenable.removeListener(_syncTelegramColors);
     super.dispose();
   }
 
-  void _onTelegramChanged() => setState(() {});
-
-  @override
-  Widget build(BuildContext context) {
-    final brightness = _tg.isAvailable ? _tg.brightness : MediaQuery.platformBrightnessOf(context);
-    final palette = brightness == Brightness.dark ? DvorColors.dark : DvorColors.light;
+  /// Telegram header and background follow the app palette; called only
+  /// when the theme changes, never per frame or per viewport event.
+  void _syncTelegramColors() {
+    final palette = _tg.brightnessListenable.value == Brightness.dark
+        ? DvorColors.dark
+        : DvorColors.light;
     _tg.setColors(
       header: palette.background,
       background: palette.background,
       bottomBar: palette.background,
     );
-    return MaterialApp.router(
-      title: 'DVOR',
-      debugShowCheckedModeBanner: false,
-      theme: buildTheme(brightness),
-      routerConfig: widget.router,
-      locale: const Locale('ru'),
-      supportedLocales: const [Locale('ru')],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Brightness>(
+      valueListenable: _tg.brightnessListenable,
+      builder: (context, telegramBrightness, _) {
+        final brightness = _tg.isAvailable
+            ? telegramBrightness
+            : MediaQuery.platformBrightnessOf(context);
+        return MaterialApp.router(
+          title: 'DVOR',
+          debugShowCheckedModeBanner: false,
+          theme: buildTheme(brightness),
+          routerConfig: widget.router,
+          locale: const Locale('ru'),
+          supportedLocales: const [Locale('ru')],
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          builder: (context, child) => widget.showFps ? FpsMeter(child: child!) : child!,
+        );
+      },
+    );
+  }
+}
+
+/// Admin code ships in a separate chunk and loads only when an admin opens it.
+class DeferredScreen extends StatefulWidget {
+  const DeferredScreen({super.key, required this.load, required this.builder});
+
+  final Future<void> Function() load;
+  final Widget Function() builder;
+
+  @override
+  State<DeferredScreen> createState() => _DeferredScreenState();
+}
+
+class _DeferredScreenState extends State<DeferredScreen> {
+  late Future<void> _loaded = widget.load();
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _loaded,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: ErrorState(
+              error: snapshot.error!,
+              onRetry: () => setState(() => _loaded = widget.load()),
+            ),
+          );
+        }
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Scaffold(body: SizedBox.shrink());
+        }
+        return widget.builder();
+      },
     );
   }
 }

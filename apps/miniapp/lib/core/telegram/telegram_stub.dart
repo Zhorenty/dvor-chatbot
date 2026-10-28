@@ -1,4 +1,5 @@
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 TelegramPlatform createPlatform() => StubTelegramPlatform();
@@ -7,7 +8,6 @@ TelegramPlatform createPlatform() => StubTelegramPlatform();
 class StubTelegramPlatform implements TelegramPlatform {
   StubTelegramPlatform({this.brightness = Brightness.dark});
 
-  final ChangeNotifier _changes = ChangeNotifier();
   final List<String> openedLinks = <String>[];
   final List<HapticKind> haptics = <HapticKind>[];
   MainButtonState? mainButton;
@@ -31,7 +31,10 @@ class StubTelegramPlatform implements TelegramPlatform {
   EdgeInsets get safeArea => EdgeInsets.zero;
 
   @override
-  Listenable get changes => _changes;
+  late final ValueListenable<Brightness> brightnessListenable = ValueNotifier(brightness);
+
+  @override
+  final ValueListenable<EdgeInsets> safeAreaListenable = ValueNotifier(EdgeInsets.zero);
 
   @override
   void ready() {}

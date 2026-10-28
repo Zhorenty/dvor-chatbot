@@ -35,7 +35,7 @@ Future<void> main() async {
     ],
   );
 
-  // startapp deep links: ?startapp=bookings | profile | admin | hikes | trails | trainings
+  // startapp deep links: ?startapp=bookings | profile | admin | hikes | trails | trainings | fps
   final start = tg.startParam;
   var initialLocation = '/';
   switch (start) {
@@ -52,7 +52,10 @@ Future<void> main() async {
   runApp(
     UncontrolledProviderScope(
       container: container,
-      child: DvorApp(router: buildRouter(initialLocation: initialLocation)),
+      child: DvorApp(
+        router: buildRouter(initialLocation: initialLocation),
+        showFps: start == 'fps' || const bool.fromEnvironment('DVOR_FPS'),
+      ),
     ),
   );
 }

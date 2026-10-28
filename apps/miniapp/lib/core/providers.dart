@@ -1,12 +1,22 @@
 import 'package:dvor_miniapp/core/api/models.dart';
 import 'package:dvor_miniapp/core/api/repository.dart';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Overridden in main() with the real platform and repository.
 final telegramProvider = Provider<TelegramPlatform>((ref) => throw UnimplementedError());
 
 final repositoryProvider = Provider<DvorRepository>((ref) => throw UnimplementedError());
+
+/// Safe-area insets; rebuilds only widgets that read them, only on change.
+final safeAreaProvider = Provider<EdgeInsets>((ref) {
+  final listenable = ref.watch(telegramProvider).safeAreaListenable;
+  void onChange() => ref.invalidateSelf();
+  listenable.addListener(onChange);
+  ref.onDispose(() => listenable.removeListener(onChange));
+  return listenable.value;
+});
 
 final clockProvider = Provider<DateTime Function()>((ref) => DateTime.now);
 

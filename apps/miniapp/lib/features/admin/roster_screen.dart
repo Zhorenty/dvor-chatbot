@@ -20,7 +20,7 @@ class RosterScreen extends ConsumerWidget {
     final roster = ref.watch(rosterProvider(initial.key));
     final session = roster.value?.session ?? initial;
     final tg = ref.watch(telegramProvider);
-    final inset = tg.safeArea;
+    final inset = ref.watch(safeAreaProvider);
     final c = context.colors;
     final when = session.category.isOutdoor
         ? Fmt.dateRange(session.startsAt, null)

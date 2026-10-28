@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:dvor_miniapp/core/api/models.dart';
 import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Tap target that sinks slightly on press and fires a light haptic.
@@ -160,7 +163,8 @@ IconData categoryIcon(EventCategory category) => switch (category) {
   EventCategory.trails => Icons.terrain_rounded,
 };
 
-/// Shimmering placeholder block.
+/// Placeholder block. All skeletons share one ticker that runs only while
+/// at least one is on screen, and pulse by color (no opacity layers).
 class Skeleton extends StatefulWidget {
   const Skeleton({super.key, this.height = 16, this.width, this.radius = 12});
 
@@ -172,38 +176,106 @@ class Skeleton extends StatefulWidget {
   State<Skeleton> createState() => _SkeletonState();
 }
 
-class _SkeletonState extends State<Skeleton> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1300),
-  )..repeat();
+class _SkeletonState extends State<Skeleton> {
+  @override
+  void initState() {
+    super.initState();
+    _SkeletonPulse.acquire();
+  }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _SkeletonPulse.release();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, _) {
-        final t = _controller.value * 2 - 0.5;
-        return Container(
-          height: widget.height,
-          width: widget.width,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.radius),
-            gradient: LinearGradient(
-              begin: Alignment(-1 + t * 2, 0),
-              end: Alignment(t * 2, 0),
-              colors: [c.surfaceRaised, c.stroke.withValues(alpha: 0.2), c.surfaceRaised],
-            ),
-          ),
-        );
-      },
+    final highlight = Color.alphaBlend(c.stroke, c.surfaceRaised);
+    return ValueListenableBuilder<double>(
+      valueListenable: _SkeletonPulse.value,
+      builder: (context, t, _) => Container(
+        height: widget.height,
+        width: widget.width,
+        decoration: BoxDecoration(
+          color: Color.lerp(c.surfaceRaised, highlight, t),
+          borderRadius: BorderRadius.circular(widget.radius),
+        ),
+      ),
+    );
+  }
+}
+
+abstract final class _SkeletonPulse {
+  static final ValueNotifier<double> value = ValueNotifier(0);
+  static Ticker? _ticker;
+  static int _users = 0;
+
+  static void acquire() {
+    if (_users++ == 0) {
+      _ticker = Ticker((elapsed) {
+        final phase = (elapsed.inMilliseconds % 1400) / 1400;
+        value.value = 0.5 - 0.5 * math.cos(phase * 2 * math.pi);
+      })..start();
+    }
+  }
+
+  static void release() {
+    if (--_users == 0) {
+      _ticker?.dispose();
+      _ticker = null;
+    }
+  }
+}
+
+/// Club cover: category-tinted gradient with film grain, like the stories.
+BoxDecoration coverDecoration(BuildContext context, Color tone, {double radius = Radii.card}) {
+  final c = context.colors;
+  return BoxDecoration(
+    color: c.surface,
+    borderRadius: BorderRadius.circular(radius),
+    border: Border.all(color: c.stroke),
+    gradient: LinearGradient(
+      begin: Alignment.topRight,
+      end: Alignment.bottomLeft,
+      colors: [
+        Color.alphaBlend(tone.withValues(alpha: 0.42), c.surface),
+        Color.alphaBlend(tone.withValues(alpha: 0.12), c.surface),
+        c.surface,
+      ],
+      stops: const [0, 0.5, 1],
+    ),
+    image: const DecorationImage(
+      image: AssetImage('assets/images/grain.png'),
+      repeat: ImageRepeat.repeat,
+      scale: 2,
+    ),
+  );
+}
+
+/// Emoji from the sheet title, or the category icon.
+class EventGlyph extends StatelessWidget {
+  const EventGlyph({super.key, required this.emoji, required this.category, this.size = 40});
+
+  final String? emoji;
+  final EventCategory category;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: c.surfaceRaised,
+        borderRadius: BorderRadius.circular(size * 0.3),
+      ),
+      child: emoji != null
+          ? Text(emoji!, style: TextStyle(fontSize: size * 0.46, height: 1))
+          : Icon(categoryIcon(category), size: size * 0.5, color: categoryColor(context, category)),
     );
   }
 }

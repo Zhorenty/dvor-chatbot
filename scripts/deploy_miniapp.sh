@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the Flutter Mini App locally and upload it to prod, then rebuild
+# Build the Flutter Mini App locally (WebAssembly with automatic JS fallback) and upload it to prod, then rebuild
 # the API/Caddy containers. Flutter is not installed on the 1 GB server.
 #
 #   scripts/deploy_miniapp.sh            # build + upload + restart miniapp services
@@ -12,10 +12,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$ROOT/apps/miniapp"
 
 if [ -z "${SKIP_BUILD:-}" ]; then
-  (cd "$APP" && flutter pub get && flutter build web --release \
-    --no-web-resources-cdn --no-source-maps --no-wasm-dry-run)
+  (cd "$APP" && rm -rf build/web && flutter pub get && flutter build web --release --wasm \
+    --no-web-resources-cdn --no-source-maps)
 fi
 
 rsync -az --delete "$APP/build/web/" "$HOST:$REMOTE_DIR/miniapp-dist/"
 
-ssh "$HOST" "cd $REMOTE_DIR && git pull --ff-only && COMPOSE_PROFILES=miniapp docker compose up -d --build --no-deps dvor-api caddy && docker compose ps"
+ssh "$HOST" "cd $REMOTE_DIR && git pull --ff-only && COMPOSE_PROFILES=miniapp docker compose up -d --build --no-deps dvor-api && docker compose up -d --force-recreate --no-deps caddy && docker compose ps"

@@ -1,5 +1,6 @@
 import 'package:dvor_miniapp/core/telegram/telegram_stub.dart'
     if (dart.library.js_interop) 'package:dvor_miniapp/core/telegram/telegram_web.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 enum HapticKind { selection, light, medium, success, warning, error }
@@ -28,8 +29,12 @@ abstract interface class TelegramPlatform {
   /// Device safe area plus Telegram content safe area (fullscreen headers).
   EdgeInsets get safeArea;
 
-  /// Fires on theme, viewport and safe-area changes.
-  Listenable get changes;
+  /// Changes only when Telegram switches light/dark. Viewport events
+  /// (dozens per second while the sheet expands) never touch it.
+  ValueListenable<Brightness> get brightnessListenable;
+
+  /// Changes only when the safe-area insets actually change.
+  ValueListenable<EdgeInsets> get safeAreaListenable;
 
   void ready();
 

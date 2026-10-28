@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:js_interop';
 
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 TelegramPlatform createPlatform() => WebTelegramPlatform();
@@ -76,13 +77,11 @@ class WebTelegramPlatform implements TelegramPlatform {
     if (app == null) {
       return;
     }
-    for (final event in const [
-      'themeChanged',
-      'viewportChanged',
-      'safeAreaChanged',
-      'contentSafeAreaChanged',
-    ]) {
-      app.onEvent(event, (() => _changes.notify()).toJS);
+    _brightness.value = brightness;
+    _safeArea.value = safeArea;
+    app.onEvent('themeChanged', _syncBrightness.toJS);
+    for (final event in const ['safeAreaChanged', 'contentSafeAreaChanged']) {
+      app.onEvent(event, _syncSafeArea.toJS);
     }
   }
 
@@ -95,9 +94,18 @@ class WebTelegramPlatform implements TelegramPlatform {
   }
 
   final _WebApp? _app;
-  final _Notifier _changes = _Notifier();
+  final ValueNotifier<Brightness> _brightness = ValueNotifier(Brightness.dark);
+  final ValueNotifier<EdgeInsets> _safeArea = ValueNotifier(EdgeInsets.zero);
   JSFunction? _mainHandler;
   JSFunction? _backHandler;
+
+  void _syncBrightness() {
+    _brightness.value = brightness;
+  }
+
+  void _syncSafeArea() {
+    _safeArea.value = safeArea;
+  }
 
   bool _supports(String version) => _app?.isVersionAtLeast(version) ?? false;
 
@@ -131,7 +139,10 @@ class WebTelegramPlatform implements TelegramPlatform {
   }
 
   @override
-  Listenable get changes => _changes;
+  ValueListenable<Brightness> get brightnessListenable => _brightness;
+
+  @override
+  ValueListenable<EdgeInsets> get safeAreaListenable => _safeArea;
 
   @override
   void ready() {
@@ -273,8 +284,4 @@ class WebTelegramPlatform implements TelegramPlatform {
     final argb = color.toARGB32();
     return '#${(argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}';
   }
-}
-
-class _Notifier extends ChangeNotifier {
-  void notify() => notifyListeners();
 }

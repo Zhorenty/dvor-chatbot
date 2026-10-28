@@ -91,6 +91,29 @@ class DemoRepository implements DvorRepository {
       bookings: _bookings.where((b) => b.status.isActive).length,
       botUsername: 'dvor_demo_bot',
       referralLink: 'https://t.me/dvor_demo_bot?start=ref_1',
+      peaksExpireAt: _now().toUtc().add(const Duration(days: 38)),
+      peaksHistory: [
+        PeaksChange(
+          amount: 1200,
+          reason: 'refund',
+          createdAt: _now().toUtc().subtract(const Duration(days: 7)),
+        ),
+        PeaksChange(
+          amount: -1200,
+          reason: 'spend',
+          createdAt: _now().toUtc().subtract(const Duration(days: 12)),
+        ),
+        PeaksChange(
+          amount: 340,
+          reason: 'training',
+          createdAt: _now().toUtc().subtract(const Duration(days: 20)),
+        ),
+        PeaksChange(
+          amount: 1000,
+          reason: 'start',
+          createdAt: _now().toUtc().subtract(const Duration(days: 30)),
+        ),
+      ],
     );
   }
 

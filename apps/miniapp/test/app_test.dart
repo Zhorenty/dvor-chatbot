@@ -180,11 +180,19 @@ Future<(_FakeRepository, StubTelegramPlatform)> _pump(
 void main() {
   testWidgets('schedule groups events by day and filters by category', (tester) async {
     await _pump(tester);
-    expect(find.text('АФИША'), findsOneWidget);
     expect(find.text('БОКС'), findsOneWidget);
-    expect(find.text('ЗАВТРА'), findsOneWidget);
-    expect(find.text('Осталось 2 места'), findsOneWidget);
+    expect(find.text('ЗАВТРА · 29 ОКТЯБРЯ'), findsOneWidget);
+    expect(find.text('2 места'), findsOneWidget);
+    expect(find.text('ВЫЕЗДЫ'), findsOneWidget);
     expect(find.text('ПОХОД ВЫХОДНОГО ДНЯ'), findsOneWidget);
+
+    // Day strip: tomorrow has only the boxing session.
+    await tester.tap(find.text('29'));
+    await tester.pumpAndSettle();
+    expect(find.text('БОКС'), findsOneWidget);
+    expect(find.text('ПОХОД ВЫХОДНОГО ДНЯ'), findsNothing);
+    await tester.tap(find.text('29'));
+    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Походы'));
     await tester.pumpAndSettle();
@@ -327,6 +335,16 @@ void main() {
     expect(booking.status.needsPayment, isTrue);
     expect(booking.status.isActive, isFalse);
     expect(booking.attended, isTrue);
+  });
+
+  test('leading emoji moves out of the title', () {
+    expect(splitTitleEmoji('🥊 BOXING DVOR'), (emoji: '🥊', text: 'BOXING DVOR'));
+    expect(splitTitleEmoji('🏃 MORNING RUN с Антоном'), (
+      emoji: '🏃',
+      text: 'MORNING RUN с Антоном',
+    ));
+    expect(splitTitleEmoji('DVOR X ЧЕТЫРЕ СЫНА'), (emoji: null, text: 'DVOR X ЧЕТЫРЕ СЫНА'));
+    expect(splitTitleEmoji('«Кэмп»'), (emoji: null, text: '«Кэмп»'));
   });
 
   test('russian plurals and prices', () {

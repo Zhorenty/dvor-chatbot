@@ -26,7 +26,7 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     final me = ref.watch(meProvider).value;
-    final inset = ref.watch(telegramProvider).safeArea;
+    final inset = ref.watch(safeAreaProvider);
     if (me != null && !me.isAdmin) {
       return const Center(
         child: StateMessage(icon: Icons.lock_outline_rounded, title: 'Раздел для админов'),

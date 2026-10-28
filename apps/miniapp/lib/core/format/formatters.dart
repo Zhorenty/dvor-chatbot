@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 
 /// Club time is Moscow (UTC+3, no DST), same as the bot.
@@ -60,6 +61,8 @@ abstract final class Fmt {
 
   static String money(int rub) => '${_money.format(rub)} ₽';
 
+  static String number(int n) => _money.format(n);
+
   static String price(int? rub) {
     if (rub == null) {
       return 'Цена уточняется';
@@ -85,3 +88,20 @@ abstract final class Fmt {
     return many;
   }
 }
+
+/// Sheet titles often start with an emoji ("🥊 BOXING DVOR"). The app shows
+/// it as an icon tile and keeps the title text clean.
+({String? emoji, String text}) splitTitleEmoji(String title) {
+  final trimmed = title.trim();
+  if (trimmed.isEmpty) {
+    return (emoji: null, text: trimmed);
+  }
+  final first = trimmed.characters.first;
+  if (_letterOrDigit.hasMatch(first) || first.trim().isEmpty) {
+    return (emoji: null, text: trimmed);
+  }
+  final rest = trimmed.characters.skip(1).toString().trim();
+  return (emoji: rest.isEmpty ? null : first, text: rest.isEmpty ? trimmed : rest);
+}
+
+final RegExp _letterOrDigit = RegExp(r'^[\p{L}\p{N}"«(]', unicode: true);
