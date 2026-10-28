@@ -7,6 +7,19 @@ final class MessageCopy {
   static const String buttonBookTraining = '✍️ Записаться';
   static const String buttonBookFriend = '👥 Записать друга';
   static const String buttonFrankRun = 'Забег с 🥩 FRANK x ⬛️ Black Croc';
+  static const String buttonFourSons = '🍕 DVOR x Четыре сына';
+
+  static String? featuredMenuLabel(String title) {
+    final normalized = title.trim().toLowerCase();
+    if (normalized == 'dvor x frank — run & rave') {
+      return buttonFrankRun;
+    }
+    if (normalized == 'dvor x четыре сына') {
+      return buttonFourSons;
+    }
+    return null;
+  }
+
   static const String buttonSubscription = '🥊 Бокс-карта';
   static const String buttonProfile = '👤 Профиль';
   static const String buttonProfileBookings = '🗂 Мои записи';

@@ -11,18 +11,21 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
     final flowState = ctx.flowState;
     final username = ctx.username;
 
-    if (text == MessageTemplates.buttonFrankRun) {
+    if (text == MessageTemplates.buttonFrankRun || text == MessageTemplates.buttonFourSons) {
       if (userId == null) {
         return false;
       }
+      final now = _nowProvider();
       final menu = _templates.privateMenuKeyboard(
         isAdmin: isAdmin,
         showReturnToAdminMenu: showReturnToAdminMenu,
         canViewParticipantsList: canRunParticipantsAction,
-        now: _nowProvider(),
+        now: now,
       );
-      final upcoming = FeaturedTrainings.upcoming(_nowProvider());
-      if (upcoming.isEmpty) {
+      final matches = FeaturedTrainings.upcoming(now).where(
+        (item) => MessageCopy.featuredMenuLabel(item.title) == text,
+      );
+      if (matches.isEmpty) {
         await _sendScreen(
           chatId,
           _templates.privateMenuHint(),
@@ -39,7 +42,10 @@ extension PrivateHandlersDispatchUserBooking on PrivateHandlers {
               step: _PrivateFlowStep.selectingBookingCategory,
               availableTrainings: <TrainingInfo>[],
             ),
-        selectedTraining: upcoming.first,
+        selectedTraining: preferScheduledFeatured(
+          matches.first,
+          _scheduleRepository.upcoming(now: now, limit: 40),
+        ),
         username: username,
         onParticipantsLimitReplyMarkup: menu,
       );

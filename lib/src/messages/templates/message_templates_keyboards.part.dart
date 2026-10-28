@@ -10,13 +10,15 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     DateTime? now,
   }) {
     final featured = FeaturedTrainings.upcoming(now ?? DateTime.now());
+    final featuredLabel =
+        featured.isEmpty ? null : MessageCopy.featuredMenuLabel(featured.first.title);
     return TelegramKeyboards.privateMenuKeyboard(
       isAdmin: isAdmin,
       canViewParticipantsList: canViewParticipantsList,
       showReturnToAdminMenu: showReturnToAdminMenu,
       canBroadcastToGroup: canBroadcastToGroup,
       groupBroadcastAdminMenu: groupBroadcastAdminMenu,
-      featuredEventLabel: !isAdmin && featured.isNotEmpty ? MessageCopy.buttonFrankRun : null,
+      featuredEventLabel: !isAdmin ? featuredLabel : null,
     );
   }
 

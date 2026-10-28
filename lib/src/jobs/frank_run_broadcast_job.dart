@@ -33,7 +33,7 @@ final class FrankRunBroadcastJob {
   bool _claimedInMemory = false;
 
   Future<void> run() async {
-    final start = FeaturedTrainings.events.first.startsAt;
+    final start = FeaturedTrainings.frankRun.startsAt;
     if (!_nowProvider().isBefore(start)) {
       _claim();
       return;

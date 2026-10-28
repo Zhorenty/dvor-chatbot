@@ -50,7 +50,7 @@ void main() {
   });
 
   test('FRANK run is a training at 08:30 and the DM names that time', () {
-    final event = FeaturedTrainings.events.single;
+    final event = FeaturedTrainings.frankRun;
     expect(event.startsAt, DateTime(2026, 10, 17, 8, 30));
     expect(event.location, 'Мост поцелуев');
     expect(event.price, 0);
@@ -78,8 +78,10 @@ void main() {
     );
 
     expect(keyboardTexts(before).first, MessageCopy.buttonFrankRun);
+    expect(keyboardTexts(after).first, MessageCopy.buttonFourSons);
     expect(keyboardTexts(after), isNot(contains(MessageCopy.buttonFrankRun)));
     expect(keyboardTexts(admin), isNot(contains(MessageCopy.buttonFrankRun)));
+    expect(keyboardTexts(admin), isNot(contains(MessageCopy.buttonFourSons)));
   });
 
   test('FRANK menu button books the free run', () async {
@@ -140,5 +142,56 @@ void main() {
 
     await job.run();
     expect(sender.messages, isEmpty);
+  });
+
+  test('client menu puts DVOR x Четыре сына on top until it starts', () {
+    final before = const MessageTemplates().privateMenuKeyboard(
+      isAdmin: false,
+      now: DateTime(2026, 11, 1, 9),
+    );
+    final after = const MessageTemplates().privateMenuKeyboard(
+      isAdmin: false,
+      now: DateTime(2026, 11, 7, 8, 30),
+    );
+
+    expect(keyboardTexts(before).first, MessageCopy.buttonFourSons);
+    expect(keyboardTexts(after), isNot(contains(MessageCopy.buttonFourSons)));
+    expect(keyboardTexts(after).first, MessageCopy.buttonBookTraining);
+  });
+
+  test('Четыре сына menu button books the free slot from the sheet', () async {
+    final sheetSlot = TrainingInfo(
+      title: 'DVOR X ЧЕТЫРЕ СЫНА',
+      startsAt: DateTime(2026, 11, 7, 8, 30),
+      location: 'Кубанская Набережная 39 (Четыре сына )',
+      locationUrl: 'https://yandex.ru/maps/-/CXA2qYn~',
+      price: 0,
+      participantsLimit: 30,
+      coach: 'Сергей Нагучев',
+    );
+    final bookings = FakeBookingRepository();
+    final sender = FakeSender();
+    final handlers = PrivateHandlers(
+      sender: sender,
+      scheduleRepository: FakeScheduleRepository(<TrainingInfo>[sheetSlot]),
+      bookingRepository: bookings,
+      templates: const MessageTemplates(),
+      adminUserIds: const <int>{},
+      nowProvider: () => DateTime(2026, 11, 1, 12),
+    );
+
+    final handled = await handlers.handle(<String, dynamic>{
+      'chat': <String, dynamic>{'id': 11, 'type': 'private'},
+      'from': <String, dynamic>{'id': 11},
+      'text': MessageCopy.buttonFourSons,
+    });
+
+    expect(handled, isTrue);
+    expect(bookings.lastCreatedTraining?.title, 'DVOR X ЧЕТЫРЕ СЫНА');
+    expect(bookings.lastCreatedTraining?.price, 0);
+    expect(bookings.lastCreatedTraining?.participantsLimit, 30);
+    expect(bookings.lastCreatedTraining?.location, sheetSlot.location);
+    expect(bookings.lastUpdatedStatus, BookingStatus.paid);
+    expect(sender.messages.last.text, contains('бесплатн'));
   });
 }

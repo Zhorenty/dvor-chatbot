@@ -404,7 +404,11 @@ void main() {
       final buttons = _keyboardTexts(sender.messages.single.replyMarkup);
       expect(
         buttons.first,
-        anyOf(MessageTemplates.buttonFrankRun, MessageTemplates.buttonBookTraining),
+        anyOf(
+          MessageTemplates.buttonFrankRun,
+          MessageTemplates.buttonFourSons,
+          MessageTemplates.buttonBookTraining,
+        ),
       );
       expect(buttons, contains(MessageTemplates.buttonCoachingStaff));
       expect(buttons, contains(MessageTemplates.buttonBookTraining));
@@ -7196,8 +7200,8 @@ void main() {
             id: 901,
             userId: 3901,
             title: '🥾 Поход: Архыз',
-            trainingKey: 'hikes|2026-10-01T10:00:00.000Z|🥾 Поход: Архыз|Маршрут',
-            startsAt: DateTime(2026, 10, 20, 10, 0),
+            trainingKey: 'hikes|2026-11-20T10:00:00.000Z|🥾 Поход: Архыз|Маршрут',
+            startsAt: DateTime(2026, 11, 20, 10, 0),
             location: 'Маршрут',
             status: BookingStatus.paid,
           ),

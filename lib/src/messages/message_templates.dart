@@ -50,6 +50,7 @@ final class MessageTemplates {
   static const String buttonBookTraining = MessageCopy.buttonBookTraining;
   static const String buttonBookFriend = MessageCopy.buttonBookFriend;
   static const String buttonFrankRun = MessageCopy.buttonFrankRun;
+  static const String buttonFourSons = MessageCopy.buttonFourSons;
   static const String buttonSubscription = MessageCopy.buttonSubscription;
   static const String buttonProfile = MessageCopy.buttonProfile;
   static const String buttonProfileBookings = MessageCopy.buttonProfileBookings;
