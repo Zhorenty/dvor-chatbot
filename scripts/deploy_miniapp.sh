@@ -18,4 +18,4 @@ fi
 
 rsync -az --delete "$APP/build/web/" "$HOST:$REMOTE_DIR/miniapp-dist/"
 
-ssh "$HOST" "cd $REMOTE_DIR && git pull --ff-only && COMPOSE_PROFILES=miniapp docker compose up -d --build dvor-api caddy && docker compose ps"
+ssh "$HOST" "cd $REMOTE_DIR && git pull --ff-only && COMPOSE_PROFILES=miniapp docker compose up -d --build --no-deps dvor-api caddy && docker compose ps"
