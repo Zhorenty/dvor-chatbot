@@ -287,6 +287,172 @@ class ActionResult {
   final int? refundPeaks;
 }
 
+enum PaymentDecision {
+  approve('approve'),
+  approvePartial('approve_partial'),
+  reject('reject');
+
+  const PaymentDecision(this.wire);
+
+  final String wire;
+}
+
+/// Submitted payment awaiting review, one per payment group.
+@immutable
+class AdminPayment {
+  const AdminPayment({
+    required this.id,
+    required this.category,
+    required this.title,
+    required this.startsAt,
+    required this.location,
+    required this.organizer,
+    this.organizerId,
+    this.price,
+    this.prepayPercent,
+    this.total = 0,
+    this.partial = false,
+    this.comment,
+    this.promoCode,
+    this.participants = const [],
+    this.hasProof = false,
+  });
+
+  factory AdminPayment.fromJson(Map<String, Object?> json) {
+    final organizer = (json['organizer'] as Map<String, Object?>?) ?? const {};
+    return AdminPayment(
+      id: _int(json['id'])!,
+      category: EventCategory.parse(json['category']),
+      title: (json['title'] as String?)?.trim() ?? '',
+      startsAt: _date(json['startsAt']),
+      location: (json['location'] as String?)?.trim() ?? '',
+      organizer: _str(organizer['name']) ?? '',
+      organizerId: _int(organizer['userId']),
+      price: _int(json['price']),
+      prepayPercent: _int(json['prepayPercent']),
+      total: _int(json['total']) ?? 0,
+      partial: json['paymentType'] == 'partial',
+      comment: _str(json['comment']),
+      promoCode: _str(json['promoCode']),
+      participants: ((json['participants'] as List<Object?>?) ?? const [])
+          .whereType<String>()
+          .toList(),
+      hasProof: json['hasProof'] == true,
+    );
+  }
+
+  final int id;
+  final EventCategory category;
+  final String title;
+  final DateTime startsAt;
+  final String location;
+  final String organizer;
+  final int? organizerId;
+  final int? price;
+  final int? prepayPercent;
+  final int total;
+  final bool partial;
+  final String? comment;
+  final String? promoCode;
+  final List<String> participants;
+  final bool hasProof;
+}
+
+/// Event with its roster summary for the admin lists.
+@immutable
+class AdminSession {
+  const AdminSession({
+    required this.key,
+    required this.category,
+    required this.title,
+    required this.startsAt,
+    required this.location,
+    this.limit,
+    this.participants = 0,
+    this.attendanceOpen = false,
+    this.unmarked = 0,
+  });
+
+  factory AdminSession.fromJson(Map<String, Object?> json) => AdminSession(
+    key: json['key']! as String,
+    category: EventCategory.parse(json['category']),
+    title: (json['title'] as String?)?.trim() ?? '',
+    startsAt: _date(json['startsAt']),
+    location: (json['location'] as String?)?.trim() ?? '',
+    limit: _int(json['limit']),
+    participants: _int(json['participants']) ?? 0,
+    attendanceOpen: json['attendanceOpen'] == true,
+    unmarked: _int(json['unmarked']) ?? 0,
+  );
+
+  final String key;
+  final EventCategory category;
+  final String title;
+  final DateTime startsAt;
+  final String location;
+  final int? limit;
+  final int participants;
+  final bool attendanceOpen;
+  final int unmarked;
+}
+
+enum Attendance {
+  attended('attended'),
+  absent('absent');
+
+  const Attendance(this.wire);
+
+  final String wire;
+
+  static Attendance? parse(Object? raw) => switch (raw) {
+    'attended' => Attendance.attended,
+    'absent' => Attendance.absent,
+    _ => null,
+  };
+}
+
+@immutable
+class AdminParticipant {
+  const AdminParticipant({
+    required this.bookingId,
+    required this.name,
+    required this.status,
+    this.guest = false,
+    this.managedBy,
+    this.boxingCard = false,
+    this.attendance,
+    this.canMark = false,
+  });
+
+  factory AdminParticipant.fromJson(Map<String, Object?> json) => AdminParticipant(
+    bookingId: _int(json['bookingId'])!,
+    name: _str(json['name']) ?? 'Участник',
+    status: BookingStatus.parse(json['status']),
+    guest: json['guest'] == true,
+    managedBy: _str(json['managedBy']),
+    boxingCard: json['boxingCard'] == true,
+    attendance: Attendance.parse(json['attendance']),
+    canMark: json['canMark'] == true,
+  );
+
+  final int bookingId;
+  final String name;
+  final BookingStatus status;
+  final bool guest;
+  final String? managedBy;
+  final bool boxingCard;
+  final Attendance? attendance;
+  final bool canMark;
+}
+
+@immutable
+class Roster {
+  const Roster({required this.session, required this.participants});
+
+  final AdminSession session;
+  final List<AdminParticipant> participants;
+}
+
 /// Server error with a user-facing message.
 class ApiException implements Exception {
   const ApiException(this.code, this.message);

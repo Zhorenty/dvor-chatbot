@@ -118,7 +118,7 @@ class Pill extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = context.colors;
     final tone = color ?? c.inkMuted;
-    final fg = filled ? _onColor(tone, c) : tone;
+    final fg = filled ? onColor(tone) : tone;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: dense ? 8 : 10, vertical: dense ? 3 : 5),
       decoration: BoxDecoration(
@@ -141,7 +141,7 @@ class Pill extends StatelessWidget {
     );
   }
 
-  static Color _onColor(Color tone, DvorColors c) =>
+  static Color onColor(Color tone) =>
       tone.computeLuminance() > 0.45 ? const Color(0xFF0D0E0B) : Colors.white;
 }
 

@@ -22,6 +22,30 @@ abstract interface class MiniAppBridgeBackend {
     required int userId,
     required int bookingId,
   });
+
+  Future<Map<String, Object?>> adminPayments();
+
+  Future<Map<String, Object?>> adminReviewPayment({
+    required int adminUserId,
+    required String? adminUsername,
+    required int bookingId,
+    required String decision,
+  });
+
+  Future<Map<String, Object?>> adminSendProof({
+    required int adminUserId,
+    required int bookingId,
+  });
+
+  Future<Map<String, Object?>> adminSessions();
+
+  Future<Map<String, Object?>> adminParticipants(String sessionKey);
+
+  Future<Map<String, Object?>> adminMarkAttendance({
+    required int adminUserId,
+    required int bookingId,
+    required String attendance,
+  });
 }
 
 final class PrivateHandlersMiniAppBackend implements MiniAppBridgeBackend {
@@ -48,6 +72,50 @@ final class PrivateHandlersMiniAppBackend implements MiniAppBridgeBackend {
   Future<Map<String, Object?>> cancel({required int userId, required int bookingId}) {
     return _handlers.miniAppCancel(userId: userId, bookingId: bookingId);
   }
+
+  @override
+  Future<Map<String, Object?>> adminPayments() => _handlers.miniAppAdminPayments();
+
+  @override
+  Future<Map<String, Object?>> adminReviewPayment({
+    required int adminUserId,
+    required String? adminUsername,
+    required int bookingId,
+    required String decision,
+  }) {
+    return _handlers.miniAppAdminReviewPayment(
+      adminUserId: adminUserId,
+      adminUsername: adminUsername,
+      bookingId: bookingId,
+      decision: decision,
+    );
+  }
+
+  @override
+  Future<Map<String, Object?>> adminSendProof({required int adminUserId, required int bookingId}) {
+    return _handlers.miniAppAdminSendProof(adminUserId: adminUserId, bookingId: bookingId);
+  }
+
+  @override
+  Future<Map<String, Object?>> adminSessions() => _handlers.miniAppAdminSessions();
+
+  @override
+  Future<Map<String, Object?>> adminParticipants(String sessionKey) {
+    return _handlers.miniAppAdminParticipants(sessionKey);
+  }
+
+  @override
+  Future<Map<String, Object?>> adminMarkAttendance({
+    required int adminUserId,
+    required int bookingId,
+    required String attendance,
+  }) {
+    return _handlers.miniAppAdminMarkAttendance(
+      adminUserId: adminUserId,
+      bookingId: bookingId,
+      attendance: attendance,
+    );
+  }
 }
 
 typedef TrackedRunner = Future<T> Function<T>(Future<T> Function() action);
@@ -71,6 +139,9 @@ final class MiniAppBridgeServer {
 
   static final RegExp _userBookingsPath = RegExp(r'^/internal/users/(\d+)/bookings$');
   static final RegExp _cancelPath = RegExp(r'^/internal/bookings/(\d+)/cancel$');
+  static final RegExp _reviewPath = RegExp(r'^/internal/admin/payments/(\d+)/review$');
+  static final RegExp _proofPath = RegExp(r'^/internal/admin/payments/(\d+)/proof$');
+  static final RegExp _attendancePath = RegExp(r'^/internal/admin/bookings/(\d+)/attendance$');
 
   int? get port => _server?.port;
 
@@ -144,7 +215,73 @@ final class MiniAppBridgeServer {
         ),
       );
     }
+    if (path.startsWith('/internal/admin/')) {
+      final admin = await _routeAdmin(request);
+      if (admin != null) {
+        return admin;
+      }
+    }
     return (HttpStatus.notFound, const <String, Object?>{'error': 'not_found'});
+  }
+
+  /// Admin routes. The API verified admin rights; `adminUserId` is re-checked
+  /// by the bot before writes.
+  Future<(int, Map<String, Object?>)?> _routeAdmin(HttpRequest request) async {
+    final path = request.uri.path;
+    final method = request.method;
+    if (method == 'GET' && path == '/internal/admin/payments') {
+      return (HttpStatus.ok, await _backend.adminPayments());
+    }
+    if (method == 'GET' && path == '/internal/admin/sessions') {
+      return (HttpStatus.ok, await _backend.adminSessions());
+    }
+    if (method == 'GET' && path == '/internal/admin/participants') {
+      final key = request.uri.queryParameters['key'] ?? '';
+      if (key.isEmpty) {
+        throw const FormatException('key must be a non-empty string');
+      }
+      return (HttpStatus.ok, await _backend.adminParticipants(key));
+    }
+    if (method != 'POST') {
+      return null;
+    }
+    final review = _reviewPath.firstMatch(path);
+    if (review != null) {
+      final body = await _readJson(request);
+      return (
+        HttpStatus.ok,
+        await _backend.adminReviewPayment(
+          adminUserId: _requireInt(body, 'adminUserId'),
+          adminUsername: body['adminUsername'] as String?,
+          bookingId: int.parse(review.group(1)!),
+          decision: _requireString(body, 'decision'),
+        ),
+      );
+    }
+    final proof = _proofPath.firstMatch(path);
+    if (proof != null) {
+      final body = await _readJson(request);
+      return (
+        HttpStatus.ok,
+        await _backend.adminSendProof(
+          adminUserId: _requireInt(body, 'adminUserId'),
+          bookingId: int.parse(proof.group(1)!),
+        ),
+      );
+    }
+    final attendance = _attendancePath.firstMatch(path);
+    if (attendance != null) {
+      final body = await _readJson(request);
+      return (
+        HttpStatus.ok,
+        await _backend.adminMarkAttendance(
+          adminUserId: _requireInt(body, 'adminUserId'),
+          bookingId: int.parse(attendance.group(1)!),
+          attendance: _requireString(body, 'attendance'),
+        ),
+      );
+    }
+    return null;
   }
 
   Future<T> _track<T>(Future<T> Function() action) {

@@ -84,6 +84,7 @@ class DemoRepository implements DvorRepository {
       id: 1,
       firstName: 'Гость',
       username: 'demo',
+      isAdmin: true,
       peaks: 340,
       visits: 7,
       invited: 1,
@@ -149,6 +150,143 @@ class DemoRepository implements DvorRepository {
     );
     _bookings[index] = cancelled;
     return ActionResult(outcome: ActionOutcome.cancelled, booking: cancelled);
+  }
+
+  late final List<AdminPayment> _payments = <AdminPayment>[
+    AdminPayment(
+      id: 101,
+      category: EventCategory.trainings,
+      title: 'Бокс',
+      startsAt: _at(1, 19, 30),
+      location: 'Демо-зал',
+      organizer: '@demo_runner',
+      organizerId: 2,
+      price: 700,
+      total: 700,
+      hasProof: true,
+    ),
+    AdminPayment(
+      id: 102,
+      category: EventCategory.hikes,
+      title: 'Поход выходного дня',
+      startsAt: _at(5, 7),
+      location: 'Демо-маршрут',
+      organizer: 'id 3',
+      organizerId: 3,
+      price: 6500,
+      prepayPercent: 50,
+      total: 13000,
+      partial: true,
+      comment: 'Демо-комментарий к переводу',
+      participants: const ['id 3', 'Гость'],
+    ),
+  ];
+
+  late final Map<String, List<AdminParticipant>> _rosters = {
+    'demo-past': const [
+      AdminParticipant(
+        bookingId: 201,
+        name: '@demo_runner',
+        status: BookingStatus.paid,
+        canMark: true,
+      ),
+      AdminParticipant(
+        bookingId: 202,
+        name: 'Гость',
+        status: BookingStatus.paid,
+        guest: true,
+        managedBy: '@demo',
+        canMark: true,
+        attendance: Attendance.attended,
+      ),
+      AdminParticipant(
+        bookingId: 203,
+        name: 'id 4',
+        status: BookingStatus.freeTraining,
+        canMark: true,
+      ),
+    ],
+    'demo-box': const [
+      AdminParticipant(
+        bookingId: 204,
+        name: '@demo_runner',
+        status: BookingStatus.paymentSubmitted,
+      ),
+      AdminParticipant(bookingId: 205, name: 'id 5', status: BookingStatus.paid, boxingCard: true),
+    ],
+  };
+
+  AdminSession _session(String key) {
+    if (key == 'demo-past') {
+      final roster = _rosters[key]!;
+      return AdminSession(
+        key: key,
+        category: EventCategory.trainings,
+        title: 'Силовая',
+        startsAt: _at(-1, 19),
+        location: 'Демо-зал',
+        limit: 14,
+        participants: roster.length,
+        attendanceOpen: true,
+        unmarked: roster.where((p) => p.canMark && p.attendance == null).length,
+      );
+    }
+    final event = _events.firstWhere((e) => e.key == key);
+    return AdminSession(
+      key: key,
+      category: event.category,
+      title: event.title,
+      startsAt: event.startsAt,
+      location: event.location,
+      limit: event.limit,
+      participants: _rosters[key]?.length ?? event.taken ?? 0,
+    );
+  }
+
+  @override
+  Future<List<AdminPayment>> adminPayments() async {
+    await _delay();
+    return List<AdminPayment>.unmodifiable(_payments);
+  }
+
+  @override
+  Future<void> reviewPayment(int bookingId, PaymentDecision decision) async {
+    await _delay(500);
+    _payments.removeWhere((p) => p.id == bookingId);
+  }
+
+  @override
+  Future<void> sendProof(int bookingId) => _delay();
+
+  @override
+  Future<List<AdminSession>> adminSessions() async {
+    await _delay();
+    return [_session('demo-past'), for (final e in _events) _session(e.key)];
+  }
+
+  @override
+  Future<Roster> roster(String key) async {
+    await _delay();
+    return Roster(session: _session(key), participants: _rosters[key] ?? const []);
+  }
+
+  @override
+  Future<AdminParticipant> markAttendance(int bookingId, Attendance attendance) async {
+    await _delay(400);
+    final roster = _rosters['demo-past']!;
+    final index = roster.indexWhere((p) => p.bookingId == bookingId);
+    final p = roster[index];
+    final updated = AdminParticipant(
+      bookingId: p.bookingId,
+      name: p.name,
+      status: p.status,
+      guest: p.guest,
+      managedBy: p.managedBy,
+      canMark: p.canMark,
+      attendance: attendance,
+    );
+    _rosters['demo-past'] = [...roster]..[index] = updated;
+    return updated;
   }
 
   Future<void> _delay([int ms = 350]) => Future<void>.delayed(Duration(milliseconds: ms));

@@ -23,6 +23,12 @@ type Bot interface {
 	Bookings(ctx context.Context, userID int64) ([]bridge.Booking, error)
 	Book(ctx context.Context, userID int64, username, key string) (bridge.ActionResult, error)
 	Cancel(ctx context.Context, userID, bookingID int64) (bridge.ActionResult, error)
+	AdminPayments(ctx context.Context) ([]bridge.Payment, error)
+	ReviewPayment(ctx context.Context, adminID int64, adminUsername string, bookingID int64, decision string) (bridge.AdminResult, error)
+	SendProof(ctx context.Context, adminID, bookingID int64) (bridge.AdminResult, error)
+	AdminSessions(ctx context.Context) ([]bridge.Session, error)
+	Participants(ctx context.Context, key string) (bridge.Roster, error)
+	MarkAttendance(ctx context.Context, adminID, bookingID int64, attendance string) (bridge.AdminResult, error)
 }
 
 // Profiles reads profile aggregates.
@@ -74,6 +80,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/bookings", s.auth(s.handleBookings))
 	mux.Handle("POST /api/v1/bookings", s.auth(s.limited(s.handleBook)))
 	mux.Handle("POST /api/v1/bookings/{id}/cancel", s.auth(s.limited(s.handleCancel)))
+	s.routeAdmin(mux)
 	return s.recover(s.logRequests(mux))
 }
 

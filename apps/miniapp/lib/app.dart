@@ -3,6 +3,8 @@ import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
+import 'package:dvor_miniapp/features/admin/admin_screen.dart';
+import 'package:dvor_miniapp/features/admin/roster_screen.dart';
 import 'package:dvor_miniapp/features/bookings/bookings_screen.dart';
 import 'package:dvor_miniapp/features/profile/profile_screen.dart';
 import 'package:dvor_miniapp/features/schedule/event_screen.dart';
@@ -29,7 +31,17 @@ GoRouter buildRouter({String initialLocation = '/'}) {
           StatefulShellBranch(
             routes: [GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen())],
           ),
+          // Tab is shown only to admins; the API enforces access.
+          StatefulShellBranch(
+            routes: [GoRoute(path: '/admin', builder: (_, _) => const AdminScreen())],
+          ),
         ],
+      ),
+      GoRoute(
+        path: '/admin/session',
+        redirect: (_, state) => state.extra is AdminSession ? null : '/admin',
+        pageBuilder: (context, state) =>
+            MaterialPage(child: RosterScreen(initial: state.extra! as AdminSession)),
       ),
       GoRoute(
         path: '/event',

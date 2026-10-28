@@ -147,62 +147,23 @@ extension PrivateHandlersDispatchAdminAttendance on PrivateHandlers {
     required int bookingId,
     required BookingAttendance attendance,
   }) async {
-    final booking = await _bookingRepository.findBookingById(bookingId);
-    if (booking == null) {
-      await _sendAdminMessage(chatId, _templates.bookingNotFound(bookingId));
+    final result = await _applyAttendance(bookingId: bookingId, attendance: attendance);
+    final updated = result.booking;
+    if (result.notAllowedReason != null) {
+      await _sendAdminMessage(chatId, _templates.attendanceNotAllowed(result.notAllowedReason!));
       return;
     }
-    if (_catalogService.categoryForBooking(booking) != ActivityCategory.trainings) {
-      await _sendAdminMessage(
-        chatId,
-        _templates.attendanceNotAllowed('Явка отмечается по тренировкам.'),
-      );
-      return;
-    }
-    final active = booking.status == BookingStatus.paid ||
-        booking.status == BookingStatus.freeTraining ||
-        booking.status == BookingStatus.partialPaid;
-    if (!active) {
-      await _sendAdminMessage(
-        chatId,
-        _templates.attendanceNotAllowed('Эту запись уже нельзя отметить.'),
-      );
-      return;
-    }
-    final now = _nowProvider();
-    if (booking.startsAt.isAfter(now)) {
-      await _sendAdminMessage(
-        chatId,
-        _templates.attendanceNotAllowed('Отметить явку можно после старта.'),
-      );
-      return;
-    }
-    final updated = await _bookingRepository.markAttendance(
-      bookingId: booking.id,
-      attendance: attendance,
-    );
     if (updated == null) {
       await _sendAdminMessage(chatId, _templates.bookingNotFound(bookingId));
       return;
     }
-    final sync = await _loyaltyService.syncTrainingPeaks(
-      booking: updated,
-      now: now,
-      isTraining: true,
-    );
-    await _notifyAttendance(
-      booking: updated,
-      attendance: attendance,
-      peaksDelta: sync.appliedDelta,
-      loyaltyRemaining: sync.remaining,
-    );
     await _sendAdminMessage(
       chatId,
       _templates.attendanceMarkedAdmin(
         booking: updated,
         attendance: attendance,
-        peaksSyncFailed: !sync.applied && sync.requested != 0,
-        peaksDelta: sync.appliedDelta,
+        peaksSyncFailed: result.peaksSyncFailed,
+        peaksDelta: result.peaksDelta,
       ),
     );
     final flow = _flowByUserId[userId];
@@ -223,6 +184,57 @@ extension PrivateHandlersDispatchAdminAttendance on PrivateHandlers {
         bookings: roster,
       );
     }
+  }
+
+  static bool _isAttendanceMarkable(TrainingBooking booking) {
+    return booking.status == BookingStatus.paid ||
+        booking.status == BookingStatus.freeTraining ||
+        booking.status == BookingStatus.partialPaid;
+  }
+
+  /// Attendance rules, ⛰️ sync and user notice shared by the chat roster and
+  /// the Mini App admin section. The caller answers the admin.
+  Future<_AttendanceMarkResult> _applyAttendance({
+    required int bookingId,
+    required BookingAttendance attendance,
+  }) async {
+    final booking = await _bookingRepository.findBookingById(bookingId);
+    if (booking == null) {
+      return const _AttendanceMarkResult();
+    }
+    if (_catalogService.categoryForBooking(booking) != ActivityCategory.trainings) {
+      return const _AttendanceMarkResult(notAllowedReason: 'Явка отмечается по тренировкам.');
+    }
+    if (!_isAttendanceMarkable(booking)) {
+      return const _AttendanceMarkResult(notAllowedReason: 'Эту запись уже нельзя отметить.');
+    }
+    final now = _nowProvider();
+    if (booking.startsAt.isAfter(now)) {
+      return const _AttendanceMarkResult(notAllowedReason: 'Отметить явку можно после старта.');
+    }
+    final updated = await _bookingRepository.markAttendance(
+      bookingId: booking.id,
+      attendance: attendance,
+    );
+    if (updated == null) {
+      return const _AttendanceMarkResult();
+    }
+    final sync = await _loyaltyService.syncTrainingPeaks(
+      booking: updated,
+      now: now,
+      isTraining: true,
+    );
+    await _notifyAttendance(
+      booking: updated,
+      attendance: attendance,
+      peaksDelta: sync.appliedDelta,
+      loyaltyRemaining: sync.remaining,
+    );
+    return _AttendanceMarkResult(
+      booking: updated,
+      peaksDelta: sync.appliedDelta,
+      peaksSyncFailed: !sync.applied && sync.requested != 0,
+    );
   }
 
   Future<void> _notifyAttendance({
@@ -256,4 +268,19 @@ extension PrivateHandlersDispatchAdminAttendance on PrivateHandlers {
       }
     }
   }
+}
+
+/// Booking is null when it was not found; [notAllowedReason] is admin copy.
+final class _AttendanceMarkResult {
+  const _AttendanceMarkResult({
+    this.booking,
+    this.notAllowedReason,
+    this.peaksDelta = 0,
+    this.peaksSyncFailed = false,
+  });
+
+  final TrainingBooking? booking;
+  final String? notAllowedReason;
+  final int peaksDelta;
+  final bool peaksSyncFailed;
 }

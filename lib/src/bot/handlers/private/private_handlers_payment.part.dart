@@ -164,6 +164,33 @@ extension PrivateHandlersPaymentOps on PrivateHandlers {
     }
   }
 
+  /// Payment decision shared by chat buttons and the Mini App admin section:
+  /// same status change, user card, admin chat note and group capacity post.
+  Future<PaymentReviewResult> _applyPaymentReview({
+    required int bookingId,
+    required BookingStatus status,
+    required int? moderatorUserId,
+    String? moderatorUsername,
+  }) async {
+    final reviewResult = await _bookingRepository.reviewSubmittedPayment(
+      bookingId: bookingId,
+      status: status,
+    );
+    final booking = reviewResult.booking;
+    if (reviewResult.outcome == PaymentReviewOutcome.success && booking != null) {
+      await _notifyAboutPaymentReview(
+        booking,
+        moderatorUserId: moderatorUserId,
+        moderatorUsername: moderatorUsername,
+      );
+      await _maybeNotifyGroupAboutCapacity(
+        _trainingInfoFromBooking(booking),
+        bookingStatus: booking.status,
+      );
+    }
+    return reviewResult;
+  }
+
   Future<void> _notifyAboutPaymentReview(
     TrainingBooking booking, {
     required int? moderatorUserId,

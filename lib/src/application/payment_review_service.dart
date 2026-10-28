@@ -16,22 +16,23 @@ final class PaymentReviewService {
   final BookingRepository _bookingRepository;
   final ActivityCatalogService _catalogService;
 
-  Future<List<TrainingBooking>> queueByCategory(ActivityCategory category) async {
+  /// Submitted payments, one entry per payment group.
+  Future<List<TrainingBooking>> queue() async {
     final queue = await _bookingRepository.listByStatus(
       BookingStatus.paymentSubmitted,
       limit: _queueFetchLimit,
     );
-    return _dedupePaymentGroups(queue)
+    return _dedupePaymentGroups(queue);
+  }
+
+  Future<List<TrainingBooking>> queueByCategory(ActivityCategory category) async {
+    return (await queue())
         .where((booking) => _catalogService.categoryForBooking(booking) == category)
         .toList(growable: false);
   }
 
   Future<PaymentQueueCounters> queueCounters() async {
-    final queue = await _bookingRepository.listByStatus(
-      BookingStatus.paymentSubmitted,
-      limit: _queueFetchLimit,
-    );
-    final deduped = _dedupePaymentGroups(queue);
+    final deduped = await queue();
     var trainings = 0;
     var hikes = 0;
     var trails = 0;

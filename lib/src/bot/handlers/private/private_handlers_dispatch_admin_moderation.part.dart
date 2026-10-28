@@ -38,26 +38,17 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
         _ when text.startsWith('/approve_payment') => BookingStatus.paid,
         _ => BookingStatus.paymentRejected,
       };
-      final reviewResult = await _bookingRepository.reviewSubmittedPayment(
+      final reviewResult = await _applyPaymentReview(
         bookingId: bookingId,
         status: status,
+        moderatorUserId: userId,
+        moderatorUsername: username,
       );
       final booking = reviewResult.booking;
       final queueCounters = await _paymentReviewService.queueCounters();
       final category = booking == null ? null : _catalogService.categoryForBooking(booking);
       final remainingInCategory =
           category == null ? 0 : (await _paymentReviewService.queueByCategory(category)).length;
-      if (reviewResult.outcome == PaymentReviewOutcome.success && booking != null) {
-        await _notifyAboutPaymentReview(
-          booking,
-          moderatorUserId: userId,
-          moderatorUsername: username,
-        );
-        await _maybeNotifyGroupAboutCapacity(
-          _trainingInfoFromBooking(booking),
-          bookingStatus: booking.status,
-        );
-      }
       final successInlineMarkup = reviewResult.outcome == PaymentReviewOutcome.success &&
               remainingInCategory > 0 &&
               category != null

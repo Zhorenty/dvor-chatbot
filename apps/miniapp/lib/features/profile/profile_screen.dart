@@ -127,7 +127,9 @@ class ProfileScreen extends ConsumerWidget {
             _LinkRow(
               icon: Icons.smart_toy_outlined,
               title: me.isAdmin ? 'Бот и админка' : 'Чат с ботом',
-              subtitle: me.isAdmin ? 'Оплаты, списки, рассылки' : 'Оплаты, бонусы, промокоды',
+              subtitle: me.isAdmin
+                  ? 'Рассылки, расписание, аналитика'
+                  : 'Оплаты, бонусы, промокоды',
               onTap: () => openBotChat(ref),
             ),
           ],

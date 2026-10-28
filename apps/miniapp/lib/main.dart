@@ -35,7 +35,7 @@ Future<void> main() async {
     ],
   );
 
-  // startapp deep links: ?startapp=bookings | profile | hikes | trails | trainings
+  // startapp deep links: ?startapp=bookings | profile | admin | hikes | trails | trainings
   final start = tg.startParam;
   var initialLocation = '/';
   switch (start) {
@@ -43,6 +43,8 @@ Future<void> main() async {
       initialLocation = '/bookings';
     case 'profile':
       initialLocation = '/profile';
+    case 'admin':
+      initialLocation = '/admin';
     case 'hikes' || 'trails' || 'trainings':
       container.read(categoryFilterProvider.notifier).select(EventCategory.parse(start));
   }

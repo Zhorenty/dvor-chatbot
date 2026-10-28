@@ -69,3 +69,47 @@ class BookingActions {
 }
 
 final bookingActionsProvider = Provider<BookingActions>(BookingActions.new);
+
+final adminPaymentsProvider = FutureProvider<List<AdminPayment>>((ref) {
+  return ref.watch(repositoryProvider).adminPayments();
+});
+
+final adminSessionsProvider = FutureProvider<List<AdminSession>>((ref) {
+  return ref.watch(repositoryProvider).adminSessions();
+});
+
+final rosterProvider = FutureProvider.family<Roster, String>((ref, key) {
+  return ref.watch(repositoryProvider).roster(key);
+});
+
+/// Admin writes with cache refresh. Notices to users go from the bot.
+class AdminActions {
+  AdminActions(this._ref);
+
+  final Ref _ref;
+
+  Future<void> review(int bookingId, PaymentDecision decision) async {
+    try {
+      await _ref.read(repositoryProvider).reviewPayment(bookingId, decision);
+    } finally {
+      _ref
+        ..invalidate(adminPaymentsProvider)
+        ..invalidate(adminSessionsProvider)
+        ..invalidate(eventsProvider);
+    }
+  }
+
+  Future<void> sendProof(int bookingId) => _ref.read(repositoryProvider).sendProof(bookingId);
+
+  Future<AdminParticipant> mark(String key, int bookingId, Attendance attendance) async {
+    try {
+      return await _ref.read(repositoryProvider).markAttendance(bookingId, attendance);
+    } finally {
+      _ref
+        ..invalidate(rosterProvider(key))
+        ..invalidate(adminSessionsProvider);
+    }
+  }
+}
+
+final adminActionsProvider = Provider<AdminActions>(AdminActions.new);

@@ -145,18 +145,20 @@ extension PrivateHandlersMiniApp on PrivateHandlers {
     };
   }
 
+  /// Every bookable catalog item the Mini App shows, trainings first.
+  List<TrainingInfo> _miniAppCatalogItems() {
+    return <TrainingInfo>[
+      ..._catalogService.bookableItems(_ActivityCategory.trainings, limit: 40),
+      for (final category in const [_ActivityCategory.hikes, _ActivityCategory.trails])
+        for (final outdoor in _catalogService.outdoorItems(category))
+          _catalogService.toBookableInfo(outdoor),
+    ];
+  }
+
   TrainingInfo? _miniAppFindTraining(String sessionKey) {
-    for (final training in _catalogService.bookableItems(_ActivityCategory.trainings, limit: 40)) {
+    for (final training in _miniAppCatalogItems()) {
       if (training.sessionKey == sessionKey) {
         return training;
-      }
-    }
-    for (final category in const [_ActivityCategory.hikes, _ActivityCategory.trails]) {
-      for (final outdoor in _catalogService.outdoorItems(category)) {
-        final training = _catalogService.toBookableInfo(outdoor);
-        if (training.sessionKey == sessionKey) {
-          return training;
-        }
       }
     }
     return null;

@@ -12,8 +12,42 @@ import 'package:intl/date_symbol_data_local.dart';
 final DateTime _now = DateTime.utc(2026, 10, 28, 9);
 
 class _FakeRepository implements DvorRepository {
+  _FakeRepository({this.isAdmin = false});
+
+  final bool isAdmin;
   final List<String> booked = <String>[];
+  final List<String> reviewed = <String>[];
+  final List<String> marked = <String>[];
   ApiException? bookError;
+  ApiException? markError;
+
+  final List<AdminPayment> payments = [
+    AdminPayment(
+      id: 12,
+      category: EventCategory.hikes,
+      title: 'Поход выходного дня',
+      startsAt: DateTime.utc(2026, 11, 7, 4),
+      location: 'Маршрут',
+      organizer: '@runner',
+      prepayPercent: 50,
+      total: 12000,
+      partial: true,
+      participants: const ['@runner', 'Гость'],
+      comment: 'перевод с карты',
+    ),
+  ];
+
+  final AdminSession _past = AdminSession(
+    key: 'power',
+    category: EventCategory.trainings,
+    title: 'Силовая',
+    startsAt: DateTime.utc(2026, 10, 27, 16),
+    location: 'Зал',
+    limit: 10,
+    participants: 1,
+    attendanceOpen: true,
+    unmarked: 1,
+  );
 
   final List<ClubEvent> _events = [
     ClubEvent(
@@ -39,7 +73,8 @@ class _FakeRepository implements DvorRepository {
   ];
 
   @override
-  Future<Me> me() async => const Me(id: 1, firstName: 'Аня', peaks: 120, botUsername: 'dvor_bot');
+  Future<Me> me() async =>
+      Me(id: 1, firstName: 'Аня', peaks: 120, botUsername: 'dvor_bot', isAdmin: isAdmin);
 
   @override
   Future<List<ClubEvent>> events() async => _events;
@@ -72,14 +107,61 @@ class _FakeRepository implements DvorRepository {
   @override
   Future<ActionResult> cancel(int bookingId) async =>
       const ActionResult(outcome: ActionOutcome.cancelled);
+
+  @override
+  Future<List<AdminPayment>> adminPayments() async =>
+      payments.where((p) => !reviewed.any((r) => r.startsWith('${p.id}:'))).toList();
+
+  @override
+  Future<void> reviewPayment(int bookingId, PaymentDecision decision) async =>
+      reviewed.add('$bookingId:${decision.wire}');
+
+  @override
+  Future<void> sendProof(int bookingId) async {}
+
+  @override
+  Future<List<AdminSession>> adminSessions() async => [_past];
+
+  @override
+  Future<Roster> roster(String key) async => Roster(
+    session: _past,
+    participants: [
+      AdminParticipant(
+        bookingId: 31,
+        name: '@runner',
+        status: BookingStatus.paid,
+        canMark: true,
+        attendance: marked.isEmpty ? null : Attendance.attended,
+      ),
+    ],
+  );
+
+  @override
+  Future<AdminParticipant> markAttendance(int bookingId, Attendance attendance) async {
+    final error = markError;
+    if (error != null) {
+      throw error;
+    }
+    marked.add('$bookingId:${attendance.wire}');
+    return AdminParticipant(
+      bookingId: bookingId,
+      name: '@runner',
+      status: BookingStatus.paid,
+      canMark: true,
+      attendance: attendance,
+    );
+  }
 }
 
-Future<(_FakeRepository, StubTelegramPlatform)> _pump(WidgetTester tester) async {
+Future<(_FakeRepository, StubTelegramPlatform)> _pump(
+  WidgetTester tester, {
+  bool isAdmin = false,
+}) async {
   await initializeDateFormatting('ru');
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  final repo = _FakeRepository();
+  final repo = _FakeRepository(isAdmin: isAdmin);
   final tg = StubTelegramPlatform();
   await tester.pumpWidget(
     ProviderScope(
@@ -135,6 +217,80 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Мест уже нет.'), findsOneWidget);
+  });
+
+  testWidgets('admin tab is hidden from regular members', (tester) async {
+    await _pump(tester);
+    expect(find.byIcon(Icons.admin_panel_settings_outlined), findsNothing);
+  });
+
+  testWidgets('admin approves a prepayment from the queue', (tester) async {
+    final (repo, _) = await _pump(tester, isAdmin: true);
+    await tester.tap(find.byIcon(Icons.admin_panel_settings_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('АДМИНКА'), findsOneWidget);
+    expect(find.text('Оплаты · 1'), findsOneWidget);
+    expect(find.text('@runner, Гость'), findsOneWidget);
+    expect(find.text('Предоплата 50%'), findsOneWidget);
+
+    await tester.tap(find.text('Подтвердить предоплату'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(TextButton, 'Подтвердить'));
+    await tester.pumpAndSettle();
+    expect(repo.reviewed, ['12:approve_partial']);
+    expect(find.text('Оплата #12 подтверждена'), findsOneWidget);
+    expect(find.text('Очередь пуста'), findsOneWidget);
+  });
+
+  testWidgets('admin marks attendance on the roster', (tester) async {
+    final (repo, _) = await _pump(tester, isAdmin: true);
+    await tester.tap(find.byIcon(Icons.admin_panel_settings_outlined));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Списки'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('без отметки: 1', findRichText: true), findsOneWidget);
+
+    await tester.tap(find.text('Силовая'));
+    await tester.pumpAndSettle();
+    expect(find.text('СИЛОВАЯ'), findsOneWidget);
+    await tester.tap(find.text('Был'));
+    await tester.pumpAndSettle();
+    expect(repo.marked, ['31:attended']);
+
+    repo.markError = const ApiException('not_allowed', 'Эту запись уже нельзя отметить.');
+    await tester.tap(find.text('Не был'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Эту запись уже нельзя отметить.'), findsOneWidget);
+  });
+
+  test('admin models parse API payloads', () {
+    final payment = AdminPayment.fromJson({
+      'id': 4,
+      'category': 'trainings',
+      'title': 'Бокс',
+      'startsAt': '2026-11-01T16:00:00.000Z',
+      'location': 'Зал',
+      'total': 700,
+      'paymentType': 'full',
+      'organizer': {'userId': 9, 'name': 'id 9'},
+      'participants': <Object?>[],
+      'hasProof': true,
+    });
+    expect(payment.partial, isFalse);
+    expect(payment.organizer, 'id 9');
+    expect(payment.hasProof, isTrue);
+
+    final participant = AdminParticipant.fromJson({
+      'bookingId': 5,
+      'name': 'Гость',
+      'guest': true,
+      'status': 'partial_paid',
+      'attendance': 'absent',
+      'canMark': true,
+    });
+    expect(participant.status, BookingStatus.partialPaid);
+    expect(participant.attendance, Attendance.absent);
   });
 
   test('models parse API payloads', () {

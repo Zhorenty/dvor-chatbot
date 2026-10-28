@@ -20,6 +20,8 @@ class AppShell extends ConsumerWidget {
     final pending = (ref.watch(bookingsProvider).value ?? const [])
         .where((b) => b.status.needsPayment && b.startsAt.isAfter(DateTime.now().toUtc()))
         .length;
+    final isAdmin = ref.watch(meProvider).value?.isAdmin ?? false;
+    final queue = isAdmin ? (ref.watch(adminPaymentsProvider).value?.length ?? 0) : 0;
     return Scaffold(
       extendBody: true,
       body: shell,
@@ -30,6 +32,8 @@ class AppShell extends ConsumerWidget {
           child: _NavBar(
             index: shell.currentIndex,
             badge: pending,
+            isAdmin: isAdmin,
+            adminBadge: queue,
             onSelect: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
           ),
         ),
@@ -39,10 +43,18 @@ class AppShell extends ConsumerWidget {
 }
 
 class _NavBar extends StatelessWidget {
-  const _NavBar({required this.index, required this.onSelect, required this.badge});
+  const _NavBar({
+    required this.index,
+    required this.onSelect,
+    required this.badge,
+    this.isAdmin = false,
+    this.adminBadge = 0,
+  });
 
   final int index;
   final int badge;
+  final bool isAdmin;
+  final int adminBadge;
   final ValueChanged<int> onSelect;
 
   static const _items = <(IconData, IconData, String)>[
@@ -51,9 +63,16 @@ class _NavBar extends StatelessWidget {
     (Icons.person_outline_rounded, Icons.person_rounded, 'Профиль'),
   ];
 
+  static const _adminItem = (
+    Icons.admin_panel_settings_outlined,
+    Icons.admin_panel_settings_rounded,
+    'Админка',
+  );
+
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final items = isAdmin ? [..._items, _adminItem] : _items;
     return ClipRRect(
       borderRadius: BorderRadius.circular(26),
       child: BackdropFilter(
@@ -75,12 +94,14 @@ class _NavBar extends StatelessWidget {
           ),
           child: Row(
             children: [
-              for (var i = 0; i < _items.length; i++)
+              for (var i = 0; i < items.length; i++)
                 Expanded(
+                  // Four tabs: the selected one needs room for its label.
+                  flex: items.length > 3 && i == index ? 2 : 1,
                   child: Pressable(
                     onTap: () => onSelect(i),
                     haptic: HapticKind.selection,
-                    semanticLabel: _items[i].$3,
+                    semanticLabel: items[i].$3,
                     child: AnimatedContainer(
                       duration: Motion.medium,
                       curve: Motion.curve,
@@ -92,28 +113,33 @@ class _NavBar extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Badge(
-                            isLabelVisible: i == 1 && badge > 0,
-                            label: Text('$badge'),
+                            isLabelVisible: (i == 1 && badge > 0) || (i == 3 && adminBadge > 0),
+                            label: Text('${i == 3 ? adminBadge : badge}'),
                             backgroundColor: c.warning,
                             textColor: c.onAccent,
                             child: Icon(
-                              i == index ? _items[i].$2 : _items[i].$1,
+                              i == index ? items[i].$2 : items[i].$1,
                               size: 22,
                               color: i == index ? c.onAccent : c.inkMuted,
                             ),
                           ),
-                          AnimatedSize(
-                            duration: Motion.medium,
-                            curve: Motion.curve,
-                            child: i == index
-                                ? Padding(
-                                    padding: const EdgeInsets.only(left: 6),
-                                    child: Text(
-                                      _items[i].$3,
-                                      style: context.text.labelLarge?.copyWith(color: c.onAccent),
-                                    ),
-                                  )
-                                : const SizedBox.shrink(),
+                          Flexible(
+                            child: AnimatedSize(
+                              duration: Motion.medium,
+                              curve: Motion.curve,
+                              child: i == index
+                                  ? Padding(
+                                      padding: const EdgeInsets.only(left: 6),
+                                      child: Text(
+                                        items[i].$3,
+                                        maxLines: 1,
+                                        softWrap: false,
+                                        overflow: TextOverflow.clip,
+                                        style: context.text.labelLarge?.copyWith(color: c.onAccent),
+                                      ),
+                                    )
+                                  : const SizedBox.shrink(),
+                            ),
                           ),
                         ],
                       ),

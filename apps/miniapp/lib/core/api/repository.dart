@@ -15,6 +15,19 @@ abstract interface class DvorRepository {
   Future<ActionResult> book(String key);
 
   Future<ActionResult> cancel(int bookingId);
+
+  Future<List<AdminPayment>> adminPayments();
+
+  Future<void> reviewPayment(int bookingId, PaymentDecision decision);
+
+  /// Bot copies the receipt photo into the admin's chat.
+  Future<void> sendProof(int bookingId);
+
+  Future<List<AdminSession>> adminSessions();
+
+  Future<Roster> roster(String key);
+
+  Future<AdminParticipant> markAttendance(int bookingId, Attendance attendance);
 }
 
 class ApiRepository implements DvorRepository {
@@ -61,6 +74,49 @@ class ApiRepository implements DvorRepository {
   @override
   Future<ActionResult> cancel(int bookingId) async =>
       ActionResult.fromJson(await _post('/bookings/$bookingId/cancel', const {}));
+
+  @override
+  Future<List<AdminPayment>> adminPayments() async {
+    final json = await _get('/admin/payments');
+    final raw = (json['payments'] as List<Object?>?) ?? const [];
+    return raw.whereType<Map<String, Object?>>().map(AdminPayment.fromJson).toList();
+  }
+
+  @override
+  Future<void> reviewPayment(int bookingId, PaymentDecision decision) async {
+    await _post('/admin/payments/$bookingId/review', {'decision': decision.wire});
+  }
+
+  @override
+  Future<void> sendProof(int bookingId) async {
+    await _post('/admin/payments/$bookingId/proof', const {});
+  }
+
+  @override
+  Future<List<AdminSession>> adminSessions() async {
+    final json = await _get('/admin/sessions');
+    final raw = (json['sessions'] as List<Object?>?) ?? const [];
+    return raw.whereType<Map<String, Object?>>().map(AdminSession.fromJson).toList()
+      ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+  }
+
+  @override
+  Future<Roster> roster(String key) async {
+    final json = await _get('/admin/sessions/participants?key=${Uri.encodeQueryComponent(key)}');
+    final raw = (json['participants'] as List<Object?>?) ?? const [];
+    return Roster(
+      session: AdminSession.fromJson(json['session']! as Map<String, Object?>),
+      participants: raw.whereType<Map<String, Object?>>().map(AdminParticipant.fromJson).toList(),
+    );
+  }
+
+  @override
+  Future<AdminParticipant> markAttendance(int bookingId, Attendance attendance) async {
+    final json = await _post('/admin/bookings/$bookingId/attendance', {
+      'attendance': attendance.wire,
+    });
+    return AdminParticipant.fromJson(json['participant']! as Map<String, Object?>);
+  }
 
   Future<Map<String, Object?>> _get(String path) async {
     final response = await _guard(

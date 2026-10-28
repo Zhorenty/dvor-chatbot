@@ -29,6 +29,9 @@ type fakeBot struct {
 	scheduleErr   error
 	bookResult    bridge.ActionResult
 	lastBook      string
+	adminResult   bridge.AdminResult
+	roster        bridge.Roster
+	adminCalls    []string
 }
 
 func (f *fakeBot) Schedule(context.Context) (bridge.Schedule, error) {
@@ -48,6 +51,36 @@ func (f *fakeBot) Book(_ context.Context, userID int64, username, key string) (b
 
 func (f *fakeBot) Cancel(context.Context, int64, int64) (bridge.ActionResult, error) {
 	return bridge.ActionResult{Outcome: "too_late"}, nil
+}
+
+func (f *fakeBot) AdminPayments(context.Context) ([]bridge.Payment, error) {
+	f.adminCalls = append(f.adminCalls, "payments")
+	return nil, nil
+}
+
+func (f *fakeBot) ReviewPayment(_ context.Context, adminID int64, adminUsername string, bookingID int64, decision string) (bridge.AdminResult, error) {
+	f.adminCalls = append(f.adminCalls, "review:"+strconv.FormatInt(adminID, 10)+":"+adminUsername+":"+strconv.FormatInt(bookingID, 10)+":"+decision)
+	return f.adminResult, nil
+}
+
+func (f *fakeBot) SendProof(_ context.Context, adminID, bookingID int64) (bridge.AdminResult, error) {
+	f.adminCalls = append(f.adminCalls, "proof:"+strconv.FormatInt(bookingID, 10))
+	return f.adminResult, nil
+}
+
+func (f *fakeBot) AdminSessions(context.Context) ([]bridge.Session, error) {
+	f.adminCalls = append(f.adminCalls, "sessions")
+	return []bridge.Session{{Key: "k", Title: "Бокс", Participants: 3}}, nil
+}
+
+func (f *fakeBot) Participants(_ context.Context, key string) (bridge.Roster, error) {
+	f.adminCalls = append(f.adminCalls, "participants:"+key)
+	return f.roster, nil
+}
+
+func (f *fakeBot) MarkAttendance(_ context.Context, adminID, bookingID int64, attendance string) (bridge.AdminResult, error) {
+	f.adminCalls = append(f.adminCalls, "attendance:"+strconv.FormatInt(bookingID, 10)+":"+attendance)
+	return f.adminResult, nil
 }
 
 type fakeProfiles struct{}
@@ -83,12 +116,16 @@ func mac(key, data []byte) []byte {
 }
 
 func newTestServer(bot *fakeBot, now *time.Time) http.Handler {
+	return newTestServerWithAdmins(bot, now, map[int64]bool{})
+}
+
+func newTestServerWithAdmins(bot *fakeBot, now *time.Time, admins map[int64]bool) http.Handler {
 	return New(Options{
 		Bot:           bot,
 		Profiles:      fakeProfiles{},
 		BotToken:      token,
 		BotUsername:   func() string { return "dvor_bot" },
-		AdminUserIDs:  map[int64]bool{},
+		AdminUserIDs:  admins,
 		InitDataTTL:   time.Hour,
 		ScheduleCache: 20 * time.Second,
 		Logger:        slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -207,5 +244,89 @@ func TestRateLimit(t *testing.T) {
 	}
 	if !l.allow(1, now.Add(time.Second)) {
 		t.Fatal("refill should allow")
+	}
+}
+
+func TestAdminRoutesRequireAdmin(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	bot := &fakeBot{adminResult: bridge.AdminResult{Outcome: "reviewed"}}
+	h := newTestServer(bot, &now)
+	auth := initData(t, now)
+	for _, tt := range []struct{ method, path, body string }{
+		{"GET", "/api/v1/admin/payments", ""},
+		{"POST", "/api/v1/admin/payments/3/review", `{"decision":"approve"}`},
+		{"POST", "/api/v1/admin/payments/3/proof", ""},
+		{"GET", "/api/v1/admin/sessions", ""},
+		{"GET", "/api/v1/admin/sessions/participants?key=k", ""},
+		{"POST", "/api/v1/admin/bookings/3/attendance", `{"attendance":"attended"}`},
+	} {
+		if code, _ := do(t, h, tt.method, tt.path, auth, tt.body); code != http.StatusForbidden {
+			t.Fatalf("%s %s: code = %d, want 403", tt.method, tt.path, code)
+		}
+	}
+	if len(bot.adminCalls) != 0 {
+		t.Fatalf("bridge called for non-admin: %v", bot.adminCalls)
+	}
+}
+
+func TestAdminReview(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	tests := []struct {
+		outcome string
+		want    int
+	}{
+		{"reviewed", http.StatusOK},
+		{"already_reviewed", http.StatusConflict},
+		{"not_found", http.StatusNotFound},
+		{"forbidden", http.StatusForbidden},
+	}
+	for _, tt := range tests {
+		t.Run(tt.outcome, func(t *testing.T) {
+			bot := &fakeBot{adminResult: bridge.AdminResult{Outcome: tt.outcome}}
+			h := newTestServerWithAdmins(bot, &now, map[int64]bool{7: true})
+			code, _ := do(t, h, "POST", "/api/v1/admin/payments/3/review", initData(t, now), `{"decision":"approve_partial"}`)
+			if code != tt.want {
+				t.Fatalf("code = %d, want %d", code, tt.want)
+			}
+			if len(bot.adminCalls) != 1 || bot.adminCalls[0] != "review:7:vanya:3:approve_partial" {
+				t.Fatalf("calls = %v", bot.adminCalls)
+			}
+		})
+	}
+	bot := &fakeBot{}
+	h := newTestServerWithAdmins(bot, &now, map[int64]bool{7: true})
+	if code, _ := do(t, h, "POST", "/api/v1/admin/payments/3/review", initData(t, now), `{"decision":"maybe"}`); code != http.StatusBadRequest {
+		t.Fatalf("code = %d", code)
+	}
+}
+
+func TestAdminSessionsAndAttendance(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	msg := "Отметить явку можно после старта."
+	bot := &fakeBot{
+		adminResult: bridge.AdminResult{Outcome: "not_allowed", Message: &msg},
+		roster:      bridge.Roster{Outcome: "ok", Session: &bridge.Session{Key: "a|b c"}},
+	}
+	h := newTestServerWithAdmins(bot, &now, map[int64]bool{7: true})
+	auth := initData(t, now)
+	code, body := do(t, h, "GET", "/api/v1/admin/sessions", auth, "")
+	if code != http.StatusOK || len(body["sessions"].([]any)) != 1 {
+		t.Fatalf("sessions: %d %v", code, body)
+	}
+	code, body = do(t, h, "GET", "/api/v1/admin/sessions/participants?key="+url.QueryEscape("a|b c"), auth, "")
+	if code != http.StatusOK || body["participants"] == nil {
+		t.Fatalf("participants: %d %v", code, body)
+	}
+	code, body = do(t, h, "POST", "/api/v1/admin/bookings/4/attendance", auth, `{"attendance":"absent"}`)
+	if code != http.StatusConflict || body["error"].(map[string]any)["message"] != msg {
+		t.Fatalf("attendance: %d %v", code, body)
+	}
+	want := []string{"sessions", "participants:a|b c", "attendance:4:absent"}
+	if strings.Join(bot.adminCalls, ",") != strings.Join(want, ",") {
+		t.Fatalf("calls = %v", bot.adminCalls)
+	}
+	bot.roster = bridge.Roster{Outcome: "not_found"}
+	if code, _ := do(t, h, "GET", "/api/v1/admin/sessions/participants?key=x", auth, ""); code != http.StatusNotFound {
+		t.Fatalf("missing roster code = %d", code)
 	}
 }

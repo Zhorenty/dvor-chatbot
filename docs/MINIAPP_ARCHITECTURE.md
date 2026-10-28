@@ -17,7 +17,8 @@ Telegram Mini App на Flutter + Go API поверх существующего 
 | Онбординг-квиз, фидбек после тренировки | **Бот** | Бот пишет первым |
 | Группа: велкомы, антиспам, напоминания вступить | **Бот** | Mini App не видит группу |
 | Фоновые задачи: напоминания об оплате, промо, рассылки, начисления, Sheets | **Бот** | `JobScheduler` + `job_dedupe_log` |
-| Админка: оплаты, списки, посещаемость, CRUD расписания, рассылки, аналитика | **Бот** | Админский раздел Mini App — следующий этап |
+| Админка: оплаты на проверке, списки участников, посещаемость | **Mini App → бот** | Решения идут через те же методы, что и кнопки в чате: `_applyPaymentReview`, `_applyAttendance` |
+| Админка: CRUD расписания, рассылки, аналитика, абонементы | **Бот** | Многошаговые диалоги |
 
 ## Архитектура
 
@@ -37,6 +38,10 @@ Telegram ─┬─ чат ───────────── dvor-chatbot (
   ставит menu button бота на Mini App.
 - **Мост в боте** (`lib/src/miniapp/miniapp_bridge_server.dart`, `private_handlers_miniapp.part.dart`):
   слушает только внутри Docker-сети, порт не публикуется. Запись и отмена идут через те же методы, что и кнопки в чате.
+- **Админский раздел** (`private_handlers_miniapp_admin.part.dart`, вкладка «Админка» во Flutter): видна, если `/api/v1/me` вернул `isAdmin`.
+  API пускает только `ADMIN_USER_IDS` из проверенного `initData` (403 остальным), бот перед записью ещё раз сверяет `adminUserId` со своим `ADMIN_USER_IDS`.
+  Подтверждение/отклонение оплаты — `_applyPaymentReview` (карточка пользователю, заметка в админ-чат, пост о местах в группу);
+  явка — `_applyAttendance` (правила чата, синхронизация ⛰️, уведомление участнику). Чек Mini App показать не может: кнопка «Прислать чек в чат» копирует фото чека в личку админа с ботом.
 
 ### API
 
@@ -50,11 +55,22 @@ Telegram ─┬─ чат ───────────── dvor-chatbot (
 | POST | `/api/v1/bookings` `{key}` | 200 `created`/`exists`, 409 `full`, 404 `not_found` |
 | POST | `/api/v1/bookings/{id}/cancel` | 200 `cancelled` (+`refundPeaks`), 409 `too_late`, 404 |
 
+Админские (403 `forbidden`, если пользователя нет в `ADMIN_USER_IDS`):
+
+| Метод | Путь | Ответ |
+| --- | --- | --- |
+| GET | `/api/v1/admin/payments` | `payments[]`: id, title, startsAt, organizer{userId,name}, participants[], total, prepayPercent, paymentType, comment, promoCode, hasProof — одна запись на группу оплаты |
+| POST | `/api/v1/admin/payments/{id}/review` `{decision: approve\|approve_partial\|reject}` | 200 `reviewed` (+status), 409 `already_reviewed`, 404 |
+| POST | `/api/v1/admin/payments/{id}/proof` | 200 `sent` — бот копирует чек в чат админа; 404 нет чека, 502 Telegram не принял |
+| GET | `/api/v1/admin/sessions` | `sessions[]`: ближайшие события каталога + тренировки за 7 дней; participants, limit, attendanceOpen, unmarked |
+| GET | `/api/v1/admin/sessions/participants?key=` | `session`, `participants[]`: bookingId, name, guest, managedBy, status, attendance, canMark |
+| POST | `/api/v1/admin/bookings/{id}/attendance` `{attendance: attended\|absent}` | 200 `marked` (+participant, peaksDelta), 409 `not_allowed` с причиной, 404 |
+
 Ошибки: `{"error":{"code","message"}}`, `message` — готовый текст для пользователя.
 
 ### Deep links
 
-`https://t.me/<bot>?startapp=bookings | profile | hikes | trails | trainings`.
+`https://t.me/<bot>?startapp=bookings | profile | admin | hikes | trails | trainings`.
 
 ## Конфиг
 
@@ -87,6 +103,5 @@ dart format bin lib test && dart analyze --fatal-infos --fatal-warnings && dart 
 
 ## Дальше
 
-- Админский раздел Mini App (оплаты на проверке, списки участников, посещаемость).
 - Запись друга/гостя и перенос в Mini App.
 - Загрузка чека прямо из Mini App вместо чата.
