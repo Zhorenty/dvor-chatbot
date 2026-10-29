@@ -2370,6 +2370,11 @@ final class _FakeOnboardingState {
 }
 
 final class FakeConversationLogRepository implements ConversationLogRepository {
+  final Map<int, String> usernamesById = <int, String>{};
+
+  @override
+  Future<String?> usernameForUserId(int userId) async => usernamesById[userId];
+
   final List<ConversationLogEntry> entries = <ConversationLogEntry>[];
   final Map<int, String?> users = <int, String?>{};
   int _nextId = 1;

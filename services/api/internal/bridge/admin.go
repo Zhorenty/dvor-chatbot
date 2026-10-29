@@ -10,8 +10,9 @@ import (
 
 // Person is a club member as the admin sees them: @username or "id N".
 type Person struct {
-	UserID int64  `json:"userId"`
-	Name   string `json:"name"`
+	UserID   int64  `json:"userId"`
+	Name     string `json:"name"`
+	Username string `json:"username,omitempty"`
 }
 
 // Payment is one submitted payment awaiting review (one per payment group).

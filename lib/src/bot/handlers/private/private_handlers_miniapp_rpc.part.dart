@@ -71,6 +71,7 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
       'admin.bookings.create' => _rpcAdminBookingsCreate(params),
       'admin.bookings.status' => _rpcAdminBookingsStatus(params),
       'admin.bookings.archive' => _rpcAdminBookingsArchive(params),
+      'admin.contact' => _rpcAdminContact(caller, params),
       _ => throw const MiniAppRpcException('unknown_method', 'Это действие пока недоступно.'),
     };
   }
@@ -687,7 +688,7 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
               'activeUntil': membership.activeUntil?.toUtc().toIso8601String(),
               'active': BoxingCardLedger.isActiveBoxingCard(membership, now: now),
             },
-      'bookings': unique.take(30).map(_miniAppAdminBookingJson).toList(growable: false),
+      'bookings': await _miniAppAdminBookingsJson(unique.take(30).toList()),
     };
   }
 
@@ -879,27 +880,84 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
 
   // ---------- admin: bookings ----------
 
-  Map<String, Object?> _miniAppAdminBookingJson(TrainingBooking booking) {
+  /// Telegram user a booking belongs to (null for guests without Telegram)
+  /// and their @username, looked up when the booking row has none.
+  Future<({int? userId, String? username})> _bookingPerson(TrainingBooking booking) async {
+    if (booking.participantType == BookingParticipantType.guest) {
+      return (userId: null, username: null);
+    }
+    final userId = booking.participantUserId ?? booking.userId;
+    var username = normalizeTelegramUsername(
+      booking.participantType == BookingParticipantType.telegram
+          ? booking.participantUsername
+          : booking.userUsername,
+    );
+    if (username == null && userId > 0) {
+      username = await _conversationLogRepository.usernameForUserId(userId);
+    }
+    return (userId: userId > 0 ? userId : null, username: username);
+  }
+
+  Future<Map<String, Object?>> _miniAppAdminBookingJson(TrainingBooking booking) async {
+    final person = await _bookingPerson(booking);
+    final label = switch (booking.participantType) {
+      BookingParticipantType.guest => '${booking.participantDisplayLabel} · гость',
+      _ when person.username != null => '@${person.username}',
+      _ => 'Без username',
+    };
     return <String, Object?>{
       ..._miniAppBookingJson(booking),
       'userId': booking.userId,
       'manager': booking.userUsername,
-      'participant': booking.participantDisplayLabel,
+      'participant': label,
+      'contactUserId': person.userId,
+      'contactUsername': person.username,
       'promoCode': booking.promoCode,
       'paymentNote': _miniAppText(booking.paymentNote),
       'createdAt': booking.createdAt.toUtc().toIso8601String(),
     };
   }
 
+  Future<List<Map<String, Object?>>> _miniAppAdminBookingsJson(
+      List<TrainingBooking> bookings) async {
+    return [for (final b in bookings) await _miniAppAdminBookingJson(b)];
+  }
+
   Future<Map<String, Object?>> _rpcAdminBookingsList(Map<String, Object?> params) async {
     final bookings = await _bookingRepository.adminListBookings(
       category: _rpcCategory(params),
       archived: params['archived'] == true,
-      limit: 200,
+      limit: 300,
     );
-    return <String, Object?>{
-      'bookings': bookings.map(_miniAppAdminBookingJson).toList(growable: false),
-    };
+    return <String, Object?>{'bookings': await _miniAppAdminBookingsJson(bookings)};
+  }
+
+  /// Same optional notice the chat admin flow offers after each change.
+  Future<String?> _maybeNotifyMember(
+    Map<String, Object?> params,
+    _AdminClientNotificationAction action,
+    TrainingBooking booking,
+  ) async {
+    if (params['notify'] != true) {
+      return null;
+    }
+    final failure = await _notifyUserAboutAdminBookingMutation(action: action, booking: booking);
+    return failure == null ? 'Участник уведомлён.' : 'Уведомить не удалось: $failure';
+  }
+
+  /// Sends the admin a tap-to-open link to a member's Telegram profile
+  /// (works without @username), then the app opens the bot chat.
+  Future<Map<String, Object?>> _rpcAdminContact(
+    MiniAppCaller caller,
+    Map<String, Object?> params,
+  ) async {
+    final userId = _rpcInt(params, 'userId');
+    final context = (params['context'] as String?)?.trim();
+    await _sendAdminMessage(
+      caller.id,
+      _templates.adminMemberContact(userId: userId, context: context),
+    );
+    return const <String, Object?>{'message': 'Ссылка на участника — в чате с ботом.'};
   }
 
   BookingStatus _rpcStatus(Map<String, Object?> params) {
@@ -927,9 +985,14 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
         training: training,
         status: _rpcStatus(params),
       );
+      final notice = await _maybeNotifyMember(
+        params,
+        _AdminClientNotificationAction.bookingCreated,
+        booking,
+      );
       return <String, Object?>{
-        'booking': _miniAppAdminBookingJson(booking),
-        'message': 'Запись создана.',
+        'booking': await _miniAppAdminBookingJson(booking),
+        'message': ['Запись создана.', if (notice != null) notice].join(' '),
       };
     } on Object catch (error) {
       if (error is MiniAppRpcException) {
@@ -947,9 +1010,17 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
     if (updated == null) {
       throw const MiniAppRpcException('not_found', 'Запись не найдена.');
     }
+    final notice = await _maybeNotifyMember(
+      params,
+      _AdminClientNotificationAction.bookingStatusUpdated,
+      updated,
+    );
     return <String, Object?>{
-      'booking': _miniAppAdminBookingJson(updated),
-      'message': 'Статус: ${MessageFormatters.statusLabel(updated.status)}.',
+      'booking': await _miniAppAdminBookingJson(updated),
+      'message': [
+        'Статус: ${MessageFormatters.statusLabel(updated.status)}.',
+        if (notice != null) notice
+      ].join(' '),
     };
   }
 
@@ -958,6 +1029,13 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
     if (archived == null) {
       throw const MiniAppRpcException('not_found', 'Запись не найдена.');
     }
-    return const <String, Object?>{'message': 'Запись убрана в архив.'};
+    final notice = await _maybeNotifyMember(
+      params,
+      _AdminClientNotificationAction.bookingDeleted,
+      archived,
+    );
+    return <String, Object?>{
+      'message': ['Запись убрана в архив.', if (notice != null) notice].join(' ')
+    };
   }
 }

@@ -5,6 +5,7 @@ import 'package:dvor_chatbot/src/bot/handlers/private_handlers.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/domain/booking_attendance.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
+import 'package:dvor_chatbot/src/domain/featured_trainings.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/miniapp/miniapp_bridge_server.dart';
@@ -657,6 +658,54 @@ void main() {
       );
       expect(report['text'], isNotEmpty);
       expect(harness.sender.messages.map((m) => m.chatId), contains(adminId));
+    });
+  });
+
+  group('Mini App admin details', () {
+    final now = DateTime.utc(2026, 10, 20, 9);
+    const adminId = 900;
+    const admin = MiniAppCaller(id: adminId, username: 'boss');
+
+    test('featured club events are flagged for the main screen', () async {
+      final harness = PrivateHandlersHarness(
+        trainings: [FeaturedTrainings.fourSons],
+        nowProvider: () => DateTime(2026, 11, 1),
+      );
+      final events = harness.handlers.miniAppSchedule()['events']! as List<Map<String, Object?>>;
+      expect(events.single['featured'], isTrue);
+    });
+
+    test('admin bookings show @username from the user directory and notify on request', () async {
+      final training = TrainingInfo(
+        title: 'Бокс',
+        startsAt: DateTime.utc(2026, 10, 22, 16),
+        location: 'Зал',
+        price: 600,
+      );
+      final repository = FakeBookingRepository()
+        ..adminBookings = [
+          fakeBooking(
+              id: 3, userId: 77, trainingKey: training.sessionKey, status: BookingStatus.paid),
+        ];
+      final harness = PrivateHandlersHarness(
+        trainings: [training],
+        bookingRepository: repository,
+        adminUserIds: const {adminId},
+        nowProvider: () => now,
+      );
+      harness.conversationLog.usernamesById[77] = 'runner';
+      final list = await harness.handlers.miniAppRpc('admin.bookings.list', admin, const {
+        'category': 'trainings',
+      });
+      final row = (list['bookings']! as List<Object?>).single! as Map<String, Object?>;
+      expect(row['participant'], '@runner');
+      expect(row['contactUserId'], 77);
+
+      final contact = await harness.handlers.miniAppRpc('admin.contact', admin, const {
+        'userId': 77,
+      });
+      expect(contact['message'], contains('чате с ботом'));
+      expect(harness.messagesTo(adminId).last.text, contains('tg://user?id=77'));
     });
   });
 }

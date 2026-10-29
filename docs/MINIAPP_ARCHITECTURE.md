@@ -58,7 +58,10 @@ Telegram ─┬─ чат ───────────── dvor-chatbot (
 RPC-методы (`lib/src/bot/handlers/private/private_handlers_miniapp_rpc.part.dart`):
 `payment.options|choose|receipt|bonus|peaks|promo`, `booking.party|rescheduleOptions|reschedule`,
 `card.overview|buy`, `team.list`, `admin.report|cards.pending|cards.review|peaks.grant|user|broadcast`,
-`admin.schedule.list|save|delete`, `admin.bookings.list|create|status|archive`.
+`admin.schedule.list|save|delete`, `admin.bookings.list|create|status|archive` (`notify: true` — бот пишет участнику, как в чате),
+`admin.contact` (ссылка `tg://user?id=` на участника без username — в чат админа).
+
+События из `FeaturedTrainings` приходят с `featured: true` и стоят на главной блоком «Главное» над расписанием.
 
 Многошаговые сценарии чата бот проходит сам: мост подаёт в `handle()` те же команды, что шлют кнопки,
 помечая обновление `_miniapp`, и перехватывает ответ бота (`MiniAppEchoSender`) — приложение показывает
@@ -68,7 +71,7 @@ RPC-методы (`lib/src/bot/handlers/private/private_handlers_miniapp_rpc.par
 
 | Метод | Путь | Ответ |
 | --- | --- | --- |
-| GET | `/api/v1/admin/payments` | `payments[]`: id, title, startsAt, organizer{userId,name}, participants[], total, prepayPercent, paymentType, comment, promoCode, hasProof — одна запись на группу оплаты |
+| GET | `/api/v1/admin/payments` | `payments[]`: id, title, startsAt, organizer{userId,name,username}, participants[], total, prepayPercent, paymentType, comment, promoCode, hasProof — одна запись на группу оплаты |
 | POST | `/api/v1/admin/payments/{id}/review` `{decision: approve\|approve_partial\|reject}` | 200 `reviewed` (+status), 409 `already_reviewed`, 404 |
 | POST | `/api/v1/admin/payments/{id}/proof` | 200 `sent` — бот копирует чек в чат админа; 404 нет чека, 502 Telegram не принял |
 | GET | `/api/v1/admin/sessions` | `sessions[]`: ближайшие события каталога + тренировки за 7 дней; participants, limit, attendanceOpen, unmarked |

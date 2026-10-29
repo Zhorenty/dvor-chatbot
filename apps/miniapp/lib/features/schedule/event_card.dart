@@ -216,6 +216,102 @@ class OutdoorCard extends StatelessWidget {
   }
 }
 
+/// Club's headline event (FeaturedTrainings in the bot): a large accent
+/// cover above everything else on the main screen.
+class FeaturedCard extends StatelessWidget {
+  const FeaturedCard({super.key, required this.event, required this.booked, required this.onTap});
+
+  final ClubEvent event;
+  final Booking? booked;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    final title = splitTitleEmoji(event.title);
+    final low = event.lowSeats;
+    final when = event.category.isOutdoor
+        ? Fmt.dateRange(event.startsAt, event.endsAt)
+        : '${Fmt.dayMonth(event.startsAt)} · ${Fmt.time(event.startsAt)}';
+    final place = [event.location, ?event.coach].where((s) => s.isNotEmpty).join(' · ');
+    final facts = [
+      Fmt.price(event.price),
+      if (low != null) low == 0 ? 'мест нет' : 'осталось ${Fmt.seats(low)}',
+    ].join(' · ');
+    final booking = booked;
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: 'Главное: ${title.text}',
+      child: Container(
+        padding: const EdgeInsets.all(Space.l),
+        decoration: coverDecoration(
+          context,
+          c.accent,
+        ).copyWith(border: Border.all(color: c.accent, width: 1.5)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Pill(label: 'ГЛАВНОЕ', color: c.accent, filled: true, dense: true),
+                const Spacer(),
+                if (title.emoji case final emoji?)
+                  Text(emoji, style: const TextStyle(fontSize: 22)),
+              ],
+            ),
+            const SizedBox(height: Space.l),
+            Text(when.toUpperCase(), style: context.text.labelMedium?.copyWith(color: c.inkMuted)),
+            const SizedBox(height: 2),
+            Text(
+              title.text.toUpperCase(),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: context.text.headlineMedium?.copyWith(height: 1.05),
+            ),
+            if (place.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                place,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: context.text.bodyMedium?.copyWith(color: c.inkMuted, fontSize: 12.5),
+              ),
+            ],
+            const SizedBox(height: Space.m),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    facts,
+                    style: context.text.labelLarge?.copyWith(color: low == 0 ? c.danger : c.ink),
+                  ),
+                ),
+                if (booking != null)
+                  Pill(
+                    label: booking.status.needsPayment ? 'Оплатить' : 'Ты идёшь',
+                    icon: booking.status.needsPayment
+                        ? Icons.schedule_rounded
+                        : Icons.check_rounded,
+                    color: booking.status.needsPayment ? c.warning : c.accent,
+                    dense: true,
+                  )
+                else
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Подробнее', style: context.text.labelLarge?.copyWith(color: c.accent)),
+                      Icon(Icons.chevron_right_rounded, size: 18, color: c.accent),
+                    ],
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class EventCardSkeleton extends StatelessWidget {
   const EventCardSkeleton({super.key});
 

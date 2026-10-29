@@ -12,7 +12,9 @@ extension PrivateHandlersMiniAppAdmin on PrivateHandlers {
     final queue = await _paymentReviewService.queue();
     final items = <Map<String, Object?>>[];
     for (final booking in queue) {
-      items.add(_miniAppPaymentJson(booking, await _groupBookingsFor(booking)));
+      final username = normalizeTelegramUsername(booking.userUsername) ??
+          await _conversationLogRepository.usernameForUserId(booking.managerUserId);
+      items.add(_miniAppPaymentJson(booking, await _groupBookingsFor(booking), username));
     }
     return <String, Object?>{'payments': items};
   }
@@ -201,7 +203,11 @@ extension PrivateHandlersMiniAppAdmin on PrivateHandlers {
     };
   }
 
-  Map<String, Object?> _miniAppPaymentJson(TrainingBooking booking, List<TrainingBooking> group) {
+  Map<String, Object?> _miniAppPaymentJson(
+    TrainingBooking booking,
+    List<TrainingBooking> group,
+    String? payerUsername,
+  ) {
     final note = booking.paymentNote ?? '';
     final partial = note.startsWith(PrivateHandlers._paymentChoicePartialMarker);
     final full = note.startsWith(PrivateHandlers._paymentChoiceFullMarker);
@@ -231,7 +237,10 @@ extension PrivateHandlersMiniAppAdmin on PrivateHandlers {
       'promoCode': booking.promoCode,
       'organizer': <String, Object?>{
         'userId': booking.managerUserId,
-        'name': _miniAppUserLabel(booking.userUsername, booking.managerUserId),
+        'username': payerUsername,
+        'name': payerUsername == null
+            ? _miniAppUserLabel(booking.userUsername, booking.managerUserId)
+            : '@$payerUsername',
       },
       'participants':
           showMembers ? group.map(_miniAppPersonLabel).toList(growable: false) : const <String>[],

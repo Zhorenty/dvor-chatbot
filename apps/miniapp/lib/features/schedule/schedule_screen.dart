@@ -31,6 +31,7 @@ class ScheduleScreen extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         slivers: [
           SliverToBoxAdapter(child: _Header(topInset: inset.top)),
+          const SliverToBoxAdapter(child: _Featured()),
           const SliverToBoxAdapter(child: _NextBooking()),
           const SliverPersistentHeader(pinned: true, delegate: _FilterBarDelegate()),
           ...switch (events) {
@@ -63,13 +64,19 @@ class ScheduleScreen extends ConsumerWidget {
     final booked = ref.watch(bookedKeysProvider);
     final now = ref.watch(clockProvider)();
 
-    final visible = all.where((e) => filter == null || e.category == filter).toList();
+    // Featured events live in their own block above, not in the day lists.
+    final visible = all
+        .where((e) => !e.featured && (filter == null || e.category == filter))
+        .toList();
     final outdoor = visible.where((e) => e.category.isOutdoor).toList();
     final trainings = visible.where((e) => !e.category.isOutdoor).toList();
 
     void open(ClubEvent e) => context.push('/event', extra: e);
 
     if (visible.isEmpty) {
+      if (filter == null && all.any((e) => e.featured)) {
+        return const [];
+      }
       final filtered = filter != null;
       return [
         SliverFillRemaining(
@@ -192,6 +199,37 @@ class _Header extends ConsumerWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The club's headline events, always first and regardless of the filter.
+class _Featured extends ConsumerWidget {
+  const _Featured();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final featured = (ref.watch(eventsProvider).value ?? const <ClubEvent>[])
+        .where((e) => e.featured)
+        .toList();
+    if (featured.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final booked = ref.watch(bookedKeysProvider);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(Space.gutter, 0, Space.gutter, Space.m),
+      child: Column(
+        children: [
+          for (final (i, e) in featured.indexed) ...[
+            if (i > 0) const SizedBox(height: Space.s),
+            FeaturedCard(
+              event: e,
+              booked: booked[e.key],
+              onTap: () => context.push('/event', extra: e),
+            ),
+          ],
         ],
       ),
     );

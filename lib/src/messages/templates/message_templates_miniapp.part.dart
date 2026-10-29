@@ -32,4 +32,10 @@ extension MessageTemplatesMiniApp on MessageTemplates {
     return 'Всё теперь в приложении <b>DVOR</b>: афиша, запись, оплата и вершинки.\n\n'
         'Кнопка DVOR — слева от поля ввода.';
   }
+
+  /// Admin-only: a profile link that works without @username.
+  String adminMemberContact({required int userId, String? context}) {
+    final about = context == null || context.isEmpty ? '' : '\n${escapeHtml(context)}';
+    return '<b>Участник</b>: <a href="tg://user?id=$userId">открыть профиль</a>$about';
+  }
 }

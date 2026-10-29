@@ -5,6 +5,7 @@ import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
 import 'package:dvor_miniapp/core/widgets/sheets.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
+import 'package:dvor_miniapp/features/admin/admin_contact.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -112,16 +113,7 @@ class AdminBookingsScreen extends ConsumerWidget {
                 child: StateMessage(icon: Icons.inbox_outlined, title: 'Записей нет'),
               ),
             ],
-            AsyncValue(:final value?) => [
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-                sliver: SliverList.separated(
-                  itemCount: value.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: Space.s),
-                  itemBuilder: (_, i) => _AdminBookingTile(item: value[i], archived: archived),
-                ),
-              ),
-            ],
+            AsyncValue(:final value?) => _grouped(context, value, archived),
             AsyncValue(:final error?) => [
               SliverFillRemaining(
                 hasScrollBody: false,
@@ -149,6 +141,77 @@ class AdminBookingsScreen extends ConsumerWidget {
   }
 }
 
+/// One block per event (title, date, time, headcount), people inside —
+/// the chat's «Список записавшихся», split by session.
+List<Widget> _grouped(BuildContext context, List<AdminBooking> all, bool archived) {
+  final groups = <String, List<AdminBooking>>{};
+  for (final item in all) {
+    groups.putIfAbsent(item.booking.key, () => []).add(item);
+  }
+  final keys = groups.keys.toList()
+    ..sort((a, b) {
+      final byTime = groups[a]!.first.booking.startsAt.compareTo(groups[b]!.first.booking.startsAt);
+      return archived ? -byTime : byTime;
+    });
+  final c = context.colors;
+  return [
+    for (final key in keys) ...[
+      SliverToBoxAdapter(
+        child: Builder(
+          builder: (context) {
+            final items = groups[key]!;
+            final b = items.first.booking;
+            final active = items.where((i) => i.booking.status.isActive).length;
+            final title = splitTitleEmoji(b.title);
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(Space.gutter, Space.l, Space.gutter, Space.s),
+              child: Row(
+                children: [
+                  EventGlyph(emoji: title.emoji, category: b.category, size: 34),
+                  const SizedBox(width: Space.m),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title.text.toUpperCase(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.text.titleMedium,
+                        ),
+                        Text(
+                          b.category.isOutdoor
+                              ? Fmt.dayMonth(b.startsAt)
+                              : '${Fmt.weekdayShort(ClubTime.dayOf(b.startsAt))}, ${Fmt.dayMonth(b.startsAt)} · ${Fmt.time(b.startsAt)}',
+                          style: context.text.labelMedium?.copyWith(color: c.inkMuted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Pill(
+                    label: '$active',
+                    icon: Icons.person_outline_rounded,
+                    color: c.accent,
+                    dense: true,
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+        sliver: SliverList.separated(
+          itemCount: groups[key]!.length,
+          separatorBuilder: (_, _) => const SizedBox(height: Space.xs),
+          itemBuilder: (_, i) => _AdminBookingTile(item: groups[key]![i], archived: archived),
+        ),
+      ),
+    ],
+  ];
+}
+
 Color _statusColor(BuildContext context, BookingStatus status) {
   final c = context.colors;
   return switch (status) {
@@ -168,7 +231,6 @@ class _AdminBookingTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final b = item.booking;
     final c = context.colors;
-    final title = splitTitleEmoji(b.title).text;
     return Pressable(
       onTap: () => showDvorSheet<void>(context, (_) => _BookingActionsSheet(item: item)),
       scale: 0.99,
@@ -182,12 +244,13 @@ class _AdminBookingTile extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.participant, style: context.text.titleMedium),
-                  Text(
-                    '$title · ${Fmt.dayMonthShort(b.startsAt)}, ${Fmt.time(b.startsAt)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.text.bodyMedium?.copyWith(color: c.inkMuted, fontSize: 12.5),
-                  ),
+                  if (item.manager != null && '@${item.manager}' != item.participant)
+                    Text(
+                      'записал @${item.manager}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.text.bodyMedium?.copyWith(color: c.inkMuted, fontSize: 12.5),
+                    ),
                 ],
               ),
             ),
@@ -211,6 +274,7 @@ class _BookingActionsSheet extends ConsumerStatefulWidget {
 
 class _BookingActionsSheetState extends ConsumerState<_BookingActionsSheet> {
   late BookingStatus _status = widget.item.booking.status;
+  bool _notify = true;
   bool _busy = false;
 
   Future<void> _run(String method, Map<String, Object?> params) async {
@@ -248,19 +312,40 @@ class _BookingActionsSheetState extends ConsumerState<_BookingActionsSheet> {
           const SizedBox(height: Space.s),
           Text(item.paymentNote!, style: context.text.bodyMedium?.copyWith(color: c.inkFaint)),
         ],
+        if (item.contactUserId != null || item.contactUsername != null) ...[
+          const SizedBox(height: Space.m),
+          SecondaryButton(
+            label: 'Написать участнику',
+            icon: Icons.chat_bubble_outline_rounded,
+            expand: true,
+            onTap: () => openMemberProfile(
+              context,
+              ref,
+              userId: item.contactUserId,
+              username: item.contactUsername,
+              about: '${splitTitleEmoji(b.title).text}, ${Fmt.dayMonth(b.startsAt)}',
+            ),
+          ),
+        ],
         const GroupLabel('Статус'),
         ChoiceChips<BookingStatus>(
           options: _statusOptions,
           selected: _status,
           onSelected: (v) => setState(() => _status = v),
         ),
-        const SizedBox(height: Space.xl),
+        const SizedBox(height: Space.m),
+        _NotifySwitch(value: _notify, onChanged: (v) => setState(() => _notify = v)),
+        const SizedBox(height: Space.l),
         PrimaryButton(
           label: 'Сохранить статус',
           loading: _busy,
           onTap: _status == b.status
               ? null
-              : () => _run('admin.bookings.status', {'id': b.id, 'status': _wire(_status)}),
+              : () => _run('admin.bookings.status', {
+                  'id': b.id,
+                  'status': _wire(_status),
+                  'notify': _notify,
+                }),
         ),
         const SizedBox(height: Space.s),
         SecondaryButton(
@@ -270,7 +355,7 @@ class _BookingActionsSheetState extends ConsumerState<_BookingActionsSheet> {
           expand: true,
           onTap: () async {
             if (await confirmAction(context, ref, 'Убрать запись в архив?')) {
-              await _run('admin.bookings.archive', {'id': b.id});
+              await _run('admin.bookings.archive', {'id': b.id, 'notify': _notify});
             }
           },
         ),
@@ -290,6 +375,7 @@ class _CreateBookingSheetState extends ConsumerState<_CreateBookingSheet> {
   final _username = TextEditingController();
   String? _key;
   BookingStatus _status = BookingStatus.paid;
+  bool _notify = true;
   bool _busy = false;
 
   @override
@@ -313,6 +399,7 @@ class _CreateBookingSheetState extends ConsumerState<_CreateBookingSheet> {
         'key': _key,
         'username': _username.text.trim(),
         'status': _wire(_status),
+        'notify': _notify,
       }),
     );
     if (!mounted) {
@@ -330,7 +417,7 @@ class _CreateBookingSheetState extends ConsumerState<_CreateBookingSheet> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SheetTitle('Новая запись', subtitle: 'Участнику уведомление не уходит.'),
+        const SheetTitle('Новая запись'),
         const GroupLabel('Участник'),
         DvorTextField(controller: _username, hint: 'username', prefixText: '@'),
         const GroupLabel('Событие'),
@@ -348,12 +435,45 @@ class _CreateBookingSheetState extends ConsumerState<_CreateBookingSheet> {
           selected: _status,
           onSelected: (v) => setState(() => _status = v),
         ),
-        const SizedBox(height: Space.xl),
+        const SizedBox(height: Space.m),
+        _NotifySwitch(value: _notify, onChanged: (v) => setState(() => _notify = v)),
+        const SizedBox(height: Space.l),
         PrimaryButton(
           label: 'Создать',
           loading: _busy,
           onTap: _key == null || _username.text.trim().isEmpty ? null : _create,
         ),
+      ],
+    );
+  }
+}
+
+/// Whether the bot tells the member about the change, like the chat's
+/// «уведомить клиента» step.
+class _NotifySwitch extends StatelessWidget {
+  const _NotifySwitch({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Уведомить участника', style: context.text.titleMedium),
+              Text(
+                'Бот напишет участнику в чат',
+                style: context.text.bodyMedium?.copyWith(color: c.inkMuted, fontSize: 12.5),
+              ),
+            ],
+          ),
+        ),
+        Switch.adaptive(value: value, onChanged: onChanged, activeTrackColor: c.accent),
       ],
     );
   }

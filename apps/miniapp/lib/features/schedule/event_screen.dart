@@ -181,7 +181,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
                     OptionTile(
                       icon: Icons.group_add_rounded,
                       title: booked == null ? 'Записать друзей' : 'Записать ещё друзей',
-                      subtitle: 'До 5 человек, одна оплата за всех',
+                      subtitle: 'До 5 друзей, одна оплата за всех',
                       onTap: () => showPartySheet(context, event, selfBooked: booked != null),
                     ),
                   ],

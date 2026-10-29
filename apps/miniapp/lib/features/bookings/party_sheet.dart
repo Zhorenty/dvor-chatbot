@@ -174,7 +174,7 @@ class _PartySheetState extends ConsumerState<_PartySheet> {
           ),
         const SizedBox(height: Space.s),
         Text(
-          'Гость — тот, у кого нет Telegram. Друга по @username бот сам узнает, когда он зайдёт.',
+          'Гость — тот, у кого нет Telegram.',
           style: context.text.bodyMedium?.copyWith(color: c.inkFaint, fontSize: 12.5),
         ),
         const SizedBox(height: Space.xl),

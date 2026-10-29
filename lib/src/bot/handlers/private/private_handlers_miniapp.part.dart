@@ -199,6 +199,8 @@ extension PrivateHandlersMiniApp on PrivateHandlers {
   Map<String, Object?> _miniAppEventJson(TrainingInfo training) {
     return <String, Object?>{
       'key': training.sessionKey,
+      // Club highlights the bot also pins to the chat menu (FeaturedTrainings).
+      'featured': FeaturedTrainings.events.any((f) => sameFeaturedSlot(training, f)),
       'category': training.category.name,
       'title': training.title,
       'startsAt': _miniAppInstant(training.startsAt),

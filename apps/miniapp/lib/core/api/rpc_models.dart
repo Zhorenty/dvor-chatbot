@@ -265,6 +265,8 @@ class AdminBooking {
     this.manager,
     this.paymentNote,
     this.promoCode,
+    this.contactUserId,
+    this.contactUsername,
   });
 
   factory AdminBooking.fromJson(Map<String, Object?> json) => AdminBooking(
@@ -273,6 +275,8 @@ class AdminBooking {
     manager: _str(json['manager']),
     paymentNote: _str(json['paymentNote']),
     promoCode: _str(json['promoCode']),
+    contactUserId: _int(json['contactUserId']),
+    contactUsername: _str(json['contactUsername']),
   );
 
   final Booking booking;
@@ -280,6 +284,8 @@ class AdminBooking {
   final String? manager;
   final String? paymentNote;
   final String? promoCode;
+  final int? contactUserId;
+  final String? contactUsername;
 }
 
 List<T> parseList<T>(Object? raw, T Function(Map<String, Object?>) parse) =>

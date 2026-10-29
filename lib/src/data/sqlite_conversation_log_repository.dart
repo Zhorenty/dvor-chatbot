@@ -232,6 +232,18 @@ final class SqliteConversationLogRepository implements ConversationLogRepository
   }
 
   @override
+  Future<String?> usernameForUserId(int userId) async {
+    final rows = _database.select(
+      'SELECT username FROM telegram_users WHERE user_id = ? LIMIT 1;',
+      <Object?>[userId],
+    );
+    if (rows.isEmpty) {
+      return null;
+    }
+    return normalizeTelegramUsername(rows.first['username'] as String?);
+  }
+
+  @override
   Future<int?> resolveUserIdByUsername(String username) async {
     final normalized = normalizeTelegramUsername(username);
     if (normalized == null) {

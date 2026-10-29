@@ -79,6 +79,15 @@ class _FakeRepository implements DvorRepository {
       price: 6000,
       prepayPercent: 50,
     ),
+    ClubEvent(
+      key: 'sons',
+      category: EventCategory.trainings,
+      title: 'Четыре сына',
+      startsAt: DateTime.utc(2026, 11, 7, 5, 30),
+      location: 'Набережная',
+      price: 0,
+      featured: true,
+    ),
   ];
 
   @override
@@ -194,11 +203,15 @@ void main() {
     expect(find.text('Осталось 2 места'), findsOneWidget);
     expect(find.text('ВЫЕЗДЫ'), findsOneWidget);
     expect(find.text('ПОХОД ВЫХОДНОГО ДНЯ'), findsOneWidget);
+    // The featured event sits on top, once, whatever the filter.
+    expect(find.text('ГЛАВНОЕ'), findsOneWidget);
+    expect(find.text('ЧЕТЫРЕ СЫНА'), findsOneWidget);
 
     await tester.tap(find.text('Походы'));
     await tester.pumpAndSettle();
     expect(find.text('БОКС'), findsNothing);
     expect(find.text('ПОХОД ВЫХОДНОГО ДНЯ'), findsOneWidget);
+    expect(find.text('ЧЕТЫРЕ СЫНА'), findsOneWidget);
   });
 
   testWidgets('booking opens the in-app payment and sends the receipt step', (tester) async {

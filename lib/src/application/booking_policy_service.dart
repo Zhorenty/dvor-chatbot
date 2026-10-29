@@ -1,5 +1,6 @@
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/loyalty_math.dart';
+import 'package:dvor_chatbot/src/config/paid_cancel_whitelist.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
@@ -95,6 +96,9 @@ final class BookingPolicyService {
     }
     final category = categoryForBooking(booking);
     if (isPeaksRefundTraining(booking)) {
+      if (isPaidCancelAnytime(booking.participantUsername ?? booking.userUsername)) {
+        return !booking.startsAt.isBefore(now);
+      }
       return booking.startsAt.difference(now) >= paidTrainingCancelLead;
     }
     // Free trainings (incl. bonus/promo) can be cancelled at any time.

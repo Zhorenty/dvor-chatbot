@@ -18,6 +18,7 @@ import (
 type Event struct {
 	Key             string     `json:"key"`
 	Category        string     `json:"category"`
+	Featured        bool       `json:"featured"`
 	Title           string     `json:"title"`
 	StartsAt        time.Time  `json:"startsAt"`
 	EndsAt          *time.Time `json:"endsAt,omitempty"`

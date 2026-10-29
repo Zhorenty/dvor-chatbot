@@ -15,7 +15,11 @@
 		header @entry Cache-Control "no-cache"
 		@parts path *.part.js
 		header @parts Cache-Control "no-cache"
-		@static path /canvaskit/* /assets/* /icons/*
+		# assets/ keeps fixed names while the icon font is re-subset on every build:
+		# revalidate it (ETag) or phones keep an old font with missing icons.
+		@assets path /assets/*
+		header @assets Cache-Control "no-cache"
+		@static path /canvaskit/* /icons/*
 		header @static Cache-Control "public, max-age=604800"
 	}
 

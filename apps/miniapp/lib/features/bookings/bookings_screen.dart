@@ -279,8 +279,7 @@ class _BookingTicketState extends ConsumerState<BookingTicket> {
         !past &&
         b.category == EventCategory.trainings &&
         b.participant == null &&
-        b.status.isActive &&
-        !b.status.needsPayment;
+        b.status.isActive;
     final actions = <Widget>[
       if (!past && b.status.needsPayment)
         _Action(label: 'Оплатить', color: c.accent, onTap: () => showPaymentSheet(context, b.id)),

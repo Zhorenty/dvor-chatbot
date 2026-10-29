@@ -29,6 +29,7 @@ final class PrivateHandlersHarness {
     bool onboardingDripEnabled = false,
     ScheduleCatalogService? scheduleCatalogService,
   })  : sender = FakeSender(),
+        conversationLog = FakeConversationLogRepository(),
         scheduleRepository = FakeScheduleRepository(
           trainings,
           outdoorItems: outdoorActivities,
@@ -49,6 +50,7 @@ final class PrivateHandlersHarness {
       bookingRepository: booking,
       subscriptionRepository: subscriptionRepository,
       onboardingRepository: onboarding,
+      conversationLogRepository: conversationLog,
       trainerDirectoryRepository: trainerDirectoryRepository,
       dvorTeamRepository: this.dvorTeamRepository,
       templates: _templates,
@@ -62,6 +64,7 @@ final class PrivateHandlersHarness {
   }
 
   final FakeSender sender;
+  final FakeConversationLogRepository conversationLog;
   final FakeScheduleRepository scheduleRepository;
   final FakeBookingRepository booking;
   final FakeOnboardingRepository onboarding;

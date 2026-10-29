@@ -59,6 +59,7 @@ class ClubEvent {
     this.description,
     this.equipment,
     this.itinerary,
+    this.featured = false,
   });
 
   factory ClubEvent.fromJson(Map<String, Object?> json) => ClubEvent(
@@ -96,6 +97,9 @@ class ClubEvent {
   final String? description;
   final String? equipment;
   final String? itinerary;
+
+  /// Club highlight, shown first on the main screen.
+  final bool featured;
 
   bool get isFree => price != null && price! <= 0;
 
@@ -365,6 +369,7 @@ class AdminPayment {
     required this.location,
     required this.organizer,
     this.organizerId,
+    this.organizerUsername,
     this.price,
     this.prepayPercent,
     this.total = 0,
@@ -385,6 +390,7 @@ class AdminPayment {
       location: (json['location'] as String?)?.trim() ?? '',
       organizer: _str(organizer['name']) ?? '',
       organizerId: _int(organizer['userId']),
+      organizerUsername: _str(organizer['username']),
       price: _int(json['price']),
       prepayPercent: _int(json['prepayPercent']),
       total: _int(json['total']) ?? 0,
@@ -405,6 +411,7 @@ class AdminPayment {
   final String location;
   final String organizer;
   final int? organizerId;
+  final String? organizerUsername;
   final int? price;
   final int? prepayPercent;
   final int total;

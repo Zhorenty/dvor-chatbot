@@ -58,6 +58,23 @@ void main() {
     );
   });
 
+  test('whitelisted members cancel paid trainings until the start', () {
+    final startsAt = DateTime.utc(2026, 10, 8, 18);
+    TrainingBooking paid(String username) => fakeBooking(
+          id: 8,
+          userUsername: username,
+          trainingKey: 'trainings|box',
+          status: BookingStatus.paid,
+          trainingPrice: 600,
+          startsAt: startsAt,
+        );
+    final twoHoursBefore = startsAt.subtract(const Duration(hours: 2));
+    expect(policy.canCancel(paid('@Zhorenty'), now: twoHoursBefore), isTrue);
+    expect(
+        policy.canCancel(paid('zhorenty'), now: startsAt.add(const Duration(minutes: 1))), isFalse);
+    expect(policy.canCancel(paid('@someone'), now: twoHoursBefore), isFalse);
+  });
+
   test('free, boxing card and outdoor cancel rules stay in place', () {
     final startsAt = DateTime.utc(2026, 10, 8, 18);
     final free = fakeBooking(

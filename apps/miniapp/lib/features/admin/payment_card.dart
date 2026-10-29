@@ -5,6 +5,7 @@ import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
 import 'package:dvor_miniapp/features/admin/admin_confirm.dart';
+import 'package:dvor_miniapp/features/admin/admin_contact.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -97,7 +98,6 @@ class _PaymentCardState extends ConsumerState<PaymentCard> {
     final approve = p.partial ? PaymentDecision.approvePartial : PaymentDecision.approve;
     final busy = _busy != null;
     final rows = <(String, String)>[
-      ('Плательщик', p.organizer),
       if (p.participants.isNotEmpty) ('Участники', p.participants.join(', ')),
       if (p.partial)
         ('Тип', p.prepayPercent == null ? 'Предоплата' : 'Предоплата ${p.prepayPercent}%'),
@@ -126,6 +126,41 @@ class _PaymentCardState extends ConsumerState<PaymentCard> {
           const SizedBox(height: 4),
           Text(p.location, style: context.text.bodyMedium?.copyWith(color: c.inkMuted)),
           const SizedBox(height: Space.m),
+          Row(
+            children: [
+              SizedBox(
+                width: 104,
+                child: Text(
+                  'Плательщик',
+                  style: context.text.bodyMedium?.copyWith(color: c.inkFaint, fontSize: 13),
+                ),
+              ),
+              Expanded(
+                child: Pressable(
+                  onTap: () => openMemberProfile(
+                    context,
+                    ref,
+                    userId: p.organizerId,
+                    username: p.organizerUsername,
+                    about: 'Оплата #${p.id} · ${p.title}',
+                  ),
+                  semanticLabel: 'Открыть профиль плательщика',
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          p.organizerUsername != null ? '@${p.organizerUsername}' : 'Без username',
+                          style: context.text.labelLarge?.copyWith(color: c.accent, fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(Icons.open_in_new_rounded, size: 14, color: c.accent),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
           for (final (label, value) in rows)
             Padding(
               padding: const EdgeInsets.only(top: Space.xs),

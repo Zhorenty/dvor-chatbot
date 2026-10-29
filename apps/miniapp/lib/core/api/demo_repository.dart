@@ -17,6 +17,18 @@ class DemoRepository implements DvorRepository {
 
   late final List<ClubEvent> _events = <ClubEvent>[
     ClubEvent(
+      key: 'demo-featured',
+      category: EventCategory.trainings,
+      title: '🏃 Демо-забег с партнёром',
+      startsAt: _at(3, 8, 30),
+      location: 'Демо-площадка',
+      price: 0,
+      limit: 30,
+      taken: 12,
+      coach: 'Демо-тренер',
+      featured: true,
+    ),
+    ClubEvent(
       key: 'demo-run',
       category: EventCategory.trainings,
       title: 'Утренний забег',

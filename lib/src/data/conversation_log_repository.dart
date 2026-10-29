@@ -33,6 +33,9 @@ abstract interface class ConversationLogRepository {
   Future<List<ConversationLogEntry>> listOutboundWithTelegramId({int limit = 5000});
 
   Future<int?> resolveUserIdByUsername(String username);
+
+  /// Last known @username (without @) for a Telegram user id.
+  Future<String?> usernameForUserId(int userId);
 }
 
 final class NoopConversationLogRepository implements ConversationLogRepository {
@@ -84,4 +87,7 @@ final class NoopConversationLogRepository implements ConversationLogRepository {
 
   @override
   Future<int?> resolveUserIdByUsername(String username) async => null;
+
+  @override
+  Future<String?> usernameForUserId(int userId) async => null;
 }
