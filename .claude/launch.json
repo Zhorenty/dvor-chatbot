@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "miniapp-demo",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--directory",
+        "/private/tmp/claude-502/-Users-voloshin-georgiy3-Developer-PET-dvor-chatbot/c149df00-34d5-438f-9080-4f7edb720f49/scratchpad/demo"
+      ],
+      "port": 8765
+    }
+  ]
+}

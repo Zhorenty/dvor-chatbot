@@ -580,23 +580,40 @@ def clean_spaces(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
+def coach_named_in_title(title: str, coach: str | None) -> bool:
+    """Coach goes on the poster only when the sheet title itself names them."""
+    if not coach:
+        return False
+    raw = clean_spaces(strip_emoji(title)).casefold()
+    coach_cf = clean_spaces(coach).casefold()
+    if coach_cf in raw:
+        return True
+    stems = []
+    for part in coach_cf.split():
+        stem = re.sub(r"[аеёиоуыэюяь]+$", "", part)
+        if len(stem) >= 4:
+            stems.append(stem)
+    return bool(stems) and all(stem in raw for stem in stems)
+
+
 def poster_title(title: str, coach: str | None) -> str:
     raw = clean_spaces(strip_emoji(title))
     raw = clean_spaces(re.sub(r"\s*\([^)]*@[^)]*\)", "", raw))
-    if coach:
-        raw = re.sub(r"\s+[cс]\s+.+$", "", raw, flags=re.IGNORECASE)
+    if coach_named_in_title(title, coach):
+        raw = clean_spaces(re.sub(r"\s+[cс]\s+.+$", "", raw, flags=re.IGNORECASE))
     return raw.upper()
 
 
 def poster_location(location: str) -> str:
     raw = clean_spaces(strip_emoji(location))
     lowered = raw.casefold()
-    if "кубан" in lowered:
-        return "СТАДИОН «КУБАНЬ»"
-    if "варг" in lowered:
-        return "БОЙЦОВСКИЙ КЛУБ «ВАРГ»"
     if "surf" in lowered:
         return "SURF COFFEE X RIVERSIDE"
+    if "варг" in lowered:
+        return "БОЙЦОВСКИЙ КЛУБ «ВАРГ»"
+    # «Кубанская набережная» is a street, not the stadium.
+    if re.search(r"кубан(?!ск)", lowered):
+        return "СТАДИОН «КУБАНЬ»"
     raw = re.sub(r"\s*\([^)]*\)\s*", " ", raw)
     return clean_spaces(raw).upper()
 
@@ -751,7 +768,7 @@ def titled(slot: Slot) -> str:
     name = poster_title(slot.title, slot.coach)
     if slot.is_super:
         return f"«{name}»"
-    if slot.coach:
+    if slot.coach and coach_named_in_title(slot.title, slot.coach):
         return f"{name} ({slot.coach.upper()})"
     return name
 
@@ -802,9 +819,11 @@ def schedule_background(path: Path) -> Image.Image:
 
 
 def schedule_luminance(path: Path) -> float:
+    """Brightness behind the regular slots. The dark camp card must not pull this down."""
     im = schedule_background(path).convert("L")
     top, bottom = schedule_column_bounds()
-    return ImageStat.Stat(im.crop((0, top, W, bottom))).mean[0]
+    text_bottom = top + int((bottom - top) * 0.62)
+    return ImageStat.Stat(im.crop((MARGIN, top, W - MARGIN, text_bottom))).mean[0]
 
 
 def pick_backgrounds(week_label: str) -> tuple[Background, Background]:

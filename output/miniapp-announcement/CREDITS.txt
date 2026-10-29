@@ -1,0 +1,9 @@
+Фоны:
+cover: Fitsum Admasu, бег, силуэты — https://unsplash.com/photos/oGv9xIl7DkY
+how: court.jpg — архив DVOR
+inside: Unsplash, горный хребет — https://unsplash.com/photos/y2azHvupCVo
+booking: boxing.jpg — архив DVOR
+bot: Unsplash, силовая — https://unsplash.com/photos/gJtDg6WfMlQ
+
+Скриншоты — прод Mini App, тестовый пользователь без записей.
+Акцент: #ADB838
