@@ -255,8 +255,7 @@ class FeaturedCard extends StatelessWidget {
               children: [
                 Pill(label: 'ГЛАВНОЕ', color: c.accent, filled: true, dense: true),
                 const Spacer(),
-                if (title.emoji case final emoji?)
-                  Text(emoji, style: const TextStyle(fontSize: 22)),
+                if (title.emoji case final emoji?) Text(emoji, style: emojiStyle(22)),
               ],
             ),
             const SizedBox(height: Space.l),

@@ -69,10 +69,14 @@ class _EventScreenState extends ConsumerState<EventScreen> {
     final tone = categoryColor(context, event.category);
     final inset = ref.watch(safeAreaProvider);
     final tg = ref.watch(telegramProvider);
+    final now = ref.watch(clockProvider)();
+    final bookable = event.openForBooking(now);
 
     final MainButtonState? buttonState;
     if (booked != null) {
       buttonState = booked.status.needsPayment ? const MainButtonState(text: 'Оплатить') : null;
+    } else if (!bookable) {
+      buttonState = const MainButtonState(text: 'Уже началось', enabled: false);
     } else if (event.isFull) {
       buttonState = const MainButtonState(text: 'Мест нет', enabled: false);
     } else {
@@ -85,7 +89,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
     void onMain() {
       if (booked != null) {
         showPaymentSheet(context, booked.id);
-      } else {
+      } else if (bookable) {
         _book(event);
       }
     }
@@ -176,7 +180,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
                 children: [
                   const SizedBox(height: Space.l),
                   _FactsCard(event: event),
-                  if (!event.isFull) ...[
+                  if (bookable && !event.isFull) ...[
                     const SizedBox(height: Space.m),
                     OptionTile(
                       icon: Icons.group_add_rounded,

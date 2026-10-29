@@ -31,6 +31,27 @@ final bookingsProvider = FutureProvider<List<Booking>>((ref) {
   return ref.watch(repositoryProvider).bookings();
 });
 
+/// Unpaid bookings the member has already opened on the «Записи» tab.
+class SeenBookingNotices extends Notifier<Set<int>> {
+  @override
+  Set<int> build() => <int>{};
+
+  void mark(Iterable<int> ids) {
+    if (ids.isEmpty) {
+      return;
+    }
+    final next = {...state, ...ids};
+    if (next.length == state.length) {
+      return;
+    }
+    state = next;
+  }
+}
+
+final seenBookingNoticesProvider = NotifierProvider<SeenBookingNotices, Set<int>>(
+  SeenBookingNotices.new,
+);
+
 /// Active bookings by event key, for "ты записан" badges.
 final bookedKeysProvider = Provider<Map<String, Booking>>((ref) {
   final bookings = ref.watch(bookingsProvider).value ?? const <Booking>[];

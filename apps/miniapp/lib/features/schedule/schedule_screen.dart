@@ -65,16 +65,14 @@ class ScheduleScreen extends ConsumerWidget {
     final now = ref.watch(clockProvider)();
 
     // Featured events live in their own block above, not in the day lists.
-    final visible = all
-        .where((e) => !e.featured && (filter == null || e.category == filter))
-        .toList();
+    final visible = all.where((e) => _onSchedule(e, now, filter)).toList();
     final outdoor = visible.where((e) => e.category.isOutdoor).toList();
     final trainings = visible.where((e) => !e.category.isOutdoor).toList();
 
     void open(ClubEvent e) => context.push('/event', extra: e);
 
     if (visible.isEmpty) {
-      if (filter == null && all.any((e) => e.featured)) {
+      if (filter == null && all.any((e) => e.isPinned && e.openForBooking(now))) {
         return const [];
       }
       final filtered = filter != null;
@@ -155,6 +153,13 @@ class ScheduleScreen extends ConsumerWidget {
     ];
   }
 
+  static bool _onSchedule(ClubEvent event, DateTime now, EventCategory? filter) {
+    if (event.isPinned || !event.openForBooking(now)) {
+      return false;
+    }
+    return filter == null || event.category == filter;
+  }
+
   static String _dayLabel(DateTime day, DateTime now) {
     final title = Fmt.dayTitle(day, now);
     final date = Fmt.dayMonth(day.subtract(ClubTime.offset));
@@ -211,9 +216,12 @@ class _Featured extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final featured = (ref.watch(eventsProvider).value ?? const <ClubEvent>[])
-        .where((e) => e.featured)
-        .toList();
+    final now = ref.watch(clockProvider)();
+    final featured =
+        (ref.watch(eventsProvider).value ?? const <ClubEvent>[])
+            .where((e) => e.isPinned && e.openForBooking(now))
+            .toList()
+          ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
     if (featured.isEmpty) {
       return const SizedBox.shrink();
     }

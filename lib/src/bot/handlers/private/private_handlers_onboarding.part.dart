@@ -219,7 +219,6 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     required int chatId,
     required int userId,
   }) async {
-    final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
     final state = await _onboardingRepository.getOnboardingState(userId);
     final outdoor = state?.selectedTrack == OnboardingTrack.outdoor;
     final citySlots = outdoor ? const <TrainingInfo>[] : _catalogService.cityFormatHighlights();
@@ -231,10 +230,7 @@ extension PrivateHandlersOnboardingOps on PrivateHandlers {
     await _sendOnboardingMediaIfAny(chatId: chatId, slot: OnboardingMediaSlot.cameAlone);
     await _sendScreen(
       chatId,
-      _templates.onboardingClubMap(
-        starterBonusAvailable: starterBonusAvailable,
-        citySlots: citySlots,
-      ),
+      _templates.onboardingClubMap(citySlots: citySlots),
       replyMarkup: _templates.onboardingMapCtaKeyboard(outdoorTrack: outdoor),
     );
   }

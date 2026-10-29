@@ -275,11 +275,7 @@ class _BookingTicketState extends ConsumerState<BookingTicket> {
         '${Fmt.money((b.price! * b.prepayPercent! / 100).round())} внесено · остаток на месте',
     ].where((s) => s.isNotEmpty).join(' · ');
 
-    final canMove =
-        !past &&
-        b.category == EventCategory.trainings &&
-        b.participant == null &&
-        b.status.isActive;
+    final canMove = !past && b.participant == null && b.canReschedule;
     final actions = <Widget>[
       if (!past && b.status.needsPayment)
         _Action(label: 'Оплатить', color: c.accent, onTap: () => showPaymentSheet(context, b.id)),

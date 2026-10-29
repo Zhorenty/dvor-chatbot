@@ -384,7 +384,9 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
         _miniAppText(_templates.boxingCardRescheduleTooLate()) ?? 'Перенести уже нельзя.',
       );
     }
-    var trainings = _bookableItemsByCategory(_catalogService.categoryForBooking(booking));
+    var trainings = _bookableItemsByCategory(_catalogService.categoryForBooking(booking))
+        .where((item) => _bookingPolicyService.allowsRescheduleOnto(booking: booking, target: item))
+        .toList();
     if (boxingCard) {
       trainings = trainings.where(BoxingCardLedger.isAllowedRescheduleTarget).toList();
     }
@@ -880,6 +882,16 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
 
   // ---------- admin: bookings ----------
 
+  /// @username without the @, original letter case kept.
+  String? _usernameKeepingCase(String? username) {
+    final trimmed = username?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    final raw = trimmed.startsWith('@') ? trimmed.substring(1).trim() : trimmed;
+    return raw.isEmpty ? null : raw;
+  }
+
   /// Telegram user a booking belongs to (null for guests without Telegram)
   /// and their @username, looked up when the booking row has none.
   Future<({int? userId, String? username})> _bookingPerson(TrainingBooking booking) async {
@@ -887,7 +899,7 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
       return (userId: null, username: null);
     }
     final userId = booking.participantUserId ?? booking.userId;
-    var username = normalizeTelegramUsername(
+    var username = _usernameKeepingCase(
       booking.participantType == BookingParticipantType.telegram
           ? booking.participantUsername
           : booking.userUsername,
@@ -908,7 +920,7 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
     return <String, Object?>{
       ..._miniAppBookingJson(booking),
       'userId': booking.userId,
-      'manager': booking.userUsername,
+      'manager': _usernameKeepingCase(booking.userUsername),
       'participant': label,
       'contactUserId': person.userId,
       'contactUsername': person.username,

@@ -141,8 +141,7 @@ class AdminBookingsScreen extends ConsumerWidget {
   }
 }
 
-/// One block per event (title, date, time, headcount), people inside —
-/// the chat's «Список записавшихся», split by session.
+/// One closed row per event. The people list opens on tap.
 List<Widget> _grouped(BuildContext context, List<AdminBooking> all, bool archived) {
   final groups = <String, List<AdminBooking>>{};
   for (final item in all) {
@@ -153,63 +152,101 @@ List<Widget> _grouped(BuildContext context, List<AdminBooking> all, bool archive
       final byTime = groups[a]!.first.booking.startsAt.compareTo(groups[b]!.first.booking.startsAt);
       return archived ? -byTime : byTime;
     });
-  final c = context.colors;
   return [
-    for (final key in keys) ...[
-      SliverToBoxAdapter(
-        child: Builder(
-          builder: (context) {
-            final items = groups[key]!;
-            final b = items.first.booking;
-            final active = items.where((i) => i.booking.status.isActive).length;
-            final title = splitTitleEmoji(b.title);
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(Space.gutter, Space.l, Space.gutter, Space.s),
-              child: Row(
-                children: [
-                  EventGlyph(emoji: title.emoji, category: b.category, size: 34),
-                  const SizedBox(width: Space.m),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title.text.toUpperCase(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.text.titleMedium,
-                        ),
-                        Text(
-                          b.category.isOutdoor
-                              ? Fmt.dayMonth(b.startsAt)
-                              : '${Fmt.weekdayShort(ClubTime.dayOf(b.startsAt))}, ${Fmt.dayMonth(b.startsAt)} · ${Fmt.time(b.startsAt)}',
-                          style: context.text.labelMedium?.copyWith(color: c.inkMuted),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Pill(
-                    label: '$active',
-                    icon: Icons.person_outline_rounded,
-                    color: c.accent,
-                    dense: true,
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
+    SliverPadding(
+      padding: const EdgeInsets.fromLTRB(Space.gutter, Space.s, Space.gutter, 0),
+      sliver: SliverList.separated(
+        itemCount: keys.length,
+        separatorBuilder: (_, _) => const SizedBox(height: Space.s),
+        itemBuilder: (_, i) => _BookingGroup(items: groups[keys[i]]!, archived: archived),
       ),
-      SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-        sliver: SliverList.separated(
-          itemCount: groups[key]!.length,
-          separatorBuilder: (_, _) => const SizedBox(height: Space.xs),
-          itemBuilder: (_, i) => _AdminBookingTile(item: groups[key]![i], archived: archived),
-        ),
-      ),
-    ],
+    ),
   ];
+}
+
+class _BookingGroup extends StatefulWidget {
+  const _BookingGroup({required this.items, required this.archived});
+
+  final List<AdminBooking> items;
+  final bool archived;
+
+  @override
+  State<_BookingGroup> createState() => _BookingGroupState();
+}
+
+class _BookingGroupState extends State<_BookingGroup> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = widget.items;
+    final b = items.first.booking;
+    final active = items.where((i) => i.booking.status.isActive).length;
+    final title = splitTitleEmoji(b.title);
+    final c = context.colors;
+    final when = b.category.isOutdoor
+        ? Fmt.dayMonth(b.startsAt)
+        : '${Fmt.weekdayShort(ClubTime.dayOf(b.startsAt))}, ${Fmt.dayMonth(b.startsAt)} · ${Fmt.time(b.startsAt)}';
+    return Column(
+      children: [
+        Pressable(
+          onTap: () => setState(() => _open = !_open),
+          semanticLabel: _open ? 'Свернуть ${title.text}' : 'Развернуть ${title.text}',
+          scale: 0.99,
+          child: DvorCard(
+            radius: Radii.tile,
+            padding: const EdgeInsets.all(Space.m),
+            child: Row(
+              children: [
+                EventGlyph(emoji: title.emoji, category: b.category, size: 34),
+                const SizedBox(width: Space.m),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title.text.toUpperCase(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.text.titleMedium,
+                      ),
+                      Text(when, style: context.text.labelMedium?.copyWith(color: c.inkMuted)),
+                    ],
+                  ),
+                ),
+                Pill(
+                  label: '$active',
+                  icon: Icons.person_outline_rounded,
+                  color: c.accent,
+                  dense: true,
+                ),
+                Icon(
+                  _open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                  color: c.inkFaint,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_open) ...[
+          const SizedBox(height: Space.xs),
+          for (var i = 0; i < items.length; i++) ...[
+            if (i > 0) const SizedBox(height: Space.xs),
+            _AdminBookingTile(item: items[i], archived: widget.archived),
+          ],
+        ],
+      ],
+    );
+  }
+}
+
+/// Another person booked this seat. Letter case in the nick does not count.
+bool _bookedByOther(AdminBooking item) {
+  final manager = item.manager;
+  if (manager == null) {
+    return false;
+  }
+  return !sameTelegramNick(manager, item.participant);
 }
 
 Color _statusColor(BuildContext context, BookingStatus status) {
@@ -244,7 +281,7 @@ class _AdminBookingTile extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(item.participant, style: context.text.titleMedium),
-                  if (item.manager != null && '@${item.manager}' != item.participant)
+                  if (_bookedByOther(item))
                     Text(
                       'записал @${item.manager}',
                       maxLines: 1,
@@ -303,8 +340,7 @@ class _BookingActionsSheetState extends ConsumerState<_BookingActionsSheet> {
             splitTitleEmoji(b.title).text,
             '${Fmt.dayMonth(b.startsAt)}, ${Fmt.time(b.startsAt)}',
             if (b.price != null) Fmt.price(b.price),
-            if (item.manager != null && '@${item.manager}' != item.participant)
-              'записал @${item.manager}',
+            if (_bookedByOther(item)) 'записал @${item.manager}',
             if (item.promoCode != null) 'промокод ${item.promoCode}',
           ].join(' · '),
         ),

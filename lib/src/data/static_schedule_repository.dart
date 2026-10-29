@@ -17,7 +17,7 @@ final class StaticScheduleRepository implements TrainingScheduleRepository {
   @override
   List<OutdoorActivityInfo> upcomingOutdoorActivities({DateTime? now, int limit = 8}) {
     final current = now ?? DateTime.now();
-    final upcomingItems = _outdoorItems.where((item) => !item.dateTo.isBefore(current)).toList()
+    final upcomingItems = _outdoorItems.where((item) => item.dateFrom.isAfter(current)).toList()
       ..sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
     return upcomingItems.take(limit).toList(growable: false);
   }

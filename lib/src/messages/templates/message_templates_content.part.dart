@@ -820,15 +820,13 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
-  String loyaltyStartCredited({required bool starterBonusAvailable}) {
+  String loyaltyStartCredited() {
     return RichHtml.screen(
       title: 'Вершинки',
       lead: '+1000 ⛰️ за первый старт бота.',
       paragraphs: <String>[
         'Живут 45 дней, срок обновляется от записи, оплаты, отзыва и /start.',
-        if (starterBonusAvailable)
-          'Стартовая бесплатная тренировка по-прежнему отдельно — '
-              'её можно взять кнопкой «${MessageCopy.buttonUseStarterBonus}».',
+        'Тренировку они закрывают целиком, если баланса хватает на слот.',
       ],
     );
   }
@@ -1090,7 +1088,6 @@ extension MessageTemplatesContent on MessageTemplates {
     DateTime? loyaltyExpiresAt,
     required List<LoyaltyLedgerEntry> loyaltyRecent,
     required int successfulReferralsCount,
-    required bool starterBonusAvailable,
     required MembershipLevel membershipLevel,
     BoxingCardPlan? subscriptionPlan,
     DateTime? subscriptionActiveUntil,
@@ -1101,7 +1098,6 @@ extension MessageTemplatesContent on MessageTemplates {
     DateTime? subscriptionCurrentPeriodStart,
     DateTime? now,
   }) {
-    final starterHint = starterBonusAvailable ? 'доступна' : 'нет';
     final untilLabel = subscriptionActiveUntil == null
         ? null
         : DateFormat('dd.MM.yyyy').format(subscriptionActiveUntil.toLocal());
@@ -1128,7 +1124,6 @@ extension MessageTemplatesContent on MessageTemplates {
       title: 'Профиль DVOR',
       rows: <(String, String)>[
         ('Вершинки', '$loyaltyRemaining · 2 ⛰️ = 1 ₽ · $expiresLabel'),
-        ('Стартовая', starterHint),
         ('Бокс-карта', '$subscriptionHint$remainingGroupText$individualText$requestStatusText'),
         (
           'Записи',
@@ -1938,6 +1933,12 @@ extension MessageTemplatesContent on MessageTemplates {
   String bookingRescheduleNotAvailable(TrainingBooking? booking) {
     if (booking == null) {
       return 'Не нашел запись для переноса. Выбери запись заново.';
+    }
+    final price = booking.trainingPrice;
+    final free = booking.status == BookingStatus.freeTraining || (price != null && price <= 0);
+    if (free) {
+      return 'Бесплатную тренировку перенести нельзя.\n'
+          'Запись #${booking.id} можно только отменить.';
     }
     return 'Перенос доступен только для тренировок.\n'
         'Для записи #${booking.id} используй другие действия.';

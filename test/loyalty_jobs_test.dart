@@ -337,7 +337,7 @@ void main() {
     );
     expect(
       LoyaltyCreditDm.matches(
-        templates.loyaltyStartCredited(starterBonusAvailable: false),
+        templates.loyaltyStartCredited(),
       ),
       isTrue,
     );

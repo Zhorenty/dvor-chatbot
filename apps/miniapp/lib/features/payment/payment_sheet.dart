@@ -12,8 +12,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Pay for one booking without leaving the app: SBP link, receipt photo,
-/// starter bonus, peaks and promo code. Each action runs through the bot,
-/// so admins get the usual notices and the chat keeps a copy.
+/// peaks and promo code. Each action runs through the bot, so admins get
+/// the usual notices and the chat keeps a copy.
 Future<void> showPaymentSheet(BuildContext context, int bookingId) {
   return showDvorSheet<void>(context, (_) => _PaymentSheet(bookingId: bookingId));
 }
@@ -137,17 +137,7 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             onSelected: (v) => setState(() => _choice = v),
           ),
         ],
-        if (o.starterBonus || o.peaksAvailable || o.promo) const GroupLabel('Скидки'),
-        if (o.starterBonus) ...[
-          OptionTile(
-            icon: Icons.card_giftcard_rounded,
-            title: 'Стартовая тренировка',
-            subtitle: 'Первая — бесплатно',
-            busy: _busy == 'bonus',
-            onTap: () => _act('bonus', 'payment.bonus'),
-          ),
-          const SizedBox(height: Space.s),
-        ],
+        if (o.peaksAvailable || o.promo) const GroupLabel('Скидки'),
         if (o.peaksAvailable) ...[
           OptionTile(
             icon: Icons.landscape_rounded,

@@ -243,11 +243,11 @@ void main() {
     });
 
     test('club map is a booking CTA and optional group door', () {
-      final text = templates.onboardingClubMap(starterBonusAvailable: true);
+      final text = templates.onboardingClubMap();
       expect(text, contains('слот'));
       expect(text, contains('Можно зайти и ничего не писать'));
       expect(text, contains('приходи один'));
-      expect(text, contains('бесплатная тренировка'));
+      expect(text, isNot(contains('бесплатная тренировка')));
       expect(text, isNot(contains('успей')));
       expect(text, isNot(contains('движ')));
       expect(text, isNot(contains('знаком')));
@@ -298,7 +298,6 @@ void main() {
 
     test('onboarding map can list city slots from the sheet', () {
       final text = templates.onboardingClubMap(
-        starterBonusAvailable: false,
         citySlots: <TrainingInfo>[
           TrainingInfo(
             title: 'Утренняя силовая',
@@ -354,7 +353,6 @@ void main() {
           ),
         ],
         successfulReferralsCount: 0,
-        starterBonusAvailable: true,
         membershipLevel: MembershipLevel.normal,
         subscriptionTotalApprovedCount: 0,
       );
@@ -368,8 +366,7 @@ void main() {
       expect(text, contains('только целиком'));
       expect(text, contains('На бокс-карту вершинки не списываются'));
       expect(text, contains('скидка до 30%'));
-      expect(text, contains('Стартовая'));
-      expect(text, contains('доступна'));
+      expect(text, isNot(contains('Стартовая')));
       expect(text, isNot(contains('каждая 5-я')));
       expect(text, isNot(contains('баллы')));
     });

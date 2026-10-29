@@ -701,6 +701,22 @@ void main() {
       expect(row['participant'], '@runner');
       expect(row['contactUserId'], 77);
 
+      repository.adminBookings = [
+        fakeBooking(
+          id: 4,
+          userId: 77,
+          userUsername: 'Runner',
+          trainingKey: training.sessionKey,
+          status: BookingStatus.paid,
+        ),
+      ];
+      final kept = await harness.handlers.miniAppRpc('admin.bookings.list', admin, const {
+        'category': 'trainings',
+      });
+      final keptRow = (kept['bookings']! as List<Object?>).single! as Map<String, Object?>;
+      expect(keptRow['participant'], '@Runner');
+      expect(keptRow['manager'], 'Runner');
+
       final contact = await harness.handlers.miniAppRpc('admin.contact', admin, const {
         'userId': 77,
       });

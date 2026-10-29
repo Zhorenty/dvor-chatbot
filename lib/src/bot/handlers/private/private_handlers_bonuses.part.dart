@@ -31,8 +31,9 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     }
   }
 
-  Future<bool> _hasAnyFreeTrainingBonusAvailable(int userId) {
-    return _onboardingRepository.hasStarterBonusAvailable(userId);
+  Future<bool> _hasAnyFreeTrainingBonusAvailable(int userId) async {
+    // The one-off free starter training is retired. First visits are paid with peaks.
+    return userId < 0;
   }
 
   Future<bool> _hasBoxingCardIncludedTrainingAvailable({
@@ -162,8 +163,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
   }
 
   Future<_FreeTrainingBonusType?> _resolveFreeTrainingBonusType(int userId) async {
-    final starterAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
-    if (starterAvailable) {
+    if (userId < 0) {
       return _FreeTrainingBonusType.starter;
     }
     return null;
@@ -469,7 +469,6 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
   Future<void> _handleStartLoyalty({
     required int userId,
     required int chatId,
-    required bool starterBonusAvailable,
   }) async {
     final now = _nowProvider();
     final credited = await _loyaltyService.credit(
@@ -485,7 +484,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     }
     await _sendScreen(
       chatId,
-      _templates.loyaltyStartCredited(starterBonusAvailable: starterBonusAvailable),
+      _templates.loyaltyStartCredited(),
     );
   }
 

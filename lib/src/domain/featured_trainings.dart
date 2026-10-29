@@ -65,11 +65,21 @@ List<TrainingInfo> mergeFeaturedTrainings(List<TrainingInfo> items, DateTime now
 }
 
 bool sameFeaturedSlot(TrainingInfo left, TrainingInfo right) {
-  final sameTitle = left.title.trim().toLowerCase() == right.title.trim().toLowerCase();
-  if (!sameTitle) {
+  if (!_featuredTitlesMatch(left.title, right.title)) {
     return false;
   }
   final a = left.startsAt;
   final b = right.startsAt;
   return a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+/// Sheet rows sometimes add an emoji or a different dash. «Четыре сына» still
+/// counts as the same headline event.
+bool _featuredTitlesMatch(String left, String right) {
+  final a = left.trim().toLowerCase();
+  final b = right.trim().toLowerCase();
+  if (a == b) {
+    return true;
+  }
+  return a.contains('четыре сына') && b.contains('четыре сына');
 }

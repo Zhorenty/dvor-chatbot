@@ -254,6 +254,15 @@ BoxDecoration coverDecoration(BuildContext context, Color tone, {double radius =
   );
 }
 
+/// Emoji must not inherit Montserrat: the subset has no emoji glyphs, and
+/// on web that leaves a blank tile.
+TextStyle emojiStyle(double fontSize) => TextStyle(
+  inherit: false,
+  fontSize: fontSize,
+  height: 1,
+  fontFamilyFallback: const ['Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji'],
+);
+
 /// Emoji from the sheet title, or the category icon.
 class EventGlyph extends StatelessWidget {
   const EventGlyph({super.key, required this.emoji, required this.category, this.size = 40});
@@ -274,7 +283,7 @@ class EventGlyph extends StatelessWidget {
         borderRadius: BorderRadius.circular(size * 0.3),
       ),
       child: emoji != null
-          ? Text(emoji!, style: TextStyle(fontSize: size * 0.46, height: 1))
+          ? Text(emoji!, style: emojiStyle(size * 0.46))
           : Icon(categoryIcon(category), size: size * 0.5, color: categoryColor(context, category)),
     );
   }

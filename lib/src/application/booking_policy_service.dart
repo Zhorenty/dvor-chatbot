@@ -61,8 +61,24 @@ final class BookingPolicyService {
   }
 
   bool canReschedule(TrainingBooking booking) {
-    final category = categoryForBooking(booking);
-    return category == ActivityCategory.trainings;
+    if (categoryForBooking(booking) != ActivityCategory.trainings) {
+      return false;
+    }
+    // A free slot can only be cancelled. There is no same-price slot to move it to.
+    return !_isFreeBooking(booking);
+  }
+
+  /// Same price, and free stays off the list. The current slot may still match.
+  bool allowsRescheduleOnto({
+    required TrainingBooking booking,
+    required TrainingInfo target,
+  }) {
+    try {
+      ensureReschedulePaymentTypeAllowed(booking: booking, targetTraining: target);
+      return true;
+    } on ReschedulePaymentTypeViolationException {
+      return false;
+    }
   }
 
   void ensureReschedulePaymentTypeAllowed({

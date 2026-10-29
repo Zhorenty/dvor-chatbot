@@ -34,7 +34,6 @@ import 'package:dvor_chatbot/src/jobs/referral_broadcast_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_broadcast_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_retention_job.dart';
 import 'package:dvor_chatbot/src/jobs/schedule_sync_job.dart';
-import 'package:dvor_chatbot/src/jobs/starter_bonus_reminder_job.dart';
 import 'package:dvor_chatbot/src/jobs/subscription_renewal_job.dart';
 import 'package:dvor_chatbot/src/jobs/training_day_promo_job.dart';
 import 'package:dvor_chatbot/src/jobs/training_feedback_job.dart';
@@ -83,11 +82,6 @@ final class BotRunner {
           templates: templates,
           pendingPaymentTtl: Duration(minutes: config.pendingPaymentTtlMinutes),
           loyaltyService: loyaltyService,
-        ),
-        _starterBonusReminderJob = StarterBonusReminderJob(
-          onboardingRepository: onboardingRepository,
-          sender: sender,
-          templates: templates,
         ),
         _welcomeCleanupJob = WelcomeCleanupJob(
           onboardingRepository: onboardingRepository,
@@ -248,7 +242,6 @@ final class BotRunner {
   final ScheduleSyncJob _scheduleSyncJob;
   final ScheduleRetentionJob _scheduleRetentionJob;
   final PaymentReminderJob _paymentReminderJob;
-  final StarterBonusReminderJob _starterBonusReminderJob;
   final WelcomeCleanupJob _welcomeCleanupJob;
   final SubscriptionRenewalJob _subscriptionRenewalJob;
   final TrainingDayPromoJob _trainingDayPromoJob;
@@ -304,11 +297,6 @@ final class BotRunner {
       const Duration(minutes: 30),
       'attendance reminder',
       _attendanceReminderJob.run,
-    );
-    _schedulePeriodic(
-      const Duration(minutes: 30),
-      'starter bonus reminder',
-      _starterBonusReminderJob.run,
     );
     _schedulePeriodic(const Duration(seconds: 20), 'welcome cleanup', _welcomeCleanupJob.run);
     _schedulePeriodic(const Duration(minutes: 30), 'economic summary', _economicSummaryJob.run);

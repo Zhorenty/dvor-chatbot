@@ -146,9 +146,9 @@ void main() {
       });
 
       expect(handled, isTrue);
-      expect(sender.messages, hasLength(2));
+      expect(sender.messages, hasLength(1));
       expect(sender.messages.first.text, contains('Добро пожаловать в DVOR'));
-      expect(sender.lastContentMessage.text, contains('бесплатная тренировка'));
+      expect(sender.messages.single.text, isNot(contains('бесплатная тренировка')));
       expect(sender.pinnedMessages, hasLength(1));
       expect(sender.pinnedMessages.single.chatId, 112);
       expect(sender.pinnedMessages.single.messageId, 1);
@@ -3105,17 +3105,7 @@ void main() {
       });
 
       final keyboardBefore = _keyboardTexts(sender.lastContentMessage.replyMarkup);
-      expect(keyboardBefore, contains(MessageTemplates.buttonUseStarterBonus));
-
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 164, 'type': 'private'},
-        'from': <String, dynamic>{'id': 1604},
-        'text': MessageTemplates.buttonUseStarterBonus,
-      });
-
-      expect(handled, isTrue);
-      expect(sender.lastContentMessage.text, contains('Бесплатная тренировка активирована'));
-      expect(sender.lastContentMessage.text, contains('Бесплатно: стартовая тренировка'));
+      expect(keyboardBefore, isNot(contains(MessageTemplates.buttonUseStarterBonus)));
     });
 
     test('sends admin notification for starter bonus booking', () async {
@@ -3157,6 +3147,9 @@ void main() {
         'text': '🎯 1. Admin starter session',
       });
 
+      final keyboard = _keyboardTexts(sender.lastContentMessage.replyMarkup);
+      expect(keyboard, isNot(contains(MessageTemplates.buttonUseStarterBonus)));
+
       final handled = await handlers.handle(<String, dynamic>{
         'chat': <String, dynamic>{'id': 165, 'type': 'private'},
         'from': <String, dynamic>{'id': 1605},
@@ -3164,9 +3157,11 @@ void main() {
       });
 
       expect(handled, isTrue);
-      final adminMessage = sender.messages.firstWhere((message) => message.chatId == -100778).text;
-      expect(adminMessage, contains('Стартовая бесплатная запись'));
-      expect(adminMessage, contains('бесплатная тренировка за старт'));
+      expect(sender.lastContentMessage.text, contains('недоступен'));
+      expect(
+        sender.messages.where((message) => message.chatId == -100778),
+        isEmpty,
+      );
     });
 
     test('starter bonus button is unavailable when no starter bonus', () async {
@@ -4114,20 +4109,9 @@ void main() {
         'from': <String, dynamic>{'id': 2351},
         'text': '🧾 #351 Free session',
       });
-      await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 2351, 'type': 'private'},
-        'from': <String, dynamic>{'id': 2351},
-        'text': MessageTemplates.buttonRescheduleBooking,
-      });
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 2351, 'type': 'private'},
-        'from': <String, dynamic>{'id': 2351},
-        'text': '🎯 2. Paid session',
-      });
-
-      expect(handled, isTrue);
+      final actionButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
+      expect(actionButtons, isNot(contains(MessageTemplates.buttonRescheduleBooking)));
       expect(bookingRepository.rescheduleCalls, 0);
-      expect(sender.lastContentMessage.text, contains('нельзя перенести на платную тренировку'));
     });
 
     test('does not allow rescheduling paid booking to free training', () async {
@@ -4189,15 +4173,9 @@ void main() {
         'from': <String, dynamic>{'id': 2353},
         'text': MessageTemplates.buttonRescheduleBooking,
       });
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 2353, 'type': 'private'},
-        'from': <String, dynamic>{'id': 2353},
-        'text': '🎯 2. Free session',
-      });
-
-      expect(handled, isTrue);
+      final options = _keyboardTexts(sender.lastContentMessage.replyMarkup);
+      expect(options, isNot(contains('Free session')));
       expect(bookingRepository.rescheduleCalls, 0);
-      expect(sender.lastContentMessage.text, contains('нельзя перенести на бесплатную тренировку'));
     });
 
     test('does not allow rescheduling paid booking to training with different price', () async {
@@ -4259,15 +4237,9 @@ void main() {
         'from': <String, dynamic>{'id': 2354},
         'text': MessageTemplates.buttonRescheduleBooking,
       });
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 2354, 'type': 'private'},
-        'from': <String, dynamic>{'id': 2354},
-        'text': '🎯 2. Premium session',
-      });
-
-      expect(handled, isTrue);
+      final options = _keyboardTexts(sender.lastContentMessage.replyMarkup);
+      expect(options, isNot(contains('Premium session')));
       expect(bookingRepository.rescheduleCalls, 0);
-      expect(sender.lastContentMessage.text, contains('с другой стоимостью'));
     });
 
     test('does not allow rescheduling zero-price booking to paid training', () async {
@@ -4324,20 +4296,9 @@ void main() {
         'from': <String, dynamic>{'id': 2352},
         'text': '🧾 #352 Community class',
       });
-      await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 2352, 'type': 'private'},
-        'from': <String, dynamic>{'id': 2352},
-        'text': MessageTemplates.buttonRescheduleBooking,
-      });
-      final handled = await handlers.handle(<String, dynamic>{
-        'chat': <String, dynamic>{'id': 2352, 'type': 'private'},
-        'from': <String, dynamic>{'id': 2352},
-        'text': '🎯 2. Premium class',
-      });
-
-      expect(handled, isTrue);
+      final actionButtons = _keyboardTexts(sender.lastContentMessage.replyMarkup);
+      expect(actionButtons, isNot(contains(MessageTemplates.buttonRescheduleBooking)));
       expect(bookingRepository.rescheduleCalls, 0);
-      expect(sender.lastContentMessage.text, contains('нельзя перенести на платную тренировку'));
     });
 
     test('shows conflict message when rescheduling to already booked training', () async {

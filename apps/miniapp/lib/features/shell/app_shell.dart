@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
@@ -26,10 +28,22 @@ class MemberShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final now = DateTime.now().toUtc();
+    final now = ref.watch(clockProvider)().toUtc();
     final pending = (ref.watch(bookingsProvider).value ?? const [])
         .where((b) => b.status.needsPayment && b.startsAt.isAfter(now))
-        .length;
+        .toList();
+    final seen = ref.watch(seenBookingNoticesProvider);
+    final unread = pending.where((b) => !seen.contains(b.id)).length;
+    if (shell.currentIndex == 1) {
+      final fresh = pending.where((b) => !seen.contains(b.id)).map((b) => b.id);
+      if (fresh.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            ref.read(seenBookingNoticesProvider.notifier).mark(fresh);
+          }
+        });
+      }
+    }
     return _Shell(
       shell: shell,
       tabs: [
@@ -38,7 +52,7 @@ class MemberShell extends ConsumerWidget {
           Icons.confirmation_number_outlined,
           Icons.confirmation_number_rounded,
           'Записи',
-          badge: pending,
+          badge: unread,
         ),
         const NavTab(Icons.person_outline_rounded, Icons.person_rounded, 'Профиль'),
       ],
@@ -92,7 +106,13 @@ class _Shell extends ConsumerWidget {
     final bottom = ref.watch(safeAreaProvider).bottom;
     return Scaffold(
       extendBody: true,
-      body: shell,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          shell,
+          const Offstage(child: _KeptAdminIcons()),
+        ],
+      ),
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
@@ -127,6 +147,7 @@ class _NavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
+    final slot = math.min(_slot, (MediaQuery.sizeOf(context).width - 16) / tabs.length);
     return Container(
       height: _height + 12,
       padding: const EdgeInsets.all(6),
@@ -139,13 +160,14 @@ class _NavBar extends StatelessWidget {
         ],
       ),
       child: SizedBox(
-        width: _slot * tabs.length,
+        width: slot * tabs.length,
         child: Stack(
+          clipBehavior: Clip.none,
           children: [
             AnimatedPositioned(
               duration: Motion.medium,
               curve: Curves.easeOutBack,
-              left: index * _slot + (_slot - _disc) / 2,
+              left: index * slot + (slot - _disc) / 2,
               top: (_height - _disc) / 2,
               width: _disc,
               height: _disc,
@@ -163,7 +185,7 @@ class _NavBar extends StatelessWidget {
                   _NavIcon(
                     tab: tabs[i],
                     active: i == index,
-                    width: _slot,
+                    width: slot,
                     height: _height,
                     onTap: () => onSelect(i),
                   ),
@@ -245,5 +267,38 @@ class _NavIcon extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Icons that live only in the deferred admin chunk. Referenced from the
+/// main library so the release web font still contains their glyphs.
+class _KeptAdminIcons extends StatelessWidget {
+  const _KeptAdminIcons();
+
+  static const _icons = <IconData>[
+    Icons.add_photo_alternate_outlined,
+    Icons.archive_outlined,
+    Icons.calendar_today_rounded,
+    Icons.campaign_rounded,
+    Icons.delete_outline_rounded,
+    Icons.edit_outlined,
+    Icons.event_note_outlined,
+    Icons.filter_alt_rounded,
+    Icons.groups_outlined,
+    Icons.image_rounded,
+    Icons.inbox_outlined,
+    Icons.insights_rounded,
+    Icons.keyboard_arrow_down,
+    Icons.keyboard_arrow_up,
+    Icons.lock_outline_rounded,
+    Icons.person_add_alt_1_rounded,
+    Icons.person_search_rounded,
+    Icons.rate_review_rounded,
+    Icons.task_alt_rounded,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(children: [for (final icon in _icons) Icon(icon, size: 1)]);
   }
 }

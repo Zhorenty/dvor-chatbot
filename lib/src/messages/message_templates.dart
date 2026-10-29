@@ -213,13 +213,9 @@ final class MessageTemplates {
   String onboardingTrackChoice() => _privateNavigationTemplates.onboardingTrackChoice();
 
   String onboardingClubMap({
-    required bool starterBonusAvailable,
     List<TrainingInfo> citySlots = const <TrainingInfo>[],
   }) {
-    return _privateNavigationTemplates.onboardingClubMap(
-      starterBonusAvailable: starterBonusAvailable,
-      citySlots: citySlots,
-    );
+    return _privateNavigationTemplates.onboardingClubMap(citySlots: citySlots);
   }
 
   String onboardingNeedHelp() => _privateNavigationTemplates.onboardingNeedHelp();

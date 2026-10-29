@@ -13,7 +13,6 @@ typedef StartCleanup = Future<void> Function(int userId);
 typedef StartLoyaltyHandler = Future<void> Function({
   required int userId,
   required int chatId,
-  required bool starterBonusAvailable,
 });
 typedef WelcomePinner = Future<void> Function({
   required int chatId,
@@ -57,7 +56,6 @@ final class PrivateStaticCommands {
     }
     if (text.startsWith('/start')) {
       final startPayload = _parseStartPayload(text);
-      var starterBonusAvailable = false;
       var runFunnel = false;
       OnboardingUserState? onboardingState;
       if (userId != null) {
@@ -77,12 +75,7 @@ final class PrivateStaticCommands {
           entryType: referralInviterId != null ? OnboardingEntryType.referral : null,
         );
         runFunnel = await onboardingService.shouldRunFunnel(userId);
-        starterBonusAvailable = await onboardingRepository.hasStarterBonusAvailable(userId);
-        await onStartLoyalty(
-          userId: userId,
-          chatId: chatId,
-          starterBonusAvailable: starterBonusAvailable,
-        );
+        await onStartLoyalty(userId: userId, chatId: chatId);
       }
 
       if (userId != null && runFunnel) {
@@ -95,14 +88,6 @@ final class PrivateStaticCommands {
             canViewParticipantsList: canViewParticipantsList,
             showReturnToAdminMenu: showReturnToAdminMenu,
           );
-          if (starterBonusAvailable) {
-            await sendBotScreen(
-              sender,
-              chatId,
-              InputRichMessage(html: templates.starterBonusOnboardingOffer()),
-              replyMarkup: templates.categorySelectionKeyboard(),
-            );
-          }
           return true;
         }
 
@@ -124,7 +109,6 @@ final class PrivateStaticCommands {
             onboardingRepository: onboardingRepository,
             sender: sender,
             templates: templates,
-            starterBonusAvailable: starterBonusAvailable,
           );
         } else if (resumeAtTrack) {
           flowByUserId[userId] = const PrivateFlowState(
@@ -180,19 +164,6 @@ final class PrivateStaticCommands {
         ),
       );
       await onPinWelcomeMessage(chatId: chatId, messageId: welcomeMessageId);
-      if (starterBonusAvailable) {
-        await sendBotScreen(
-          sender,
-          chatId,
-          InputRichMessage(html: templates.starterBonusOnboardingOffer()),
-          replyMarkup: templates.privateMenuKeyboard(
-            isAdmin: isAdmin,
-            canViewParticipantsList: canViewParticipantsList,
-            showReturnToAdminMenu: showReturnToAdminMenu,
-            canBroadcastToGroup: canBroadcastToGroup,
-          ),
-        );
-      }
       if (startPayload == 'book' && userId != null) {
         await onOpenBookingCategories(
           chatId: chatId,
@@ -301,7 +272,6 @@ final class PrivateStaticCommands {
     required OnboardingRepository onboardingRepository,
     required MessageSender sender,
     required MessageTemplates templates,
-    required bool starterBonusAvailable,
   }) async {
     final state = await onboardingRepository.getOnboardingState(userId);
     final outdoor = state?.selectedTrack == OnboardingTrack.outdoor;
@@ -313,8 +283,7 @@ final class PrivateStaticCommands {
     await sendBotScreen(
       sender,
       chatId,
-      InputRichMessage(
-          html: templates.onboardingClubMap(starterBonusAvailable: starterBonusAvailable)),
+      InputRichMessage(html: templates.onboardingClubMap()),
       replyMarkup: templates.onboardingMapCtaKeyboard(outdoorTrack: outdoor),
     );
   }

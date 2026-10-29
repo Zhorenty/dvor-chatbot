@@ -347,12 +347,7 @@ extension PrivateHandlersMiniAppOnly on PrivateHandlers {
       startedAt: now,
       entryType: inviterId != null ? OnboardingEntryType.referral : null,
     );
-    final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
-    await _handleStartLoyalty(
-      userId: userId,
-      chatId: chatId,
-      starterBonusAvailable: starterBonusAvailable,
-    );
+    await _handleStartLoyalty(userId: userId, chatId: chatId);
     await _sendScreen(
       chatId,
       _templates.miniAppWelcome(firstName: firstName),

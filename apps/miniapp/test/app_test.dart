@@ -21,9 +21,10 @@ class _FakeRepository implements DvorRepository {
     return onRpc?.call(method, params) ?? const <String, Object?>{};
   }
 
-  _FakeRepository({this.isAdmin = false});
+  _FakeRepository({this.isAdmin = false, this.userBookings = const []});
 
   final bool isAdmin;
+  final List<Booking> userBookings;
   final List<String> booked = <String>[];
   final List<String> reviewed = <String>[];
   final List<String> marked = <String>[];
@@ -98,7 +99,7 @@ class _FakeRepository implements DvorRepository {
   Future<List<ClubEvent>> events() async => _events;
 
   @override
-  Future<List<Booking>> bookings() async => const [];
+  Future<List<Booking>> bookings() async => userBookings;
 
   @override
   Future<ActionResult> book(String key) async {
@@ -174,12 +175,13 @@ class _FakeRepository implements DvorRepository {
 Future<(_FakeRepository, StubTelegramPlatform)> _pump(
   WidgetTester tester, {
   bool isAdmin = false,
+  List<Booking> bookings = const [],
 }) async {
   await initializeDateFormatting('ru');
   tester.view.physicalSize = const Size(390 * 3, 844 * 3);
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
-  final repo = _FakeRepository(isAdmin: isAdmin);
+  final repo = _FakeRepository(isAdmin: isAdmin, userBookings: bookings);
   final tg = StubTelegramPlatform();
   await tester.pumpWidget(
     ProviderScope(
@@ -222,7 +224,6 @@ void main() {
         'amount': 700,
         'participants': 1,
         'sbpLink': 'https://sbp.example',
-        'starterBonus': true,
         'peaks': {'balance': 0, 'available': false},
         'promo': true,
       },
@@ -242,13 +243,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(repo.rpcCalls, contains('payment.options'));
     expect(find.text('Прикрепить чек'), findsOneWidget);
-    expect(find.text('Стартовая тренировка'), findsOneWidget);
+    expect(find.text('Стартовая тренировка'), findsNothing);
+  });
 
-    await tester.tap(find.text('Стартовая тренировка'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(repo.rpcCalls, contains('payment.bonus'));
-    expect(find.text('Стартовая применена.'), findsOneWidget);
+  testWidgets('opening bookings marks the unpaid notice as read', (tester) async {
+    await _pump(
+      tester,
+      bookings: [
+        Booking(
+          id: 9,
+          key: 'box',
+          category: EventCategory.trainings,
+          title: 'Бокс',
+          startsAt: DateTime.utc(2026, 11, 1, 16),
+          location: 'Зал',
+          status: BookingStatus.pendingPayment,
+        ),
+      ],
+    );
+    expect(find.text('1'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.confirmation_number_outlined));
+    await tester.pumpAndSettle();
+    expect(find.text('1'), findsNothing);
+    expect(find.text('Ждёт оплаты'), findsWidgets);
   });
 
   testWidgets('booking errors are shown to the user', (tester) async {
@@ -354,6 +372,16 @@ void main() {
     expect(event.seatsLeft, 0);
     expect(event.notes, isNull);
     expect(event.isMultiDay, isTrue);
+    expect(event.isPinned, isFalse);
+
+    final sons = ClubEvent.fromJson({
+      'key': 'sons',
+      'title': '🍕 DVOR x Четыре сына',
+      'startsAt': '2026-11-07T05:30:00.000Z',
+      'featured': true,
+    });
+    expect(sons.isPinned, isTrue);
+    expect(sons.featured, isTrue);
 
     final booking = Booking.fromJson({
       'id': 3,
@@ -379,6 +407,9 @@ void main() {
     ));
     expect(splitTitleEmoji('DVOR X ЧЕТЫРЕ СЫНА'), (emoji: null, text: 'DVOR X ЧЕТЫРЕ СЫНА'));
     expect(splitTitleEmoji('«Кэмп»'), (emoji: null, text: '«Кэмп»'));
+    expect(sameTelegramNick('@Runner', 'runner'), isTrue);
+    expect(sameTelegramNick('Runner', '@runner'), isTrue);
+    expect(sameTelegramNick('alice', 'bob'), isFalse);
   });
 
   test('russian plurals and prices', () {

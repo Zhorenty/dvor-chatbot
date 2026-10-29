@@ -105,3 +105,22 @@ abstract final class Fmt {
 }
 
 final RegExp _letterOrDigit = RegExp(r'^[\p{L}\p{N}"«(]', unicode: true);
+
+/// Same Telegram nick, ignoring @ and letter case.
+bool sameTelegramNick(String? left, String? right) {
+  final a = _bareNick(left);
+  final b = _bareNick(right);
+  if (a == null || b == null) {
+    return false;
+  }
+  return a.toLowerCase() == b.toLowerCase();
+}
+
+String? _bareNick(String? raw) {
+  final trimmed = raw?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return null;
+  }
+  final bare = trimmed.startsWith('@') ? trimmed.substring(1).trim() : trimmed;
+  return bare.isEmpty ? null : bare;
+}

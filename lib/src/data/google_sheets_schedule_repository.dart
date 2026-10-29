@@ -50,7 +50,9 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
   @override
   List<OutdoorActivityInfo> upcomingOutdoorActivities({DateTime? now, int limit = 8}) {
     final current = now ?? _nowProvider();
-    final items = _cachedOutdoor.where((item) => !item.dateTo.isBefore(current)).toList()
+    // Once the start instant has passed, the hike or camp is no longer bookable.
+    // A date without a clock time is midnight, so that day no longer shows.
+    final items = _cachedOutdoor.where((item) => item.dateFrom.isAfter(current)).toList()
       ..sort((a, b) => a.dateFrom.compareTo(b.dateFrom));
     return items.take(limit).toList(growable: false);
   }

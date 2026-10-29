@@ -155,6 +155,12 @@ void main() {
       expect(outdoor.last.equipment, 'Headlamp, warm layer');
       expect(outdoor.last.itinerary, 'Day 1 climb, day 2 ridge');
       expect(outdoor.last.prepayPercent, 50);
+
+      final started = repository.upcomingOutdoorActivities(
+        now: DateTime(2030, 6, 5, 12),
+        limit: 10,
+      );
+      expect(started.map((item) => item.title), ['Mountain trail']);
     });
 
     test('parses Russian training headers and ignores status column', () async {

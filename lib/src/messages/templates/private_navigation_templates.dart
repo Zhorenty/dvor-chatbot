@@ -48,7 +48,6 @@ final class PrivateNavigationTemplates {
   }
 
   String onboardingClubMap({
-    required bool starterBonusAvailable,
     List<TrainingInfo> citySlots = const <TrainingInfo>[],
   }) {
     final buffer = StringBuffer()
@@ -69,9 +68,6 @@ final class PrivateNavigationTemplates {
         alreadyEscaped: true,
       ),
     );
-    if (starterBonusAvailable) {
-      buffer.write(RichHtml.paragraph('За старт есть одна бесплатная тренировка.'));
-    }
     buffer.write(
       RichHtml.paragraph('Не с кем идти — приходи один. На площадке уже будут свои.'),
     );

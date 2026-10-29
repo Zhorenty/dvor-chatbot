@@ -21,7 +21,6 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         userId,
         now: now,
       );
-      final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
       final loyaltyAccount = await _loyaltyService.account(userId);
       final loyaltyRecent = await _loyaltyService.recentLedger(userId);
       final subscriptionSnapshot = await _subscriptionRepository.getUserSnapshot(userId, now: now);
@@ -56,7 +55,6 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
           loyaltyExpiresAt: loyaltyAccount.expiresAt(lifetime: LoyaltyMath.lifetime),
           loyaltyRecent: loyaltyRecent,
           successfulReferralsCount: referralProgress.qualifiedReferralsCount,
-          starterBonusAvailable: starterBonusAvailable,
           membershipLevel: membership.level,
           subscriptionPlan: membership.plan,
           subscriptionActiveUntil: membership.activeUntil,
@@ -250,7 +248,14 @@ extension PrivateHandlersDispatchUserProfile on PrivateHandlers {
         );
         return true;
       }
-      var trainings = _bookableItemsByCategory(_catalogService.categoryForBooking(selectedBooking));
+      var trainings = _bookableItemsByCategory(_catalogService.categoryForBooking(selectedBooking))
+          .where(
+            (item) => _bookingPolicyService.allowsRescheduleOnto(
+              booking: selectedBooking,
+              target: item,
+            ),
+          )
+          .toList();
       if (MessageFormatters.isBoxingCardPaymentNote(selectedBooking.paymentNote)) {
         trainings = trainings.where(BoxingCardLedger.isAllowedRescheduleTarget).toList();
       }

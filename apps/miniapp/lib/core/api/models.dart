@@ -79,6 +79,7 @@ class ClubEvent {
     description: _str(json['description']),
     equipment: _str(json['equipment']),
     itinerary: _str(json['itinerary']),
+    featured: json['featured'] == true,
   );
 
   final String key;
@@ -100,6 +101,13 @@ class ClubEvent {
 
   /// Club highlight, shown first on the main screen.
   final bool featured;
+
+  /// Headline slot. The API flag wins; a sheet title that only mentions
+  /// «Четыре сына» is pinned too, so the event stays on top.
+  bool get isPinned => featured || title.toLowerCase().contains('четыре сына');
+
+  /// A hike or camp whose start time has passed is not shown and not bookable.
+  bool openForBooking(DateTime now) => !category.isOutdoor || startsAt.isAfter(now);
 
   bool get isFree => price != null && price! <= 0;
 
@@ -222,6 +230,14 @@ class Booking {
   final bool canCancel;
   final bool boxingCard;
   final bool attended;
+
+  /// Paid trainings move only onto another slot with the same price.
+  /// A free training can only be cancelled.
+  bool get canReschedule =>
+      category == EventCategory.trainings &&
+      status.isActive &&
+      status != BookingStatus.freeTraining &&
+      (price == null || price! > 0);
 }
 
 @immutable
