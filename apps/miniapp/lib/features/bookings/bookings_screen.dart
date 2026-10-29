@@ -4,7 +4,8 @@ import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
-import 'package:dvor_miniapp/features/bookings/booking_sheet.dart';
+import 'package:dvor_miniapp/features/bookings/reschedule_sheet.dart';
+import 'package:dvor_miniapp/features/payment/payment_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -274,11 +275,16 @@ class _BookingTicketState extends ConsumerState<BookingTicket> {
         '${Fmt.money((b.price! * b.prepayPercent! / 100).round())} внесено · остаток на месте',
     ].where((s) => s.isNotEmpty).join(' · ');
 
+    final canMove =
+        !past &&
+        b.category == EventCategory.trainings &&
+        b.participant == null &&
+        b.status.isActive &&
+        !b.status.needsPayment;
     final actions = <Widget>[
       if (!past && b.status.needsPayment)
-        _Action(label: 'Оплатить', color: c.accent, onTap: () => openBotChat(ref)),
-      if (!past && b.locationUrl != null)
-        _Action(label: 'Маршрут', onTap: () => ref.read(telegramProvider).openLink(b.locationUrl!)),
+        _Action(label: 'Оплатить', color: c.accent, onTap: () => showPaymentSheet(context, b.id)),
+      if (canMove) _Action(label: 'Перенести', onTap: () => showRescheduleSheet(context, b)),
       if (!past && b.canCancel)
         _cancelling
             ? const Expanded(
@@ -291,6 +297,12 @@ class _BookingTicketState extends ConsumerState<BookingTicket> {
                 ),
               )
             : _Action(label: 'Отменить', color: c.danger, onTap: _cancel),
+      if (!past && b.locationUrl != null)
+        _IconAction(
+          icon: Icons.near_me_rounded,
+          label: 'Маршрут',
+          onTap: () => ref.read(telegramProvider).openLink(b.locationUrl!),
+        ),
     ];
     final track = past ? null : _trackFor(b.status);
 
@@ -416,6 +428,29 @@ class _Action extends StatelessWidget {
           ),
           child: Text(label, style: context.text.labelLarge?.copyWith(color: color ?? c.ink)),
         ),
+      ),
+    );
+  }
+}
+
+class _IconAction extends StatelessWidget {
+  const _IconAction({required this.icon, required this.label, required this.onTap});
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Pressable(
+      onTap: onTap,
+      semanticLabel: label,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(color: c.surfaceRaised, borderRadius: BorderRadius.circular(11)),
+        child: Icon(icon, size: 18, color: c.ink),
       ),
     );
   }

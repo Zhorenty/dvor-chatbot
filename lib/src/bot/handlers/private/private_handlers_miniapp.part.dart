@@ -260,3 +260,101 @@ extension PrivateHandlersMiniApp on PrivateHandlers {
         .replaceAll('&amp;', '&');
   }
 }
+
+/// Mini App mode (`MINIAPP_ONLY`): members use the app; the chat keeps
+/// notifications, payment-card buttons, receipts sent as photos and
+/// feedback replies. Admins and trainers keep the full chat.
+extension PrivateHandlersMiniAppOnly on PrivateHandlers {
+  /// Reply-menu entries that now live in the app. Inline buttons on old
+  /// messages that map to these open the app instead of a chat flow.
+  static const Set<String> _movedMenuTexts = <String>{
+    MessageCopy.buttonTrainings,
+    MessageCopy.buttonBookTraining,
+    MessageCopy.buttonBookFriend,
+    MessageCopy.buttonCoachingStaff,
+    MessageCopy.buttonProfile,
+    MessageCopy.buttonProfileBookings,
+    MessageCopy.buttonSubscription,
+    MessageCopy.buttonReferralProgram,
+    MessageCopy.buttonHelp,
+    MessageCopy.buttonMainMenu,
+  };
+
+  /// Returns true when the update was answered here and must not reach the
+  /// chat flows.
+  Future<bool> _handleMiniAppOnly({
+    required int chatId,
+    required int userId,
+    required String? text,
+    required String? firstName,
+    required bool isCallback,
+    required bool hasPaymentProof,
+    required bool hasFlow,
+  }) async {
+    if (text != null && text.startsWith('/start')) {
+      await _miniAppOnlyStart(chatId: chatId, userId: userId, text: text, firstName: firstName);
+      return true;
+    }
+    if (isCallback) {
+      if (text != null && _movedMenuTexts.contains(text)) {
+        await _sendScreen(
+          chatId,
+          _templates.miniAppWelcome(firstName: firstName),
+          replyMarkup: _templates.openMiniAppKeyboard(),
+        );
+        return true;
+      }
+      return false;
+    }
+    // Receipts sent as photos and replies inside an open chat flow (promo
+    // code, feedback) keep working as before.
+    if (hasPaymentProof || hasFlow) {
+      return false;
+    }
+    // Also clears the old reply-keyboard menu from the chat.
+    await _sendScreen(
+      chatId,
+      _templates.miniAppMovedHint(),
+      replyMarkup: const <String, Object?>{'remove_keyboard': true},
+    );
+    return true;
+  }
+
+  Future<void> _miniAppOnlyStart({
+    required int chatId,
+    required int userId,
+    required String text,
+    required String? firstName,
+  }) async {
+    final now = _nowProvider();
+    final parts = text.trim().split(RegExp(r'\s+'));
+    final payload = parts.length > 1 ? parts[1].trim().toLowerCase() : null;
+    final inviterId =
+        payload != null && payload.startsWith('ref_') ? int.tryParse(payload.substring(4)) : null;
+    if (inviterId != null && inviterId != userId) {
+      await _onboardingRepository.registerReferralAttribution(
+        inviteeUserId: userId,
+        inviterUserId: inviterId,
+        attributedAt: now,
+      );
+    }
+    _flowByUserId.remove(userId);
+    await _handleStartCleanup(userId);
+    await _onboardingService.ensureStarted(
+      userId,
+      startedAt: now,
+      entryType: inviterId != null ? OnboardingEntryType.referral : null,
+    );
+    final starterBonusAvailable = await _onboardingRepository.hasStarterBonusAvailable(userId);
+    await _handleStartLoyalty(
+      userId: userId,
+      chatId: chatId,
+      starterBonusAvailable: starterBonusAvailable,
+    );
+    await _sendScreen(
+      chatId,
+      _templates.miniAppWelcome(firstName: firstName),
+      replyMarkup: _templates.openMiniAppKeyboard(),
+    );
+  }
+}

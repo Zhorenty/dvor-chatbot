@@ -32,6 +32,16 @@ type fakeBot struct {
 	adminResult   bridge.AdminResult
 	roster        bridge.Roster
 	adminCalls    []string
+	rpcCalls      []string
+	rpcErr        error
+}
+
+func (f *fakeBot) RPC(_ context.Context, method string, caller bridge.Caller, params json.RawMessage) (json.RawMessage, error) {
+	f.rpcCalls = append(f.rpcCalls, method+":"+strconv.FormatInt(caller.ID, 10)+":"+string(params))
+	if f.rpcErr != nil {
+		return nil, f.rpcErr
+	}
+	return json.RawMessage(`{"ok":true}`), nil
 }
 
 func (f *fakeBot) Schedule(context.Context) (bridge.Schedule, error) {
@@ -328,5 +338,56 @@ func TestAdminSessionsAndAttendance(t *testing.T) {
 	bot.roster = bridge.Roster{Outcome: "not_found"}
 	if code, _ := do(t, h, "GET", "/api/v1/admin/sessions/participants?key=x", auth, ""); code != http.StatusNotFound {
 		t.Fatalf("missing roster code = %d", code)
+	}
+}
+
+func TestRPC(t *testing.T) {
+	now := time.Unix(1_800_000_000, 0)
+	bot := &fakeBot{}
+	h := newTestServer(bot, &now)
+	auth := initData(t, now)
+
+	code, body := do(t, h, "POST", "/api/v1/rpc/payment.options", auth, `{"bookingId":5}`)
+	if code != http.StatusOK || body["ok"] != true {
+		t.Fatalf("code = %d body = %v", code, body)
+	}
+	if len(bot.rpcCalls) != 1 || bot.rpcCalls[0] != `payment.options:7:{"bookingId":5}` {
+		t.Fatalf("calls = %v", bot.rpcCalls)
+	}
+
+	if code, _ := do(t, h, "POST", "/api/v1/rpc/admin.report", auth, `{}`); code != http.StatusForbidden {
+		t.Fatalf("admin rpc for member: code = %d", code)
+	}
+	if code, _ := do(t, h, "POST", "/api/v1/rpc/bad%20name", auth, `{}`); code != http.StatusNotFound {
+		t.Fatalf("bad method: code = %d", code)
+	}
+	if code, _ := do(t, h, "POST", "/api/v1/rpc/payment.options", auth, `{nope`); code != http.StatusBadRequest {
+		t.Fatalf("bad json: code = %d", code)
+	}
+
+	bot.rpcErr = &bridge.RPCError{Code: "too_late", Message: "Поздно."}
+	code, body = do(t, h, "POST", "/api/v1/rpc/payment.peaks", auth, `{"bookingId":5}`)
+	if code != http.StatusUnprocessableEntity || body["error"].(map[string]any)["message"] != "Поздно." {
+		t.Fatalf("refusal: code = %d body = %v", code, body)
+	}
+}
+
+func TestPublicScheduleHidesSeatsUntilLow(t *testing.T) {
+	ptr := func(v int) *int { return &v }
+	in := bridge.Schedule{Events: []bridge.Event{
+		{Key: "many", Limit: ptr(30), Taken: ptr(3)},
+		{Key: "low", Limit: ptr(10), Taken: ptr(8)},
+		{Key: "full", Limit: ptr(10), Taken: ptr(10)},
+		{Key: "open"},
+	}}
+	out := publicSchedule(in)
+	if out.Events[0].Limit != nil || out.Events[0].Taken != nil {
+		t.Fatalf("plenty of seats must stay hidden: %+v", out.Events[0])
+	}
+	if *out.Events[1].Taken != 8 || *out.Events[2].Taken != 10 {
+		t.Fatalf("low and full must stay visible: %+v %+v", out.Events[1], out.Events[2])
+	}
+	if in.Events[0].Limit == nil {
+		t.Fatal("cached schedule must not change")
 	}
 }

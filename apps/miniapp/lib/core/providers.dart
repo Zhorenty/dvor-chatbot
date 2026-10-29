@@ -1,5 +1,6 @@
 import 'package:dvor_miniapp/core/api/models.dart';
 import 'package:dvor_miniapp/core/api/repository.dart';
+import 'package:dvor_miniapp/core/api/rpc_models.dart';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -123,3 +124,77 @@ class AdminActions {
 }
 
 final adminActionsProvider = Provider<AdminActions>(AdminActions.new);
+
+final paymentOptionsProvider = FutureProvider.autoDispose.family<PaymentOptions, int>((
+  ref,
+  id,
+) async {
+  return PaymentOptions.fromJson(
+    await ref.watch(repositoryProvider).rpc('payment.options', {'bookingId': id}),
+  );
+});
+
+final cardOverviewProvider = FutureProvider.autoDispose<CardOverview>((ref) async {
+  return CardOverview.fromJson(await ref.watch(repositoryProvider).rpc('card.overview'));
+});
+
+final teamProvider = FutureProvider<List<TeamPerson>>((ref) async {
+  final json = await ref.watch(repositoryProvider).rpc('team.list');
+  return parseList(json['people'], TeamPerson.fromJson);
+});
+
+final adminCardRequestsProvider = FutureProvider<List<CardRequest>>((ref) async {
+  final json = await ref.watch(repositoryProvider).rpc('admin.cards.pending');
+  return parseList(json['requests'], CardRequest.fromJson);
+});
+
+final adminCatalogProvider = FutureProvider.autoDispose.family<List<CatalogItem>, EventCategory>((
+  ref,
+  category,
+) async {
+  final json = await ref.watch(repositoryProvider).rpc('admin.schedule.list', {
+    'category': category.name,
+  });
+  return parseList(json['items'], CatalogItem.fromJson)
+    ..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+});
+
+final adminBookingsProvider = FutureProvider.autoDispose
+    .family<List<AdminBooking>, (EventCategory, bool)>((ref, args) async {
+      final (category, archived) = args;
+      final json = await ref.watch(repositoryProvider).rpc('admin.bookings.list', {
+        'category': category.name,
+        'archived': archived,
+      });
+      return parseList(json['bookings'], AdminBooking.fromJson);
+    });
+
+/// Calls a bot action and refreshes everything a write may touch.
+class Rpc {
+  Rpc(this._ref);
+
+  final Ref _ref;
+
+  Future<Map<String, Object?>> call(String method, [Map<String, Object?> params = const {}]) async {
+    try {
+      return await _ref.read(repositoryProvider).rpc(method, params);
+    } finally {
+      _ref
+        ..invalidate(bookingsProvider)
+        ..invalidate(eventsProvider)
+        ..invalidate(meProvider)
+        ..invalidate(paymentOptionsProvider)
+        ..invalidate(cardOverviewProvider);
+      if (method.startsWith('admin.')) {
+        _ref
+          ..invalidate(adminPaymentsProvider)
+          ..invalidate(adminCardRequestsProvider)
+          ..invalidate(adminSessionsProvider)
+          ..invalidate(adminCatalogProvider)
+          ..invalidate(adminBookingsProvider);
+      }
+    }
+  }
+}
+
+final rpcProvider = Provider<Rpc>(Rpc.new);

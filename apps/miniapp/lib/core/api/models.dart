@@ -109,6 +109,19 @@ class ClubEvent {
 
   bool get isFull => seatsLeft == 0;
 
+  /// Seats are shown only when they run out: under 30% free, the same rule
+  /// the bot uses for the "места заканчиваются" group post. Null otherwise.
+  int? get lowSeats {
+    final left = seatsLeft;
+    final cap = limit;
+    if (left == null || cap == null || cap <= 0) {
+      return null;
+    }
+    return left / cap < lowSeatsShare ? left : null;
+  }
+
+  static const double lowSeatsShare = 0.3;
+
   bool get isMultiDay {
     final end = endsAt;
     if (end == null) {

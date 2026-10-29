@@ -29,6 +29,7 @@ type Bot interface {
 	AdminSessions(ctx context.Context) ([]bridge.Session, error)
 	Participants(ctx context.Context, key string) (bridge.Roster, error)
 	MarkAttendance(ctx context.Context, adminID, bookingID int64, attendance string) (bridge.AdminResult, error)
+	RPC(ctx context.Context, method string, caller bridge.Caller, params json.RawMessage) (json.RawMessage, error)
 }
 
 // Profiles reads profile aggregates.
@@ -81,6 +82,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/bookings", s.auth(s.limited(s.handleBook)))
 	mux.Handle("POST /api/v1/bookings/{id}/cancel", s.auth(s.limited(s.handleCancel)))
 	s.routeAdmin(mux)
+	mux.Handle("POST /api/v1/rpc/{method}", s.auth(s.limited(s.handleRPC)))
 	return s.recover(s.logRequests(mux))
 }
 
@@ -150,7 +152,32 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		s.bridgeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, schedule)
+	writeJSON(w, http.StatusOK, publicSchedule(schedule))
+}
+
+// lowSeatsShare mirrors the bot's group post rule: seat counts are public
+// only when under 30% of places are free.
+const lowSeatsShare = 0.3
+
+// publicSchedule hides seat counts unless they are running out. The cached
+// schedule is not modified.
+func publicSchedule(schedule bridge.Schedule) bridge.Schedule {
+	events := make([]bridge.Event, len(schedule.Events))
+	for i, e := range schedule.Events {
+		if e.Limit != nil && *e.Limit > 0 {
+			taken := 0
+			if e.Taken != nil {
+				taken = *e.Taken
+			}
+			free := max(*e.Limit-taken, 0)
+			if float64(free)/float64(*e.Limit) >= lowSeatsShare {
+				e.Limit, e.Taken = nil, nil
+			}
+		}
+		events[i] = e
+	}
+	schedule.Events = events
+	return schedule
 }
 
 // cachedSchedule keeps the catalog for a short time and serves the last good

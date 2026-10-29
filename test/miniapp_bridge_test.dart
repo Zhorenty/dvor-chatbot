@@ -19,6 +19,19 @@ final class _RecordingBackend implements MiniAppBridgeBackend {
   final List<String> calls = <String>[];
 
   @override
+  Future<Map<String, Object?>> rpc(
+    String method,
+    MiniAppCaller caller,
+    Map<String, Object?> params,
+  ) async {
+    calls.add('rpc:$method:${caller.id}:${params['bookingId']}');
+    if (method == 'boom') {
+      throw const MiniAppRpcException('not_allowed', 'Нельзя.');
+    }
+    return const <String, Object?>{'ok': true};
+  }
+
+  @override
   Future<Map<String, Object?>> schedule() async {
     calls.add('schedule');
     return const <String, Object?>{'events': <Object?>[]};
@@ -507,6 +520,143 @@ void main() {
         attendance: 'absent',
       );
       expect(refused['outcome'], 'forbidden');
+    });
+  });
+
+  group('Mini App RPC', () {
+    final now = DateTime.utc(2026, 10, 20, 9);
+    const adminId = 900;
+    const caller = MiniAppCaller(id: 5, username: 'runner', firstName: 'Аня');
+    final boxing = TrainingInfo(
+      title: 'Бокс',
+      startsAt: DateTime.utc(2026, 10, 22, 16),
+      location: 'Зал',
+      price: 600,
+    );
+    final power = TrainingInfo(
+      title: 'Силовая',
+      startsAt: DateTime.utc(2026, 10, 23, 16),
+      location: 'Зал',
+      price: 600,
+    );
+
+    test('bridge maps rpc errors to 422 with a user message', () async {
+      final backend = _RecordingBackend();
+      final server = MiniAppBridgeServer(backend: backend, token: _token);
+      await server.start(port: 0, address: InternetAddress.loopbackIPv4);
+      final client = HttpClient();
+      addTearDown(() async {
+        client.close(force: true);
+        await server.close();
+      });
+      Future<(int, Map<String, Object?>)> post(String method) async {
+        final request = await client.post('127.0.0.1', server.port!, '/internal/rpc/$method');
+        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $_token');
+        request.write(jsonEncode({
+          'user': {'id': 5, 'username': 'runner'},
+          'params': {'bookingId': 7},
+        }));
+        final response = await request.close();
+        final text = await utf8.decoder.bind(response).join();
+        return (response.statusCode, jsonDecode(text) as Map<String, Object?>);
+      }
+
+      expect((await post('payment.options')).$1, HttpStatus.ok);
+      final (status, body) = await post('boom');
+      expect(status, HttpStatus.unprocessableEntity);
+      expect((body['error']! as Map<String, Object?>)['message'], 'Нельзя.');
+      expect(backend.calls, ['rpc:payment.options:5:7', 'rpc:boom:5:7']);
+    });
+
+    test('admin methods are refused for members and unknown methods fail softly', () async {
+      final harness = PrivateHandlersHarness(trainings: [boxing], nowProvider: () => now);
+      expect(
+        () => harness.handlers.miniAppRpc('admin.report', caller, const {'kind': 'overview'}),
+        throwsA(isA<MiniAppRpcException>().having((e) => e.code, 'code', 'forbidden')),
+      );
+      expect(
+        () => harness.handlers.miniAppRpc('nope', caller, const {}),
+        throwsA(isA<MiniAppRpcException>().having((e) => e.code, 'code', 'unknown_method')),
+      );
+    });
+
+    test('payment options describe a pending training booking', () async {
+      final repository = FakeBookingRepository()
+        ..userBookings = [
+          fakeBooking(
+            id: 11,
+            userId: 5,
+            trainingKey: boxing.sessionKey,
+            title: 'Бокс',
+            startsAt: boxing.startsAt,
+            trainingPrice: 600,
+          ),
+        ];
+      final harness = PrivateHandlersHarness(
+        trainings: [boxing],
+        bookingRepository: repository,
+        nowProvider: () => now,
+      );
+      final options = await harness.handlers.miniAppRpc('payment.options', caller, const {
+        'bookingId': 11,
+      });
+      expect(options['payable'], isTrue);
+      expect(options['amount'], 600);
+      expect(options['outdoorChoice'], isFalse);
+      expect(options['sbpLink'], startsWith('https://'));
+      expect(options['promo'], isTrue);
+      expect(
+        () => harness.handlers.miniAppRpc('payment.options', caller, const {'bookingId': 99}),
+        throwsA(isA<MiniAppRpcException>().having((e) => e.code, 'code', 'not_found')),
+      );
+    });
+
+    test('reschedule offers other trainings and moves through the chat flow', () async {
+      final repository = FakeBookingRepository()
+        ..userBookings = [
+          fakeBooking(
+            id: 12,
+            userId: 5,
+            trainingKey: boxing.sessionKey,
+            title: 'Бокс',
+            startsAt: boxing.startsAt,
+            status: BookingStatus.paid,
+            trainingPrice: 600,
+          ),
+        ];
+      final harness = PrivateHandlersHarness(
+        trainings: [boxing, power],
+        bookingRepository: repository,
+        nowProvider: () => now,
+      );
+      final options = await harness.handlers.miniAppRpc('booking.rescheduleOptions', caller, const {
+        'bookingId': 12,
+      });
+      final events = options['events']! as List<Object?>;
+      expect(events.map((e) => (e! as Map<String, Object?>)['title']), ['Силовая']);
+
+      final moved = await harness.handlers.miniAppRpc('booking.reschedule', caller, {
+        'bookingId': 12,
+        'key': power.sessionKey,
+      });
+      expect(repository.lastRescheduledBookingId, 12);
+      expect(repository.lastRescheduleTraining?.sessionKey, power.sessionKey);
+      expect(moved['messages'], isNotEmpty);
+    });
+
+    test('admin report returns the same text the chat gets', () async {
+      final harness = PrivateHandlersHarness(
+        trainings: [boxing],
+        adminUserIds: const {adminId},
+        nowProvider: () => now,
+      );
+      final report = await harness.handlers.miniAppRpc(
+        'admin.report',
+        const MiniAppCaller(id: adminId, username: 'boss'),
+        const {'kind': 'bookings'},
+      );
+      expect(report['text'], isNotEmpty);
+      expect(harness.sender.messages.map((m) => m.chatId), contains(adminId));
     });
   });
 }

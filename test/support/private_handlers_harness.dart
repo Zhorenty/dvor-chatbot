@@ -7,6 +7,7 @@ import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:dvor_chatbot/src/domain/trainer_info.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
+import 'package:dvor_chatbot/src/miniapp/miniapp_echo_sender.dart';
 
 import 'fakes.dart';
 import 'telegram_fixtures.dart';
@@ -42,7 +43,8 @@ final class PrivateHandlersHarness {
         _targetChatId = targetChatId,
         _nowProvider = nowProvider {
     handlers = PrivateHandlers(
-      sender: sender,
+      // Same echo layer as production so Mini App actions can read replies.
+      sender: MiniAppEchoSender(sender),
       scheduleRepository: scheduleRepository,
       bookingRepository: booking,
       subscriptionRepository: subscriptionRepository,

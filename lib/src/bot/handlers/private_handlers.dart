@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/application/admin_analytics_service.dart';
@@ -56,6 +57,7 @@ import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
 import 'package:dvor_chatbot/src/messages/formatters/message_formatters.dart';
 import 'package:dvor_chatbot/src/messages/html_escaper.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
+import 'package:dvor_chatbot/src/miniapp/miniapp_echo_sender.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
 import 'package:dvor_chatbot/src/telegram/rich_message.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
@@ -86,6 +88,7 @@ part 'private/private_handlers_dispatch_inline_callbacks.part.dart';
 part 'private/private_handlers_dispatch_user_actions.part.dart';
 part 'private/private_handlers_miniapp.part.dart';
 part 'private/private_handlers_miniapp_admin.part.dart';
+part 'private/private_handlers_miniapp_rpc.part.dart';
 
 final class PrivateHandlers {
   static const String _paymentChoiceFullMarker = '__payment_choice_full__';

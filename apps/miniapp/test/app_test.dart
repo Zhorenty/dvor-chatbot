@@ -12,6 +12,15 @@ import 'package:intl/date_symbol_data_local.dart';
 final DateTime _now = DateTime.utc(2026, 10, 28, 9);
 
 class _FakeRepository implements DvorRepository {
+  final List<String> rpcCalls = <String>[];
+  Map<String, Object?> Function(String method, Map<String, Object?> params)? onRpc;
+
+  @override
+  Future<Map<String, Object?>> rpc(String method, [Map<String, Object?> params = const {}]) async {
+    rpcCalls.add(method);
+    return onRpc?.call(method, params) ?? const <String, Object?>{};
+  }
+
   _FakeRepository({this.isAdmin = false});
 
   final bool isAdmin;
@@ -170,7 +179,7 @@ Future<(_FakeRepository, StubTelegramPlatform)> _pump(
         repositoryProvider.overrideWithValue(repo),
         clockProvider.overrideWithValue(() => _now),
       ],
-      child: DvorApp(router: buildRouter()),
+      child: DvorApp(router: buildRouter(isAdmin: isAdmin)),
     ),
   );
   await tester.pumpAndSettle();
@@ -182,17 +191,9 @@ void main() {
     await _pump(tester);
     expect(find.text('БОКС'), findsOneWidget);
     expect(find.text('ЗАВТРА · 29 ОКТЯБРЯ'), findsOneWidget);
-    expect(find.text('2 места'), findsOneWidget);
+    expect(find.text('Осталось 2 места'), findsOneWidget);
     expect(find.text('ВЫЕЗДЫ'), findsOneWidget);
     expect(find.text('ПОХОД ВЫХОДНОГО ДНЯ'), findsOneWidget);
-
-    // Day strip: tomorrow has only the boxing session.
-    await tester.tap(find.text('29'));
-    await tester.pumpAndSettle();
-    expect(find.text('БОКС'), findsOneWidget);
-    expect(find.text('ПОХОД ВЫХОДНОГО ДНЯ'), findsNothing);
-    await tester.tap(find.text('29'));
-    await tester.pumpAndSettle();
 
     await tester.tap(find.text('Походы'));
     await tester.pumpAndSettle();
@@ -200,8 +201,21 @@ void main() {
     expect(find.text('ПОХОД ВЫХОДНОГО ДНЯ'), findsOneWidget);
   });
 
-  testWidgets('booking shows the payment sheet and opens the bot chat', (tester) async {
-    final (repo, tg) = await _pump(tester);
+  testWidgets('booking opens the in-app payment and sends the receipt step', (tester) async {
+    final (repo, _) = await _pump(tester);
+    repo.onRpc = (method, params) => switch (method) {
+      'payment.options' => {
+        'payable': true,
+        'amount': 700,
+        'participants': 1,
+        'sbpLink': 'https://sbp.example',
+        'starterBonus': true,
+        'peaks': {'balance': 0, 'available': false},
+        'promo': true,
+      },
+      'payment.bonus' => {'message': 'Стартовая применена.'},
+      _ => const <String, Object?>{},
+    };
     await tester.tap(find.text('БОКС'));
     await tester.pumpAndSettle();
     expect(find.text('Записаться · 700 ₽'), findsOneWidget);
@@ -213,7 +227,15 @@ void main() {
 
     await tester.tap(find.text('Перейти к оплате'));
     await tester.pumpAndSettle();
-    expect(tg.openedLinks, ['https://t.me/dvor_bot']);
+    expect(repo.rpcCalls, contains('payment.options'));
+    expect(find.text('Прикрепить чек'), findsOneWidget);
+    expect(find.text('Стартовая тренировка'), findsOneWidget);
+
+    await tester.tap(find.text('Стартовая тренировка'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(repo.rpcCalls, contains('payment.bonus'));
+    expect(find.text('Стартовая применена.'), findsOneWidget);
   });
 
   testWidgets('booking errors are shown to the user', (tester) async {
@@ -227,17 +249,18 @@ void main() {
     expect(find.text('Мест уже нет.'), findsOneWidget);
   });
 
-  testWidgets('admin tab is hidden from regular members', (tester) async {
+  testWidgets('members never see admin tabs and admins never see member tabs', (tester) async {
     await _pump(tester);
-    expect(find.byIcon(Icons.admin_panel_settings_outlined), findsNothing);
+    expect(find.byIcon(Icons.receipt_long_outlined), findsNothing);
+    expect(find.byIcon(Icons.receipt_long_rounded), findsNothing);
+    expect(find.text('БОКС'), findsOneWidget);
   });
 
   testWidgets('admin approves a prepayment from the queue', (tester) async {
     final (repo, _) = await _pump(tester, isAdmin: true);
-    await tester.tap(find.byIcon(Icons.admin_panel_settings_outlined));
-    await tester.pumpAndSettle();
-    expect(find.text('АДМИНКА'), findsOneWidget);
-    expect(find.text('Оплаты · 1'), findsOneWidget);
+    expect(find.text('ОПЛАТЫ · 1'), findsOneWidget);
+    expect(find.text('АФИША'), findsNothing);
+    expect(find.byIcon(Icons.calendar_month_outlined), findsNothing);
     expect(find.text('@runner, Гость'), findsOneWidget);
     expect(find.text('Предоплата 50%'), findsOneWidget);
 
@@ -252,9 +275,7 @@ void main() {
 
   testWidgets('admin marks attendance on the roster', (tester) async {
     final (repo, _) = await _pump(tester, isAdmin: true);
-    await tester.tap(find.byIcon(Icons.admin_panel_settings_outlined));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Списки'));
+    await tester.tap(find.byIcon(Icons.fact_check_outlined));
     await tester.pumpAndSettle();
     expect(find.textContaining('без отметки: 1', findRichText: true), findsOneWidget);
 

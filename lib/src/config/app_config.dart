@@ -32,6 +32,8 @@ final class AppConfig {
     this.googleSheetsWriteIntervalSeconds = 300,
     this.miniAppBridgePort,
     this.miniAppBridgeToken,
+    this.miniAppUrl,
+    this.miniAppOnly = false,
   });
 
   final String botToken;
@@ -62,11 +64,19 @@ final class AppConfig {
   final int? miniAppBridgePort;
   final String? miniAppBridgeToken;
 
+  /// Public Mini App URL for "Открыть DVOR" buttons.
+  final String? miniAppUrl;
+
+  /// Members use the Mini App; the chat keeps notifications only.
+  final bool miniAppOnly;
+
   static AppConfig fromArgs(List<String> args) {
     final parser = ArgParser()
       ..addFlag('help', abbr: 'h', negatable: false)
       ..addOption('miniapp-bridge-port', help: 'Internal Mini App bridge port (disabled if empty)')
       ..addOption('miniapp-bridge-token', help: 'Shared secret for the Mini App bridge')
+      ..addOption('miniapp-url', help: 'Public Mini App URL (web_app buttons)')
+      ..addOption('miniapp-only', help: 'Members use the Mini App, chat keeps notifications')
       ..addOption('token', abbr: 't', help: 'Telegram bot token')
       ..addOption('target-chat-id', help: 'Group chat id, e.g. -1001234567890')
       ..addOption('send-group-fallback', help: 'Send fallback in group if DM failed')
@@ -241,6 +251,14 @@ final class AppConfig {
       exit(2);
     }
 
+    final miniAppUrlRaw = resolve('MINIAPP_URL', 'miniapp-url')?.trim();
+    final miniAppUrl = miniAppUrlRaw == null || miniAppUrlRaw.isEmpty ? null : miniAppUrlRaw;
+    final miniAppOnly = _toBool(resolve('MINIAPP_ONLY', 'miniapp-only'), defaultValue: false);
+    if (miniAppOnly && (miniAppUrl == null || !miniAppUrl.startsWith('https://'))) {
+      stderr.writeln('MINIAPP_ONLY requires MINIAPP_URL (https://…).');
+      exit(2);
+    }
+
     final scheduleSource = _parseScheduleSource(scheduleSourceRaw);
     if (scheduleSource == ScheduleSource.googleSheets &&
         (googleSheetsCsvUrl == null || googleSheetsCsvUrl.isEmpty)) {
@@ -306,6 +324,8 @@ final class AppConfig {
           int.tryParse(googleSheetsWriteIntervalRaw ?? '')?.clamp(30, 86400) ?? 300,
       miniAppBridgePort: miniAppBridgePort,
       miniAppBridgeToken: miniAppBridgePort == null ? null : miniAppBridgeTokenRaw,
+      miniAppUrl: miniAppUrl,
+      miniAppOnly: miniAppOnly,
     );
   }
 }

@@ -44,7 +44,8 @@ Project guidance for AI/code agents in this repository.
 - Telegram Mini App: `docs/MINIAPP_ARCHITECTURE.md`
   - Flutter app: `apps/miniapp` (`flutter analyze && flutter test`)
   - Go API: `services/api` (`go vet ./... && go test ./...`)
-  - Bot bridge: `lib/src/miniapp/miniapp_bridge_server.dart` + `private/private_handlers_miniapp.part.dart` (booking/cancel reuse chat flows)
+  - Bot bridge: `lib/src/miniapp/miniapp_bridge_server.dart` + `private/private_handlers_miniapp*.part.dart` (booking/cancel reuse chat flows; RPC drives chat commands with `_miniapp` updates, replies captured by `MiniAppEchoSender`)
+  - `MINIAPP_ONLY` mode: members get the app button, chat keeps notifications; admins/trainers keep the chat
 
 ## Architecture and Coding Rules
 
@@ -104,7 +105,7 @@ Avoid: «дорогие друзья», «от лица команды», «ад
   - `GROUP_INVITE_NUDGE_ENABLED`
   - `GOOGLE_SHEETS_WRITE_ENABLED` / `GOOGLE_SHEETS_CREDENTIALS_PATH` / `GOOGLE_SHEETS_SPREADSHEET_ID`
   - `LOG_LEVEL`
-  - `MINIAPP_BRIDGE_PORT` / `MINIAPP_BRIDGE_TOKEN` / `MINIAPP_URL` / `MINIAPP_DOMAIN` / `COMPOSE_PROFILES`
+  - `MINIAPP_BRIDGE_PORT` / `MINIAPP_BRIDGE_TOKEN` / `MINIAPP_URL` / `MINIAPP_DOMAIN` / `COMPOSE_PROFILES` / `MINIAPP_ONLY`
 
 ## Reliability Baseline
 

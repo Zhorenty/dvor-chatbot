@@ -33,6 +33,7 @@ import 'package:dvor_chatbot/src/data/training_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/schedule_catalog.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/miniapp/miniapp_bridge_server.dart';
+import 'package:dvor_chatbot/src/miniapp/miniapp_echo_sender.dart';
 import 'package:dvor_chatbot/src/telegram/logging_message_sender.dart';
 import 'package:dvor_chatbot/src/telegram/telegram_client.dart';
 import 'package:l/l.dart';
@@ -49,7 +50,10 @@ void main(List<String> args) {
       } on Object catch (error, stackTrace) {
         l.w('Failed to resolve bot username: $error', stackTrace);
       }
-      final templates = MessageTemplates(botUsername: botUsername);
+      final templates = MessageTemplates(
+        botUsername: botUsername,
+        miniAppUrl: config.miniAppOnly ? config.miniAppUrl : null,
+      );
       final scheduleRepository = _createScheduleRepository(config);
       final trainerDirectoryRepository = _createTrainerDirectoryRepository(config);
       final dvorTeamRepository = _createDvorTeamRepository(config);
@@ -104,9 +108,12 @@ void main(List<String> args) {
         scheduleRepository: scheduleRepository,
         timezoneOffsetHours: config.timezoneOffsetHours,
       );
-      final sender = LoggingMessageSender(
-        inner: client,
-        conversationLog: conversationLogRepository,
+      // Echo layer lets Mini App actions return the bot's chat reply.
+      final sender = MiniAppEchoSender(
+        LoggingMessageSender(
+          inner: client,
+          conversationLog: conversationLogRepository,
+        ),
       );
       final groupAnnouncements = GroupAnnouncementService(sender: sender);
       final privateHandlers = PrivateHandlers(
@@ -162,7 +169,15 @@ void main(List<String> args) {
       final miniAppBridgeToken = config.miniAppBridgeToken;
       if (miniAppBridgePort != null && miniAppBridgeToken != null) {
         miniAppBridge = MiniAppBridgeServer(
-          backend: PrivateHandlersMiniAppBackend(privateHandlers),
+          backend: PrivateHandlersMiniAppBackend(
+            privateHandlers,
+            upload: (chatId, bytes, filename, caption) => client.sendPhotoBytes(
+              chatId,
+              bytes: bytes,
+              filename: filename,
+              caption: caption,
+            ),
+          ),
           token: miniAppBridgeToken,
           runTracked: runner.runTracked,
         );
@@ -175,7 +190,8 @@ void main(List<String> args) {
         'admins=${config.adminUserIds.length}, '
         'antiSpam=${config.antiSpamEnabled}, '
         'pendingPaymentTtlMinutes=${config.pendingPaymentTtlMinutes}, '
-        'logLevel=${config.logLevel}',
+        'logLevel=${config.logLevel}, '
+        'miniAppOnly=${config.miniAppOnly}',
       );
       try {
         await runner.start();

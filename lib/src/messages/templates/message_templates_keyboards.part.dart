@@ -9,6 +9,9 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     bool groupBroadcastAdminMenu = false,
     DateTime? now,
   }) {
+    if (miniAppOnly && !isAdmin && !canViewParticipantsList && !showReturnToAdminMenu) {
+      return openMiniAppKeyboard();
+    }
     final featured = FeaturedTrainings.upcoming(now ?? DateTime.now());
     final featuredLabel =
         featured.isEmpty ? null : MessageCopy.featuredMenuLabel(featured.first.title);

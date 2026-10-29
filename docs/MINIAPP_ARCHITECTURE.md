@@ -3,22 +3,21 @@
 Telegram Mini App на Flutter + Go API поверх существующего бота.
 Бот не заменён: он остаётся источником бизнес-логики и всего, что Mini App не умеет.
 
-## Аудит бота: что куда
+## Что где живёт
 
-| Функция | Где живёт | Почему |
+| Функция | Где | Как |
 | --- | --- | --- |
-| Афиша: тренировки, походы, трейлы/кэмпы, места | **Mini App** (данные из бота) | Каталог и подсчёт мест — `ActivityCatalogService`, `countActiveParticipants` |
-| Запись на себя | **Mini App → бот** | Создание брони идёт через `_createOrContinueBooking`: бесплатные, тренеры, команда DVOR, BOXING CARD, бонусы, уведомления админам и группе |
-| Мои записи, статусы, отмена | **Mini App → бот** | Политика отмены (`BookingPolicyService`), возврат ⛰️, BOXING CARD late cancel |
-| Профиль: вершинки, посещения, рефералы | **Mini App** (Go читает SQLite) | Только чтение агрегатов |
-| Реферальная ссылка | **Mini App** | Тот же формат `?start=ref_<id>` |
-| Оплата: СБП, чек, предоплата, ⛰️, промокоды, стартовый бонус | **Бот** | Карточка оплаты приходит в чат сразу после записи из Mini App; чек — фото в чат, ревью админом |
-| Запись друга / гостя, перенос | **Бот** | Многошаговые диалоги, редко используются |
-| Онбординг-квиз, фидбек после тренировки | **Бот** | Бот пишет первым |
-| Группа: велкомы, антиспам, напоминания вступить | **Бот** | Mini App не видит группу |
-| Фоновые задачи: напоминания об оплате, промо, рассылки, начисления, Sheets | **Бот** | `JobScheduler` + `job_dedupe_log` |
-| Админка: оплаты на проверке, списки участников, посещаемость | **Mini App → бот** | Решения идут через те же методы, что и кнопки в чате: `_applyPaymentReview`, `_applyAttendance` |
-| Админка: CRUD расписания, рассылки, аналитика, абонементы | **Бот** | Многошаговые диалоги |
+| Афиша, места (только когда их меньше 30%, как в посте бота) | **Mini App** | Каталог из бота; Go скрывает число мест, пока их много |
+| Запись себя, друзей и гостей (до 5) | **Mini App → бот** | `_createOrContinueBooking`, `_createPartyBookingGroup` |
+| Оплата: СБП, чек фото, предоплата, ⛰️, промокод, стартовая | **Mini App → бот** | RPC `payment.*` нажимает те же кнопки, что в чате (`/paid`, `/use_bonus`, `/use_loyalty`, `/enter_promo`); чек загружается в чат с ботом и уходит админам как обычно |
+| Мои записи: отмена, перенос | **Mini App → бот** | `miniAppCancel`, RPC `booking.reschedule` через `/reschedule_booking` |
+| BOXING CARD: тарифы, оформление, продление с чеком или ⛰️ | **Mini App → бот** | RPC `card.*` через кнопки «Оформить» → тариф → чек |
+| Профиль, история ⛰️ и дата сгорания, рефералка, команда, правила | **Mini App** | Go читает SQLite (`loyalty_ledger`), команда — лист «Тренерский штаб» |
+| Админы | **Только админка в Mini App** | Отдельный роутер: оплаты и BOXING CARD, явка, расписание (CRUD в Sheets), записи, инструменты (отчёты, поиск, ⛰️, рассылки) |
+| Уведомления, напоминания, ответ по чеку, отзыв после тренировки | **Бот** | Пишет первым |
+| Группа: велкомы, антиспам, анонсы мест | **Бот** | Mini App не видит группу |
+| Фоновые задачи, Google Sheets, сводки | **Бот** | `JobScheduler` + `job_dedupe_log` |
+| Онбординг-видео, чат админов | **Бот** | Загрузка видео-кружков остаётся в чате |
 
 ## Архитектура
 
@@ -54,6 +53,16 @@ Telegram ─┬─ чат ───────────── dvor-chatbot (
 | GET | `/api/v1/bookings` | `bookings[]`: id, key, status, canCancel, boxingCard, participant, attendance |
 | POST | `/api/v1/bookings` `{key}` | 200 `created`/`exists`, 409 `full`, 404 `not_found` |
 | POST | `/api/v1/bookings/{id}/cancel` | 200 `cancelled` (+`refundPeaks`), 409 `too_late`, 404 |
+| POST | `/api/v1/rpc/{method}` | любое другое действие бота; 422 `{error}` с текстом для пользователя. `admin.*` — только `ADMIN_USER_IDS` |
+
+RPC-методы (`lib/src/bot/handlers/private/private_handlers_miniapp_rpc.part.dart`):
+`payment.options|choose|receipt|bonus|peaks|promo`, `booking.party|rescheduleOptions|reschedule`,
+`card.overview|buy`, `team.list`, `admin.report|cards.pending|cards.review|peaks.grant|user|broadcast`,
+`admin.schedule.list|save|delete`, `admin.bookings.list|create|status|archive`.
+
+Многошаговые сценарии чата бот проходит сам: мост подаёт в `handle()` те же команды, что шлют кнопки,
+помечая обновление `_miniapp`, и перехватывает ответ бота (`MiniAppEchoSender`) — приложение показывает
+тот же текст, что пришёл в чат.
 
 Админские (403 `forbidden`, если пользователя нет в `ADMIN_USER_IDS`):
 
@@ -88,7 +97,8 @@ Telegram ─┬─ чат ───────────── dvor-chatbot (
 | --- | --- | --- |
 | `MINIAPP_BRIDGE_PORT` | бот | порт моста (пусто — мост выключен) |
 | `MINIAPP_BRIDGE_TOKEN` | бот, API | общий секрет моста, 16+ символов |
-| `MINIAPP_URL` | API | публичный URL Mini App для menu button |
+| `MINIAPP_URL` | API, бот | публичный URL Mini App: menu button и кнопки «Открыть DVOR» |
+| `MINIAPP_ONLY` | бот | `true` — участники пользуются приложением, чат только для уведомлений (см. ниже) |
 | `MINIAPP_MENU_BUTTON_TEXT` | API | текст кнопки меню (по умолчанию `DVOR`) |
 | `MINIAPP_DOMAIN` | Caddy | домен для TLS |
 | `COMPOSE_PROFILES=miniapp` | docker compose | включает `dvor-api` и `caddy` |
@@ -103,6 +113,15 @@ scripts/deploy_miniapp.sh
 
 Бот и API обновляются обычными `scripts/update_and_logs.sh` / `scripts/full_deploy.sh`: с `COMPOSE_PROFILES=miniapp` в `.env` compose поднимает все три сервиса.
 
+## Режим «только приложение» (`MINIAPP_ONLY=true`)
+
+- `/start` (и `?start=ref_…`, `?start=book`) — одно сообщение с кнопкой «Открыть DVOR»; реферал, стартовые ⛰️ и онбординг-состояние сохраняются.
+- Любой другой текст участника — подсказка про приложение, старое нижнее меню убирается (`remove_keyboard`).
+- Работает как раньше: кнопки под уведомлениями и карточкой оплаты, чек фото в чат, ввод промокода и ответ на отзыв (открытый сценарий чата).
+- Админы и тренеры (списки записавшихся) сохраняют полный чат.
+- Вместе с флагом выключаем `ONBOARDING_DRIP_ENABLED`: квиз в чате больше не нужен.
+- Откат: `MINIAPP_ONLY=false` и перезапуск бота.
+
 ## Проверки
 
 ```bash
@@ -113,5 +132,5 @@ dart format bin lib test && dart analyze --fatal-infos --fatal-warnings && dart 
 
 ## Дальше
 
-- Запись друга/гостя и перенос в Mini App.
-- Загрузка чека прямо из Mini App вместо чата.
+- Через две недели спокойной работы в режиме `MINIAPP_ONLY` — удалить из бота меню и диалоги, которые перехватывает режим.
+- Онбординг-квиз в приложении (сейчас в режиме `MINIAPP_ONLY` квиз не задаётся).

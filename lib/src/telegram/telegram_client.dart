@@ -114,6 +114,46 @@ final class TelegramClient implements MessageSender {
     }
   }
 
+  /// Uploads a photo from bytes (`sendPhoto` multipart). Returns the new
+  /// message id and the largest size's file id.
+  Future<({int messageId, String? fileId})> sendPhotoBytes(
+    int chatId, {
+    required List<int> bytes,
+    required String filename,
+    String? caption,
+    bool disableNotification = true,
+  }) async {
+    final response = await retry(
+      () async {
+        final request = http.MultipartRequest('POST', _methodUri('sendPhoto'))
+          ..fields['chat_id'] = '$chatId'
+          ..fields['disable_notification'] = '$disableNotification'
+          ..files.add(http.MultipartFile.fromBytes('photo', bytes, filename: filename));
+        if (caption != null && caption.isNotEmpty) {
+          request.fields['caption'] = caption;
+        }
+        final streamed = await _httpClient.send(request).timeout(const Duration(seconds: 40));
+        return http.Response.fromStream(streamed);
+      },
+      shouldRetry: (error) => error is! TelegramApiException,
+    );
+    final payload = _decodeResponse(response);
+    final result = payload['result'];
+    if (result is! Map) {
+      throw const TelegramApiException('sendPhoto returned no message');
+    }
+    final messageId = result['message_id'];
+    if (messageId is! int) {
+      throw const TelegramApiException('sendPhoto returned no message_id');
+    }
+    final photos = result['photo'];
+    String? fileId;
+    if (photos is List && photos.isNotEmpty && photos.last is Map) {
+      fileId = (photos.last as Map)['file_id']?.toString();
+    }
+    return (messageId: messageId, fileId: fileId);
+  }
+
   @override
   Future<int> sendMessage(
     int chatId,

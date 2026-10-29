@@ -74,6 +74,7 @@ type Client struct {
 	baseURL string
 	token   string
 	http    *http.Client
+	rpcHTTP *http.Client
 }
 
 func NewClient(baseURL, token string) *Client {
@@ -82,6 +83,8 @@ func NewClient(baseURL, token string) *Client {
 		token:   token,
 		// Booking runs the chat flow (several Bot API calls), so allow time.
 		http: &http.Client{Timeout: 25 * time.Second},
+		// RPC deadlines come from the request context (see RPC).
+		rpcHTTP: &http.Client{},
 	}
 }
 

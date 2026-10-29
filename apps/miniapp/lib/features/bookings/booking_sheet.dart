@@ -3,6 +3,7 @@ import 'package:dvor_miniapp/core/format/formatters.dart';
 import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
+import 'package:dvor_miniapp/features/payment/payment_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,13 +31,13 @@ Future<void> showBookingResultSheet(
   if (result.outcome == ActionOutcome.exists) {
     title = 'Ты уже в списке';
     body = needsPayment
-        ? 'Запись ждёт оплаты. Карточка с реквизитами — в чате с ботом.'
+        ? 'Запись ждёт оплаты. Оплатить можно прямо здесь.'
         : 'Статус: ${booking?.status.label.toLowerCase() ?? 'записан'}.';
   } else if (needsPayment) {
     title = 'Место за тобой';
     body =
-        'Карточка оплаты уже в чате с ботом. Там же можно списать вершинки, '
-        'применить бонус или промокод.';
+        'Оплати по СБП и прикрепи чек — прямо здесь. '
+        'Вершинки, стартовая и промокод — на том же экране.';
   } else {
     title = 'Ты в списке';
     body = booking?.boxingCard == true
@@ -102,7 +103,9 @@ Future<void> showBookingResultSheet(
                   label: 'Перейти к оплате',
                   onTap: () {
                     Navigator.of(sheetContext).pop();
-                    openBotChat(ref);
+                    if (booking != null && context.mounted) {
+                      showPaymentSheet(context, booking.id);
+                    }
                   },
                 ),
                 const SizedBox(height: Space.s),

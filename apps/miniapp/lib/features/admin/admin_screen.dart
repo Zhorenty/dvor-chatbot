@@ -1,27 +1,31 @@
 import 'package:dvor_miniapp/core/api/models.dart';
+import 'package:dvor_miniapp/core/api/rpc_models.dart';
 import 'package:dvor_miniapp/core/format/formatters.dart';
 import 'package:dvor_miniapp/core/providers.dart';
-import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
+import 'package:dvor_miniapp/features/admin/card_request_card.dart';
 import 'package:dvor_miniapp/features/admin/payment_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-enum _AdminTab { payments, sessions }
+/// Which admin tab this screen shows.
+enum AdminSection { payments, sessions }
 
 /// Payment review and rosters. Writes go through the bot, so users get the
 /// same chat notices as from the chat admin buttons.
 class AdminScreen extends ConsumerStatefulWidget {
-  const AdminScreen({super.key});
+  const AdminScreen({super.key, this.section = AdminSection.payments});
+
+  final AdminSection section;
 
   @override
   ConsumerState<AdminScreen> createState() => _AdminScreenState();
 }
 
 class _AdminScreenState extends ConsumerState<AdminScreen> {
-  _AdminTab _tab = _AdminTab.payments;
+  AdminSection get _tab => widget.section;
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +42,10 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       color: context.colors.accent,
       backgroundColor: context.colors.surface,
       onRefresh: () async {
-        if (_tab == _AdminTab.payments) {
-          ref.invalidate(adminPaymentsProvider);
+        if (_tab == AdminSection.payments) {
+          ref
+            ..invalidate(adminPaymentsProvider)
+            ..invalidate(adminCardRequestsProvider);
           await ref.read(adminPaymentsProvider.future);
         } else {
           ref.invalidate(adminSessionsProvider);
@@ -60,30 +66,22 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('АДМИНКА', style: context.text.displayLarge),
-                  const SizedBox(height: Space.l),
-                  Row(
-                    children: [
-                      _TabChip(
-                        label: count == null || count == 0 ? 'Оплаты' : 'Оплаты · $count',
-                        selected: _tab == _AdminTab.payments,
-                        onTap: () => setState(() => _tab = _AdminTab.payments),
-                      ),
-                      const SizedBox(width: Space.s),
-                      _TabChip(
-                        label: 'Списки',
-                        selected: _tab == _AdminTab.sessions,
-                        onTap: () => setState(() => _tab = _AdminTab.sessions),
-                      ),
-                    ],
+                  Text(
+                    _tab == AdminSection.payments
+                        ? (count == null || count == 0 ? 'ОПЛАТЫ' : 'ОПЛАТЫ · $count')
+                        : 'ЯВКА',
+                    style: context.text.displayMedium,
                   ),
                 ],
               ),
             ),
           ),
           ...switch (_tab) {
-            _AdminTab.payments => _payments(payments),
-            _AdminTab.sessions => _sessions(ref.watch(adminSessionsProvider)),
+            AdminSection.payments => [
+              ..._payments(payments),
+              ..._cardRequests(ref.watch(adminCardRequestsProvider)),
+            ],
+            AdminSection.sessions => _sessions(ref.watch(adminSessionsProvider)),
           },
           const SliverToBoxAdapter(child: SizedBox(height: 120)),
         ],
@@ -176,6 +174,33 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
     ];
   }
 
+  List<Widget> _cardRequests(AsyncValue<List<CardRequest>> requests) {
+    final value = requests.value;
+    if (value == null || value.isEmpty) {
+      return const [];
+    }
+    return [
+      SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(Space.gutter, Space.xl, Space.gutter, Space.m),
+          child: Text(
+            'BOXING CARD · ${value.length}',
+            style: context.text.labelSmall?.copyWith(color: context.colors.inkFaint),
+          ),
+        ),
+      ),
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
+        sliver: SliverList.separated(
+          itemCount: value.length,
+          separatorBuilder: (_, _) => const SizedBox(height: Space.m),
+          itemBuilder: (_, index) =>
+              CardRequestCard(key: ValueKey(value[index].id), request: value[index]),
+        ),
+      ),
+    ];
+  }
+
   Widget _skeletons() => SliverPadding(
     padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
     sliver: SliverList.separated(
@@ -184,39 +209,6 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
       itemBuilder: (_, _) => const DvorCard(child: Skeleton(height: 96)),
     ),
   );
-}
-
-class _TabChip extends StatelessWidget {
-  const _TabChip({required this.label, required this.selected, required this.onTap});
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.colors;
-    return Pressable(
-      onTap: onTap,
-      haptic: HapticKind.selection,
-      child: AnimatedContainer(
-        duration: Motion.medium,
-        curve: Motion.curve,
-        height: 40,
-        padding: const EdgeInsets.symmetric(horizontal: Space.l),
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: selected ? c.accent : c.surface,
-          borderRadius: BorderRadius.circular(Radii.chip),
-          border: Border.all(color: selected ? c.accent : c.stroke),
-        ),
-        child: Text(
-          label,
-          style: context.text.labelLarge?.copyWith(color: selected ? c.onAccent : c.ink),
-        ),
-      ),
-    );
-  }
 }
 
 class _SessionTile extends StatelessWidget {

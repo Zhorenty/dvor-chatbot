@@ -4,6 +4,7 @@ import 'dart:js_interop';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
+import 'package:web/web.dart' as web;
 
 TelegramPlatform createPlatform() => WebTelegramPlatform();
 
@@ -275,7 +276,24 @@ class WebTelegramPlatform implements TelegramPlatform {
   void openLink(String url) => _app?.openLink(url);
 
   @override
-  void openTelegramLink(String url) => _app?.openTelegramLink(url);
+  void openTelegramLink(String url) {
+    final app = _app;
+    if (app == null) {
+      return;
+    }
+    app.openTelegramLink(url);
+    // Some clients ignore invite links (t.me/+…) here and the app just
+    // stays open. If nothing took over the screen, open the link the
+    // regular way: Telegram intercepts t.me pages and shows "Join".
+    final invite = url.contains('/+') || url.contains('joinchat');
+    if (invite) {
+      Future<void>.delayed(const Duration(milliseconds: 900), () {
+        if (web.document.visibilityState == 'visible') {
+          app.openLink(url);
+        }
+      });
+    }
+  }
 
   @override
   void close() => _app?.close();

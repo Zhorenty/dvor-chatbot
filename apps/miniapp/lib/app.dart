@@ -1,4 +1,5 @@
 import 'package:dvor_miniapp/core/api/models.dart';
+import 'package:dvor_miniapp/core/api/rpc_models.dart';
 import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
@@ -6,7 +7,10 @@ import 'package:dvor_miniapp/core/widgets/fps_meter.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
 import 'package:dvor_miniapp/features/admin/admin.dart' deferred as admin;
 import 'package:dvor_miniapp/features/bookings/bookings_screen.dart';
+import 'package:dvor_miniapp/features/card/card_screen.dart';
+import 'package:dvor_miniapp/features/profile/help_screen.dart';
 import 'package:dvor_miniapp/features/profile/profile_screen.dart';
+import 'package:dvor_miniapp/features/profile/team_screen.dart';
 import 'package:dvor_miniapp/features/schedule/event_screen.dart';
 import 'package:dvor_miniapp/features/schedule/schedule_screen.dart';
 import 'package:dvor_miniapp/features/shell/app_shell.dart';
@@ -15,49 +19,88 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-GoRouter buildRouter({String initialLocation = '/'}) {
+GoRouter buildRouter({String initialLocation = '/', bool isAdmin = false}) {
+  return isAdmin ? _adminRouter(initialLocation) : _memberRouter(initialLocation);
+}
+
+GoRoute _page(String path, Widget Function(GoRouterState state) build) {
+  return GoRoute(
+    path: path,
+    pageBuilder: (context, state) => MaterialPage(child: build(state)),
+  );
+}
+
+StatefulShellBranch _branch(String path, Widget Function() build) {
+  return StatefulShellBranch(
+    routes: [GoRoute(path: path, builder: (_, _) => build())],
+  );
+}
+
+GoRouter _memberRouter(String initialLocation) {
   return GoRouter(
-    initialLocation: initialLocation,
+    initialLocation: initialLocation.startsWith('/admin') ? '/' : initialLocation,
     routes: [
       StatefulShellRoute.indexedStack(
-        builder: (context, state, shell) => AppShell(shell: shell),
+        builder: (context, state, shell) => MemberShell(shell: shell),
         branches: [
-          StatefulShellBranch(
-            routes: [GoRoute(path: '/', builder: (_, _) => const ScheduleScreen())],
-          ),
-          StatefulShellBranch(
-            routes: [GoRoute(path: '/bookings', builder: (_, _) => const BookingsScreen())],
-          ),
-          StatefulShellBranch(
-            routes: [GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen())],
-          ),
-          // Tab is shown only to admins; the API enforces access.
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/admin',
-                builder: (_, _) =>
-                    DeferredScreen(load: admin.loadLibrary, builder: () => admin.AdminScreen()),
-              ),
-            ],
-          ),
+          _branch('/', () => const ScheduleScreen()),
+          _branch('/bookings', () => const BookingsScreen()),
+          _branch('/profile', () => const ProfileScreen()),
         ],
-      ),
-      GoRoute(
-        path: '/admin/session',
-        redirect: (_, state) => state.extra is AdminSession ? null : '/admin',
-        pageBuilder: (context, state) => MaterialPage(
-          child: DeferredScreen(
-            load: admin.loadLibrary,
-            builder: () => admin.RosterScreen(initial: state.extra! as AdminSession),
-          ),
-        ),
       ),
       GoRoute(
         path: '/event',
         redirect: (_, state) => state.extra is ClubEvent ? null : '/',
         pageBuilder: (context, state) =>
             MaterialPage(child: EventScreen(initial: state.extra! as ClubEvent)),
+      ),
+      _page('/card', (_) => const CardScreen()),
+      _page('/team', (_) => const TeamScreen()),
+      _page('/help', (_) => const HelpScreen()),
+    ],
+  );
+}
+
+/// Admins get only the admin section; its code is a deferred chunk.
+GoRouter _adminRouter(String initialLocation) {
+  Widget lazy(Widget Function() build) => DeferredScreen(load: admin.loadLibrary, builder: build);
+  return GoRouter(
+    initialLocation: initialLocation.startsWith('/admin') ? initialLocation : '/admin/payments',
+    routes: [
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, shell) => AdminShell(shell: shell),
+        branches: [
+          _branch(
+            '/admin/payments',
+            () => lazy(() => admin.AdminScreen(section: admin.AdminSection.payments)),
+          ),
+          _branch(
+            '/admin/attendance',
+            () => lazy(() => admin.AdminScreen(section: admin.AdminSection.sessions)),
+          ),
+          _branch('/admin/schedule', () => lazy(() => admin.AdminScheduleScreen())),
+          _branch('/admin/bookings', () => lazy(() => admin.AdminBookingsScreen())),
+          _branch('/admin/tools', () => lazy(() => admin.AdminToolsScreen())),
+        ],
+      ),
+      GoRoute(
+        path: '/admin/session',
+        redirect: (_, state) => state.extra is AdminSession ? null : '/admin/attendance',
+        pageBuilder: (context, state) => MaterialPage(
+          child: lazy(() => admin.RosterScreen(initial: state.extra! as AdminSession)),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/schedule/edit',
+        pageBuilder: (context, state) => MaterialPage(
+          child: lazy(() => admin.ScheduleEditScreen(item: state.extra as CatalogItem?)),
+        ),
+      ),
+      GoRoute(
+        path: '/admin/report',
+        redirect: (_, state) => state.extra is String ? null : '/admin/tools',
+        pageBuilder: (context, state) =>
+            MaterialPage(child: lazy(() => admin.ReportScreen(kind: state.extra! as String))),
       ),
     ],
   );

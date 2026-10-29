@@ -59,6 +59,25 @@ extension PrivateHandlersDispatch on PrivateHandlers {
       _cancelBroadcastMediaCollection(userId);
     }
 
+    if (_templates.miniAppOnly &&
+        userId != null &&
+        update['_miniapp'] != true &&
+        !isConfiguredAdmin &&
+        !canRunParticipantsAction) {
+      final handled = await _handleMiniAppOnly(
+        chatId: chatId,
+        userId: userId,
+        text: text,
+        firstName: context.from?['first_name']?.toString(),
+        isCallback: callbackQueryId != null,
+        hasPaymentProof: paymentProof != null,
+        hasFlow: flowState != null,
+      );
+      if (handled) {
+        return true;
+      }
+    }
+
     final handledStaticCommand = await _staticCommands.handle(
       text: text,
       chatId: chatId,

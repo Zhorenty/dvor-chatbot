@@ -9,18 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-/// Selected day in the week strip (club-local midnight as UTC), or null.
-class DayFilter extends Notifier<DateTime?> {
-  @override
-  DateTime? build() => null;
-
-  void toggle(DateTime day) => state = state == day ? null : day;
-
-  void clear() => state = null;
-}
-
-final dayFilterProvider = NotifierProvider<DayFilter, DateTime?>(DayFilter.new);
-
 class ScheduleScreen extends ConsumerWidget {
   const ScheduleScreen({super.key});
 
@@ -44,7 +32,6 @@ class ScheduleScreen extends ConsumerWidget {
         slivers: [
           SliverToBoxAdapter(child: _Header(topInset: inset.top)),
           const SliverToBoxAdapter(child: _NextBooking()),
-          if (events.value case final all?) SliverToBoxAdapter(child: _DayStrip(events: all)),
           const SliverPersistentHeader(pinned: true, delegate: _FilterBarDelegate()),
           ...switch (events) {
             AsyncValue(:final value?) => _content(context, ref, value),
@@ -73,27 +60,17 @@ class ScheduleScreen extends ConsumerWidget {
 
   List<Widget> _content(BuildContext context, WidgetRef ref, List<ClubEvent> all) {
     final filter = ref.watch(categoryFilterProvider);
-    final day = ref.watch(dayFilterProvider);
     final booked = ref.watch(bookedKeysProvider);
     final now = ref.watch(clockProvider)();
 
-    bool onDay(ClubEvent e) {
-      if (day == null) {
-        return true;
-      }
-      final start = ClubTime.dayOf(e.startsAt);
-      final end = e.endsAt == null ? start : ClubTime.dayOf(e.endsAt!);
-      return !day.isBefore(start) && !day.isAfter(end);
-    }
-
-    final visible = all.where((e) => (filter == null || e.category == filter) && onDay(e)).toList();
+    final visible = all.where((e) => filter == null || e.category == filter).toList();
     final outdoor = visible.where((e) => e.category.isOutdoor).toList();
     final trainings = visible.where((e) => !e.category.isOutdoor).toList();
 
     void open(ClubEvent e) => context.push('/event', extra: e);
 
     if (visible.isEmpty) {
-      final filtered = filter != null || day != null;
+      final filtered = filter != null;
       return [
         SliverFillRemaining(
           hasScrollBody: false,
@@ -103,10 +80,7 @@ class ScheduleScreen extends ConsumerWidget {
             body: 'Расписание обновляется. Загляни чуть позже.',
             actionLabel: filtered ? 'Показать всё' : null,
             onAction: filtered
-                ? () {
-                    ref.read(categoryFilterProvider.notifier).select(null);
-                    ref.read(dayFilterProvider.notifier).clear();
-                  }
+                ? () => ref.read(categoryFilterProvider.notifier).select(null)
                 : null,
           ),
         ),
@@ -289,89 +263,6 @@ class _NextBooking extends ConsumerWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// Next two weeks; dots mark days with events, tap filters by day.
-class _DayStrip extends ConsumerWidget {
-  const _DayStrip({required this.events});
-
-  final List<ClubEvent> events;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.colors;
-    final selected = ref.watch(dayFilterProvider);
-    final now = ref.watch(clockProvider)();
-    final today = ClubTime.today(now);
-    final busy = <DateTime>{};
-    for (final e in events) {
-      final last = ClubTime.dayOf(e.endsAt ?? e.startsAt);
-      for (
-        var d = ClubTime.dayOf(e.startsAt);
-        !d.isAfter(last);
-        d = d.add(const Duration(days: 1))
-      ) {
-        busy.add(d);
-      }
-    }
-    final days = List.generate(14, (i) => today.add(Duration(days: i)));
-    return SizedBox(
-      height: 64,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: Space.gutter),
-        itemCount: days.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 6),
-        itemBuilder: (context, i) {
-          final d = days[i];
-          final on = d == selected;
-          final has = busy.contains(d);
-          return Pressable(
-            onTap: () => ref.read(dayFilterProvider.notifier).toggle(d),
-            haptic: HapticKind.selection,
-            semanticLabel: Fmt.dayTitle(d, now),
-            child: AnimatedContainer(
-              duration: Motion.fast,
-              width: 46,
-              decoration: BoxDecoration(
-                color: on ? c.ink : c.surface,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: on ? c.ink : c.stroke),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    Fmt.weekdayShort(d).toUpperCase(),
-                    style: context.text.labelSmall?.copyWith(
-                      color: on ? c.background.withValues(alpha: 0.6) : c.inkFaint,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                  Text(
-                    '${d.day}',
-                    style: context.text.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      color: on ? c.background : (has ? c.ink : c.inkFaint),
-                      height: 1.15,
-                    ),
-                  ),
-                  Container(
-                    width: 4,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: has ? (on ? c.background : c.accent) : Colors.transparent,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }

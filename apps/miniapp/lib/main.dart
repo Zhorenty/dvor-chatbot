@@ -49,11 +49,20 @@ Future<void> main() async {
       container.read(categoryFilterProvider.notifier).select(EventCategory.parse(start));
   }
 
+  // Admins get a different app (only admin tabs). The splash stays while /me
+  // answers; on a network error the member app opens and works as usual.
+  var isAdmin = false;
+  try {
+    isAdmin = (await container.read(meProvider.future).timeout(const Duration(seconds: 8))).isAdmin;
+  } on Object {
+    isAdmin = false;
+  }
+
   runApp(
     UncontrolledProviderScope(
       container: container,
       child: DvorApp(
-        router: buildRouter(initialLocation: initialLocation),
+        router: buildRouter(initialLocation: initialLocation, isAdmin: isAdmin),
         showFps: start == 'fps' || const bool.fromEnvironment('DVOR_FPS'),
       ),
     ),

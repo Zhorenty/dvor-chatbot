@@ -64,9 +64,10 @@ func run() error {
 		Addr:              cfg.Addr,
 		Handler:           server.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
-		ReadTimeout:       10 * time.Second,
-		WriteTimeout:      40 * time.Second,
-		IdleTimeout:       90 * time.Second,
+		// Receipt uploads over mobile networks and chat-driven RPCs are slow.
+		ReadTimeout:  90 * time.Second,
+		WriteTimeout: 90 * time.Second,
+		IdleTimeout:  90 * time.Second,
 	}
 	errCh := make(chan error, 1)
 	go func() {

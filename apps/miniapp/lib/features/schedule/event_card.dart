@@ -113,9 +113,7 @@ class _PriceAndSeats extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final seats = event.seatsLeft;
-    final limit = event.limit;
-    final tone = seats == 0 ? c.danger : (seats != null && seats <= 3 ? c.warning : c.accent);
+    final low = event.lowSeats;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
@@ -123,46 +121,17 @@ class _PriceAndSeats extends StatelessWidget {
           Fmt.price(event.price),
           style: context.text.labelLarge?.copyWith(color: event.isFree ? c.accent : c.ink),
         ),
-        if (seats != null && limit != null) ...[
-          const SizedBox(height: 6),
-          _SeatsBar(ratio: 1 - seats / limit, color: tone),
-          const SizedBox(height: 3),
+        if (low != null) ...[
+          const SizedBox(height: 4),
           Text(
-            seats == 0 ? 'Мест нет' : Fmt.seats(seats),
+            low == 0 ? 'Мест нет' : 'Осталось ${Fmt.seats(low)}',
             style: context.text.labelSmall?.copyWith(
-              color: seats <= 3 ? tone : c.inkFaint,
+              color: low == 0 ? c.danger : c.warning,
               letterSpacing: 0.2,
             ),
           ),
         ],
       ],
-    );
-  }
-}
-
-class _SeatsBar extends StatelessWidget {
-  const _SeatsBar({required this.ratio, required this.color});
-
-  final double ratio;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 48,
-      height: 4,
-      alignment: Alignment.centerLeft,
-      decoration: BoxDecoration(
-        color: context.colors.surfaceRaised,
-        borderRadius: BorderRadius.circular(2),
-      ),
-      child: FractionallySizedBox(
-        widthFactor: ratio.clamp(0.04, 1),
-        child: DecoratedBox(
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
-          child: const SizedBox.expand(),
-        ),
-      ),
     );
   }
 }
@@ -187,11 +156,11 @@ class OutdoorCard extends StatelessWidget {
     final c = context.colors;
     final tone = categoryColor(context, event.category);
     final title = splitTitleEmoji(event.title);
-    final seats = event.seatsLeft;
+    final low = event.lowSeats;
     final facts = [
       Fmt.price(event.price),
       if (event.prepayPercent != null && !event.isFree) 'предоплата ${event.prepayPercent}%',
-      if (seats != null) seats == 0 ? 'мест нет' : Fmt.seats(seats),
+      if (low != null) low == 0 ? 'мест нет' : 'осталось ${Fmt.seats(low)}',
     ].join(' · ');
     return Pressable(
       onTap: onTap,

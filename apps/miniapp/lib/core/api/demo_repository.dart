@@ -84,7 +84,8 @@ class DemoRepository implements DvorRepository {
       id: 1,
       firstName: 'Гость',
       username: 'demo',
-      isAdmin: true,
+      // Preview the admin app with --dart-define=DVOR_DEMO_ADMIN=true.
+      isAdmin: const bool.fromEnvironment('DVOR_DEMO_ADMIN'),
       peaks: 340,
       visits: 7,
       invited: 1,
@@ -310,6 +311,155 @@ class DemoRepository implements DvorRepository {
     );
     _rosters['demo-past'] = [...roster]..[index] = updated;
     return updated;
+  }
+
+  @override
+  Future<Map<String, Object?>> rpc(String method, [Map<String, Object?> params = const {}]) async {
+    await _delay(400);
+    final sbp = 'https://example.com/sbp';
+    switch (method) {
+      case 'payment.options':
+        final booking = _bookings.firstWhere((b) => b.id == params['bookingId']);
+        final outdoor = booking.category.isOutdoor;
+        return {
+          'payable': booking.status.needsPayment,
+          'amount': booking.price ?? 0,
+          'participants': 1,
+          'prepayPercent': outdoor ? 50 : null,
+          'prepayAmount': outdoor ? ((booking.price ?? 0) / 2).round() : null,
+          'outdoorChoice': outdoor,
+          'sbpLink': sbp,
+          'starterBonus': !outdoor,
+          'peaks': {
+            'balance': 340,
+            'available': true,
+            'spend': 340,
+            'remainderRub': 530,
+            'coversFully': false,
+          },
+          'promo': true,
+        };
+      case 'payment.receipt':
+        _setStatus(params['bookingId']! as int, BookingStatus.paymentSubmitted);
+        return {'message': 'Чек отправлен на проверку. Ответ придёт в чат.'};
+      case 'payment.bonus':
+        _setStatus(params['bookingId']! as int, BookingStatus.freeTraining);
+        return {'message': 'Стартовая тренировка применена. До встречи на площадке.'};
+      case 'payment.peaks':
+        return {'message': 'Списали 340 ⛰️. Осталось доплатить 530 ₽.'};
+      case 'payment.promo':
+        return {'message': 'Промокод не найден.'};
+      case 'payment.choose':
+        return {'message': 'Пришли чек.'};
+      case 'booking.party':
+        final key = params['key']! as String;
+        await book(key);
+        return {'message': 'Записали. Карточка оплаты — в чате.'};
+      case 'booking.rescheduleOptions':
+        return {
+          'events': [
+            for (final e in _events.where((e) => !e.category.isOutdoor && !e.isFull))
+              {
+                'key': e.key,
+                'category': 'trainings',
+                'title': e.title,
+                'startsAt': e.startsAt.toIso8601String(),
+                'location': e.location,
+                'price': e.price,
+              },
+          ],
+        };
+      case 'booking.reschedule':
+        return {'message': 'Запись перенесена.'};
+      case 'card.overview':
+        return {
+          'active': false,
+          'peaksBalance': 340,
+          'sbpLink': sbp,
+          'plans': [
+            {
+              'id': 'baza',
+              'name': 'БАЗА',
+              'price': 3500,
+              'trainings': 4,
+              'individual': 1,
+              'peaksQuote': {'spend': 340, 'remainderRub': 3330, 'coversFully': false},
+            },
+            {
+              'id': 'udar',
+              'name': 'УДАР',
+              'price': 4700,
+              'trainings': 8,
+              'individual': 1,
+              'peaksQuote': {'spend': 340, 'remainderRub': 4530, 'coversFully': false},
+            },
+          ],
+        };
+      case 'card.buy':
+        return {'message': 'Заявка на BOXING CARD отправлена. Ответ придёт в чат.'};
+      case 'team.list':
+        return {
+          'people': [
+            {
+              'name': 'Демо-тренер',
+              'role': 'Тренер',
+              'kind': 'trainer',
+              'description': 'Бокс и функционал.',
+              'link': 'https://t.me/demo',
+            },
+            {
+              'name': 'Демо-команда',
+              'role': 'Команда DVOR',
+              'kind': 'team',
+              'description': 'Походы и кэмпы.',
+              'link': 'https://t.me/demo',
+            },
+          ],
+        };
+      case 'admin.report':
+        return {'text': 'Демо-отчёт\n\nЗаписей за неделю: 42\nОплачено: 35'};
+      case 'admin.cards.pending':
+        return {'requests': <Object?>[]};
+      case 'admin.schedule.list':
+        return {
+          'items': [
+            for (final (i, e) in _events.indexed)
+              if ((params['category'] ?? 'trainings') == e.category.name)
+                {
+                  'row': i + 2,
+                  'category': e.category.name,
+                  'title': e.title,
+                  'startsAt': e.startsAt.toIso8601String(),
+                  'fields': {'title': e.title, 'location': e.location},
+                },
+          ],
+        };
+      case 'admin.bookings.list':
+        return {'bookings': <Object?>[]};
+      case 'admin.user':
+        return {'username': params['user'], 'peaks': 0, 'bookings': <Object?>[]};
+      default:
+        return {'message': 'Готово.'};
+    }
+  }
+
+  void _setStatus(int id, BookingStatus status) {
+    final i = _bookings.indexWhere((b) => b.id == id);
+    if (i < 0) {
+      return;
+    }
+    final b = _bookings[i];
+    _bookings[i] = Booking(
+      id: b.id,
+      key: b.key,
+      category: b.category,
+      title: b.title,
+      startsAt: b.startsAt,
+      location: b.location,
+      status: status,
+      price: b.price,
+      canCancel: b.canCancel,
+    );
   }
 
   Future<void> _delay([int ms = 350]) => Future<void>.delayed(Duration(milliseconds: ms));

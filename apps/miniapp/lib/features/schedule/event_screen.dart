@@ -3,9 +3,12 @@ import 'package:dvor_miniapp/core/format/formatters.dart';
 import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/telegram/telegram.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
+import 'package:dvor_miniapp/core/widgets/sheets.dart';
 import 'package:dvor_miniapp/core/widgets/telegram_main_button.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
 import 'package:dvor_miniapp/features/bookings/booking_sheet.dart';
+import 'package:dvor_miniapp/features/bookings/party_sheet.dart';
+import 'package:dvor_miniapp/features/payment/payment_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -69,9 +72,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
 
     final MainButtonState? buttonState;
     if (booked != null) {
-      buttonState = booked.status.needsPayment
-          ? const MainButtonState(text: 'Оплатить в чате с ботом')
-          : null;
+      buttonState = booked.status.needsPayment ? const MainButtonState(text: 'Оплатить') : null;
     } else if (event.isFull) {
       buttonState = const MainButtonState(text: 'Мест нет', enabled: false);
     } else {
@@ -83,7 +84,7 @@ class _EventScreenState extends ConsumerState<EventScreen> {
 
     void onMain() {
       if (booked != null) {
-        openBotChat(ref);
+        showPaymentSheet(context, booked.id);
       } else {
         _book(event);
       }
@@ -175,7 +176,16 @@ class _EventScreenState extends ConsumerState<EventScreen> {
                 children: [
                   const SizedBox(height: Space.l),
                   _FactsCard(event: event),
-                  if (event.seatsLeft != null) ...[
+                  if (!event.isFull) ...[
+                    const SizedBox(height: Space.m),
+                    OptionTile(
+                      icon: Icons.group_add_rounded,
+                      title: booked == null ? 'Записать друзей' : 'Записать ещё друзей',
+                      subtitle: 'До 5 человек, одна оплата за всех',
+                      onTap: () => showPartySheet(context, event, selfBooked: booked != null),
+                    ),
+                  ],
+                  if (event.lowSeats != null) ...[
                     const SizedBox(height: Space.m),
                     _SeatsCard(event: event),
                   ],
@@ -310,6 +320,7 @@ class _FactRow extends StatelessWidget {
   }
 }
 
+/// Shown only when seats run low (see [ClubEvent.lowSeats]).
 class _SeatsCard extends StatelessWidget {
   const _SeatsCard({required this.event});
 
@@ -318,46 +329,22 @@ class _SeatsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final limit = event.limit!;
-    final left = event.seatsLeft!;
-    final taken = limit - left;
-    final ratio = limit == 0 ? 1.0 : taken / limit;
-    final tone = left == 0 ? c.danger : (left <= 3 ? c.warning : c.accent);
+    final left = event.lowSeats!;
+    final tone = left == 0 ? c.danger : c.warning;
     return DvorCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      color: Color.alphaBlend(tone.withValues(alpha: 0.10), c.surface),
+      borderColor: tone.withValues(alpha: 0.45),
+      child: Row(
         children: [
-          Row(
-            children: [
-              Flexible(
-                child: Text(
-                  left == 0 ? 'Мест нет' : 'Осталось ${Fmt.seats(left)}',
-                  style: context.text.titleMedium?.copyWith(color: tone),
-                ),
-              ),
-              const Spacer(),
-              Text('$taken из $limit', style: context.text.labelLarge?.copyWith(color: c.inkFaint)),
-            ],
+          Icon(
+            left == 0 ? Icons.event_busy_rounded : Icons.local_fire_department_rounded,
+            color: tone,
           ),
-          const SizedBox(height: Space.m),
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 0, end: ratio.clamp(0, 1)),
-            duration: Motion.slow,
-            curve: Motion.curve,
-            builder: (context, value, _) => Container(
-              height: 8,
-              alignment: Alignment.centerLeft,
-              decoration: BoxDecoration(
-                color: c.surfaceRaised,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: FractionallySizedBox(
-                widthFactor: value,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(color: tone, borderRadius: BorderRadius.circular(4)),
-                  child: const SizedBox.expand(),
-                ),
-              ),
+          const SizedBox(width: Space.m),
+          Expanded(
+            child: Text(
+              left == 0 ? 'Мест нет' : 'Места заканчиваются: осталось ${Fmt.seats(left)}',
+              style: context.text.titleMedium?.copyWith(color: tone),
             ),
           ),
         ],
@@ -376,8 +363,8 @@ class _HowToPay extends StatelessWidget {
     final c = context.colors;
     final steps = <String>[
       'Жми «Записаться» — место закрепится за тобой.',
-      'В чате с ботом придёт карточка оплаты по СБП.',
-      'Пришли чек в чат. После проверки запись станет «Оплачено».',
+      'Оплати по СБП прямо отсюда — ссылка на экране оплаты.',
+      'Прикрепи скриншот чека. После проверки запись станет «Оплачено».',
     ];
     return DvorCard(
       color: c.surfaceRaised,

@@ -31,15 +31,24 @@ part 'templates/message_templates_content.part.dart';
 part 'templates/message_templates_admin_schedule.part.dart';
 part 'templates/message_templates_keyboards.part.dart';
 part 'templates/message_templates_helpers.part.dart';
+part 'templates/message_templates_miniapp.part.dart';
 
 const String _sbpPaymentLink = MessageCopy.sbpPaymentLink;
 
 final class MessageTemplates {
   const MessageTemplates({
     String? botUsername,
-  }) : _botUsername = botUsername;
+    String? miniAppUrl,
+  })  : _botUsername = botUsername,
+        _miniAppUrl = miniAppUrl;
 
   final String? _botUsername;
+
+  /// Set when the bot runs in Mini App mode (`MINIAPP_ONLY`): members get an
+  /// "Открыть DVOR" button instead of the reply-keyboard menu.
+  final String? _miniAppUrl;
+
+  bool get miniAppOnly => _miniAppUrl != null;
   final PrivateNavigationTemplates _privateNavigationTemplates = const PrivateNavigationTemplates();
   final ScheduleTemplates _scheduleTemplates = const ScheduleTemplates();
   GroupTemplates get _groupTemplates => GroupTemplates(botUsername: _botUsername);

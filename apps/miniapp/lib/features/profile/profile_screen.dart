@@ -2,10 +2,12 @@ import 'package:dvor_miniapp/core/api/models.dart';
 import 'package:dvor_miniapp/core/format/formatters.dart';
 import 'package:dvor_miniapp/core/providers.dart';
 import 'package:dvor_miniapp/core/theme/app_theme.dart';
+import 'package:dvor_miniapp/core/widgets/sheets.dart';
 import 'package:dvor_miniapp/core/widgets/widgets.dart';
 import 'package:dvor_miniapp/features/bookings/booking_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 /// Club links shared with the bot copy (`MessageCopy`).
 abstract final class ClubLinks {
@@ -85,15 +87,36 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
       const SizedBox(height: Space.xl),
-      _PeaksCard(me: me),
-      if (me.peaksHistory.isNotEmpty) ...[
-        const SizedBox(height: Space.s),
-        _PeaksHistory(history: me.peaksHistory),
-      ],
+      Pressable(
+        onTap: () => showDvorSheet<void>(context, (_) => _PeaksSheet(me: me)),
+        semanticLabel: 'История вершинок',
+        child: _PeaksCard(me: me),
+      ),
       if (me.referralLink != null) ...[
         const SizedBox(height: Space.m),
         _ReferralCard(link: me.referralLink!),
       ],
+      const SizedBox(height: Space.m),
+      OptionTile(
+        icon: Icons.sports_mma_rounded,
+        title: 'BOXING CARD',
+        subtitle: 'Абонемент на бокс',
+        onTap: () => context.push('/card'),
+      ),
+      const SizedBox(height: Space.s),
+      OptionTile(
+        icon: Icons.groups_rounded,
+        title: 'Команда',
+        subtitle: 'Тренеры и команда DVOR',
+        onTap: () => context.push('/team'),
+      ),
+      const SizedBox(height: Space.s),
+      OptionTile(
+        icon: Icons.menu_book_rounded,
+        title: 'Правила',
+        subtitle: 'Оплата, отмена, вершинки',
+        onTap: () => context.push('/help'),
+      ),
       const SizedBox(height: Space.xl),
       Text('DVOR', style: context.text.labelSmall?.copyWith(color: c.inkFaint)),
       const SizedBox(height: Space.s),
@@ -117,10 +140,8 @@ class ProfileScreen extends ConsumerWidget {
             Divider(height: 1, color: c.stroke, indent: 62),
             _LinkRow(
               icon: Icons.smart_toy_outlined,
-              title: me.isAdmin ? 'Бот и админка' : 'Чат с ботом',
-              subtitle: me.isAdmin
-                  ? 'Рассылки, расписание, аналитика'
-                  : 'Оплаты, бонусы, промокоды',
+              title: 'Чат с ботом',
+              subtitle: 'Напоминания и ответы по чекам',
               onTap: () => openBotChat(ref),
             ),
           ],
@@ -192,9 +213,19 @@ class _PeaksCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'ВЕРШИНКИ',
-            style: context.text.labelSmall?.copyWith(color: c.onAccent.withValues(alpha: 0.7)),
+          Row(
+            children: [
+              Text(
+                'ВЕРШИНКИ',
+                style: context.text.labelSmall?.copyWith(color: c.onAccent.withValues(alpha: 0.7)),
+              ),
+              const Spacer(),
+              Text(
+                'История',
+                style: context.text.labelMedium?.copyWith(color: c.onAccent.withValues(alpha: 0.8)),
+              ),
+              Icon(Icons.chevron_right_rounded, size: 18, color: c.onAccent.withValues(alpha: 0.8)),
+            ],
           ),
           const SizedBox(height: 4),
           TweenAnimationBuilder<double>(
@@ -233,6 +264,36 @@ class _PeaksCard extends StatelessWidget {
   }
 }
 
+class _PeaksSheet extends StatelessWidget {
+  const _PeaksSheet({required this.me});
+
+  final Me me;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.colors;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SheetTitle('${Fmt.number(me.peaks)} ⛰️', subtitle: 'За что начислили и на что потратили'),
+        const SizedBox(height: Space.l),
+        if (me.peaksHistory.isEmpty)
+          Text(
+            'Пока пусто. Вершинки копятся за тренировки, отзывы и приглашённых друзей.',
+            style: context.text.bodyMedium?.copyWith(color: c.inkMuted),
+          )
+        else
+          _PeaksHistory(history: me.peaksHistory),
+        const SizedBox(height: Space.l),
+        Text(
+          '2 ⛰️ = 1 ₽. Живут 45 дней с последней активности.',
+          style: context.text.bodyMedium?.copyWith(color: c.inkFaint, fontSize: 12.5),
+        ),
+      ],
+    );
+  }
+}
+
 class _PeaksHistory extends StatelessWidget {
   const _PeaksHistory({required this.history});
 
@@ -241,7 +302,7 @@ class _PeaksHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = context.colors;
-    final rows = history.take(5).toList();
+    final rows = history.take(8).toList();
     return DvorCard(
       padding: const EdgeInsets.symmetric(horizontal: Space.l, vertical: Space.xs),
       radius: Radii.tile,

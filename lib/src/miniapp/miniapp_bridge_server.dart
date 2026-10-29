@@ -46,12 +46,32 @@ abstract interface class MiniAppBridgeBackend {
     required int bookingId,
     required String attendance,
   });
+
+  /// Everything else the app does (payment, BOXING CARD, admin tools); see
+  /// `PrivateHandlersMiniAppRpc`. Throws [MiniAppRpcException] with a
+  /// user-facing message.
+  Future<Map<String, Object?>> rpc(
+    String method,
+    MiniAppCaller caller,
+    Map<String, Object?> params,
+  );
 }
 
 final class PrivateHandlersMiniAppBackend implements MiniAppBridgeBackend {
-  const PrivateHandlersMiniAppBackend(this._handlers);
+  const PrivateHandlersMiniAppBackend(this._handlers, {MiniAppPhotoUpload? upload})
+      : _upload = upload;
 
   final PrivateHandlers _handlers;
+  final MiniAppPhotoUpload? _upload;
+
+  @override
+  Future<Map<String, Object?>> rpc(
+    String method,
+    MiniAppCaller caller,
+    Map<String, Object?> params,
+  ) {
+    return _handlers.miniAppRpc(method, caller, params, upload: _upload);
+  }
 
   @override
   Future<Map<String, Object?>> schedule() => _handlers.miniAppScheduleWithSeats();
@@ -137,6 +157,7 @@ final class MiniAppBridgeServer {
   final TrackedRunner? _runTracked;
   HttpServer? _server;
 
+  static final RegExp _rpcPath = RegExp(r'^/internal/rpc/([a-zA-Z.]+)$');
   static final RegExp _userBookingsPath = RegExp(r'^/internal/users/(\d+)/bookings$');
   static final RegExp _cancelPath = RegExp(r'^/internal/bookings/(\d+)/cancel$');
   static final RegExp _reviewPath = RegExp(r'^/internal/admin/payments/(\d+)/review$');
@@ -214,6 +235,36 @@ final class MiniAppBridgeServer {
           bookingId: int.parse(cancel.group(1)!),
         ),
       );
+    }
+    final rpc = _rpcPath.firstMatch(path);
+    if (method == 'POST' && rpc != null) {
+      final body = await _readJson(request);
+      final user = body['user'];
+      if (user is! Map<String, Object?>) {
+        throw const FormatException('user is required');
+      }
+      final params = body['params'];
+      try {
+        return (
+          HttpStatus.ok,
+          await _backend.rpc(
+            rpc.group(1)!,
+            MiniAppCaller(
+              id: _requireInt(user, 'id'),
+              username: user['username'] as String?,
+              firstName: user['firstName'] as String?,
+            ),
+            params is Map<String, Object?> ? params : const <String, Object?>{},
+          ),
+        );
+      } on MiniAppRpcException catch (error) {
+        return (
+          HttpStatus.unprocessableEntity,
+          <String, Object?>{
+            'error': <String, Object?>{'code': error.code, 'message': error.message},
+          },
+        );
+      }
     }
     if (path.startsWith('/internal/admin/')) {
       final admin = await _routeAdmin(request);

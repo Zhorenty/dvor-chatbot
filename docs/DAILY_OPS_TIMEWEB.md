@@ -50,6 +50,7 @@ bash scripts/full_deploy.sh
 - Статика лежит в `/opt/dvor-chatbot-project/miniapp-dist` (не в git)
 - Логи: `docker logs --tail=200 dvor-api`, `docker logs --tail=200 dvor-caddy`
 - Проверка: `curl -s https://$MINIAPP_DOMAIN/api/v1/me` → 401 (нужен initData) значит API живо
+- Перевести участников в приложение: в `.env` `MINIAPP_ONLY=true` и `ONBOARDING_DRIP_ENABLED=false`, затем `docker compose up -d dvor-chatbot`. Откат — `MINIAPP_ONLY=false`.
 - Отключить Mini App, не трогая бота: убрать `miniapp` из `COMPOSE_PROFILES`, затем `docker compose stop dvor-api caddy`
 
 ## Google Sheets (срезы)

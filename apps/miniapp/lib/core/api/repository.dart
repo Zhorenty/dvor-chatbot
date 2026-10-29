@@ -28,6 +28,10 @@ abstract interface class DvorRepository {
   Future<Roster> roster(String key);
 
   Future<AdminParticipant> markAttendance(int bookingId, Attendance attendance);
+
+  /// Any other bot action (payment, BOXING CARD, admin tools). Throws
+  /// [ApiException] with a user-facing message when the bot refuses.
+  Future<Map<String, Object?>> rpc(String method, [Map<String, Object?> params]);
 }
 
 class ApiRepository implements DvorRepository {
@@ -42,6 +46,7 @@ class ApiRepository implements DvorRepository {
 
   static const Duration _readTimeout = Duration(seconds: 15);
   static const Duration _writeTimeout = Duration(seconds: 35);
+  static const Duration _rpcTimeout = Duration(seconds: 75);
 
   Map<String, String> get _headers => {
     'Authorization': 'tma $_initData',
@@ -125,11 +130,20 @@ class ApiRepository implements DvorRepository {
     return _decode(response);
   }
 
-  Future<Map<String, Object?>> _post(String path, Map<String, Object?> body) async {
+  @override
+  Future<Map<String, Object?>> rpc(String method, [Map<String, Object?> params = const {}]) {
+    return _post('/rpc/$method', params, timeout: _rpcTimeout);
+  }
+
+  Future<Map<String, Object?>> _post(
+    String path,
+    Map<String, Object?> body, {
+    Duration timeout = _writeTimeout,
+  }) async {
     final response = await _guard(
       () => _client
           .post(Uri.parse('$_baseUrl$path'), headers: _headers, body: jsonEncode(body))
-          .timeout(_writeTimeout),
+          .timeout(timeout),
     );
     return _decode(response);
   }
