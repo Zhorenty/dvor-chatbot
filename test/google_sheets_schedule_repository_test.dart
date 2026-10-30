@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dvor_chatbot/src/data/google_sheets_schedule_repository.dart';
 import 'package:dvor_chatbot/src/domain/outdoor_activity_info.dart';
 import 'package:http/http.dart' as http;
@@ -29,6 +31,30 @@ void main() {
       expect(upcoming.last.participantsLimit, 16);
       expect(upcoming.last.includeTrainersInParticipants, isTrue);
       expect(upcoming.last.locationUrl, 'https://maps.example/functional');
+    });
+
+    test('keeps outdoor rows when the title header in A1 is blank', () async {
+      final repository = GoogleSheetsScheduleRepository(
+        csvUrl: Uri.parse('https://example.com/schedule.csv'),
+        httpClient: MockClient((request) async {
+          if (request.url.queryParameters['gid'] == '294119056') {
+            return http.Response.bytes(
+              utf8.encode(
+                '" ",дата_с,дата_по,описание,статус\n'
+                'Пшехский водопад,08.11.2030,08.11.2030,Однодневный выезд,готово\n',
+              ),
+              200,
+            );
+          }
+          return _mockCsvResponse(request);
+        }),
+      );
+
+      expect(await repository.refresh(force: true), isTrue);
+      final outdoor = repository.upcomingOutdoorActivities(now: DateTime(2030, 6, 1), limit: 10);
+      final hike = outdoor.firstWhere((item) => item.type == OutdoorActivityType.hike);
+      expect(hike.title, 'Пшехский водопад');
+      expect(hike.dateFrom, DateTime(2030, 11, 8));
     });
 
     test('loads and returns upcoming trainings from date and time columns', () async {

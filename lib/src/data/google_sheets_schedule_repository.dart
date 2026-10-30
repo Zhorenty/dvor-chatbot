@@ -134,7 +134,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
 
     final headers =
         rows.first.map((cell) => _normalizeHeader(cell.toString())).toList(growable: false);
-    final titleIndex = _firstHeaderIndex(headers, const <String>['title', 'название']);
+    final titleIndex = GoogleSheetsValueParser.titleHeaderIndex(headers);
     final startsAtIndex = headers.indexOf('starts_at');
     final dateIndex = GoogleSheetsValueParser.firstHeaderIndex(headers, const <String>[
       'date',
@@ -271,7 +271,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
 
     final headers =
         rows.first.map((cell) => _normalizeHeader(cell.toString())).toList(growable: false);
-    final titleIndex = _firstHeaderIndex(headers, const <String>['title', 'название']);
+    final titleIndex = GoogleSheetsValueParser.titleHeaderIndex(headers);
     final dateFromIndex = _firstHeaderIndex(
       headers,
       const <String>['date_from', 'дата_с', 'дата_начала'],

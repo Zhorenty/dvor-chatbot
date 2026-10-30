@@ -37,6 +37,16 @@ abstract final class GoogleSheetsValueParser {
     return -1;
   }
 
+  /// Title column. Its header in A1 is easy to erase by accident, and that
+  /// must not hide a whole sheet, so a blank first header counts as the title.
+  static int titleHeaderIndex(List<String> headers) {
+    final index = firstHeaderIndex(headers, const <String>['title', 'название']);
+    if (index >= 0) {
+      return index;
+    }
+    return headers.isNotEmpty && headers.first.isEmpty ? 0 : -1;
+  }
+
   static DateTime? parseDateTime(String raw) {
     final normalized = raw.trim();
     if (normalized.isEmpty) {

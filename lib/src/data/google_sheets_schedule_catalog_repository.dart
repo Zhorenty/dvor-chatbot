@@ -449,7 +449,10 @@ final class _HeaderMap {
     final statusIndexes = <int>{};
     final checkboxIndexes = <int>{};
     for (var i = 0; i < liveHeaders.length; i++) {
-      final column = snapshot.spec.matchingColumn(liveHeaders[i]);
+      // Same rule as the schedule reader: a blank A1 is the title column.
+      final column = snapshot.spec.matchingColumn(
+        i == 0 && liveHeaders[i].trim().isEmpty ? 'название' : liveHeaders[i],
+      );
       specByLiveIndex.add(column);
       if (column == null) {
         continue;
