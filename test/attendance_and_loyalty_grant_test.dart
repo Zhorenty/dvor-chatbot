@@ -15,8 +15,9 @@ import 'package:test/test.dart';
 import 'support/fakes.dart';
 
 void main() {
-  test('attendance reminder starts two hours after training and repeats while unmarked', () async {
-    final start = DateTime(2026, 10, 12, 10);
+  test('attendance reminder sends one daily digest of open trainings', () async {
+    // 10:00 business time (UTC+3).
+    final start = DateTime.utc(2026, 10, 12, 7);
     final bookings = FakeBookingRepository()
       ..userBookings = [
         fakeBooking(
@@ -33,6 +34,13 @@ void main() {
           trainingKey: 'trainings|power',
           startsAt: start,
           attendance: BookingAttendance.attended,
+        ),
+        fakeBooking(
+          id: 3,
+          status: BookingStatus.paid,
+          title: 'Бокс',
+          trainingKey: 'trainings|boxing',
+          startsAt: start.add(const Duration(hours: 1)),
         ),
       ];
     final sender = FakeSender();
@@ -63,17 +71,25 @@ void main() {
     await job.run();
     expect(sender.messages, hasLength(1));
     expect(sender.messages.single.chatId, 42);
-    expect(sender.messages.single.text, contains('Проверь явку'));
+    expect(sender.messages.single.text, contains('по 1 тренировке'));
     expect(sender.messages.single.text, contains('Силовая'));
-    expect(sender.messages.single.text, contains('1'));
+    expect(sender.messages.single.text, isNot(contains('Бокс')));
 
+    // Another training becomes due the same day: no second message.
+    now = start.add(const Duration(hours: 4));
     await job.run();
     expect(sender.messages, hasLength(1));
 
-    now = start.add(const Duration(hours: 14));
+    // Next business day (00:30 UTC+3): one digest with both trainings.
+    now = DateTime.utc(2026, 10, 12, 21, 30);
     await job.run();
     expect(sender.messages, hasLength(2));
-    expect(sender.messages.last.text, contains('ещё не закрыта'));
+    expect(sender.messages.last.text, contains('по 2 тренировкам'));
+    expect(sender.messages.last.text, contains('Силовая'));
+    expect(sender.messages.last.text, contains('Бокс'));
+
+    await job.run();
+    expect(sender.messages, hasLength(2));
   });
 
   test('attendance reminder skips a session once everyone is marked', () async {

@@ -2,13 +2,16 @@ import 'package:dvor_chatbot/src/application/activity_catalog_service.dart';
 import 'package:dvor_chatbot/src/data/booking_repository.dart';
 import 'package:dvor_chatbot/src/data/job_dedupe_repository.dart';
 import 'package:dvor_chatbot/src/domain/activity_category.dart';
+import 'package:dvor_chatbot/src/domain/attendance_reminder.dart';
 import 'package:dvor_chatbot/src/domain/training_booking.dart';
+import 'package:dvor_chatbot/src/jobs/business_timezone.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:intl/intl.dart';
 import 'package:l/l.dart';
 
-/// Asks the admin to mark attendance after a training, then again until the
-/// roster is closed or the lookback window ends.
+/// Sends the admin one daily digest of trainings whose attendance is still
+/// open, until each roster is closed or the lookback window ends.
 final class AttendanceReminderJob {
   const AttendanceReminderJob({
     required BookingRepository bookingRepository,
@@ -18,8 +21,8 @@ final class AttendanceReminderJob {
     JobDedupeRepository? jobDedupeRepository,
     ActivityCatalogService? catalogService,
     DateTime Function()? nowProvider,
+    int timezoneOffsetHours = 3,
     this.delayAfterStart = const Duration(hours: 2),
-    this.repeatEvery = const Duration(hours: 12),
     this.lookback = const Duration(days: 7),
   })  : _bookingRepository = bookingRepository,
         _sender = sender,
@@ -27,7 +30,8 @@ final class AttendanceReminderJob {
         _adminChatId = adminChatId,
         _jobDedupeRepository = jobDedupeRepository,
         _catalogService = catalogService,
-        _nowProvider = nowProvider ?? DateTime.now;
+        _nowProvider = nowProvider ?? DateTime.now,
+        _timezoneOffsetHours = timezoneOffsetHours;
 
   final BookingRepository _bookingRepository;
   final MessageSender _sender;
@@ -36,8 +40,8 @@ final class AttendanceReminderJob {
   final JobDedupeRepository? _jobDedupeRepository;
   final ActivityCatalogService? _catalogService;
   final DateTime Function() _nowProvider;
+  final int _timezoneOffsetHours;
   final Duration delayAfterStart;
-  final Duration repeatEvery;
   final Duration lookback;
 
   Future<void> run() async {
@@ -49,7 +53,7 @@ final class AttendanceReminderJob {
     try {
       final bookings = await _bookingRepository.listBookingsStartedBetween(
         startsFromInclusive: now.subtract(lookback),
-        startsToInclusive: now,
+        startsToInclusive: now.subtract(delayAfterStart),
         limit: 500,
       );
       final sessions = <String, List<TrainingBooking>>{};
@@ -59,17 +63,29 @@ final class AttendanceReminderJob {
         }
         sessions.putIfAbsent(booking.trainingKey, () => <TrainingBooking>[]).add(booking);
       }
-      for (final entry in sessions.entries) {
-        try {
-          await _remindSession(
-            adminChatId: adminChatId,
-            trainingKey: entry.key,
-            bookings: entry.value,
-            now: now,
-          );
-        } on Object catch (error, stackTrace) {
-          l.w('Failed attendance reminder for ${entry.key}: $error', stackTrace);
-        }
+      final open = <AttendanceReminderSession>[
+        for (final session in sessions.values)
+          if (session.any((booking) => booking.attendance == null))
+            AttendanceReminderSession(
+              trainingTitle: session.first.trainingTitle,
+              startsAt: session.first.startsAt,
+              unmarked: session.where((booking) => booking.attendance == null).length,
+            ),
+      ]..sort((a, b) => a.startsAt.compareTo(b.startsAt));
+      if (open.isEmpty) {
+        return;
+      }
+      final day = inBusinessTimezone(now, timezoneOffsetHours: _timezoneOffsetHours);
+      final key = 'attendance-reminder:${DateFormat('yyyy-MM-dd').format(day)}';
+      final dedupe = _jobDedupeRepository;
+      if (dedupe != null && !dedupe.tryClaim(key)) {
+        return;
+      }
+      try {
+        await sendBotHtml(_sender, adminChatId, _templates.attendanceReminderAdmin(open));
+      } on Object {
+        dedupe?.release(key);
+        rethrow;
       }
     } on Object catch (error, stackTrace) {
       l.w('Attendance reminder job failed: $error', stackTrace);
@@ -82,44 +98,5 @@ final class AttendanceReminderJob {
       return true;
     }
     return catalog.categoryForBooking(booking) == ActivityCategory.trainings;
-  }
-
-  Future<void> _remindSession({
-    required int adminChatId,
-    required String trainingKey,
-    required List<TrainingBooking> bookings,
-    required DateTime now,
-  }) async {
-    if (bookings.isEmpty || bookings.every((booking) => booking.attendance != null)) {
-      return;
-    }
-    final startsAt = bookings.first.startsAt;
-    final dueAt = startsAt.add(delayAfterStart);
-    if (now.isBefore(dueAt)) {
-      return;
-    }
-    final slot =
-        repeatEvery.inMinutes <= 0 ? 0 : now.difference(dueAt).inMinutes ~/ repeatEvery.inMinutes;
-    final key = 'attendance-reminder:$trainingKey:$slot';
-    final dedupe = _jobDedupeRepository;
-    if (dedupe != null && !dedupe.tryClaim(key)) {
-      return;
-    }
-    final unmarked = bookings.where((booking) => booking.attendance == null).length;
-    try {
-      await sendBotHtml(
-        _sender,
-        adminChatId,
-        _templates.attendanceReminderAdmin(
-          trainingTitle: bookings.first.trainingTitle,
-          startsAt: startsAt,
-          unmarked: unmarked,
-          followUp: slot > 0,
-        ),
-      );
-    } on Object {
-      dedupe?.release(key);
-      rethrow;
-    }
   }
 }

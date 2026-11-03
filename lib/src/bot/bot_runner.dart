@@ -131,6 +131,7 @@ final class BotRunner {
           adminChatId: config.adminChatId,
           jobDedupeRepository: jobDedupeRepository,
           catalogService: ActivityCatalogService(scheduleRepository: scheduleRepository),
+          timezoneOffsetHours: config.timezoneOffsetHours,
         ),
         _economicSummaryJob = EconomicSummaryJob(
           bookingRepository: bookingRepository,

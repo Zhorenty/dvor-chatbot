@@ -3100,23 +3100,19 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
-  String attendanceReminderAdmin({
-    required String trainingTitle,
-    required DateTime startsAt,
-    required int unmarked,
-    required bool followUp,
-  }) {
-    final when = DateFormat('dd.MM HH:mm').format(startsAt);
-    final lead = followUp ? 'Явка ещё не закрыта.' : 'Проверь явку.';
+  String attendanceReminderAdmin(List<AttendanceReminderSession> sessions) {
+    final format = DateFormat('dd.MM HH:mm');
     return RichHtml.screen(
       title: 'Явка',
-      lead: lead,
-      rows: <(String, String)>[
-        ('Тренировка', trainingTitle),
-        ('🕒 Когда', when),
-        ('Не отмечено', '$unmarked'),
+      lead: sessions.length == 1
+          ? 'Явка не закрыта по 1 тренировке.'
+          : 'Явка не закрыта по ${sessions.length} тренировкам.',
+      bullets: <String>[
+        for (final session in sessions)
+          '${format.format(session.startsAt)} · ${session.trainingTitle} — '
+              'не отмечено: ${session.unmarked}',
       ],
-      paragraphs: <String>['Дальше: кнопка «Явка».'],
+      footer: 'Дальше: кнопка «Явка».',
     );
   }
 
