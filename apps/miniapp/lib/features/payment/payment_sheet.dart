@@ -126,6 +126,21 @@ class _PaymentSheetState extends ConsumerState<_PaymentSheet> {
             'Предоплата ${o.prepayPercent}% · остаток ${Fmt.money(o.amount - due)} на месте',
             style: context.text.bodyMedium?.copyWith(color: c.inkMuted),
           ),
+        if (partial) ...[
+          const SizedBox(height: Space.s),
+          Container(
+            padding: const EdgeInsets.all(Space.m),
+            decoration: BoxDecoration(
+              color: c.accent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Переводи строго ${o.prepayPercent}% — ровно ${Fmt.money(due)}. '
+              'Другая сумма не подойдёт.',
+              style: context.text.bodyMedium?.copyWith(fontWeight: FontWeight.w800, color: c.ink),
+            ),
+          ),
+        ],
         if (o.outdoorChoice) ...[
           const SizedBox(height: Space.m),
           ChoiceChips<String>(

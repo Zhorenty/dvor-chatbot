@@ -80,8 +80,12 @@ void main() {
     await job.run();
     expect(sender.messages, hasLength(1));
 
-    // Next business day (00:30 UTC+3): one digest with both trainings.
+    // Next business day: nothing at midnight, the digest waits for 10:00 (UTC+3).
     now = DateTime.utc(2026, 10, 12, 21, 30);
+    await job.run();
+    expect(sender.messages, hasLength(1));
+
+    now = DateTime.utc(2026, 10, 13, 7, 30);
     await job.run();
     expect(sender.messages, hasLength(2));
     expect(sender.messages.last.text, contains('по 2 тренировкам'));

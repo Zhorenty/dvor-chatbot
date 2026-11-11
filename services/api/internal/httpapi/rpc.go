@@ -18,6 +18,7 @@ var readOnlyRPC = map[string]bool{
 	"payment.options":           true,
 	"booking.rescheduleOptions": true,
 	"card.overview":             true,
+	"event.view":                true,
 	"team.list":                 true,
 	"admin.report":              true,
 	"admin.cards.pending":       true,

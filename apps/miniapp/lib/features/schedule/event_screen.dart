@@ -25,6 +25,21 @@ class EventScreen extends ConsumerStatefulWidget {
 class _EventScreenState extends ConsumerState<EventScreen> {
   bool _busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initial.category.isOutdoor) {
+      // Best effort: tells the club someone looked at this event.
+      Future<void>(() async {
+        try {
+          await ref.read(repositoryProvider).rpc('event.view', {'key': widget.initial.key});
+        } on Object {
+          // Not worth surfacing.
+        }
+      });
+    }
+  }
+
   ClubEvent get _event {
     final fresh = ref.watch(eventsProvider).value;
     if (fresh == null) {

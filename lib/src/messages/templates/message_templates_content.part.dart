@@ -650,7 +650,7 @@ extension MessageTemplatesContent on MessageTemplates {
 
   String chooseOutdoorPaymentType({int? prepayPercent}) {
     final percent = MessageFormatters.resolveOutdoorPrepayPercent(prepayPercent);
-    return RichHtml.screen(
+    return '${RichHtml.screen(
       title: 'Тип оплаты',
       lead: 'Выбери тип оплаты.',
       bullets: <String>[
@@ -660,7 +660,8 @@ extension MessageTemplatesContent on MessageTemplates {
       paragraphs: <String>[
         'После выбора пришли файл с подтверждением оплаты (документ или фото чека).',
       ],
-    );
+    )}'
+        '${RichHtml.paragraph('⚠️ <b>Предоплата — строго $percent% от суммы. Другая сумма не подойдёт.</b>', alreadyEscaped: true)}';
   }
 
   String paymentSubmittedAdminNotification(
@@ -2858,6 +2859,7 @@ extension MessageTemplatesContent on MessageTemplates {
         ],
         alreadyEscaped: true,
       )}'
+          '${RichHtml.paragraph('⚠️ <b>Предоплата — строго $prepayPercent%: ${_outdoorPrepaymentAmountLabel(booking)}. Другая сумма не подойдёт.</b>', alreadyEscaped: true)}'
           '${RichHtml.paragraph('<a href="$_sbpPaymentLink">${MessageCopy.buttonPaySbp}</a> — ссылка: <code>$_sbpPaymentLink</code>', alreadyEscaped: true)}'
           '${RichHtml.paragraph('На перевод 30 минут. Если не оплатить, запись отменится автоматически. После отмены нужно записаться заново.')}';
     }

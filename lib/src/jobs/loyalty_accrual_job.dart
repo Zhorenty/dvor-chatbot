@@ -21,7 +21,9 @@ final class LoyaltyAccrualJob {
     MessageTemplates? templates,
     int? adminChatId,
     DateTime Function()? nowProvider,
-    this.lookback = const Duration(days: 3),
+    // Attendance is often marked days later; credits are idempotent, so a wide
+    // window only catches up what was missed.
+    this.lookback = const Duration(days: 30),
   })  : _loyaltyService = loyaltyService,
         _bookingRepository = bookingRepository,
         _onboardingRepository = onboardingRepository,

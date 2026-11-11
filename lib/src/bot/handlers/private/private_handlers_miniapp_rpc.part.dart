@@ -33,6 +33,11 @@ final class MiniAppRpcException implements Exception {
 /// commands the chat buttons send, so rules, admin notices and chat
 /// confirmations stay identical. The bot's replies are captured and returned
 /// to the app as plain text.
+/// Last time the admin was told about a member's interest, per member+target,
+/// so reopening the same card does not repeat the ping.
+final Map<String, DateTime> _miniAppInterestSeen = <String, DateTime>{};
+const Duration _miniAppInterestCooldown = Duration(hours: 12);
+
 extension PrivateHandlersMiniAppRpc on PrivateHandlers {
   static const int _maxImageBytes = 8 * 1024 * 1024;
 
@@ -55,7 +60,8 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
       'booking.party' => _rpcBookingParty(caller, params),
       'booking.rescheduleOptions' => _rpcRescheduleOptions(caller, params),
       'booking.reschedule' => _rpcReschedule(caller, params),
-      'card.overview' => _rpcCardOverview(caller),
+      'card.overview' => _rpcCardOverview(caller, notifyInterest: true),
+      'event.view' => _rpcEventView(caller, params),
       'card.buy' => _rpcCardBuy(caller, params, upload),
       'team.list' => _rpcTeam(),
       'admin.report' => _rpcAdminReport(caller, params),
@@ -444,11 +450,70 @@ extension PrivateHandlersMiniAppRpc on PrivateHandlers {
 
   // ---------- BOXING CARD ----------
 
-  Future<Map<String, Object?>> _rpcCardOverview(MiniAppCaller caller) async {
+  bool _miniAppShouldNotifyInterest(int userId, String target) {
+    final now = _nowProvider();
+    final key = '$userId|$target';
+    final last = _miniAppInterestSeen[key];
+    if (last != null && now.difference(last) < _miniAppInterestCooldown) {
+      return false;
+    }
+    _miniAppInterestSeen[key] = now;
+    return true;
+  }
+
+  /// The member opened an outdoor event card: tell admins (no booking yet).
+  Future<Map<String, Object?>> _rpcEventView(
+    MiniAppCaller caller,
+    Map<String, Object?> params,
+  ) async {
+    final key = params['key'];
+    if (key is! String || _adminUserIds.contains(caller.id)) {
+      return const <String, Object?>{};
+    }
+    final training = _miniAppFindTraining(key);
+    if (training == null) {
+      return const <String, Object?>{};
+    }
+    final category = _catalogService.categoryForKeyAndTitle(
+      trainingKey: training.sessionKey,
+      trainingTitle: training.title,
+    );
+    if (category == ActivityCategory.trainings ||
+        !_miniAppShouldNotifyInterest(caller.id, 'event|$key')) {
+      return const <String, Object?>{};
+    }
+    final type =
+        category == ActivityCategory.hikes ? OutdoorActivityType.hike : OutdoorActivityType.trail;
+    await _notifyAdminAboutOutdoorInterest(
+      userId: caller.id,
+      username: caller.username,
+      activity: OutdoorActivityInfo(
+        type: type,
+        title: training.title,
+        dateFrom: training.startsAt,
+        dateTo: training.endsAt ?? training.startsAt,
+        description: training.title,
+        location: training.location,
+      ),
+    );
+    return const <String, Object?>{};
+  }
+
+  Future<Map<String, Object?>> _rpcCardOverview(
+    MiniAppCaller caller, {
+    bool notifyInterest = false,
+  }) async {
     final now = _nowProvider();
     final membership = await _subscriptionRepository.getMembership(caller.id, now: now);
     final snapshot = await _subscriptionRepository.getUserSnapshot(caller.id, now: now);
     final active = BoxingCardLedger.isActiveBoxingCard(membership, now: now);
+    if (notifyInterest &&
+        !active &&
+        snapshot.latestPending == null &&
+        !_adminUserIds.contains(caller.id) &&
+        _miniAppShouldNotifyInterest(caller.id, 'card')) {
+      await _notifyAdminAboutSubscriptionInterest(userId: caller.id, username: caller.username);
+    }
     final remaining = active
         ? await _boxingCardRemainingGroupCount(userId: caller.id, membership: membership)
         : null;

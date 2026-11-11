@@ -22,6 +22,7 @@ final class AttendanceReminderJob {
     ActivityCatalogService? catalogService,
     DateTime Function()? nowProvider,
     int timezoneOffsetHours = 3,
+    this.sendFromHour = 10,
     this.delayAfterStart = const Duration(hours: 2),
     this.lookback = const Duration(days: 7),
   })  : _bookingRepository = bookingRepository,
@@ -41,6 +42,7 @@ final class AttendanceReminderJob {
   final ActivityCatalogService? _catalogService;
   final DateTime Function() _nowProvider;
   final int _timezoneOffsetHours;
+  final int sendFromHour;
   final Duration delayAfterStart;
   final Duration lookback;
 
@@ -50,6 +52,11 @@ final class AttendanceReminderJob {
       return;
     }
     final now = _nowProvider();
+    final localNow = inBusinessTimezone(now, timezoneOffsetHours: _timezoneOffsetHours);
+    // A midnight digest gets lost: wait for the morning.
+    if (localNow.hour < sendFromHour) {
+      return;
+    }
     try {
       final bookings = await _bookingRepository.listBookingsStartedBetween(
         startsFromInclusive: now.subtract(lookback),
@@ -75,7 +82,7 @@ final class AttendanceReminderJob {
       if (open.isEmpty) {
         return;
       }
-      final day = inBusinessTimezone(now, timezoneOffsetHours: _timezoneOffsetHours);
+      final day = localNow;
       final key = 'attendance-reminder:${DateFormat('yyyy-MM-dd').format(day)}';
       final dedupe = _jobDedupeRepository;
       if (dedupe != null && !dedupe.tryClaim(key)) {
