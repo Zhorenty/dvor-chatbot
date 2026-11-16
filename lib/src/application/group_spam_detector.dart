@@ -25,6 +25,19 @@ final class GroupSpamDetector {
 
   static final List<_SpamPattern> _patterns = <_SpamPattern>[
     // --- job / money / recruiting (primary) ---
+    // --- chat-migration phishing («Чат переносится в новую группу…») ---
+    _SpamPattern(
+      RegExp('чат\\s+переносит$_w\\s+в\\s+нов$_w\\s+групп'),
+      score: 60,
+      reason: 'chat_migration_scam',
+      category: _SpamCategory.job,
+    ),
+    _SpamPattern(
+      RegExp('нажм$_w\\s+на\\s+(?:этот\\s+)?текст.{0,40}перейти\\s+в\\s+групп'),
+      score: 60,
+      reason: 'chat_migration_scam',
+      category: _SpamCategory.job,
+    ),
     _SpamPattern(
       RegExp('удаленн$_w\\s+занятост'),
       score: 45,

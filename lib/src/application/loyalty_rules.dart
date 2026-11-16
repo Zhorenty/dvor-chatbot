@@ -44,10 +44,15 @@ abstract final class LoyaltyRules {
     return booking.participantType == BookingParticipantType.self;
   }
 
+  /// Admins often leave attendance blank. After this grace a paid, unmarked
+  /// training still earns peaks; marking the person absent later pulls them back.
+  static const Duration unmarkedAttendanceGrace = Duration(hours: 12);
+
   static bool canEarnTraining({
     required TrainingBooking booking,
     required DateTime now,
     required int peaksSpent,
+    bool creditUnmarkedAfterGrace = false,
   }) {
     if (!isSelfBooking(booking)) {
       return false;
@@ -55,7 +60,10 @@ abstract final class LoyaltyRules {
     if (booking.status != BookingStatus.paid) {
       return false;
     }
-    if (booking.attendance != BookingAttendance.attended) {
+    final unmarkedButDue = creditUnmarkedAfterGrace &&
+        booking.attendance == null &&
+        !booking.startsAt.add(unmarkedAttendanceGrace).isAfter(now);
+    if (booking.attendance != BookingAttendance.attended && !unmarkedButDue) {
       return false;
     }
     if (!booking.startsAt.isBefore(now)) {

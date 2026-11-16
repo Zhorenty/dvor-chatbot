@@ -87,7 +87,8 @@ final class LoyaltyService {
 
   /// Brings training-earn peaks in line with admin attendance.
   ///
-  /// Unmarked bookings are left alone so older auto-credits stay put.
+  /// Unmarked bookings earn once [LoyaltyRules.unmarkedAttendanceGrace] has
+  /// passed; before that (or when ineligible) they are left alone.
   /// Absent bookings are pulled back to zero. Attended bookings are topped up
   /// to the earn quote. A failed debit (balance too small) reports
   /// [TrainingPeaksSync.applied] false while [TrainingPeaksSync.requested] keeps
@@ -108,8 +109,9 @@ final class LoyaltyService {
       booking: booking,
       now: now,
       peaksSpent: peaksSpent,
+      creditUnmarkedAfterGrace: true,
     );
-    if (!attended && !absent) {
+    if (!attended && !absent && !eligible) {
       return TrainingPeaksSync(requested: 0, applied: true, remaining: account.remaining);
     }
     final target = eligible

@@ -229,7 +229,7 @@ void main() {
           trainingKey: 'hikes|50',
           status: BookingStatus.paid,
           trainingPrice: 2500,
-          startsAt: now.subtract(const Duration(days: 10)),
+          startsAt: now.subtract(const Duration(days: 40)),
         ),
         fakeBooking(
           id: 51,
@@ -251,6 +251,42 @@ void main() {
     await job.run();
     expect((await service.account(51)).remaining, 0);
     expect((await service.account(52)).remaining, 100);
+  });
+
+  test('accrual credits unmarked trainings only after the grace period', () async {
+    final now = DateTime.utc(2026, 5, 20, 12);
+    final repository = InMemoryLoyaltyRepository(nowProvider: () => now);
+    final service = LoyaltyService(repository: repository, nowProvider: () => now);
+    final bookings = FakeBookingRepository()
+      ..queue = <TrainingBooking>[
+        fakeBooking(
+          id: 60,
+          userId: 61,
+          title: 'Силовая',
+          trainingKey: 'trainings|60',
+          status: BookingStatus.paid,
+          trainingPrice: 500,
+          startsAt: now.subtract(const Duration(hours: 20)),
+        ),
+        fakeBooking(
+          id: 61,
+          userId: 62,
+          title: 'Силовая',
+          trainingKey: 'trainings|61',
+          status: BookingStatus.paid,
+          trainingPrice: 500,
+          startsAt: now.subtract(const Duration(hours: 3)),
+        ),
+      ];
+    final job = LoyaltyAccrualJob(
+      loyaltyService: service,
+      bookingRepository: bookings,
+      onboardingRepository: FakeOnboardingRepository(),
+      nowProvider: () => now,
+    );
+    await job.run();
+    expect((await service.account(61)).remaining, 100);
+    expect((await service.account(62)).remaining, 0);
   });
 
   test('referral accrues 1000 only when invitee paid with cash', () async {

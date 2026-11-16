@@ -771,7 +771,7 @@ void main() {
         'from': <String, dynamic>{'id': 9201, 'username': 'sub_user'},
         'text': MessageTemplates.buttonPlanBaza,
       });
-      expect(sender.lastContentMessage.text, contains('3 500'));
+      expect(sender.lastContentMessage.text, contains('4 000'));
       final handled = await handlers.handle(<String, dynamic>{
         'message': <String, dynamic>{
           'message_id': 44,
@@ -790,7 +790,7 @@ void main() {
       expect(sender.messages.any((item) => item.chatId == -100500), isTrue);
     });
 
-    test('udar plan shows 4 700 in payment instructions', () async {
+    test('udar plan shows 5 200 in payment instructions', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(
         sender: sender,
@@ -812,7 +812,7 @@ void main() {
         'text': MessageTemplates.buttonPlanUdar,
       });
 
-      expect(sender.lastContentMessage.text, contains('4 700'));
+      expect(sender.lastContentMessage.text, contains('5 200'));
       expect(sender.lastContentMessage.text, contains('УДАР'));
     });
 
@@ -5799,7 +5799,7 @@ void main() {
             id: 601 + index,
             userId: 9601 + index,
             title: 'Morning Run ${index + 1}',
-            startsAt: DateTime(2026, 11, 1 + index, 10, 0),
+            startsAt: DateTime(2027, 1, 1 + index, 10, 0),
           ),
         );
       final handlers = PrivateHandlers(
@@ -7124,7 +7124,7 @@ void main() {
             userId: 3932,
             title: '🥾 Поход: Архыз',
             trainingKey: 'hikes|2026-10-02T10:00:00.000Z|🥾 Поход: Архыз|Маршрут',
-            startsAt: DateTime(2026, 11, 2, 10, 0),
+            startsAt: DateTime.now().add(const Duration(days: 30)),
             location: 'Маршрут',
             status: BookingStatus.partialPaid,
           ),

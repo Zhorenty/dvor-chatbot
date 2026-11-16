@@ -5,6 +5,17 @@ void main() {
   const detector = GroupSpamDetector();
 
   group('GroupSpamDetector', () {
+    test('flags chat migration phishing', () {
+      final result = detector.evaluate('''
+!! Чат переносится в новую группу.
+Нажмите на этот текст, чтобы
+перейти в группу
+''');
+
+      expect(result.isSpam, isTrue);
+      expect(result.reasons, contains('chat_migration_scam'));
+    });
+
     test('flags earnings team recruitment spam', () {
       final result = detector.evaluate('''
 Набираем людей в команду!

@@ -76,8 +76,8 @@ final class MessageCopy {
   static const String buttonSubscribersManagement = '🛠 Управление абонентами';
   static const String buttonSubscribeApply = '✅ Оформить';
   static const String buttonRenewSubscription = '🔄 Продлить';
-  static const String buttonPlanBaza = 'БАЗА — 3 500 ₽';
-  static const String buttonPlanUdar = 'УДАР — 4 700 ₽';
+  static const String buttonPlanBaza = 'БАЗА — 4 000 ₽';
+  static const String buttonPlanUdar = 'УДАР — 5 200 ₽';
   static const String buttonIndividualSession = '🥊 Индивидуальная';
   static const String buttonSubscriptionsFilterActive = '🟢 Активные';
   static const String buttonSubscriptionsFilterExpiring = '⏳ Скоро истекают';

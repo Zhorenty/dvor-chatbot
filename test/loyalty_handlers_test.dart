@@ -434,7 +434,7 @@ void main() {
     });
     expect(subscriptions.activateFromLoyaltyCalls, 0);
     expect((await loyaltyService.account(75)).remaining, 7000);
-    expect(sender.lastContentMessage.text, contains('3 500'));
+    expect(sender.lastContentMessage.text, contains('4 000'));
     expect(
       keyboardTexts(sender.lastContentMessage.replyMarkup),
       isNot(contains(MessageTemplates.buttonSpendLoyaltyPeaks)),

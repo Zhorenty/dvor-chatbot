@@ -547,7 +547,10 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
         flowState?.step == _PrivateFlowStep.enteringAdminUserSearchQuery &&
         text != null &&
         !text.startsWith('/')) {
-      final bookings = await _bookingRepository.adminSearchBookingsByUsername(text);
+      final queryUserId = _parseUserIdQuery(text);
+      final bookings = queryUserId != null
+          ? await _bookingRepository.listUserBookings(queryUserId, limit: 200)
+          : await _bookingRepository.adminSearchBookingsByUsername(text);
       _flowByUserId.remove(userId);
       await _sendAdminMessage(
         chatId,
@@ -559,10 +562,10 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
         replyMarkup: _templates.privateMenuKeyboard(
             isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
       );
-      if (bookings.isNotEmpty) {
-        final targetUserId = bookings.first.userId;
+      final targetUserId = queryUserId ?? (bookings.isNotEmpty ? bookings.first.userId : null);
+      if (targetUserId != null) {
         final account = await _loyaltyService.account(targetUserId);
-        final recent = await _loyaltyService.recentLedger(targetUserId);
+        final recent = await _loyaltyService.recentLedger(targetUserId, limit: 15);
         await _sendAdminMessage(
           chatId,
           _templates.loyaltyAdminOverview(
@@ -808,10 +811,6 @@ extension PrivateHandlersDispatchAdminTools on PrivateHandlers {
 
   Future<int?> _resolveLoyaltyGrantUserId(String raw) async {
     final trimmed = raw.trim();
-    final asId = int.tryParse(trimmed);
-    if (asId != null && asId > 0) {
-      return asId;
-    }
     return _resolveDialogPeerUserId(trimmed);
   }
 

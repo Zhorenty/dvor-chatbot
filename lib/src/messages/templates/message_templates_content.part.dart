@@ -1220,8 +1220,8 @@ extension MessageTemplatesContent on MessageTemplates {
       title: 'DVOR BOXING CARD',
       lead: 'Абонемент на групповой бокс. 30 дней с активации.',
       rows: <(String, String)>[
-        ('БАЗА', '3 500 ₽ · 4 групповые + 1 индивидуальная'),
-        ('УДАР', '4 700 ₽ · 8 групповых + 1 индивидуальная'),
+        ('БАЗА', '4 000 ₽ · 4 групповые + 1 индивидуальная'),
+        ('УДАР', '5 200 ₽ · 8 групповых + 1 индивидуальная'),
       ],
       detailsSummary: 'Что не покрывает',
       detailsBody: 'Сила, забег, походы и кэмпы — обычная оплата. Пропуск не переносится. '
@@ -1234,8 +1234,8 @@ extension MessageTemplatesContent on MessageTemplates {
       title: 'Тариф BOXING CARD',
       lead: 'Выбери тариф.',
       rows: <(String, String)>[
-        ('БАЗА', '3 500 ₽, 4 групповые + 1 индивидуальная'),
-        ('УДАР', '4 700 ₽, 8 групповых + 1 индивидуальная'),
+        ('БАЗА', '4 000 ₽, 4 групповые + 1 индивидуальная'),
+        ('УДАР', '5 200 ₽, 8 групповых + 1 индивидуальная'),
       ],
       paragraphs: <String>['30 дней с активации.'],
     );
@@ -2573,7 +2573,7 @@ extension MessageTemplatesContent on MessageTemplates {
   String adminUserSearchPrompt() {
     return RichHtml.screen(
       title: 'Поиск по пользователю',
-      lead: 'Введи никнейм (с @ или без).',
+      lead: 'Введи никнейм (с @ или без), числовой id или ссылку вида tg://user?id=123456789.',
     );
   }
 

@@ -32,8 +32,8 @@ enum BoxingCardPlan {
   int get individualQuota => 1;
 
   int get priceRub => switch (this) {
-        BoxingCardPlan.baza => 3500,
-        BoxingCardPlan.udar => 4700,
+        BoxingCardPlan.baza => 4000,
+        BoxingCardPlan.udar => 5200,
       };
 
   String get displayName => switch (this) {

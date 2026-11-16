@@ -392,7 +392,7 @@ class DemoRepository implements DvorRepository {
             {
               'id': 'baza',
               'name': 'БАЗА',
-              'price': 3500,
+              'price': 4000,
               'trainings': 4,
               'individual': 1,
               'peaksQuote': {'spend': 340, 'remainderRub': 3330, 'coversFully': false},
@@ -400,7 +400,7 @@ class DemoRepository implements DvorRepository {
             {
               'id': 'udar',
               'name': 'УДАР',
-              'price': 4700,
+              'price': 5200,
               'trainings': 8,
               'individual': 1,
               'peaksQuote': {'spend': 340, 'remainderRub': 4530, 'coversFully': false},

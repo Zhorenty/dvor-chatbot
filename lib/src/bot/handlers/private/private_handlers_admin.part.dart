@@ -1211,7 +1211,25 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     );
   }
 
+  /// Accepts a raw numeric id, `tg://user?id=N` or any link carrying `id=N`.
+  int? _parseUserIdQuery(String query) {
+    final trimmed = query.trim();
+    final raw = int.tryParse(trimmed);
+    if (raw != null && raw > 0) {
+      return raw;
+    }
+    final match = RegExp(r'(?:^|[?&])id=(\d{5,})\b').firstMatch(trimmed);
+    if (match != null) {
+      return int.tryParse(match.group(1)!);
+    }
+    return null;
+  }
+
   Future<int?> _resolveDialogPeerUserId(String query) async {
+    final byId = _parseUserIdQuery(query);
+    if (byId != null) {
+      return byId;
+    }
     final fromLog = await _conversationLogRepository.resolveUserIdByUsername(query);
     if (fromLog != null && fromLog > 0) {
       return fromLog;

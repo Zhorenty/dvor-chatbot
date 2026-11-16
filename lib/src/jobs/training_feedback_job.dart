@@ -6,6 +6,7 @@ import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/jobs/business_timezone.dart';
 import 'package:dvor_chatbot/src/messages/message_templates.dart';
 import 'package:dvor_chatbot/src/telegram/message_sender.dart';
+import 'package:dvor_chatbot/src/telegram/telegram_api_exception.dart';
 import 'package:l/l.dart';
 
 typedef TrainingFeedbackFlowStarter = Future<void> Function({
@@ -63,7 +64,6 @@ final class TrainingFeedbackJob {
     final nowBusiness = inBusinessTimezone(nowUtc, timezoneOffsetHours: timezoneOffsetHours);
     try {
       final bookings = await _loadCandidates(nowUtc);
-      final startedIds = (await _onboardingRepository.getAllStartedUserIds()).toSet();
       for (final booking in bookings) {
         try {
           final dueAt = _feedbackDueAt(booking);
@@ -79,19 +79,37 @@ final class TrainingFeedbackJob {
           if (await _onboardingRepository.hasTrainingFeedback(booking.id)) {
             continue;
           }
-          if (!startedIds.contains(booking.userId)) {
+          // Negative ids are placeholders (guests, managed accounts). Everyone
+          // else is tried: many members booked via the Mini App without a
+          // recorded /start but can still receive DMs.
+          if (booking.userId <= 0) {
             continue;
           }
           final category = _categoryFor(booking);
-          await sendBotHtml(
-            _sender,
-            booking.userId,
-            _templates.trainingFeedbackAsk(
-              trainingTitle: booking.trainingTitle,
-              category: category,
-            ),
-            replyMarkup: _templates.trainingFeedbackInlineKeyboard(booking.id),
-          );
+          try {
+            await sendBotHtml(
+              _sender,
+              booking.userId,
+              _templates.trainingFeedbackAsk(
+                trainingTitle: booking.trainingTitle,
+                category: category,
+              ),
+              replyMarkup: _templates.trainingFeedbackInlineKeyboard(booking.id),
+            );
+          } on TelegramApiException catch (error) {
+            if (error.statusCode == 403 || error.statusCode == 400) {
+              // Bot blocked or chat unreachable: do not retry every tick.
+              await _onboardingRepository.recordTrainingFeedbackRequest(
+                bookingId: booking.id,
+                userId: booking.userId,
+                sessionKey: booking.trainingKey,
+                trainingTitle: booking.trainingTitle,
+                sentAt: nowUtc,
+              );
+              continue;
+            }
+            rethrow;
+          }
           await _onboardingRepository.recordTrainingFeedbackRequest(
             bookingId: booking.id,
             userId: booking.userId,
