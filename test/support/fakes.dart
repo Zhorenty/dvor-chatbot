@@ -873,6 +873,54 @@ final class FakeBookingRepository implements BookingRepository {
 }
 
 final class FakeSubscriptionRepository implements SubscriptionRepository {
+  final Map<int, SubscriptionRequest> requestsById = <int, SubscriptionRequest>{};
+  GrantSubscriptionResult? grantResult;
+  final List<({int userId, BoxingCardPlan plan, int days, int usedOffset})> grantCalls =
+      <({int userId, BoxingCardPlan plan, int days, int usedOffset})>[];
+  final List<({int requestId, int usedOffset})> setOffsetCalls =
+      <({int requestId, int usedOffset})>[];
+
+  @override
+  Future<SubscriptionRequest?> getRequest(int requestId) async => requestsById[requestId];
+
+  @override
+  Future<GrantSubscriptionResult> grantManually({
+    required int userId,
+    String? userUsername,
+    required BoxingCardPlan plan,
+    required DateTime activatedAt,
+    required int days,
+    int usedOffset = 0,
+  }) async {
+    grantCalls.add((userId: userId, plan: plan, days: days, usedOffset: usedOffset));
+    return grantResult ??
+        GrantSubscriptionResult(
+          outcome: GrantSubscriptionOutcome.granted,
+          request: SubscriptionRequest(
+            id: 900,
+            userId: userId,
+            userUsername: userUsername,
+            status: SubscriptionRequestStatus.active,
+            plan: plan,
+            createdAt: activatedAt,
+            updatedAt: activatedAt,
+            activeFrom: activatedAt,
+            activeUntil: activatedAt.add(Duration(days: days)),
+            usedOffset: usedOffset,
+          ),
+        );
+  }
+
+  @override
+  Future<SubscriptionRequest?> setUsedOffset({
+    required int requestId,
+    required int usedOffset,
+    required DateTime updatedAt,
+  }) async {
+    setOffsetCalls.add((requestId: requestId, usedOffset: usedOffset));
+    return requestsById[requestId];
+  }
+
   MembershipLevel membershipLevel = MembershipLevel.normal;
   BoxingCardPlan? membershipPlan;
   DateTime? membershipActiveFrom;

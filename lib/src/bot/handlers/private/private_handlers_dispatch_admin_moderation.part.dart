@@ -126,6 +126,26 @@ extension PrivateHandlersDispatchAdminModeration on PrivateHandlers {
     }
 
     if (text != null &&
+        (text.startsWith('/grant_subscription') || text.startsWith('/set_subscription_left'))) {
+      if (!isAdmin) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.adminOnlyAction(),
+          replyMarkup: _templates.privateMenuKeyboard(
+              isAdmin: isAdmin, showReturnToAdminMenu: showReturnToAdminMenu),
+        );
+        return true;
+      }
+      await _handleManualSubscriptionCommand(
+        chatId: chatId,
+        text: text,
+        isAdmin: isAdmin,
+        showReturnToAdminMenu: showReturnToAdminMenu,
+      );
+      return true;
+    }
+
+    if (text != null &&
         (text.startsWith('/approve_subscription') ||
             text.startsWith('/reject_subscription') ||
             text.startsWith('/cancel_subscription'))) {

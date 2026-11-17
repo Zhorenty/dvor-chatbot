@@ -96,7 +96,11 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       periodStart: from,
       periodEnd: activeUntil,
     );
-    return BoxingCardLedger.remainingGroupSlots(plan: plan, used: used);
+    return BoxingCardLedger.remainingGroupSlots(
+      plan: plan,
+      used: used,
+      usedOffset: membership.usedOffset,
+    );
   }
 
   Future<bool> _isBoxingCardIndividualAvailable({
@@ -178,7 +182,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       return null;
     }
     try {
-      return _bookingRepository.updateStatus(
+      return await _bookingRepository.updateStatus(
         booking.id,
         BookingStatus.paid,
         paymentNote: MessageFormatters.starterBonusPaymentNoteMarker,

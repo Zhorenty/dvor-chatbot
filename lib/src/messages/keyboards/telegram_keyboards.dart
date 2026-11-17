@@ -1203,6 +1203,12 @@ final class TelegramKeyboards {
             'callback_data': '${MessageCopy.callbackCancelSubscriptionPrefix}$requestId',
           },
         ],
+        <Map<String, String>>[
+          <String, String>{
+            'text': '✏️ Остаток тренировок',
+            'callback_data': '${MessageCopy.callbackSubscriptionLeftPrefix}$requestId',
+          },
+        ],
       ],
     };
   }

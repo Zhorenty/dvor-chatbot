@@ -35,6 +35,26 @@ abstract interface class SubscriptionRepository {
 
   Future<List<SubscriptionRequest>> listPendingRequests({int limit = 50});
 
+  Future<SubscriptionRequest?> getRequest(int requestId);
+
+  /// Admin: create an active card without a payment proof.
+  /// Refuses when the user already has an active card.
+  Future<GrantSubscriptionResult> grantManually({
+    required int userId,
+    String? userUsername,
+    required BoxingCardPlan plan,
+    required DateTime activatedAt,
+    required int days,
+    int usedOffset = 0,
+  });
+
+  /// Admin: set the manual correction of used group slots for an active card.
+  Future<SubscriptionRequest?> setUsedOffset({
+    required int requestId,
+    required int usedOffset,
+    required DateTime updatedAt,
+  });
+
   Future<ReviewSubscriptionRequestResult> reviewPendingRequest({
     required int requestId,
     required bool approve,
@@ -191,6 +211,30 @@ final class NoopSubscriptionRepository implements SubscriptionRepository {
   @override
   Future<List<SubscriptionRequest>> listPendingRequests({int limit = 50}) async {
     return const <SubscriptionRequest>[];
+  }
+
+  @override
+  Future<SubscriptionRequest?> getRequest(int requestId) async => null;
+
+  @override
+  Future<GrantSubscriptionResult> grantManually({
+    required int userId,
+    String? userUsername,
+    required BoxingCardPlan plan,
+    required DateTime activatedAt,
+    required int days,
+    int usedOffset = 0,
+  }) async {
+    return const GrantSubscriptionResult(outcome: GrantSubscriptionOutcome.alreadyActive);
+  }
+
+  @override
+  Future<SubscriptionRequest?> setUsedOffset({
+    required int requestId,
+    required int usedOffset,
+    required DateTime updatedAt,
+  }) async {
+    return null;
   }
 
   @override

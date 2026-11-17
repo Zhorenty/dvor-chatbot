@@ -252,6 +252,11 @@ String? callbackToCommandText(String? callbackData) {
     final requestId = int.tryParse(rawId);
     return requestId == null ? null : '/cancel_subscription $requestId';
   }
+  if (callbackData.startsWith(MessageCopy.callbackSubscriptionLeftPrefix)) {
+    final rawId = callbackData.substring(MessageCopy.callbackSubscriptionLeftPrefix.length);
+    final requestId = int.tryParse(rawId);
+    return requestId == null ? null : '/set_subscription_left $requestId';
+  }
   if (callbackData.startsWith(MessageCopy.callbackApproveIndividualPrefix)) {
     final rawId = callbackData.substring(MessageCopy.callbackApproveIndividualPrefix.length);
     final requestId = int.tryParse(rawId);

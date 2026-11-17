@@ -201,6 +201,7 @@ final class SubscriptionRenewalJob {
       activeFrom: request.activeFrom,
       activeUntil: request.activeUntil,
       requestId: request.id,
+      usedOffset: request.usedOffset,
     );
     final remaining = await _remainingFor(membership, userId: request.userId, now: now) ?? 0;
     final individualUsed = await _subscriptionRepository.hasApprovedIndividualInPeriod(
@@ -241,6 +242,10 @@ final class SubscriptionRenewalJob {
       periodStart: from,
       periodEnd: until,
     );
-    return BoxingCardLedger.remainingGroupSlots(plan: plan, used: used);
+    return BoxingCardLedger.remainingGroupSlots(
+      plan: plan,
+      used: used,
+      usedOffset: membership.usedOffset,
+    );
   }
 }

@@ -64,8 +64,9 @@ final class BoxingCardLedger {
   static int remainingGroupSlots({
     required BoxingCardPlan plan,
     required int used,
+    int usedOffset = 0,
   }) {
-    final remaining = plan.groupQuota - used;
+    final remaining = plan.groupQuota - used - usedOffset;
     return remaining < 0 ? 0 : remaining;
   }
 

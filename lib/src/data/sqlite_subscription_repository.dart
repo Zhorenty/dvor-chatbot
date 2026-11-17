@@ -100,6 +100,10 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       db,
       'ALTER TABLE subscription_requests ADD COLUMN individual_reminder_sent_at TEXT;',
     );
+    _addColumnIfMissing(
+      db,
+      'ALTER TABLE subscription_requests ADD COLUMN used_offset INTEGER NOT NULL DEFAULT 0;',
+    );
     db.execute('''
       CREATE TABLE IF NOT EXISTS subscription_individual_requests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -192,6 +196,7 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       activeFrom: request.activeFrom,
       activeUntil: request.activeUntil,
       requestId: request.id,
+      usedOffset: request.usedOffset,
     );
   }
 
@@ -418,6 +423,105 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       db.execute(shouldCommit ? 'COMMIT;' : 'ROLLBACK;');
     }
     return result;
+  }
+
+  @override
+  Future<SubscriptionRequest?> getRequest(int requestId) async {
+    final rows = _database.select(
+      'SELECT * FROM subscription_requests WHERE id = ? LIMIT 1;',
+      <Object?>[requestId],
+    );
+    return rows.isEmpty ? null : _rowToRequest(rows.first);
+  }
+
+  @override
+  Future<GrantSubscriptionResult> grantManually({
+    required int userId,
+    String? userUsername,
+    required BoxingCardPlan plan,
+    required DateTime activatedAt,
+    required int days,
+    int usedOffset = 0,
+  }) async {
+    final db = _database;
+    final nowUtc = activatedAt.toUtc();
+    final normalizedUsername = userUsername?.trim().replaceFirst(RegExp(r'^@'), '');
+    db.execute('BEGIN IMMEDIATE;');
+    var shouldCommit = false;
+    try {
+      final active = db.select(
+        '''
+        SELECT * FROM subscription_requests
+        WHERE user_id = ?
+          AND status = ?
+          AND active_until IS NOT NULL
+          AND active_until > ?
+        ORDER BY active_until DESC
+        LIMIT 1;
+        ''',
+        <Object?>[userId, SubscriptionRequestStatus.active.dbValue, nowUtc.toIso8601String()],
+      );
+      if (active.isNotEmpty) {
+        return GrantSubscriptionResult(
+          outcome: GrantSubscriptionOutcome.alreadyActive,
+          request: _rowToRequest(active.first),
+        );
+      }
+      db.execute(
+        '''
+        INSERT INTO subscription_requests (
+          user_id, user_username, status, plan, payment_note,
+          active_from, active_until, used_offset, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        ''',
+        <Object?>[
+          userId,
+          (normalizedUsername == null || normalizedUsername.isEmpty) ? null : normalizedUsername,
+          SubscriptionRequestStatus.active.dbValue,
+          plan.dbValue,
+          manualGrantPaymentNote,
+          nowUtc.toIso8601String(),
+          nowUtc.add(Duration(days: days)).toIso8601String(),
+          usedOffset,
+          nowUtc.toIso8601String(),
+          nowUtc.toIso8601String(),
+        ],
+      );
+      final inserted = db.select(
+        'SELECT * FROM subscription_requests WHERE id = ? LIMIT 1;',
+        <Object?>[db.lastInsertRowId],
+      );
+      shouldCommit = true;
+      return GrantSubscriptionResult(
+        outcome: GrantSubscriptionOutcome.granted,
+        request: inserted.isEmpty ? null : _rowToRequest(inserted.first),
+      );
+    } finally {
+      db.execute(shouldCommit ? 'COMMIT;' : 'ROLLBACK;');
+    }
+  }
+
+  @override
+  Future<SubscriptionRequest?> setUsedOffset({
+    required int requestId,
+    required int usedOffset,
+    required DateTime updatedAt,
+  }) async {
+    final db = _database;
+    db.execute(
+      '''
+      UPDATE subscription_requests
+      SET used_offset = ?, updated_at = ?
+      WHERE id = ? AND status = ?;
+      ''',
+      <Object?>[
+        usedOffset,
+        updatedAt.toUtc().toIso8601String(),
+        requestId,
+        SubscriptionRequestStatus.active.dbValue,
+      ],
+    );
+    return getRequest(requestId);
   }
 
   @override
@@ -924,6 +1028,7 @@ final class SqliteSubscriptionRepository implements SubscriptionRepository {
       renewalReminder1SentAt: _nullableDateTime(row['renewal_reminder_1_sent_at']),
       expiryPromoSentAt: _nullableDateTime(row['expiry_promo_sent_at']),
       individualReminderSentAt: _nullableDateTime(row['individual_reminder_sent_at']),
+      usedOffset: (row['used_offset'] as int?) ?? 0,
     );
   }
 

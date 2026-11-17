@@ -171,6 +171,7 @@ final class MessageCopy {
   static const String callbackApproveSubscriptionPrefix = 'subscription:approve:';
   static const String callbackRejectSubscriptionPrefix = 'subscription:reject:';
   static const String callbackCancelSubscriptionPrefix = 'subscription:cancel:';
+  static const String callbackSubscriptionLeftPrefix = 'subscription:left:';
   static const String callbackApproveIndividualPrefix = 'individual:approve:';
   static const String callbackRejectIndividualPrefix = 'individual:reject:';
   static const String callbackBroadcastToUsers = 'broadcast:users';

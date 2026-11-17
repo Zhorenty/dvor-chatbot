@@ -1,3 +1,6 @@
+/// Payment note of cards created by an admin without a payment proof.
+const String manualGrantPaymentNote = '__manual_grant__';
+
 enum SubscriptionRequestStatus {
   paymentSubmitted('payment_submitted'),
   active('active'),
@@ -83,6 +86,7 @@ final class SubscriptionRequest {
     this.renewalReminder1SentAt,
     this.expiryPromoSentAt,
     this.individualReminderSentAt,
+    this.usedOffset = 0,
   });
 
   final int id;
@@ -104,6 +108,9 @@ final class SubscriptionRequest {
   final DateTime? renewalReminder1SentAt;
   final DateTime? expiryPromoSentAt;
   final DateTime? individualReminderSentAt;
+
+  /// Manual admin correction added to the booking-derived used group slots.
+  final int usedOffset;
 }
 
 enum MembershipLevel { normal, boxingCard }
@@ -115,6 +122,7 @@ final class SubscriptionMembership {
     this.activeFrom,
     this.activeUntil,
     this.requestId,
+    this.usedOffset = 0,
   });
 
   final MembershipLevel level;
@@ -122,6 +130,7 @@ final class SubscriptionMembership {
   final DateTime? activeFrom;
   final DateTime? activeUntil;
   final int? requestId;
+  final int usedOffset;
 }
 
 enum SubmitSubscriptionRequestOutcome {
@@ -136,6 +145,21 @@ final class SubmitSubscriptionRequestResult {
   });
 
   final SubmitSubscriptionRequestOutcome outcome;
+  final SubscriptionRequest? request;
+}
+
+enum GrantSubscriptionOutcome {
+  granted,
+  alreadyActive,
+}
+
+final class GrantSubscriptionResult {
+  const GrantSubscriptionResult({
+    required this.outcome,
+    this.request,
+  });
+
+  final GrantSubscriptionOutcome outcome;
   final SubscriptionRequest? request;
 }
 

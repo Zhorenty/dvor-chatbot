@@ -1475,7 +1475,7 @@ extension MessageTemplatesContent on MessageTemplates {
     return buffer.toString();
   }
 
-  String subscriptionActiveItem(SubscriptionRequest request) {
+  String subscriptionActiveItem(SubscriptionRequest request, {int? remaining}) {
     final until = request.activeUntil == null
         ? 'не задано'
         : DateFormat('dd.MM.yyyy').format(request.activeUntil!);
@@ -1489,8 +1489,10 @@ extension MessageTemplatesContent on MessageTemplates {
         ),
         ('Тариф', planLabel),
         ('Активна до', until),
+        if (remaining != null && request.plan != null)
+          ('Осталось', '$remaining из ${request.plan!.groupQuota}'),
       ],
-      paragraphs: <String>['Можно отменить карту кнопкой ниже.'],
+      paragraphs: <String>['Можно отменить карту или поправить остаток кнопками ниже.'],
     );
   }
 
@@ -1585,7 +1587,91 @@ extension MessageTemplatesContent on MessageTemplates {
     return RichHtml.screen(
       title: 'Абонементы',
       lead:
-          'Выбери фильтр или поиск. «${MessageCopy.buttonSubscriptionsFilterPending}» — очередь на модерацию.',
+          'Выбери фильтр или поиск. «${MessageCopy.buttonSubscriptionsFilterPending}» — очередь на модерацию.\n'
+          'Выдать карту вручную: /grant_subscription',
+    );
+  }
+
+  String subscriptionGrantUsage() {
+    return '${RichHtml.heading('Выдать абонемент вручную')}'
+        '${RichHtml.paragraph(
+      '<code>/grant_subscription &lt;@username|id&gt; &lt;baza|udar&gt; [осталось] [дней]</code>',
+      alreadyEscaped: true,
+    )}'
+        '${RichHtml.paragraph(
+      'Осталось — сколько групповых тренировок засчитать (по умолчанию весь тариф). '
+      'Дней — срок карты (по умолчанию 30).',
+    )}'
+        '${RichHtml.paragraph(
+      'Поправить остаток: <code>/set_subscription_left &lt;id&gt; &lt;осталось&gt;</code>',
+      alreadyEscaped: true,
+    )}';
+  }
+
+  String subscriptionLeftUsage(int requestId) {
+    return 'Сколько групповых тренировок осталось на карте #$requestId?\n'
+        'Отправь: <code>/set_subscription_left $requestId &lt;число&gt;</code>';
+  }
+
+  String subscriptionGrantUserNotFound() {
+    return '😕 <b>Пользователь не найден</b>\n'
+        'Укажи числовой id или @username, который бот уже видел.';
+  }
+
+  String subscriptionAlreadyActiveForAdmin(SubscriptionRequest request) {
+    return 'ℹ️ <b>У пользователя уже есть активная карта #${request.id}</b>\n'
+        'Остаток можно поправить: <code>/set_subscription_left ${request.id} &lt;число&gt;</code>';
+  }
+
+  String subscriptionGrantedForAdmin(SubscriptionRequest request, {required int remaining}) {
+    return RichHtml.screen(
+      title: 'Абонемент выдан',
+      rows: <(String, String)>[
+        (
+          'Пользователь',
+          '${_userTagById(request.userId, username: request.userUsername)} (${request.userId})',
+        ),
+        ('Тариф', request.plan?.displayName ?? '—'),
+        ('Карта до', DateFormat('dd.MM.yyyy').format(request.activeUntil ?? DateTime.now())),
+        ('Осталось', '$remaining из ${request.plan?.groupQuota ?? 0}'),
+        ('Заявка', '#${request.id}'),
+      ],
+    );
+  }
+
+  String subscriptionLeftUpdatedForAdmin(SubscriptionRequest request, {required int remaining}) {
+    return RichHtml.screen(
+      title: 'Остаток обновлён',
+      rows: <(String, String)>[
+        ('Карта', '#${request.id}'),
+        ('Пользователь', '${request.userId}'),
+        ('Осталось', '$remaining из ${request.plan?.groupQuota ?? 0}'),
+      ],
+    );
+  }
+
+  String subscriptionGrantedForUser({
+    required DateTime activeUntil,
+    required BoxingCardPlan plan,
+    required int remaining,
+  }) {
+    return RichHtml.screen(
+      title: 'Бокс-карта активна',
+      rows: <(String, String)>[
+        ('Тариф', plan.displayName),
+        ('Осталось', '$remaining из ${plan.groupQuota}'),
+        ('Карта до', DateFormat('dd.MM.yyyy').format(activeUntil)),
+      ],
+      paragraphs: <String>[
+        'Запись: «${MessageCopy.buttonBookTraining}» → слот с BOX или БОКС в названии.',
+      ],
+    );
+  }
+
+  String subscriptionLeftChangedForUser({required int remaining, required int quota}) {
+    return RichHtml.screen(
+      title: 'Остаток по карте обновили',
+      rows: <(String, String)>[('Осталось', '$remaining из $quota')],
     );
   }
 
@@ -2791,6 +2877,14 @@ extension MessageTemplatesContent on MessageTemplates {
     )}'
         '${RichHtml.paragraph(
       '<code>/cancel_subscription &lt;id&gt;</code>',
+      alreadyEscaped: true,
+    )}'
+        '${RichHtml.paragraph(
+      '<code>/grant_subscription &lt;@username|id&gt; &lt;baza|udar&gt; [осталось] [дней]</code>',
+      alreadyEscaped: true,
+    )}'
+        '${RichHtml.paragraph(
+      '<code>/set_subscription_left &lt;id&gt; &lt;осталось&gt;</code>',
       alreadyEscaped: true,
     )}';
   }

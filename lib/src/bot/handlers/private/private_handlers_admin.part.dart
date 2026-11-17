@@ -661,9 +661,10 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
     for (final request in active) {
       if (filter == SubscriptionListFilter.active ||
           filter == SubscriptionListFilter.expiringSoon) {
+        final remaining = await _subscriptionRemainingGroupSlots(request);
         await _sendAdminMessage(
           chatId,
-          _templates.subscriptionActiveItem(request),
+          _templates.subscriptionActiveItem(request, remaining: remaining),
           replyMarkup: _templates.subscriptionCancelInlineKeyboard(request.id),
         );
         continue;
@@ -680,6 +681,199 @@ extension PrivateHandlersAdminOps on PrivateHandlers {
         '${(reason ?? '').isEmpty ? '' : '\nПричина: $reason'}'
         '${(comment ?? '').isEmpty ? '' : '\nКомментарий: $comment'}',
       );
+    }
+  }
+
+  /// Group slots used by bookings only (without the manual admin correction).
+  Future<int> _subscriptionBookingUsedSlots(SubscriptionRequest request) async {
+    final until = request.activeUntil;
+    if (until == null) {
+      return 0;
+    }
+    final from = request.activeFrom ?? until.subtract(BoxingCardLedger.periodDuration);
+    final bookings = await _bookingRepository.listUserBookingsByPaymentNotes(
+      userId: request.userId,
+      paymentNotes: <String>{
+        MessageFormatters.boxingCardIncludedPaymentNoteMarker,
+        MessageFormatters.proIncludedTrainingPaymentNoteMarker,
+        MessageFormatters.boxingCardLateCancelPaymentNoteMarker,
+      },
+      startsFromInclusive: from,
+      startsToExclusive: until,
+    );
+    return BoxingCardLedger.usedGroupSlots(
+      bookings: bookings,
+      userId: request.userId,
+      periodStart: from,
+      periodEnd: until,
+    );
+  }
+
+  Future<int?> _subscriptionRemainingGroupSlots(SubscriptionRequest request) async {
+    final plan = request.plan;
+    if (plan == null) {
+      return null;
+    }
+    final used = await _subscriptionBookingUsedSlots(request);
+    return BoxingCardLedger.remainingGroupSlots(
+      plan: plan,
+      used: used,
+      usedOffset: request.usedOffset,
+    );
+  }
+
+  BoxingCardPlan? _parseBoxingCardPlan(String raw) {
+    return switch (raw.trim().toLowerCase()) {
+      'baza' || 'база' => BoxingCardPlan.baza,
+      'udar' || 'удар' => BoxingCardPlan.udar,
+      _ => null,
+    };
+  }
+
+  /// `/grant_subscription <@user|id> <baza|udar> [left] [days]` and
+  /// `/set_subscription_left <id> [left]`.
+  Future<void> _handleManualSubscriptionCommand({
+    required int chatId,
+    required String text,
+    required bool isAdmin,
+    required bool showReturnToAdminMenu,
+  }) async {
+    final markup = _templates.privateMenuKeyboard(
+      isAdmin: isAdmin,
+      showReturnToAdminMenu: showReturnToAdminMenu,
+    );
+    final parts = text.trim().split(RegExp(r'\s+'));
+    final now = _nowProvider();
+
+    if (parts.first.startsWith('/set_subscription_left')) {
+      final requestId = parts.length >= 2 ? int.tryParse(parts[1]) : null;
+      if (requestId == null) {
+        await _sendAdminMessage(chatId, _templates.subscriptionGrantUsage(), replyMarkup: markup);
+        return;
+      }
+      final request = await _subscriptionRepository.getRequest(requestId);
+      if (request == null) {
+        await _sendAdminMessage(
+          chatId,
+          '😕 <b>Абонемент #$requestId не найден</b>',
+          replyMarkup: markup,
+        );
+        return;
+      }
+      final plan = request.plan;
+      if (request.status != SubscriptionRequestStatus.active || plan == null) {
+        await _sendAdminMessage(
+          chatId,
+          'ℹ️ <b>Абонемент #$requestId не активен</b>',
+          replyMarkup: markup,
+        );
+        return;
+      }
+      final desired = parts.length >= 3 ? int.tryParse(parts[2]) : null;
+      if (desired == null) {
+        await _sendAdminMessage(
+          chatId,
+          _templates.subscriptionLeftUsage(requestId),
+          replyMarkup: markup,
+        );
+        return;
+      }
+      if (desired < 0 || desired > plan.groupQuota) {
+        await _sendAdminMessage(
+          chatId,
+          '⚠️ <b>Остаток от 0 до ${plan.groupQuota}</b> для тарифа ${plan.displayName}.',
+          replyMarkup: markup,
+        );
+        return;
+      }
+      final used = await _subscriptionBookingUsedSlots(request);
+      final updated = await _subscriptionRepository.setUsedOffset(
+        requestId: requestId,
+        usedOffset: plan.groupQuota - used - desired,
+        updatedAt: now,
+      );
+      final shown = updated ?? request;
+      await _sendAdminMessage(
+        chatId,
+        _templates.subscriptionLeftUpdatedForAdmin(shown, remaining: desired),
+        replyMarkup: markup,
+      );
+      try {
+        await _sendScreen(
+          request.userId,
+          _templates.subscriptionLeftChangedForUser(
+            remaining: desired,
+            quota: plan.groupQuota,
+          ),
+        );
+      } on Object catch (error, stackTrace) {
+        l.w('Failed to notify user about subscription balance: $error', stackTrace);
+      }
+      return;
+    }
+
+    if (parts.length < 3) {
+      await _sendAdminMessage(chatId, _templates.subscriptionGrantUsage(), replyMarkup: markup);
+      return;
+    }
+    final plan = _parseBoxingCardPlan(parts[2]);
+    final desired = parts.length >= 4 ? int.tryParse(parts[3]) : plan?.groupQuota;
+    final days = parts.length >= 5 ? int.tryParse(parts[4]) : 30;
+    if (plan == null ||
+        desired == null ||
+        desired < 0 ||
+        desired > plan.groupQuota ||
+        days == null ||
+        days < 1 ||
+        days > 366) {
+      await _sendAdminMessage(chatId, _templates.subscriptionGrantUsage(), replyMarkup: markup);
+      return;
+    }
+    final targetUserId = await _resolveDialogPeerUserId(parts[1]);
+    if (targetUserId == null) {
+      await _sendAdminMessage(
+        chatId,
+        _templates.subscriptionGrantUserNotFound(),
+        replyMarkup: markup,
+      );
+      return;
+    }
+    final result = await _subscriptionRepository.grantManually(
+      userId: targetUserId,
+      userUsername: parts[1].startsWith('@') ? parts[1] : null,
+      plan: plan,
+      activatedAt: now,
+      days: days,
+      usedOffset: plan.groupQuota - desired,
+    );
+    final granted = result.request;
+    if (result.outcome == GrantSubscriptionOutcome.alreadyActive || granted == null) {
+      await _sendAdminMessage(
+        chatId,
+        granted == null
+            ? '😕 <b>Не удалось выдать абонемент</b>'
+            : _templates.subscriptionAlreadyActiveForAdmin(granted),
+        replyMarkup: markup,
+      );
+      return;
+    }
+    await _loyaltyService.touchActivity(targetUserId, now: now);
+    await _sendAdminMessage(
+      chatId,
+      _templates.subscriptionGrantedForAdmin(granted, remaining: desired),
+      replyMarkup: markup,
+    );
+    try {
+      await _sendScreen(
+        targetUserId,
+        _templates.subscriptionGrantedForUser(
+          activeUntil: granted.activeUntil ?? now,
+          plan: plan,
+          remaining: desired,
+        ),
+      );
+    } on Object catch (error, stackTrace) {
+      l.w('Failed to notify user about manual subscription: $error', stackTrace);
     }
   }
 
