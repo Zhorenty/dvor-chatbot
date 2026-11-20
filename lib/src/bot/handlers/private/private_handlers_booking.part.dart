@@ -45,6 +45,14 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required List<BookingParticipantDraft> participants,
     required String? username,
   }) async {
+    if (_isPriceUnpublished(training)) {
+      await _sendScreen(
+        chatId,
+        _templates.bookingPriceNotPublished(),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return;
+    }
     late final BookingGroupCreateResult group;
     try {
       group = await _bookingRepository.createPendingBookingGroup(
@@ -164,6 +172,14 @@ extension PrivateHandlersBookingOps on PrivateHandlers {
     required String? username,
     required Map<String, Object?> onParticipantsLimitReplyMarkup,
   }) async {
+    if (_isPriceUnpublished(selectedTraining)) {
+      await _sendScreen(
+        chatId,
+        _templates.bookingPriceNotPublished(),
+        replyMarkup: _templates.simpleNavigationKeyboard(),
+      );
+      return;
+    }
     late final BookingCreateResult result;
     try {
       result = await _bookingRepository.createPendingBooking(

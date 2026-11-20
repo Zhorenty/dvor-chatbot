@@ -213,13 +213,15 @@ extension PrivateHandlersMiniApp on PrivateHandlers {
       'coach': training.coach,
       'notes': _miniAppText(training.notes),
       'promoRestricted': training.promoRestricted,
+      'peaksRestricted': training.peaksRestricted,
     };
   }
 
   Map<String, Object?> _miniAppBookingJson(TrainingBooking booking) {
     return <String, Object?>{
       'id': booking.id,
-      'key': booking.trainingKey,
+      // Current schedule key, so the app still matches the card after the venue was edited.
+      'key': _catalogService.trainingInfoForBooking(booking)?.sessionKey ?? booking.trainingKey,
       'category': _catalogService.categoryForBooking(booking).name,
       'title': booking.trainingTitle,
       'startsAt': _miniAppInstant(booking.startsAt),

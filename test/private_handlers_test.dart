@@ -1629,6 +1629,45 @@ void main() {
       expect(buttons, isNot(contains(MessageTemplates.buttonSubmitPayment)));
     });
 
+    test('hike without a published price cannot be booked', () async {
+      final sender = _FakeSender();
+      final bookingRepository = _FakeBookingRepository();
+      final handlers = PrivateHandlers(
+        sender: sender,
+        scheduleRepository: _FakeScheduleRepository(
+          const <TrainingInfo>[],
+          outdoorItems: <OutdoorActivityInfo>[
+            OutdoorActivityInfo(
+              type: OutdoorActivityType.hike,
+              title: 'Поход без цены',
+              dateFrom: DateTime(2026, 7, 20),
+              dateTo: DateTime(2026, 7, 20, 23, 59, 59),
+              description: 'Маршрут',
+            ),
+          ],
+        ),
+        bookingRepository: bookingRepository,
+        templates: const MessageTemplates(),
+        adminUserIds: const <int>{},
+      );
+
+      for (final text in <String>[
+        MessageTemplates.buttonTrainings,
+        MessageTemplates.buttonCategoryHikes,
+        '🎯 1. 🥾 Поход: Поход без цены',
+        MessageTemplates.buttonBookTraining,
+      ]) {
+        await handlers.handle(<String, dynamic>{
+          'chat': <String, dynamic>{'id': 1611, 'type': 'private'},
+          'from': <String, dynamic>{'id': 1611},
+          'text': text,
+        });
+      }
+
+      expect(bookingRepository.createCalls, 0);
+      expect(sender.lastContentMessage.text, contains('Цена на это событие ещё не опубликована'));
+    });
+
     test('back from outdoor event selection returns to schedule categories', () async {
       final sender = _FakeSender();
       final handlers = PrivateHandlers(

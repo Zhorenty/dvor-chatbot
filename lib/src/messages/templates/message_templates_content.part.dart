@@ -598,6 +598,14 @@ extension MessageTemplatesContent on MessageTemplates {
     );
   }
 
+  String bookingPriceNotPublished() {
+    return RichHtml.screen(
+      title: 'Запись скоро откроется',
+      lead: 'Цена на это событие ещё не опубликована.',
+      paragraphs: <String>['Загляни в расписание чуть позже.'],
+    );
+  }
+
   String bookingParticipantsLimitExceeded() {
     return RichHtml.screen(
       title: 'Мест нет',

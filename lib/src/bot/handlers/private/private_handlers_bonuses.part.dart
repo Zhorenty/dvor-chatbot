@@ -139,6 +139,14 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
     return price != null && price <= 0;
   }
 
+  /// A hike or trail without a price in Sheets is not free: it is not priced yet.
+  /// Booking it would create a payment with no amount that looks paid.
+  bool _isPriceUnpublished(TrainingInfo training) {
+    return training.price == null &&
+        (training.category == _ActivityCategory.hikes ||
+            training.category == _ActivityCategory.trails);
+  }
+
   TrainingBooking _bookingWithStatus(
     TrainingBooking fallback,
     BookingStatus status,
@@ -422,7 +430,7 @@ extension PrivateHandlersBonusesOps on PrivateHandlers {
       return false;
     }
     final training = _catalogService.trainingInfoForBooking(booking);
-    if (training?.promoRestricted == true) {
+    if (training?.promoRestricted == true || training?.peaksRestricted == true) {
       return false;
     }
     final price = booking.trainingPrice ?? training?.price ?? 0;

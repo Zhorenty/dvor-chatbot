@@ -103,6 +103,7 @@ final class ScheduleEventDraft {
     this.notes,
     this.includeTrainersInParticipants,
     this.promoRestricted,
+    this.peaksRestricted,
     this.dateFrom,
     this.dateTo,
     this.clearDateTo = false,
@@ -125,6 +126,7 @@ final class ScheduleEventDraft {
   final String? notes;
   final bool? includeTrainersInParticipants;
   final bool? promoRestricted;
+  final bool? peaksRestricted;
   final String? dateFrom;
   final String? dateTo;
   final bool clearDateTo;
@@ -147,6 +149,7 @@ final class ScheduleEventDraft {
     String? notes,
     bool? includeTrainersInParticipants,
     bool? promoRestricted,
+    bool? peaksRestricted,
     String? dateFrom,
     String? dateTo,
     bool? clearDateTo,
@@ -170,6 +173,7 @@ final class ScheduleEventDraft {
       includeTrainersInParticipants:
           includeTrainersInParticipants ?? this.includeTrainersInParticipants,
       promoRestricted: promoRestricted ?? this.promoRestricted,
+      peaksRestricted: peaksRestricted ?? this.peaksRestricted,
       dateFrom: dateFrom ?? this.dateFrom,
       dateTo: dateTo ?? this.dateTo,
       clearDateTo: clearDateTo ?? this.clearDateTo,

@@ -213,6 +213,10 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'без_скидок',
       ],
     );
+    final peaksRestrictedIndex = GoogleSheetsValueParser.firstHeaderIndex(
+      headers,
+      const <String>['peaks_restricted', 'no_peaks', 'без_вершинок'],
+    );
     final hasStartsAt = startsAtIndex >= 0;
     final hasDateAndTime = dateIndex >= 0 && timeIndex >= 0;
     if (titleIndex < 0 || locationIndex < 0 || (!hasStartsAt && !hasDateAndTime)) {
@@ -257,6 +261,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           coach: _optionalCell(row, coachIndex),
           notes: _optionalCell(row, notesIndex),
           promoRestricted: _parseBoolFlag(_optionalCell(row, promoRestrictedIndex)),
+          peaksRestricted: _parseBoolFlag(_optionalCell(row, peaksRestrictedIndex)),
         ),
       );
     }
@@ -337,6 +342,10 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
         'лимит',
       ],
     );
+    final peaksRestrictedIndex = _firstHeaderIndex(
+      headers,
+      const <String>['peaks_restricted', 'no_peaks', 'без_вершинок'],
+    );
 
     if (titleIndex < 0 || dateFromIndex < 0 || descriptionIndex < 0) {
       l.w(
@@ -380,6 +389,7 @@ final class GoogleSheetsScheduleRepository implements TrainingScheduleRepository
           price: _parsePrice(_optionalCell(row, priceIndex)),
           prepayPercent: _parsePrepayPercent(_optionalCell(row, prepayPercentIndex)),
           participantsLimit: _parseParticipantsLimit(_optionalCell(row, participantsLimitIndex)),
+          peaksRestricted: _parseBoolFlag(_optionalCell(row, peaksRestrictedIndex)),
         ),
       );
     }

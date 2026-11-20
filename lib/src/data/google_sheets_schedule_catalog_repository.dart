@@ -242,6 +242,7 @@ final class GoogleSheetsScheduleCatalogRepository implements ScheduleCatalogRepo
       coach: map.optional(row, 'тренер'),
       notes: map.optional(row, 'заметки'),
       promoRestricted: GoogleSheetsValueParser.parseBoolFlag(map.optional(row, 'без_промокода')),
+      peaksRestricted: GoogleSheetsValueParser.parseBoolFlag(map.optional(row, 'без_вершинок')),
     );
   }
 
@@ -279,6 +280,7 @@ final class GoogleSheetsScheduleCatalogRepository implements ScheduleCatalogRepo
       price: GoogleSheetsValueParser.parsePrice(map.optional(row, 'цена')),
       prepayPercent: GoogleSheetsValueParser.parsePrepayPercent(map.optional(row, 'предоплата')),
       participantsLimit: GoogleSheetsValueParser.parseParticipantsLimit(map.optional(row, 'лимит')),
+      peaksRestricted: GoogleSheetsValueParser.parseBoolFlag(map.optional(row, 'без_вершинок')),
     );
   }
 
@@ -344,6 +346,7 @@ final class GoogleSheetsScheduleCatalogRepository implements ScheduleCatalogRepo
     put('заметки', draft.notes);
     put('тренеры_в_лимите', draft.includeTrainersInParticipants);
     put('без_промокода', draft.promoRestricted);
+    put('без_вершинок', draft.peaksRestricted);
     put('дата_с', draft.dateFrom);
     put('дата_по', draft.dateTo, clear: draft.clearDateTo);
     put('описание', draft.description);

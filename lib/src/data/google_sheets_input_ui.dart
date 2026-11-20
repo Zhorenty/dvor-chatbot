@@ -141,6 +141,13 @@ abstract final class GoogleSheetsInputUi {
         kind: GoogleSheetsInputColumnKind.checkbox,
         note: 'Галка: промокод на эту тренировку не действует.',
       ),
+      GoogleSheetsInputColumn(
+        header: 'без_вершинок',
+        aliases: <String>['peaks_restricted', 'no_peaks'],
+        widthPx: 140,
+        kind: GoogleSheetsInputColumnKind.checkbox,
+        note: 'Галка: вершинки на это событие не списываются.',
+      ),
       _statusColumn,
     ],
   );
@@ -246,6 +253,13 @@ abstract final class GoogleSheetsInputUi {
       widthPx: 280,
       wrap: true,
       note: 'Расписание / план дня. Необязательно.',
+    ),
+    GoogleSheetsInputColumn(
+      header: 'без_вершинок',
+      aliases: <String>['peaks_restricted', 'no_peaks'],
+      widthPx: 140,
+      kind: GoogleSheetsInputColumnKind.checkbox,
+      note: 'Галка: вершинки на это событие не списываются.',
     ),
     _statusColumn,
   ];

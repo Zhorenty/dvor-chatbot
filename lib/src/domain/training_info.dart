@@ -15,6 +15,7 @@ final class TrainingInfo {
     this.coach,
     this.notes,
     this.promoRestricted = false,
+    this.peaksRestricted = false,
   });
 
   final String title;
@@ -37,6 +38,9 @@ final class TrainingInfo {
   /// When true, promo codes and free-training bonuses cannot be applied
   /// to bookings for this training.
   final bool promoRestricted;
+
+  /// When true, loyalty peaks («вершинки») cannot be spent on this event.
+  final bool peaksRestricted;
 
   String get sessionKey =>
       '${category.name}|${startsAt.toUtc().toIso8601String()}|$title|$location';

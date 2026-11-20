@@ -79,6 +79,7 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
       notes = training.notes;
       facts.add('Тренеры в лимите: ${training.includeTrainersInParticipants ? 'да' : 'нет'}');
       facts.add('Без промокода: ${training.promoRestricted ? 'да' : 'нет'}');
+      facts.add('Вершинки: ${training.peaksRestricted ? 'выкл' : 'вкл'}');
     } else if (outdoor != null) {
       facts.add('🕒 ${MessageFormatters.outdoorDateLabel(outdoor.dateFrom, outdoor.dateTo)}');
       final location = outdoor.location?.trim();
@@ -97,6 +98,7 @@ extension MessageTemplatesAdminSchedule on MessageTemplates {
       }
       equipment = outdoor.equipment;
       itinerary = outdoor.itinerary;
+      facts.add('Вершинки: ${outdoor.peaksRestricted ? 'выкл' : 'вкл'}');
     }
     return '${RichHtml.screen(title: item.title, facts: facts, alreadyEscaped: true)}'
         '${RichHtml.formattedDetails(summary: 'Заметки', text: notes)}'

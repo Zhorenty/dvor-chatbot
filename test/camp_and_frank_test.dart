@@ -4,6 +4,7 @@ import 'package:dvor_chatbot/src/domain/activity_category.dart';
 import 'package:dvor_chatbot/src/domain/booking_status.dart';
 import 'package:dvor_chatbot/src/domain/boxing_title.dart';
 import 'package:dvor_chatbot/src/domain/featured_trainings.dart';
+import 'package:dvor_chatbot/src/domain/training_booking.dart';
 import 'package:dvor_chatbot/src/domain/training_info.dart';
 import 'package:dvor_chatbot/src/jobs/frank_run_broadcast_job.dart';
 import 'package:dvor_chatbot/src/messages/copy/message_copy.dart';
@@ -193,5 +194,37 @@ void main() {
     expect(bookings.lastCreatedTraining?.location, sheetSlot.location);
     expect(bookings.lastUpdatedStatus, BookingStatus.paid);
     expect(sender.messages.last.text, contains('бесплатн'));
+  });
+
+  test('booking still resolves its training after the venue was edited', () {
+    final edited = TrainingInfo(
+      title: '💪 СИЛОВАЯ',
+      startsAt: DateTime(2026, 11, 24, 20, 30),
+      location: 'Фитнес-клуб S-CLASS',
+      price: 500,
+      peaksRestricted: true,
+    );
+    final catalog = ActivityCatalogService(
+      scheduleRepository: FakeScheduleRepository(<TrainingInfo>[edited]),
+    );
+    final booking = TrainingBooking(
+      id: 1,
+      userId: 1,
+      userUsername: 'u',
+      trainingKey:
+          'trainings|${edited.startsAt.toUtc().toIso8601String()}|💪 СИЛОВАЯ|S CLASS 324 A',
+      trainingTitle: edited.title,
+      startsAt: edited.startsAt,
+      location: 'S CLASS 324 A',
+      status: BookingStatus.paid,
+      trainingPrice: 500,
+      createdAt: DateTime(2026, 11, 1),
+      updatedAt: DateTime(2026, 11, 1),
+    );
+
+    final resolved = catalog.trainingInfoForBooking(booking);
+
+    expect(resolved?.sessionKey, edited.sessionKey);
+    expect(resolved?.peaksRestricted, isTrue);
   });
 }

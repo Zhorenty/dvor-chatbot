@@ -113,6 +113,7 @@ final class FakeScheduleCatalogRepository implements ScheduleCatalogRepository {
               coach: draft.coach,
               notes: draft.notes,
               promoRestricted: draft.promoRestricted ?? false,
+              peaksRestricted: draft.peaksRestricted ?? false,
             )
           : null,
       outdoor: draft.category == ActivityCategory.trainings
@@ -162,6 +163,7 @@ final class FakeScheduleCatalogRepository implements ScheduleCatalogRepository {
           coach: patch.coach ?? training.coach,
           notes: patch.notes ?? training.notes,
           promoRestricted: patch.promoRestricted ?? training.promoRestricted,
+          peaksRestricted: patch.peaksRestricted ?? training.peaksRestricted,
         ),
       );
     }

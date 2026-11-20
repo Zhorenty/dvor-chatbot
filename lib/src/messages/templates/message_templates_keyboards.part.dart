@@ -482,6 +482,7 @@ extension MessageTemplatesKeyboards on MessageTemplates {
     bool showTrainingToggles = false,
     bool includeTrainers = false,
     bool promoRestricted = false,
+    bool peaksRestricted = false,
     bool confirmingDelete = false,
   }) {
     return TelegramKeyboards.adminScheduleEventInlineKeyboard(
@@ -490,6 +491,7 @@ extension MessageTemplatesKeyboards on MessageTemplates {
       showTrainingToggles: showTrainingToggles,
       includeTrainers: includeTrainers,
       promoRestricted: promoRestricted,
+      peaksRestricted: peaksRestricted,
       confirmingDelete: confirmingDelete,
     );
   }

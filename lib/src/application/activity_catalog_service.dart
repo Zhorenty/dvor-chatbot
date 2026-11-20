@@ -107,6 +107,7 @@ final class ActivityCatalogService {
       location: item.location,
       price: item.price,
       participantsLimit: item.participantsLimit,
+      peaksRestricted: item.peaksRestricted,
     );
   }
 
@@ -153,6 +154,13 @@ final class ActivityCatalogService {
     final items = bookableItems(category, limit: 20);
     for (final item in items) {
       if (item.sessionKey == booking.trainingKey) {
+        return item;
+      }
+    }
+    // The key embeds the venue. When the venue text was edited in Sheets after
+    // the booking, fall back to the same slot: same start and same title.
+    for (final item in items) {
+      if (item.startsAt.isAtSameMomentAs(booking.startsAt) && item.title == booking.trainingTitle) {
         return item;
       }
     }
@@ -205,6 +213,7 @@ final class ActivityCatalogService {
       prepayPercent: item.prepayPercent,
       participantsLimit: item.participantsLimit,
       includeTrainersInParticipants: true,
+      peaksRestricted: item.peaksRestricted,
       notes: 'Даты: ${dateRangeLabel(item)}',
     );
   }

@@ -265,15 +265,21 @@ extension PrivateHandlersDispatchAdminSchedule on PrivateHandlers {
         await _openAdminScheduleCard(chatId: chatId, userId: userId, index: index);
       }
       final selected = _flowByUserId[userId]?.adminSchedule.selected;
-      if (selected == null || selected.training == null) {
+      if (selected == null) {
         return true;
       }
-      final training = selected.training!;
+      final training = selected.training;
+      if (training == null && flag != 'pk') {
+        return true;
+      }
+      final peaksRestricted =
+          training?.peaksRestricted ?? selected.outdoor?.peaksRestricted ?? false;
       final patch = ScheduleEventDraft(
         category: selected.category,
         includeTrainersInParticipants:
-            flag == 'it' ? !training.includeTrainersInParticipants : null,
-        promoRestricted: flag == 'pr' ? !training.promoRestricted : null,
+            flag == 'it' && training != null ? !training.includeTrainersInParticipants : null,
+        promoRestricted: flag == 'pr' && training != null ? !training.promoRestricted : null,
+        peaksRestricted: flag == 'pk' ? !peaksRestricted : null,
       );
       final result = await _scheduleCatalogService.update(identity: selected, patch: patch);
       await _handleAdminScheduleWrite(

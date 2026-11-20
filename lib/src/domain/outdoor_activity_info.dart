@@ -16,6 +16,7 @@ final class OutdoorActivityInfo {
     this.price,
     this.prepayPercent = 50,
     this.participantsLimit,
+    this.peaksRestricted = false,
   });
 
   final OutdoorActivityType type;
@@ -31,4 +32,7 @@ final class OutdoorActivityInfo {
   /// Prepayment share for outdoor events (1–100). Defaults to 50.
   final int prepayPercent;
   final int? participantsLimit;
+
+  /// When true, loyalty peaks cannot be spent on this event.
+  final bool peaksRestricted;
 }

@@ -1834,6 +1834,7 @@ final class TelegramKeyboards {
     bool showTrainingToggles = false,
     bool includeTrainers = false,
     bool promoRestricted = false,
+    bool peaksRestricted = false,
     bool confirmingDelete = false,
   }) {
     if (confirmingDelete) {
@@ -1882,6 +1883,14 @@ final class TelegramKeyboards {
         ],
       );
     }
+    rows.add(
+      <Map<String, String>>[
+        <String, String>{
+          'text': peaksRestricted ? 'Вершинки: выкл' : 'Вершинки: вкл',
+          'callback_data': '${MessageCopy.callbackAdminSchedTogPrefix}pk:$categoryCode:$index',
+        },
+      ],
+    );
     rows.add(
       <Map<String, String>>[
         <String, String>{

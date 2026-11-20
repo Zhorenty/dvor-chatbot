@@ -158,6 +158,7 @@ extension PrivateHandlersAdminSchedule on PrivateHandlers {
         showTrainingToggles: item.isTraining && !confirmingDelete,
         includeTrainers: item.training?.includeTrainersInParticipants ?? false,
         promoRestricted: item.training?.promoRestricted ?? false,
+        peaksRestricted: item.training?.peaksRestricted ?? item.outdoor?.peaksRestricted ?? false,
         confirmingDelete: confirmingDelete,
       ),
     );

@@ -347,6 +347,51 @@ void main() {
     );
   });
 
+  test('peaks_restricted event does not offer spending peaks', () async {
+    await loyaltyService.credit(
+      userId: 75,
+      amount: 1000,
+      reason: LoyaltyLedgerReason.adminGrant,
+      idempotencyKey: 'g75',
+      now: now,
+    );
+    final restrictedSender = FakeSender();
+    final restricted = handlers(
+      sender: restrictedSender,
+      schedule: FakeScheduleRepository(
+        <TrainingInfo>[
+          TrainingInfo(
+            title: 'Без вершинок',
+            startsAt: DateTime(2026, 8, 20, 19),
+            location: 'Hall',
+            category: ActivityCategory.trainings,
+            price: 500,
+            peaksRestricted: true,
+          ),
+        ],
+      ),
+    );
+    for (final text in <String>[
+      '/book',
+      MessageTemplates.buttonCategoryTrainings,
+      '🎯 1. Без вершинок',
+    ]) {
+      await restricted.handle(<String, dynamic>{
+        'chat': <String, dynamic>{'id': 75, 'type': 'private'},
+        'from': <String, dynamic>{'id': 75},
+        'text': text,
+      });
+    }
+    expect(
+      restrictedSender.messages.any((message) => message.text.contains('Списать 1000')),
+      isFalse,
+    );
+    expect(
+      restrictedSender.messages.any((message) => message.text.contains('Вершинки')),
+      isFalse,
+    );
+  });
+
   test('promo then peaks uses the discounted remainder', () async {
     await loyaltyService.credit(
       userId: 77,
