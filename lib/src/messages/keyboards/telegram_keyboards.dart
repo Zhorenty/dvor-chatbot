@@ -70,6 +70,7 @@ final class TelegramKeyboards {
       ],
       <Map<String, String>>[
         <String, String>{'text': MessageCopy.buttonHelp},
+        <String, String>{'text': MessageCopy.buttonPartnerCars},
       ],
     ];
     if (canViewParticipantsList) {
@@ -899,6 +900,40 @@ final class TelegramKeyboards {
             'text': label,
             'url': url,
           },
+        ],
+      ],
+    };
+  }
+
+  static Map<String, Object?> partnerCarsKeyboard() {
+    Map<String, String> url(String text, String link) =>
+        <String, String>{'text': text, 'url': link};
+    return <String, Object?>{
+      'inline_keyboard': <List<Map<String, Object?>>>[
+        <Map<String, Object?>>[
+          url(MessageCopy.buttonPartnerInstagram, MessageCopy.partnerCarsInstagramUrl)
+        ],
+        <Map<String, Object?>>[
+          url(MessageCopy.buttonPartnerTelegramCatalog, MessageCopy.partnerCarsTelegramUrl)
+        ],
+        <Map<String, Object?>>[
+          url(MessageCopy.buttonPartnerMaxCatalog, MessageCopy.partnerCarsMaxUrl)
+        ],
+        <Map<String, Object?>>[
+          url(MessageCopy.buttonPartnerPrice, MessageCopy.partnerCarsPriceUrl)
+        ],
+        <Map<String, Object?>>[
+          url(MessageCopy.buttonPartnerWrite, MessageCopy.partnerCarsWriteUrl)
+        ],
+        <Map<String, Object?>>[
+          <String, Object?>{
+            'text': MessageCopy.buttonPartnerCopyPhone,
+            'copy_text': <String, Object?>{'text': MessageCopy.partnerCarsPhoneRaw},
+          },
+        ],
+        <Map<String, Object?>>[url(MessageCopy.buttonPartnerSite, MessageCopy.partnerCarsSiteUrl)],
+        <Map<String, Object?>>[
+          url(MessageCopy.buttonPartnerReviews, MessageCopy.partnerCarsReviewsUrl)
         ],
       ],
     };

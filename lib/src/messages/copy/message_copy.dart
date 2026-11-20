@@ -40,6 +40,25 @@ final class MessageCopy {
   static const String buttonBack = '⬅️ Назад';
   static const String buttonMainMenu = '🏠 Главное меню';
   static const String buttonHelp = '🆘 Помощь';
+  static const String buttonPartnerCars = '🚗 Авто из Китая и Кореи';
+  static const String buttonPartnerInstagram = 'Instagram';
+  static const String buttonPartnerTelegramCatalog = 'Каталог в Telegram';
+  static const String buttonPartnerMaxCatalog = 'Каталог в MAX';
+  static const String buttonPartnerPrice = 'Узнать цену';
+  static const String buttonPartnerWrite = 'Написать в Telegram';
+  static const String buttonPartnerCopyPhone = 'Скопировать номер';
+  static const String buttonPartnerSite = 'Наш сайт';
+  static const String buttonPartnerReviews = 'Отзывы клиентов';
+  static const String partnerCarsPhone = '+7 901 040-00-00';
+  static const String partnerCarsPhoneRaw = '+79010400000';
+  static const String partnerCarsInstagramUrl = 'https://www.instagram.com/yugarazh/';
+  static const String partnerCarsTelegramUrl = 'https://t.me/YuGarazh';
+  static const String partnerCarsMaxUrl = 'https://max.ru/channel_YuGarazh';
+  static const String partnerCarsPriceUrl = 'https://yugarazh.ru/#rec1761805161';
+  static const String partnerCarsWriteUrl = 'https://t.me/+79010400000';
+  static const String partnerCarsSiteUrl = 'https://yugarazh.ru/';
+  static const String partnerCarsReviewsUrl =
+      'https://yandex.ru/maps/org/yuzhny_garazh/37144404851/reviews/';
   static const String buttonOnboardingContinue = 'Дальше';
   static const String buttonOnboardingNeedHelp = 'Нужна помощь';
   static const String buttonOnboardingNeedMoreTime = 'Нужно больше времени';

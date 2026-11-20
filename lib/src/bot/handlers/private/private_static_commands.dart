@@ -218,6 +218,19 @@ final class PrivateStaticCommands {
       return true;
     }
 
+    if (text.startsWith('/cars') || text == MessageTemplates.buttonPartnerCars) {
+      if (userId != null) {
+        flowByUserId.remove(userId);
+      }
+      await sendBotScreen(
+        sender,
+        chatId,
+        InputRichMessage(html: templates.partnerCars()),
+        replyMarkup: templates.partnerCarsKeyboard(),
+      );
+      return true;
+    }
+
     if (text == MessageTemplates.buttonHelp) {
       if (userId != null) {
         flowByUserId.remove(userId);

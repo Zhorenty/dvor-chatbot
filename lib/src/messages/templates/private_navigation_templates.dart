@@ -300,6 +300,18 @@ final class PrivateNavigationTemplates {
     );
   }
 
+  String partnerCars() {
+    return RichHtml.screen(
+      title: 'Авто из Китая и Южной Кореи',
+      lead: 'Партнёр DVOR — Южный гараж, Краснодар.',
+      paragraphs: <String>[
+        'Подбирают, проверяют и привозят. Доставка по всей России.',
+        'Каталог и цены — в Telegram и MAX. Стоимость под ключ посчитают под твой автомобиль.',
+        'Телефон: ${MessageCopy.partnerCarsPhone}',
+      ],
+    );
+  }
+
   String privateHelp() {
     return RichHtml.screen(
       title: 'Помощь',

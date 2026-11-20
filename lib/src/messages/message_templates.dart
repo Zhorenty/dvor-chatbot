@@ -81,6 +81,7 @@ final class MessageTemplates {
   static const String buttonBack = MessageCopy.buttonBack;
   static const String buttonMainMenu = MessageCopy.buttonMainMenu;
   static const String buttonHelp = MessageCopy.buttonHelp;
+  static const String buttonPartnerCars = MessageCopy.buttonPartnerCars;
   static const String buttonOnboardingContinue = MessageCopy.buttonOnboardingContinue;
   static const String buttonOnboardingNeedHelp = MessageCopy.buttonOnboardingNeedHelp;
   static const String buttonOnboardingNeedMoreTime = MessageCopy.buttonOnboardingNeedMoreTime;
@@ -265,6 +266,14 @@ final class MessageTemplates {
       comment: comment == null ? null : _escapeHtml(comment),
       category: category,
     );
+  }
+
+  String partnerCars() {
+    return _privateNavigationTemplates.partnerCars();
+  }
+
+  Map<String, Object?> partnerCarsKeyboard() {
+    return TelegramKeyboards.partnerCarsKeyboard();
   }
 
   String privateHelp() {
