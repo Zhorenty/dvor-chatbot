@@ -117,6 +117,13 @@ class ProfileScreen extends ConsumerWidget {
         subtitle: 'Оплата, отмена, вершинки',
         onTap: () => context.push('/help'),
       ),
+      const SizedBox(height: Space.s),
+      OptionTile(
+        icon: Icons.directions_car_rounded,
+        title: 'Авто из Китая и Кореи',
+        subtitle: 'Партнёр DVOR — Южный гараж',
+        onTap: () => context.push('/partner'),
+      ),
       const SizedBox(height: Space.xl),
       Text('DVOR', style: context.text.labelSmall?.copyWith(color: c.inkFaint)),
       const SizedBox(height: Space.s),

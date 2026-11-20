@@ -9,6 +9,7 @@ import 'package:dvor_miniapp/features/admin/admin.dart' deferred as admin;
 import 'package:dvor_miniapp/features/bookings/bookings_screen.dart';
 import 'package:dvor_miniapp/features/card/card_screen.dart';
 import 'package:dvor_miniapp/features/profile/help_screen.dart';
+import 'package:dvor_miniapp/features/profile/partner_screen.dart';
 import 'package:dvor_miniapp/features/profile/profile_screen.dart';
 import 'package:dvor_miniapp/features/profile/team_screen.dart';
 import 'package:dvor_miniapp/features/schedule/event_screen.dart';
@@ -57,6 +58,7 @@ GoRouter _memberRouter(String initialLocation) {
       _page('/card', (_) => const CardScreen()),
       _page('/team', (_) => const TeamScreen()),
       _page('/help', (_) => const HelpScreen()),
+      _page('/partner', (_) => const PartnerScreen()),
     ],
   );
 }

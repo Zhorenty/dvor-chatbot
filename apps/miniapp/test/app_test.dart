@@ -287,6 +287,23 @@ void main() {
     expect(find.text('БОКС'), findsOneWidget);
   });
 
+  testWidgets('profile opens the partner cars section with its links', (tester) async {
+    final (_, tg) = await _pump(tester);
+    await tester.tap(find.byIcon(Icons.person_outline_rounded));
+    await tester.pumpAndSettle();
+    await tester.dragUntilVisible(
+      find.text('Авто из Китая и Кореи'),
+      find.byType(Scrollable).first,
+      const Offset(0, -200),
+    );
+    await tester.tap(find.text('Авто из Китая и Кореи'));
+    await tester.pumpAndSettle();
+    expect(find.text('DVOR × ЮЖНЫЙ ГАРАЖ'), findsOneWidget);
+    await tester.tap(find.text('Каталог в Telegram'));
+    await tester.pump();
+    expect(tg.openedLinks, contains('https://t.me/YuGarazh'));
+  });
+
   testWidgets('admin approves a prepayment from the queue', (tester) async {
     final (repo, _) = await _pump(tester, isAdmin: true);
     expect(find.text('ОПЛАТЫ · 1'), findsOneWidget);
